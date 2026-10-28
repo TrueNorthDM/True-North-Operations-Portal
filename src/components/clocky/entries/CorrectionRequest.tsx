@@ -21,7 +21,7 @@ import type { Catalog } from './api'
 import { EMPTY_VALUES, overlapAmong, withCombination, withJob, type RequestState } from './form'
 import { JobPick, type PickPatch } from './JobPick'
 import { QUARTERS, hhmmOf, nameFor } from './model'
-import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, TEXTAREA_WARN } from './ui'
+import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, SaveError, TEXTAREA_WARN } from './ui'
 
 /** What a request keeps of the picker's change: the job, its Activity and the picker's own state (no path, no notes). */
 function requestPart(p: PickPatch): Partial<RequestState> {
@@ -53,7 +53,8 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
   onClose: () => void
   onSend: () => void
 }) {
-  const check = rq.error ? { text: rq.error, bad: true } : requestCheck(rq, personId, zone, rows, catalog, nowMs)
+  // The check line stays on the times; why a send was refused shows at the foot (SaveError).
+  const check = requestCheck(rq, personId, zone, rows, catalog, nowMs)
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6)).map(d => ({ value: d, label: dayLabel(d) }))
   const times = QUARTERS.map(m => ({ value: String(m), label: minutesLabel(m) }))
   const job = catalog.jobs.find(j => j.id === rq.jobcodeId)
@@ -61,7 +62,7 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
   const activity = fieldsForJob(catalog.fields, job ?? { structure: structureOn(rq.date, catalog.switchDate) }).find(f => f.key === 'activity')
   const comboOptions = sortedOptions(catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label })))
   const s2 = structureOn(rq.date, catalog.switchDate) === 2
-  const disabled = busy || (check.bad && !rq.error) || !rq.jobcodeId || (s2 && !rq.values.activity) || !rq.reason.trim()
+  const disabled = busy || check.bad || !rq.jobcodeId || (s2 && !rq.values.activity) || !rq.reason.trim()
 
   return (
     <Modal label="Request to add time" width={560} onClose={onClose}>
@@ -117,6 +118,7 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
       <div className="flex items-center gap-2 text-[12.5px] text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-[10px] px-3 py-[9px]">
         <Icon d={ICON.send} size={14} /><span>{catalog.correctionGoesTo}</span>
       </div>
+      <SaveError text={rq.error} />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
         <button type="button" disabled={disabled} onClick={onSend}

@@ -25,12 +25,12 @@ import { JobPick } from './JobPick'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
 import {
-  BTN_FORM_SAVE, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, ReadOnlyField, TEXTAREA_PLAIN, TEXTAREA_WARN,
+  BTN_FORM_SAVE, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, ReadOnlyField, SaveError, TEXTAREA_PLAIN, TEXTAREA_WARN,
 } from './ui'
 
 const timeOption = (m: number) => ({ value: String(m), label: minutesLabel(m) })
 
-/** The check line, with what the rows on screen say about overlaps. */
+/** The check line, with what the rows on screen say about overlaps. Why a save was refused shows at the foot (SaveError). */
 export function formCheck(f: FormState, rows: readonly EntryView[], catalog: Pick<Catalog, 'combinations'>, nowMs: number): Check {
   const span = formSpan(f, nowMs)
   const o = span && Date.parse(span.end) > Date.parse(span.start)
@@ -41,7 +41,6 @@ export function formCheck(f: FormState, rows: readonly EntryView[], catalog: Pic
   const seconds = span ? (Date.parse(span.end) - Date.parse(span.start)) / 1000 : 0
   const overlapText = o && !f.fix ? overlapLine(seconds, { start: o.start, end: o.end }, nameFor(o.row, catalog.combinations), f.zone) : null
   const c = checkLine({ ...base, overlapText })
-  if (f.error) return { ...c, text: f.error, bad: true }
   if (f.fixNote && !c.bad) return { ...c, text: f.fixNote }
   return c
 }
@@ -72,7 +71,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const shownFields = defs
     .filter(d => d.required === 'always' || isI7)
     .sort((a, b) => FIELD_ORDER.indexOf(a.key) - FIELD_ORDER.indexOf(b.key))
-  const overlapOnly = check.bad && !f.error && !check.shortenOnly && /Overlaps /.test(check.text)
+  const overlapOnly = check.bad && !check.shortenOnly && /Overlaps /.test(check.text)
 
   // The 2026 structure, from the switch date: picked on the clock panel's first screen. An entry
   // keeps its own job's structure (a TSheets entry imported after the switch date stays a TSheets one).
@@ -82,7 +81,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const cleared = { jobcodeId: null, jobPath: '', values: { ...EMPTY_VALUES }, auto: {}, combo: '', error: null }
   const incomplete = s2 && (!f.values.activity || (activityNeedsNotes(f.values.activity) && !f.notes.trim()))
 
-  const disabled = busy || !f.jobcodeId || incomplete || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly && !f.error) || !f.reason.trim()
+  const disabled = busy || !f.jobcodeId || incomplete || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly) || !f.reason.trim()
 
   const week = weekStartOf(f.date)
   const dateOptions = (leader ? Array.from({ length: 7 }, (_, i) => addDays(week, i)) : [f.date]).map(d => ({ value: d, label: dayLabel(d) }))
@@ -195,6 +194,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         <FieldLabel warn>Reason for the change (required)</FieldLabel>
         <textarea value={f.reason} onChange={e => setForm({ reason: e.target.value })} rows={2} placeholder={reasonPh} className={TEXTAREA_WARN} />
       </label>
+      <SaveError text={f.error} />
 
       <div className="flex items-center gap-2 mt-0.5">
         {f.id !== null && (

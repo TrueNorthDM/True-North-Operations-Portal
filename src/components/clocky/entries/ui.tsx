@@ -136,6 +136,16 @@ export const TEXTAREA = 'w-full box-border resize-y px-3 py-2.5 border rounded-[
 export const TEXTAREA_PLAIN = `${TEXTAREA} border-[var(--panel-border)] bg-white`
 export const TEXTAREA_WARN = `${TEXTAREA} border-[#e9d48a] bg-[var(--warn-bg)]`
 
+/** Why a Save or Send was refused, right above the buttons pressed (a tall form is scrolled to its foot). */
+export function SaveError({ text }: { text: string | null }) {
+  if (!text) return null
+  return (
+    <div role="alert" className="flex gap-2.5 items-center rounded-[11px] bg-[#fdeeef] border border-[#f3c6ca] px-3.5 py-3 text-[13.5px] text-[#c8323d] font-bold">
+      <Icon d={ICON.warn} size={17} />{text}
+    </div>
+  )
+}
+
 // ── Modal window ────────────────────────────────────────────────────────────
 
 export function CloseButton({ onClick, className = '' }: { onClick: () => void; className?: string }) {
