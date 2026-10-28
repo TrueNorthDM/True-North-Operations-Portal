@@ -12,7 +12,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import { placeOf } from '@/components/clocky/clock/clock-model'
-import { COLUMNS, gridTemplate, groupByDay, liveSeconds, minWidth, overTen, visibleColumns, type ColumnKey } from './model'
+import { gridTemplate, groupByDay, hasTsheetsRows, liveSeconds, minWidth, offeredColumns, overTen, visibleColumns, type ColumnKey } from './model'
 import { BTN_MODAL_NAVY, BTN_PAGE_WHITE, BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
 
 /** Closes a menu on a press outside it. */
@@ -113,7 +113,8 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
   onAdd: () => void
   onRequest: () => void
 }) {
-  const vis = visibleColumns(cols, all)
+  const tsheets = hasTsheetsRows(rows)
+  const vis = visibleColumns(cols, all, tsheets)
   const template = gridTemplate(vis)
   const groups = groupByDay(rows, all, nowMs)
   const menu = useOutside(colsOpen, () => setColsOpen(false))
@@ -131,7 +132,7 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
           {colsOpen && (
             <div className={`${MENU} top-10 right-0 w-[234px] p-1.5 gap-px`}>
               <div className={`${LABEL} text-muted px-2.5 pt-1.5 pb-1`}>Show columns</div>
-              {COLUMNS.filter(c => c.key !== 'person' || all).map(c => (
+              {offeredColumns(all, tsheets).map(c => (
                 <button key={c.key} type="button" role="checkbox" aria-checked={cols[c.key]}
                   onClick={() => setCols({ ...cols, [c.key]: !cols[c.key] })}
                   className="flex items-center gap-2.5 border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-[7px] font-(family-name:--font-display) font-semibold text-[13px] bg-transparent text-tn-ink hover:bg-subtle">

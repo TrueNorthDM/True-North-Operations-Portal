@@ -179,8 +179,23 @@ export const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
 /** The width of the actions column, and the columns' grid. */
 export const ACTIONS_WIDTH = 140
 
-export function visibleColumns(cols: Record<ColumnKey, boolean>, all: boolean) {
-  return COLUMNS.filter(c => cols[c.key] && (c.key !== 'person' || all))
+/** The TSheets entries' own fields: nothing to show on a 2026 entry, whose job is its Client, Division and Project. */
+export const TSHEETS_COLUMNS: readonly ColumnKey[] = ['company', 'project', 'code']
+
+/** Whether any entry on screen was recorded on a TSheets job (before the switch date). */
+export const hasTsheetsRows = (rows: readonly Pick<EntryView, 'rowType' | 'structure'>[]): boolean =>
+  rows.some(r => r.rowType !== 'time_off' && r.structure !== 2)
+
+/**
+ * The columns the Columns menu offers: Person only in All, and the TSheets fields only when
+ * a TSheets entry is on screen (owner, 28 October 2026).
+ */
+export function offeredColumns(all: boolean, tsheets: boolean) {
+  return COLUMNS.filter(c => (c.key !== 'person' || all) && (tsheets || !TSHEETS_COLUMNS.includes(c.key)))
+}
+
+export function visibleColumns(cols: Record<ColumnKey, boolean>, all: boolean, tsheets = true) {
+  return offeredColumns(all, tsheets).filter(c => cols[c.key])
 }
 
 export function gridTemplate(vis: readonly { key: ColumnKey; width: number }[]): string {

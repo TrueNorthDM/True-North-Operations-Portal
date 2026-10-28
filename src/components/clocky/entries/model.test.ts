@@ -3,7 +3,7 @@ import { SHORTEN_ONLY } from '@/lib/timeclock/scope'
 import {
   axisOf, buildGrid, calendarWeeks, checkLine, createSpan, dragSpan, exactDuration, gridChanges, gridEditKey, gridRowKey, gridTemplate,
   groupByDay, hhmmOf, hourTicks, minWidth, periodRange, rangeText, secondsAt, shiftAnchor, snapQuarter, totalsLabel, totalsOf,
-  visibleColumns, weekStartOf, xOf, zoneCity, DEFAULT_COLUMNS, type GridSource,
+  visibleColumns, offeredColumns, hasTsheetsRows, weekStartOf, xOf, zoneCity, DEFAULT_COLUMNS, type GridSource,
 } from './model'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 
@@ -96,6 +96,18 @@ describe('columns', () => {
     expect(gridTemplate(vis)).toBe('164px 86px minmax(150px,.8fr) minmax(130px,.8fr) minmax(140px,1.2fr) 150px 80px minmax(110px,1fr) 128px 140px')
     // The 1278 px inside the list's border, beside the summary column.
     expect(minWidth(vis)).toBe(1278)
+  })
+  it('offers the TSheets fields only when a TSheets entry is on screen', () => {
+    const keys = (tsheets: boolean) => offeredColumns(false, tsheets).map(c => c.key)
+    expect(keys(false)).not.toContain('company')
+    expect(keys(false)).not.toContain('project')
+    expect(keys(false)).not.toContain('code')
+    expect(keys(true)).toEqual(expect.arrayContaining(['company', 'project', 'code']))
+    // Checked but not offered: not drawn either.
+    const all = Object.fromEntries(Object.keys(DEFAULT_COLUMNS).map(k => [k, true])) as typeof DEFAULT_COLUMNS
+    expect(visibleColumns(all, false, false).map(c => c.key)).not.toContain('code')
+    expect(hasTsheetsRows([{ rowType: 'entry', structure: 2 }, { rowType: 'time_off', structure: undefined }])).toBe(false)
+    expect(hasTsheetsRows([{ rowType: 'entry', structure: 2 }, { rowType: 'entry', structure: 1 }])).toBe(true)
   })
   it('still lets the whole Job path grow when it is chosen', () => {
     const vis = visibleColumns({ ...DEFAULT_COLUMNS, job: true, client: false, division: false, place: false }, false)
