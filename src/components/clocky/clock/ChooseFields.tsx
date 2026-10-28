@@ -28,22 +28,27 @@ function LockedField({ label, text }: { label: string; text: string }) {
   )
 }
 
-export function ChooseFields({ data, busy, onClockIn, onSaveAs, onPick }: {
-  data: ClockPanelData
+export function ChooseFields({ data, busy, initial, onClockIn, onSaveAs, onPick }: {
+  /** The clock panel's data, or Add time's catalog with `today` set to the entry's day. */
+  data: Pick<ClockPanelData, 'jobs' | 'today' | 'switchDate' | 'fields' | 'defaults'>
   busy: boolean
-  /** Switching: no Clock in here; each complete choice (or null once it is not) goes up to the Switch button at the top. */
+  /** What the form opens with (Add time: the entry being edited, a combination picked); remount it to start again. */
+  initial?: { jobId: number | null; activity: string; notes: string }
+  /** Picking (Switch to, Add time): no Clock in here; each complete choice (or null once it is not) goes up to whoever asked. */
   onPick?: (d: Draft | null) => void
   /** Clock in with this choice. */
-  onClockIn: (d: Draft) => void
-  /** Keep the choice as a combination: the panel's save window opens with it. */
-  onSaveAs: (d: Draft) => void
+  onClockIn?: (d: Draft) => void
+  /** Keep the choice as a combination: the panel's save window opens with it. Absent, no button (Add time). */
+  onSaveAs?: (d: Draft) => void
 }) {
   const todays = jobsOn(data.jobs, data.today, data.switchDate)
-  const [client, setClient] = useState('')
-  const [division, setDivision] = useState('')
-  const [jobId, setJobId] = useState<number | null>(null)
-  const [activity, setActivity] = useState('')
-  const [notes, setNotes] = useState('')
+  const start = initial?.jobId ? data.jobs.find(j => j.id === initial.jobId) : undefined
+  const at = start ? placeOf(start.path) : null
+  const [client, setClient] = useState(at?.client ?? '')
+  const [division, setDivision] = useState(at?.division ?? '')
+  const [jobId, setJobId] = useState<number | null>(start?.id ?? null)
+  const [activity, setActivity] = useState(start ? initial?.activity ?? '' : '')
+  const [notes, setNotes] = useState(initial?.notes ?? '')
 
   const clients = clientsOf(todays)
   const divisions = client ? divisionsOf(todays, client) : []
@@ -69,13 +74,13 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs, onPick }: {
   const pickActivity = (v: string) => { setActivity(v); report({ activity: v }) }
   const typeNotes = (v: string) => { setNotes(v); report({ notes: v }) }
   const draft = (): Draft | null => (job ? draftFor(data, job, { activity, notes }) : null)
-  const clockIn = () => { const d = draft(); if (d && ready) { onClockIn(d) } }
-  const saveAs = () => { const d = draft(); if (d && ready) onSaveAs(d) }
+  const clockIn = () => { const d = draft(); if (d && ready) { onClockIn?.(d) } }
+  const saveAs = () => { const d = draft(); if (d && ready) onSaveAs?.(d) }
 
   return (
     <>
     {/* Every client, division and project with when to use it, for whoever is unsure (owner: make it obvious). */}
-    <a href="/clocky-hours/which-job" className={`group flex items-center gap-3 rounded-[12px] border border-[#cfe5e5] bg-[#eaf4f4] px-3.5 py-2.5 no-underline hover:border-tn-teal ${FOCUS}`}>
+    <a href="/clocky-hours/which-job" {...(onPick ? { target: '_blank', rel: 'noopener' } : {})} className={`group flex items-center gap-3 rounded-[12px] border border-[#cfe5e5] bg-[#eaf4f4] px-3.5 py-2.5 no-underline hover:border-tn-teal ${FOCUS}`}>
       <span className="grid place-items-center shrink-0 w-8 h-8 rounded-full bg-tn-teal text-[#ffffff]" aria-hidden="true">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>
       </span>
@@ -121,9 +126,11 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs, onPick }: {
             <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
           </button>
         )}
-        <button type="button" onClick={saveAs} disabled={!ready || busy} className={`${CK_BTN_WHITE} disabled:opacity-60 ${FOCUS}`}>
-          <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
-        </button>
+        {onSaveAs && (
+          <button type="button" onClick={saveAs} disabled={!ready || busy} className={`${CK_BTN_WHITE} disabled:opacity-60 ${FOCUS}`}>
+            <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
+          </button>
+        )}
       </div>
     </div>
     </>

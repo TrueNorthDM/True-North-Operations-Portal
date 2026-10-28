@@ -37,6 +37,11 @@ export interface FormState {
   jobPath: string
   /** The entry's own job's structure, for its fields when that job is no longer offered. */
   structure?: Structure
+  /** The 2026 structure, picked on the clock panel's first screen: Browse open (its folder and search), the form's
+   *  remount key (a row or Browse refills it), and My combinations showing all. */
+  browsing?: { folder: number | null; query: string } | null
+  formKey?: number
+  more?: boolean
   values: FieldValues
   /** Filled from the job's history ("auto"). */
   auto: Partial<Record<FieldName, boolean>>

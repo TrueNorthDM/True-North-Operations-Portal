@@ -46,7 +46,8 @@ export interface EntriesApi {
 
 /**
  * What the forms need from the clock panel's data: the jobs, the fields and
- * their smart defaults, the viewer's saved combinations, who a correction goes
- * to, and the server's now (for the live timer and the running entries).
+ * their smart defaults, the viewer's saved combinations and recent choices, the
+ * folders for Browse, the switch date, who a correction goes to, and the
+ * server's now (for the live timer and the running entries).
  */
-export type Catalog = Pick<ClockPanelData, 'me' | 'now' | 'today' | 'jobs' | 'fields' | 'defaults' | 'combinations' | 'correctionGoesTo' | 'running' | 'switchDate'>
+export type Catalog = Pick<ClockPanelData, 'me' | 'now' | 'today' | 'jobs' | 'fields' | 'defaults' | 'combinations' | 'recents' | 'folders' | 'correctionGoesTo' | 'running' | 'switchDate'>

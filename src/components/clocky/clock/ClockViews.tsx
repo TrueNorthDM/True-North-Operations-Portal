@@ -46,11 +46,19 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, draft, switching, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
-  data: ClockPanelData
+export function OffView({ data, phone, more, busy, draft, switching, formInitial, formKey, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
+  /** The clock panel's data, or Add time's catalog with `today` set to the entry's day. */
+  data: Pick<ClockPanelData, 'jobs' | 'today' | 'switchDate' | 'fields' | 'defaults' | 'combinations' | 'recents' | 'resume'>
   phone: Phone
-  /** The same screen opened from Switch to: picking here only marks the choice; the Switch button at the top makes it. */
-  switching?: { picked: string | null; jobcodeId: number | null; activity: string }
+  /**
+   * Picking instead of clocking in: Switch to (the Switch button at the top makes it, 'swap') and
+   * Add time (the rows fill the form, 'pick'). Only what can be recorded that day is offered,
+   * and not what runs now.
+   */
+  switching?: { picked: string | null; jobcodeId: number | null; activity: string; action?: 'swap' | 'pick' }
+  /** Add time: what the form opens with, and a key that changes when a row refills it. */
+  formInitial?: { jobId: number | null; activity: string; notes: string }
+  formKey?: string
   more: boolean
   busy: boolean
   /** The project, fields and notes being picked right here, before clocking in. */
@@ -59,14 +67,15 @@ export function OffView({ data, phone, more, busy, draft, switching, onToggleMor
   onResume: () => void
   /** A combination or recent row; its key ('c<id>', 'r<i>') marks it when switching. */
   onStart: (c: ClockChoice, key: string) => void
-  onSave: (c: ClockChoice) => void
-  onManage: () => void
+  /** Absent (Add time): no star on recent rows, no Manage, no New combination. */
+  onSave?: (c: ClockChoice) => void
+  onManage?: () => void
   /** A combination made from scratch: its job, fields and name picked in the window, no clock needed. */
-  onNew: () => void
+  onNew?: () => void
   onBrowse: () => void
   /** Clock in, or keep as a combination, from the fields picked on this screen (the 2026 structure). */
   onClockIn: (d: Draft) => void
-  onSaveAs: (d: Draft) => void
+  onSaveAs?: (d: Draft) => void
   onPickProject: (jobId: number) => void
   onField: (key: FieldName, value: string) => void
   onNotes: (v: string) => void
@@ -77,17 +86,17 @@ export function OffView({ data, phone, more, busy, draft, switching, onToggleMor
 }) {
   const todays = jobsOn(data.jobs, data.today, data.switchDate)
   const resume = data.resume && !switching ? resumeCard(data.resume) : null
-  // Switching: what is running now is not offered again.
-  const notNow = (c: ClockChoice) => !switching || !(c.jobcodeId === switching.jobcodeId && (c.activity || '') === switching.activity)
+  // Picking: only what can be recorded that day, and not what is running now.
+  const notNow = (c: ClockChoice) => !switching || (todays.some(j => j.id === c.jobcodeId) && !(c.jobcodeId === switching.jobcodeId && (c.activity || '') === switching.activity))
   const allCombos = data.combinations.filter(notNow)
   const combos = more ? allCombos : allCombos.slice(0, SHOWN_COMBINATIONS)
   const recents = data.recents.filter(notNow).slice(0, 3)
-  const rowAct = switching ? { action: 'swap' as const, actionLabel: 'Pick' } : { action: 'play' as const, actionLabel: 'Clock in with' }
+  const rowAct = switching ? { action: switching.action ?? 'swap', actionLabel: 'Pick' } : { action: 'play' as const, actionLabel: 'Clock in with' }
   return (
     <>
       {/* Choose it yourself, always on the screen. On the 2026 structure: Client, Division, Project, Activity, Billable, Notes. Before it: the project, then its fields. */}
       {todays.some(j => j.structure === 2) ? (
-        <ChooseFields data={data} busy={busy} onClockIn={onClockIn} onSaveAs={onSaveAs} onPick={switching ? onFormPick : undefined} />
+        <ChooseFields key={formKey} data={data} busy={busy} initial={formInitial} onClockIn={onClockIn} onSaveAs={onSaveAs} onPick={switching ? onFormPick : undefined} />
       ) : (
       <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
         <SectionLabel>Or choose it yourself</SectionLabel>
@@ -132,8 +141,8 @@ export function OffView({ data, phone, more, busy, draft, switching, onToggleMor
         <div className="flex items-center justify-between px-0.5 pb-1.5">
           <SectionLabel>My combinations</SectionLabel>
           <span className="flex items-center gap-3.5">
-            {!todays.some(j => j.structure === 2) && <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>}
-            {data.combinations.length > 0 && <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>}
+            {onNew && !todays.some(j => j.structure === 2) && <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>}
+            {onManage && data.combinations.length > 0 && <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>}
           </span>
         </div>
         {data.combinations.length === 0 && (
@@ -155,7 +164,7 @@ export function OffView({ data, phone, more, busy, draft, switching, onToggleMor
           <div className="px-0.5 pb-1.5"><SectionLabel inline>Recent</SectionLabel></div>
           {recents.map((c, i) => {
             const r = choiceRow(c, false)
-            return <ChoiceRowView key={`r${i}`} {...r} saved={false} phone={phone} {...rowAct} onGo={() => onStart(c, `r${i}`)} onStar={() => onSave(c)} disabled={busy} selected={switching?.picked === `r${i}`} />
+            return <ChoiceRowView key={`r${i}`} {...r} saved={false} phone={phone} {...rowAct} onGo={() => onStart(c, `r${i}`)} onStar={onSave ? () => onSave(c) : undefined} disabled={busy} selected={switching?.picked === `r${i}`} />
           })}
         </div>
       )}
@@ -176,7 +185,8 @@ export function OffView({ data, phone, more, busy, draft, switching, onToggleMor
 // ── 1B, 1C, 1C-b Choosing a job ─────────────────────────────────────────────
 
 export function ChooseView({ data, day, phone, first, query, browse, onQuery, onBrowse, onPick }: {
-  data: ClockPanelData
+  /** Also drawn in Add time (entries/EntryForm.tsx), which has only these. */
+  data: Pick<ClockPanelData, 'folders' | 'jobs' | 'switchDate' | 'today'>
   /** The day the clock would record the entry on (its start on the quarter hour); today by default. */
   day?: string
   phone: Phone
@@ -249,7 +259,7 @@ export function ChooseView({ data, day, phone, first, query, browse, onQuery, on
 // ── 1D Details before clocking in ───────────────────────────────────────────
 
 /** The fields of the project picked (those of its structure) and the notes: on the details screen and on the panel's first screen. */
-export function DraftFields({ data, draft, onField, onNotes }: { data: ClockPanelData; draft: Draft; onField: (key: FieldName, value: string) => void; onNotes: (v: string) => void }) {
+export function DraftFields({ data, draft, onField, onNotes }: { data: Pick<ClockPanelData, 'jobs' | 'fields'>; draft: Draft; onField: (key: FieldName, value: string) => void; onNotes: (v: string) => void }) {
   const job = data.jobs.find(j => j.id === draft.jobId)
   const notesReq = activityNeedsNotes(valueOf(draft.values, data.fields, 'activity'))
   return (

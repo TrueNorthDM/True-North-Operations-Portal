@@ -51,7 +51,7 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
       </div>
     )
   }
-  const { me, now, jobs, fields, defaults, combinations, correctionGoesTo, running } = panel.data
+  const { me, now, jobs, fields, defaults, combinations, recents, folders, correctionGoesTo, running, switchDate } = panel.data
   // Keyed by the address: a link to another person or entry, followed from this
   // page (the Who's working drawer, the bell), starts the screen afresh.
   return (
@@ -61,7 +61,8 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
       openEntry={openEntry}
       member={member}
       openSubmit={params.submit === '1' && !member}
-      catalog={{ me, now, today: panel.data.today, jobs, fields, defaults, combinations, correctionGoesTo, running }}
+      // switchDate too: without it the forms took every day for a TSheets one.
+      catalog={{ me, now, today: panel.data.today, jobs, fields, defaults, combinations, recents, folders, correctionGoesTo, running, switchDate }}
     />
   )
 }

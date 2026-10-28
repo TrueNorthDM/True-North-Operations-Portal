@@ -145,7 +145,7 @@ export function catalogFor(level: Level): Catalog {
   const me = ME[level]
   return {
     me: { personId: pid(me), name: me, zone: ET, zoneAbbr: 'EDT', level: ACCESS[level], leader: level !== 'user' },
-    now: NOW_ISO, today: TODAY, jobs: JOB_LIST, fields: FIELDS, defaults: DEFAULTS, combinations: COMBINATIONS,
+    now: NOW_ISO, today: TODAY, jobs: JOB_LIST, fields: FIELDS, defaults: DEFAULTS, combinations: COMBINATIONS, recents: [], folders: [],
     correctionGoesTo: `Goes to ${LEAD[PM.get(me)?.t ?? ''] ?? 'Dave Sharpe'}, your Team Leader. Admins and Super Admins can also approve it.`,
     running: null,
   }

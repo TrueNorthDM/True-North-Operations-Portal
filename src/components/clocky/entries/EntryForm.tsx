@@ -3,21 +3,25 @@
 /**
  * 3E, "Add time" / "Edit entry" (Time Entries.dc.html, frames 3E1 to 3E3):
  * the person, a combination, Start and end or a Duration, the job and its
- * fields, notes, and a required reason. The line under the times checks as
- * you type (end after start, 24 hours, overlaps, shorten only); Save sends it,
+ * fields, notes, and a required reason. From the switch date the job is picked
+ * with the clock panel's own first screen (owner, 28 October 2026: the same
+ * source of truth): the Client, Division, Project, Activity, Billable, Notes
+ * form, My combinations, Recent and Browse, each filling the entry; before it,
+ * the TSheets job. The line under the times checks as you type (end after start, 24 hours, overlaps, shorten only); Save sends it,
  * and an overlap the server finds opens 3F.
  */
 
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
-import { overlapLine } from '@/lib/timeclock/entry-rules'
+import { activityNeedsNotes, overlapLine, structureOn } from '@/lib/timeclock/entry-rules'
 import { localMinutes } from '@/lib/timeclock/format'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
-import { fieldsForJob, jobsOn, optionsOf, sortedOptions } from '@/components/clocky/clock/clock-model'
-import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
-import { FIELD_ORDER, formJob, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
+import { fieldsForJob, jobsOn, optionsOf, sortedOptions, type Draft } from '@/components/clocky/clock/clock-model'
+import type { ClockChoice } from '@/lib/timeclock/clocky-types'
+import { BillableFromProject, ChooseView, OffView } from '@/components/clocky/clock/ClockViews'
+import { EMPTY_VALUES, FIELD_ORDER, formJob, formSpan, overlapAmong, valuesOf, withCombination, withJob, type FormState } from './form'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
 import {
@@ -69,7 +73,29 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
     .filter(d => d.required === 'always' || isI7)
     .sort((a, b) => FIELD_ORDER.indexOf(a.key) - FIELD_ORDER.indexOf(b.key))
   const overlapOnly = check.bad && !f.error && !check.shortenOnly && /Overlaps /.test(check.text)
-  const disabled = busy || !f.jobcodeId || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly && !f.error) || !f.reason.trim()
+
+  // The 2026 structure, from the switch date: picked on the clock panel's first screen. An entry
+  // keeps its own job's structure (a TSheets entry imported after the switch date stays a TSheets one).
+  const ownStructure = f.jobcodeId ? job?.structure ?? f.structure : undefined
+  const s2 = (ownStructure ?? structureOn(f.date, catalog.switchDate)) === 2
+  const todays = jobsOn(catalog.jobs, f.date, catalog.switchDate)
+  // The clock panel's data as of the entry's day: what it offers is what that day can record.
+  const dayData = { ...catalog, today: f.date, resume: null }
+  const cleared = { jobcodeId: null, jobPath: '', values: { ...EMPTY_VALUES }, auto: {}, combo: '', error: null }
+  const incomplete = s2 && (!f.values.activity || (activityNeedsNotes(f.values.activity) && !f.notes.trim()))
+
+  /** The form, complete: the entry takes its project, Activity and notes. */
+  const fromDraft = (d: Draft) => {
+    const j = catalog.jobs.find(x => x.id === d.jobId)
+    setForm({ jobcodeId: d.jobId, jobPath: j?.path ?? '', values: valuesOf(d.values, fieldsForJob(catalog.fields, j)), auto: {}, notes: d.notes, combo: '', error: null })
+  }
+  /** A combination or a recent row: it fills the form, which opens again with it. */
+  const fromChoice = (c: ClockChoice, key: string) => {
+    const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
+    setForm({ combo: key, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, auto: {}, notes: f.notes || c.notes, formKey: (f.formKey ?? 0) + 1, error: null })
+  }
+
+  const disabled = busy || !f.jobcodeId || incomplete || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly && !f.error) || !f.reason.trim()
 
   const week = weekStartOf(f.date)
   const dateOptions = (leader ? Array.from({ length: 7 }, (_, i) => addDays(week, i)) : [f.date]).map(d => ({ value: d, label: dayLabel(d) }))
@@ -82,7 +108,9 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   // The jobs of the entry's day: the TSheets ones before the switch date, the 2026 projects from it.
   const jobOptions = sortedOptions(jobsOn(catalog.jobs, f.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path })))
   if (f.jobcodeId && !job) jobOptions.unshift({ value: String(f.jobcodeId), label: f.jobPath })
-  const comboOptions = sortedOptions(catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label })))
+  // Only the combinations whose job can be recorded on the entry's day.
+  const comboOptions = sortedOptions(catalog.combinations.map((c, i) => ({ c, value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label }))
+    .filter(x => todays.some(j => j.id === x.c.jobcodeId)).map(({ value, label }) => ({ value, label })))
 
   const first = f.personName.split(' ')[0]
   const reasonPh = f.id === null ? 'Why are you adding this time?' : f.personId !== viewerId ? `You are editing ${first}'s hours. Say why.` : 'Why are you changing this entry?'
@@ -96,18 +124,19 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         <CloseButton onClick={onClose} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* From the switch date the combinations are in the blocks below, as on the clock panel. */}
+      <div className={s2 ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
         {pickPerson && f.id === null
           ? <LabeledSelect label="Person" value={f.personId} search options={sortedOptions(people.map(p => ({ value: p.id, label: p.name })))}
               onChange={v => { const p = people.find(x => x.id === v); setForm({ personId: v, personName: p?.name ?? '', zone: p?.zone ?? f.zone, error: null }) }} />
           : <ReadOnlyField label="Person" value={f.personName} />}
-        <LabeledSelect label="Use a combination" value={f.combo} options={comboOptions} placeholder="Fills the fields below"
+        {!s2 && <LabeledSelect label="Use a combination" value={f.combo} options={comboOptions} placeholder="Fills the fields below"
           onChange={v => {
             const c = catalog.combinations.find((x, i) => String(x.combinationId ?? `r${i}`) === v)
             if (!c) return
             const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
             setForm({ combo: v, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, auto: {}, error: null })
-          }} />
+          }} />}
       </div>
 
       <div className="flex items-center gap-2.5">
@@ -116,7 +145,11 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <LabeledSelect label="Date" value={f.date} options={dateOptions} onChange={v => setForm({ date: v, error: null, fix: null, fixNote: null })} />
+        {/* A day on the other side of the switch date asks the other structure: the job picked goes. */}
+        <LabeledSelect label="Date" value={f.date} options={dateOptions} onChange={v => setForm({
+          date: v, error: null, fix: null, fixNote: null,
+          ...(structureOn(v, catalog.switchDate) !== structureOn(f.date, catalog.switchDate) ? { ...cleared, notes: '', browsing: null, formKey: (f.formKey ?? 0) + 1 } : {}),
+        })} />
         {f.type === 'range' ? (
           <>
             <LabeledSelect label="Start" value={String(f.start)} options={times} search onChange={v => setForm({ start: Number(v), error: null, fix: null, fixNote: null })} />
@@ -137,33 +170,61 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         </button>
       )}
 
-      <LabeledSelect label={job?.structure === 2 ? 'Project' : 'Job'} value={f.jobcodeId ? String(f.jobcodeId) : ''} options={jobOptions} search placeholder="Search jobs"
-        onChange={v => {
-          const id = Number(v)
-          const j = catalog.jobs.find(x => x.id === id)
-          const w = withJob(f.values, id, !!j?.isI7, catalog.defaults, fieldsForJob(catalog.fields, j))
-          setForm({ jobcodeId: id, jobPath: j?.path ?? '', values: w.values, auto: w.auto, combo: '', error: null })
-        }} />
+      {s2 && f.browsing ? (
+        <div className="flex flex-col gap-3">
+          <button type="button" onClick={() => setForm({ browsing: null })}
+            className="self-start inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
+            <Icon d={ICON.left} size={13} />Back to the form
+          </button>
+          <ChooseView data={dayData} day={f.date} phone={false} first={false} query={f.browsing.query} browse={f.browsing.folder}
+            onQuery={q => setForm({ browsing: { folder: f.browsing?.folder ?? null, query: q } })}
+            onBrowse={id => setForm({ browsing: { folder: id, query: f.browsing?.query ?? '' } })}
+            onPick={id => {
+              const j = catalog.jobs.find(x => x.id === id)
+              setForm({ ...cleared, jobcodeId: id, jobPath: j?.path ?? '', browsing: null, formKey: (f.formKey ?? 0) + 1 })
+            }} />
+        </div>
+      ) : s2 ? (
+        // The clock panel's first screen, picking: the form, My combinations, Recent and Browse fill the entry.
+        <OffView data={dayData} phone={false} more={!!f.more} busy={busy} draft={null}
+          switching={{ picked: f.combo || null, jobcodeId: null, activity: '', action: 'pick' }}
+          formKey={String(f.formKey ?? 0)} formInitial={{ jobId: f.jobcodeId, activity: f.values.activity, notes: f.notes }}
+          onFormPick={d => (d ? fromDraft(d) : setForm({ jobcodeId: null, combo: '' }))}
+          onStart={fromChoice}
+          onToggleMore={() => setForm({ more: !f.more })}
+          onBrowse={() => setForm({ browsing: { folder: null, query: '' } })}
+          onResume={() => {}} onClockIn={() => {}} onPickProject={() => {}} onField={() => {}} onNotes={() => {}} onGo={() => {}} onSaveDraft={() => {}} />
+      ) : (
+        <>
+          <LabeledSelect label={job?.structure === 2 ? 'Project' : 'Job'} value={f.jobcodeId ? String(f.jobcodeId) : ''} options={jobOptions} search placeholder="Search jobs"
+            onChange={v => {
+              const id = Number(v)
+              const j = catalog.jobs.find(x => x.id === id)
+              const w = withJob(f.values, id, !!j?.isI7, catalog.defaults, fieldsForJob(catalog.fields, j))
+              setForm({ jobcodeId: id, jobPath: j?.path ?? '', values: w.values, auto: w.auto, combo: '', error: null })
+            }} />
 
-      <div className="grid grid-cols-2 gap-3">
-        {shownFields.map(d => {
-          const value = f.values[d.key] ?? ''
-          const options: { value: string; label: string; group?: string }[] = optionsOf(d)
-          if (value && !d.options.includes(value)) options.unshift({ value, label: value })
-          const search = d.key === 'activity' || d.key === 'code'
-          return (
-            <LabeledSelect key={d.id} label={d.label} value={value} options={options} search={search} auto={!!f.auto[d.key]}
-              placeholder={d.key === 'activity' ? 'Search activities' : 'Choose'}
-              onChange={v => setForm({ values: { ...f.values, [d.key]: v }, auto: { ...f.auto, [d.key]: false }, error: null })} />
-          )
-        })}
-        {job?.structure === 2 && <BillableFromProject billable={job.billable} />}
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            {shownFields.map(d => {
+              const value = f.values[d.key] ?? ''
+              const options: { value: string; label: string; group?: string }[] = optionsOf(d)
+              if (value && !d.options.includes(value)) options.unshift({ value, label: value })
+              const search = d.key === 'activity' || d.key === 'code'
+              return (
+                <LabeledSelect key={d.id} label={d.label} value={value} options={options} search={search} auto={!!f.auto[d.key]}
+                  placeholder={d.key === 'activity' ? 'Search activities' : 'Choose'}
+                  onChange={v => setForm({ values: { ...f.values, [d.key]: v }, auto: { ...f.auto, [d.key]: false }, error: null })} />
+              )
+            })}
+            {job?.structure === 2 && <BillableFromProject billable={job.billable} />}
+          </div>
 
-      <label className="flex flex-col gap-[5px]">
-        <FieldLabel>Notes</FieldLabel>
-        <textarea value={f.notes} onChange={e => setForm({ notes: e.target.value })} rows={2} className={TEXTAREA_PLAIN} />
-      </label>
+          <label className="flex flex-col gap-[5px]">
+            <FieldLabel>Notes</FieldLabel>
+            <textarea value={f.notes} onChange={e => setForm({ notes: e.target.value })} rows={2} className={TEXTAREA_PLAIN} />
+          </label>
+        </>
+      )}
       <label className="flex flex-col gap-[5px]">
         <FieldLabel warn>Reason for the change (required)</FieldLabel>
         <textarea value={f.reason} onChange={e => setForm({ reason: e.target.value })} rows={2} placeholder={reasonPh} className={TEXTAREA_WARN} />

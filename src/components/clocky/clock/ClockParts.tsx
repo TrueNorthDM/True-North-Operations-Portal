@@ -231,7 +231,8 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
   sub: string
   saved: boolean
   phone: Phone
-  action: 'play' | 'swap'
+  /** 'pick': fills a form (Add time); a check when it is the one picked. */
+  action: 'play' | 'swap' | 'pick'
   actionLabel: string
   onGo: () => void
   /** Recent rows only: save it as a combination. */
@@ -243,7 +244,9 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
   return (
     <div className={`group relative flex items-center gap-2.5 rounded-[11px] ${selected ? 'bg-tn-teal-soft shadow-[inset_0_0_0_1.5px_#1E7D7F]' : 'hover:bg-[var(--row-hover)]'} ${byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')}`}>
       {/* A saved combination's star is only a mark (Manage changes it); a recent row's star saves it. */}
-      {saved ? (
+      {saved || !onStar ? (
+        // A saved combination's star, or a recent row where it cannot be saved (Add time).
+        !saved ? <span className="relative z-[1] shrink-0 w-[26px] h-[26px] rounded-[7px] flex items-center justify-center"><Icon d={ICON.star} size={16} fill="none" stroke="#8593a4" sw={1.8} cap="butt" /></span> :
         <span title="Saved combination" className="relative z-[1] shrink-0 w-[26px] h-[26px] rounded-[7px] flex items-center justify-center">
           <Icon d={ICON.star} size={16} fill="#F2C40A" stroke="#d9a400" sw={1.8} cap="butt" />
         </span>
@@ -261,7 +264,9 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
         </span>
         {action === 'play'
           ? <PlayIcon size={14} color="#1E9E6A" />
-          : <Icon d={ICON.swap} size={17} stroke="#1E9E6A" sw={2} className="shrink-0" />}
+          : action === 'pick'
+            ? <Icon d={selected ? ICON.check : ICON.chevronRight} size={16} stroke={selected ? '#1E7D7F' : '#8593a4'} sw={2.2} className="shrink-0" />
+            : <Icon d={ICON.swap} size={17} stroke="#1E9E6A" sw={2} className="shrink-0" />}
       </button>
     </div>
   )
