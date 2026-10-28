@@ -15,7 +15,7 @@ import { overlapLine } from '@/lib/timeclock/entry-rules'
 import { localMinutes } from '@/lib/timeclock/format'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
-import { fieldsForJob, jobsOn, optionsOf } from '@/components/clocky/clock/clock-model'
+import { fieldsForJob, jobsOn, optionsOf, sortedOptions } from '@/components/clocky/clock/clock-model'
 import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
 import { FIELD_ORDER, formJob, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
@@ -80,9 +80,9 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const endTimes = f.running && (!b || b.end === null) ? [{ value: 'now', label: 'now' }, ...times] : times
 
   // The jobs of the entry's day: the TSheets ones before the switch date, the 2026 projects from it.
-  const jobOptions = jobsOn(catalog.jobs, f.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path }))
+  const jobOptions = sortedOptions(jobsOn(catalog.jobs, f.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path })))
   if (f.jobcodeId && !job) jobOptions.unshift({ value: String(f.jobcodeId), label: f.jobPath })
-  const comboOptions = catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label }))
+  const comboOptions = sortedOptions(catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label })))
 
   const first = f.personName.split(' ')[0]
   const reasonPh = f.id === null ? 'Why are you adding this time?' : f.personId !== viewerId ? `You are editing ${first}'s hours. Say why.` : 'Why are you changing this entry?'
@@ -98,7 +98,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
 
       <div className="grid grid-cols-2 gap-3">
         {pickPerson && f.id === null
-          ? <LabeledSelect label="Person" value={f.personId} search options={people.map(p => ({ value: p.id, label: p.name }))}
+          ? <LabeledSelect label="Person" value={f.personId} search options={sortedOptions(people.map(p => ({ value: p.id, label: p.name })))}
               onChange={v => { const p = people.find(x => x.id === v); setForm({ personId: v, personName: p?.name ?? '', zone: p?.zone ?? f.zone, error: null }) }} />
           : <ReadOnlyField label="Person" value={f.personName} />}
         <LabeledSelect label="Use a combination" value={f.combo} options={comboOptions} placeholder="Fills the fields below"

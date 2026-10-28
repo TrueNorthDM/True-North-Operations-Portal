@@ -13,7 +13,7 @@ import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
-import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, suggestName, valueOf, type SaveDraft } from './clock-model'
+import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, optionsOf, sortedOptions, suggestName, valueOf, type SaveDraft } from './clock-model'
 import { ErrorBanner } from './ClockViews'
 import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
@@ -93,7 +93,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[14px] text-tn-ink ${INPUT_FOCUS}`} />
         </label>
         {jobEdit ? (
-          <ClockField label={job?.structure === 2 || fresh ? 'Project' : 'Job'} value={save.jobId ? String(save.jobId) : ''} placeholder="Search projects" options={jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path }))} onChange={setJob} search />
+          <ClockField label={job?.structure === 2 || fresh ? 'Project' : 'Job'} value={save.jobId ? String(save.jobId) : ''} placeholder="Search projects" options={sortedOptions(jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path })))} onChange={setJob} search />
         ) : (
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-[11px] flex items-center gap-3 bg-subtle">
             <div className="flex-1 min-w-0">
@@ -109,7 +109,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
             const f = fieldByKey(data.fields, key, job)
             if (!f) return null
             return (
-              <ClockField key={key} label={f.label + (key === 'activity' ? ' (optional)' : '')} value={save.values[f.id] ?? ''} options={f.options}
+              <ClockField key={key} label={f.label + (key === 'activity' ? ' (optional)' : '')} value={save.values[f.id] ?? ''} options={optionsOf(f)}
                 onChange={v => setField(key, v)} search={key === 'activity' || key === 'code'} placeholder={key === 'activity' ? 'Search activities' : 'Choose'} />
             )
           })}

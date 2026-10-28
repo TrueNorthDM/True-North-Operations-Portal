@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import { fieldByKey, jobsOn, runningChips, runningJobOf, valueOf,
+import { alpha, sortedOptions, clientsOf, divisionsOf, fieldByKey, jobsOn, placeOf, projectsOf, runningChips, runningJobOf, stillToPick, valueOf,
   breakdown, browseJobs, choiceRow, clockSkew, draftFor, liveTotals, missingOf, overWarn, panelHeader, resumeCard, roundNoteText,
   saveDraftFrom, searchJobs, suggestName, switchChoices, tabTitle, topBarState, zoneCity,
 } from './clock-model'
@@ -227,5 +227,47 @@ describe('the header', () => {
   it('names the zone by its city', () => {
     expect(zoneCity('America/New_York')).toBe('New York')
     expect(zoneCity('Africa/Nairobi')).toBe('Nairobi')
+  })
+})
+
+describe('picking Client, Division and Project field by field', () => {
+  const J = (path: string) => ({ path, structure: 2 as const })
+  const jobs = [J('COE Group › Africa › HopeFor.Africa'), J('COE Group › Africa › Africa General'), J('COE Group › Education › Education General'), J('i7 Marketing › Moisture Meters › MME-MKTG'), J('True North Internal › TN General'), { path: '1 - True North › Content', structure: 1 as const }]
+  it('reads the place from the path, with or without a division', () => {
+    expect(placeOf('COE Group › Africa › HopeFor.Africa')).toEqual({ client: 'COE Group', division: 'Africa', project: 'HopeFor.Africa' })
+    expect(placeOf('True North Internal › TN General')).toEqual({ client: 'True North Internal', division: '', project: 'TN General' })
+  })
+  it('lists the clients, their divisions and their projects, leaving the TSheets jobs out', () => {
+    expect(clientsOf(jobs)).toEqual(['COE Group', 'i7 Marketing', 'True North Internal'])
+    expect(divisionsOf(jobs, 'COE Group')).toEqual(['Africa', 'Education'])
+    expect(divisionsOf(jobs, 'True North Internal')).toEqual([])
+    expect(projectsOf(jobs, 'COE Group', 'Africa').map(j => j.path)).toEqual(['COE Group › Africa › Africa General', 'COE Group › Africa › HopeFor.Africa'])
+    expect(projectsOf(jobs, 'True North Internal', '').map(j => j.path)).toEqual(['True North Internal › TN General'])
+  })
+  it('keeps a division that is named like its client (i7 Marketing > i7 Marketing)', () => {
+    const j = [J('i7 Marketing › i7 Marketing › i7-MKTG'), J('i7 Marketing › Wagner Meters › WM-MKTG')]
+    expect(divisionsOf(j, 'i7 Marketing')).toEqual(['i7 Marketing', 'Wagner Meters'])
+    expect(projectsOf(j, 'i7 Marketing', 'i7 Marketing').map(x => x.path)).toEqual(['i7 Marketing › i7 Marketing › i7-MKTG'])
+  })
+  it('says what is still to pick: every field but Notes, and Notes only when the Activity asks', () => {
+    const base = { client: '', division: '', hasDivisions: true, jobId: null as number | null, activity: '', notes: '' }
+    expect(stillToPick(base)).toEqual(['Client'])
+    expect(stillToPick({ ...base, client: 'COE Group' })).toEqual(['Division'])
+    expect(stillToPick({ ...base, client: 'COE Group', division: 'Africa' })).toEqual(['Project'])
+    expect(stillToPick({ ...base, client: 'True North Internal', hasDivisions: false })).toEqual(['Project'])
+    expect(stillToPick({ ...base, client: 'COE Group', division: 'Africa', jobId: 5 })).toEqual(['Activity'])
+    expect(stillToPick({ ...base, client: 'COE Group', division: 'Africa', jobId: 5, activity: 'Admin' })).toEqual([])
+    expect(stillToPick({ ...base, client: 'COE Group', division: 'Africa', jobId: 5, activity: 'Other' })).toEqual(['Notes'])
+    expect(stillToPick({ ...base, client: 'COE Group', division: 'Africa', jobId: 5, activity: 'Other', notes: 'x' })).toEqual([])
+  })
+})
+
+describe('every list of choices is alphabetical', () => {
+  it('sorts by name, ignoring case, with numbers by value', () => {
+    expect(['WM-10', 'wm-2', 'BE-ADMIN', 'Other', 'Admin'].sort(alpha)).toEqual(['Admin', 'BE-ADMIN', 'Other', 'wm-2', 'WM-10'])
+  })
+  it('sorts grouped options by group, then by name', () => {
+    const list = [{ label: 'Video', group: 'Creative' }, { label: 'Content: Writing', group: 'Content' }, { label: 'Design/Graphics', group: 'Creative' }, { label: 'Content: Editing', group: 'Content' }, { label: 'Admin', group: 'Operations' }]
+    expect(sortedOptions(list).map(o => o.label)).toEqual(['Content: Editing', 'Content: Writing', 'Design/Graphics', 'Video', 'Admin'])
   })
 })

@@ -149,9 +149,10 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 
   const zone = data.me.zone
   const auto = data.toConfirm[0] ?? null
-  const base: 'off' | 'on' | 'auto' | 'choose' = auto ? 'auto' : running ? 'on' : data.firstTime ? 'choose' : 'off'
+  // Everyone starts on the same first screen: combinations, choosing it yourself, Browse. (A first-time person has no combinations yet.)
+  const base: 'off' | 'on' | 'auto' | 'choose' = auto ? 'auto' : running ? 'on' : 'off'
   const mode = base === 'auto' ? 'auto' : ui.view !== 'base' && !(ui.view === 'details' && !ui.draft) ? ui.view : base
-  const first = base === 'choose' && ui.ret !== 'switch'
+  const first = data.firstTime && ui.ret !== 'switch'
   const header = panelHeader(mode, { data, nowMs, switching: ui.ret === 'switch', first })
   const runningJob = running ? runningJobOf(data.jobs, running) : null
   const missing = running ? missingOf(values, notes, data.fields, runningJob) : []
@@ -336,9 +337,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     set({ draft: { ...ui.draft, values: { ...ui.draft.values, [f.id]: v }, auto: { ...ui.draft.auto, [k]: false } } })
   }
 
-  const detailsGo = () => {
-    const d = ui.draft
-    if (!d) return
+  const detailsGo = () => { if (ui.draft) goWith(ui.draft) }
+  const goWith = (d: Draft) => {
     const job = data.jobs.find(j => j.id === d.jobId)
     const choice = { jobcodeId: d.jobId, fields: choiceValues(d.values, data.fields, job), notes: d.notes }
     if (ui.ret === 'switch' && running) {
@@ -377,15 +377,21 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         {error && error !== lockedLine && <ErrorBanner text={error} />}
 
         {mode === 'off' && (
-          <OffView data={data} phone={phone} more={ui.more} busy={busy || !!lockedLine} query={ui.query}
-            onQuery={q => set({ query: q, view: 'choose', browse: null })}
+          <OffView data={data} phone={phone} more={ui.more} busy={busy || !!lockedLine} draft={ui.draft}
+            onPickProject={id => { const job = data.jobs.find(j => j.id === id); if (job) set({ draft: draftFor(data, job) }) }}
+            onField={setDraftField}
+            onNotes={v => ui.draft && set({ draft: { ...ui.draft, notes: v } })}
+            onGo={detailsGo}
+            onSaveDraft={() => ui.draft && openSave({ jobId: ui.draft.jobId, values: ui.draft.values, notes: ui.draft.notes })}
             onToggleMore={() => set({ more: !ui.more })}
             onResume={() => data.resume && startWith(data.resume)}
             onStart={c => startWith(c)}
             onSave={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes })}
             onManage={() => { setError(null); set({ modal: 'manage' }) }}
             onNew={() => openSave({ jobId: 0, values: {}, notes: '' })}
-            onBrowse={() => set({ view: 'choose', browse: null, query: '' })} />
+            onClockIn={goWith}
+            onSaveAs={d => openSave({ jobId: d.jobId, values: d.values, notes: d.notes })}
+            onBrowse={() => set({ view: 'choose', browse: null, query: '', draft: null })} />
         )}
 
         {mode === 'choose' && (

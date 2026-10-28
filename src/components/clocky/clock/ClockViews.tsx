@@ -10,12 +10,13 @@
 
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
+import { ChooseFields } from './ChooseFields'
 import { activityNeedsNotes, type FieldName, type MissingName } from '@/lib/timeclock/entry-rules'
 import { timeLabel } from '@/lib/timeclock/format'
 import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
-  FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf,
+  FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf, sortedOptions,
   overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
@@ -44,13 +45,13 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse }: {
+export function OffView({ data, phone, more, busy, draft, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs }: {
   data: ClockPanelData
   phone: Phone
   more: boolean
   busy: boolean
-  query: string
-  onQuery: (q: string) => void
+  /** The project, fields and notes being picked right here, before clocking in. */
+  draft: Draft | null
   onToggleMore: () => void
   onResume: () => void
   onStart: (c: ClockChoice) => void
@@ -59,11 +60,46 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
   /** A combination made from scratch: its job, fields and name picked in the window, no clock needed. */
   onNew: () => void
   onBrowse: () => void
+  /** Clock in, or keep as a combination, from the fields picked on this screen (the 2026 structure). */
+  onClockIn: (d: Draft) => void
+  onSaveAs: (d: Draft) => void
+  onPickProject: (jobId: number) => void
+  onField: (key: FieldName, value: string) => void
+  onNotes: (v: string) => void
+  onGo: () => void
+  onSaveDraft: () => void
 }) {
+  const todays = jobsOn(data.jobs, data.today, data.switchDate)
   const resume = data.resume ? resumeCard(data.resume) : null
   const combos = more ? data.combinations : data.combinations.slice(0, SHOWN_COMBINATIONS)
   return (
     <>
+      {/* Choose it yourself, always on the screen. On the 2026 structure: Client, Division, Project, Activity, Billable, Notes. Before it: the project, then its fields. */}
+      {todays.some(j => j.structure === 2) ? (
+        <ChooseFields data={data} busy={busy} onClockIn={onClockIn} onSaveAs={onSaveAs} />
+      ) : (
+      <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
+        <SectionLabel>Or choose it yourself</SectionLabel>
+        <ClockField label={todays.some(j => j.structure === 2) ? 'Project' : 'Job'} value={draft ? String(draft.jobId) : ''} placeholder={todays.some(j => j.structure === 2) ? 'Search projects' : 'Search jobs'}
+          options={sortedOptions(todays.map(j => ({ value: String(j.id), label: j.path })))} onChange={v => onPickProject(Number(v))} search />
+        {draft ? (
+          <>
+            <DraftFields data={data} draft={draft} onField={onField} onNotes={onNotes} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <button type="button" onClick={onGo} disabled={busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
+                <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
+              </button>
+              <button type="button" onClick={onSaveDraft} className={`${CK_BTN_WHITE} ${FOCUS}`}>
+                <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-[12px] text-muted leading-[1.5]">Pick a project and its fields appear. Activity and notes can wait: you can fill them while the clock runs.</div>
+        )}
+      </div>
+      )}
+
       {resume && (
         <div className="border border-[#cfe5e5] bg-tn-teal-soft rounded-[14px] p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between"><SectionLabel className="text-tn-teal">Resume</SectionLabel></div>
@@ -84,12 +120,12 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
         <div className="flex items-center justify-between px-0.5 pb-1.5">
           <SectionLabel>My combinations</SectionLabel>
           <span className="flex items-center gap-3.5">
-            <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>
+            {!todays.some(j => j.structure === 2) && <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>}
             {data.combinations.length > 0 && <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>}
           </span>
         </div>
         {data.combinations.length === 0 && (
-          <div className="px-0.5 pb-1 text-[12.5px] text-muted leading-[1.5]">Save the project and Activity you use often, then clock in with one tap. Combinations made on the old TSheets jobs work for days before the switch date.</div>
+          <div className="px-0.5 pb-1 text-[12.5px] text-muted leading-[1.5]">Choose below, then Save as combination: next time you clock in with one tap. Combinations made on the old TSheets jobs work for days before the switch date.</div>
         )}
         {combos.map(c => {
             const r = choiceRow(c, true)
@@ -97,7 +133,7 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
           })}
           {data.combinations.length > SHOWN_COMBINATIONS && (
             <button type="button" onClick={onToggleMore} className={`self-start border-0 bg-transparent cursor-pointer px-2 py-1 text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink ${FOCUS}`}>
-              {more ? 'Show fewer' : `More (${data.combinations.length - SHOWN_COMBINATIONS})`}
+              {more ? 'Show fewer' : `See all (${data.combinations.length})`}
             </button>
           )}
       </div>
@@ -105,20 +141,22 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
       {data.recents.length > 0 && (
         <div className="flex flex-col gap-0.5">
           <div className="px-0.5 pb-1.5"><SectionLabel inline>Recent</SectionLabel></div>
-          {data.recents.map((c, i) => {
+          {data.recents.slice(0, 3).map((c, i) => {
             const r = choiceRow(c, false)
             return <ChoiceRowView key={`r${i}`} {...r} saved={false} phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} onStar={() => onSave(c)} disabled={busy} />
           })}
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between px-0.5">
-          <SectionLabel>Something else</SectionLabel>
-          <button type="button" onClick={onBrowse} className={LINK_BTN}>Browse</button>
-        </div>
-        <SearchInput value={query} onChange={onQuery} placeholder="Search jobs" height={42} iconTop={13} />
-      </div>
+      <button type="button" onClick={onBrowse}
+        className={`w-full flex items-center gap-3 text-left border-[1.5px] border-tn-teal bg-tn-teal-soft rounded-[14px] px-4 py-3.5 cursor-pointer hover:brightness-[.98] ${FOCUS}`}>
+        <Icon d={ICON.folder} size={20} stroke="#1E7D7F" sw={1.9} cap="butt" className="shrink-0" />
+        <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <span className="font-(family-name:--font-display) font-extrabold text-[14.5px] text-tn-ink">{todays.some(j => j.structure === 2) ? 'Browse all projects' : 'Browse all jobs'}</span>
+          <span className="text-[12.5px] text-foreground leading-[1.4]">Folder by folder, with what each is for</span>
+        </span>
+        <Icon d={ICON.chevronRight} size={18} stroke="#1E7D7F" sw={2.2} className="shrink-0" />
+      </button>
     </>
   )
 }
@@ -198,6 +236,32 @@ export function ChooseView({ data, day, phone, first, query, browse, onQuery, on
 
 // ── 1D Details before clocking in ───────────────────────────────────────────
 
+/** The fields of the project picked (those of its structure) and the notes: on the details screen and on the panel's first screen. */
+export function DraftFields({ data, draft, onField, onNotes }: { data: ClockPanelData; draft: Draft; onField: (key: FieldName, value: string) => void; onNotes: (v: string) => void }) {
+  const job = data.jobs.find(j => j.id === draft.jobId)
+  const notesReq = activityNeedsNotes(valueOf(draft.values, data.fields, 'activity'))
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        {keysFor(!!job?.isI7).map(key => {
+          const f = fieldByKey(data.fields, key, job)
+          if (!f) return null
+          return (
+            <ClockField key={key} label={f.label} value={draft.values[f.id] ?? ''} options={optionsOf(f)} onChange={v => onField(key, v)}
+              search={key === 'activity' || key === 'code'} auto={!!draft.auto[key]} placeholder={key === 'activity' ? 'Search activities' : 'Choose'} />
+          )
+        })}
+        {job?.structure === 2 && <BillableFromProject billable={job.billable} />}
+      </div>
+      <div className="flex flex-col gap-[5px]">
+        <SectionLabel>{notesReq ? 'Notes (required for this Activity)' : 'Notes'}</SectionLabel>
+        <textarea value={draft.notes} onChange={e => onNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
+          className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+      </div>
+    </>
+  )
+}
+
 /** A 2026 project's Billable: the project's own, shown and not chosen (owner, 26 October 2026). */
 export function BillableFromProject({ billable }: { billable: boolean }) {
   return (
@@ -223,7 +287,6 @@ export function DetailsView({ data, draft, switching, busy, onChangeJob, onField
   onCancel: () => void
 }) {
   const job = data.jobs.find(j => j.id === draft.jobId)
-  const notesReq = activityNeedsNotes(valueOf(draft.values, data.fields, 'activity'))
   const v2 = job?.structure === 2
   return (
     <div className="flex flex-col gap-4">
@@ -234,22 +297,7 @@ export function DetailsView({ data, draft, switching, busy, onChangeJob, onField
         </div>
         <button type="button" onClick={onChangeJob} className={LINK_BTN}>Change</button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {keysFor(!!job?.isI7).map(key => {
-          const f = fieldByKey(data.fields, key, job)
-          if (!f) return null
-          return (
-            <ClockField key={key} label={f.label} value={draft.values[f.id] ?? ''} options={optionsOf(f)} onChange={v => onField(key, v)}
-              search={key === 'activity' || key === 'code'} auto={!!draft.auto[key]} placeholder={key === 'activity' ? 'Search activities' : 'Choose'} />
-          )
-        })}
-        {v2 && job && <BillableFromProject billable={job.billable} />}
-      </div>
-      <div className="flex flex-col gap-[5px]">
-        <SectionLabel>{notesReq ? 'Notes (required for this Activity)' : 'Notes'}</SectionLabel>
-        <textarea value={draft.notes} onChange={e => onNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
-          className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
-      </div>
+      <DraftFields data={data} draft={draft} onField={onField} onNotes={onNotes} />
       <div className="text-[12px] text-muted leading-[1.5]">Activity and notes can wait: you can fill them while the clock runs. You will need them to clock out.</div>
       <div className="flex items-center gap-2 flex-wrap">
         <button type="button" onClick={onGo} disabled={busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>

@@ -9,7 +9,7 @@
  */
 
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import { fieldsOfStructure, missingFields, structureOn, type FieldKeys, type FieldName, type MissingName, type Structure } from '@/lib/timeclock/entry-rules'
+import { activityNeedsNotes, fieldsOfStructure, missingFields, structureOn, type FieldKeys, type FieldName, type MissingName, type Structure } from '@/lib/timeclock/entry-rules'
 import { formatClock, formatDuration, formatTimer, roundIso, runningSeconds } from '@/lib/timeclock/rounding'
 import { dayLabel, timeLabel } from '@/lib/timeclock/format'
 import { WARN_AFTER_SECONDS } from '@/lib/timeclock/safety'
@@ -34,7 +34,15 @@ export const fieldByKey = (fields: readonly PanelField[], key: FieldName, job?: 
 
 /** A field's options for the list: the 2026 activities under their family headings. */
 export const optionsOf = (f: Pick<PanelField, 'options' | 'families'>): { value: string; label: string; group?: string }[] =>
-  f.options.map(o => ({ value: o, label: o, ...(f.families?.[o] ? { group: f.families[o] } : {}) }))
+  sortedOptions(f.options.map(o => ({ value: o, label: o, ...(f.families?.[o] ? { group: f.families[o] } : {}) })))
+
+/** Alphabetical, as every list of choices is (owner, 28 October 2026): numbers by value (WM-2 before WM-10), no matter the case. */
+export const alpha = (a: string, b: string): number => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' })
+
+/** Options in alphabetical order; grouped ones by group, then by name (the list draws a heading wherever the group changes). */
+export function sortedOptions<O extends { label: string; group?: string }>(list: readonly O[]): O[] {
+  return [...list].sort((a, b) => alpha(a.group ?? '', b.group ?? '') || alpha(a.label, b.label))
+}
 
 /** The fields a job asks: its structure's, the i7 Code only on i7 jobs. */
 export const fieldsForJob = (fields: readonly PanelField[], job: { structure?: Structure } | null | undefined): PanelField[] =>
@@ -113,7 +121,7 @@ export const sameChoice = (a: { jobcodeId: number | null; activity: string }, b:
   a.jobcodeId === b.jobcodeId && (a.activity || '') === (b.activity || '')
 
 /** The saved combinations shown in the panel; the rest sit under More. */
-export const SHOWN_COMBINATIONS = 6
+export const SHOWN_COMBINATIONS = 3
 
 /**
  * "Switch to": the first six saved combinations, then the recents, without the
@@ -371,4 +379,43 @@ export function saveDraftFrom(
     values: { ...src.values },
     notes: src.notes,
   }
+}
+
+
+// ── Client, Division, Project (the 2026 structure, picked field by field) ────
+
+/** A 2026 project's place from its path: "COE Group › Africa › HopeFor.Africa", or "True North Internal › TN General" (no division). */
+export function placeOf(path: string): { client: string; division: string; project: string } {
+  const parts = path.split(' › ')
+  return parts.length >= 3
+    ? { client: parts[0], division: parts[1], project: parts[parts.length - 1] }
+    : { client: parts[0] ?? '', division: '', project: parts[parts.length - 1] ?? '' }
+}
+
+const inStructure2 = <J extends { structure?: Structure }>(jobs: readonly J[]) => jobs.filter(j => j.structure === 2)
+
+/** The clients that have projects on offer, in the catalogue's order. */
+export function clientsOf(jobs: readonly Pick<PanelJob, 'path' | 'structure'>[]): string[] {
+  return [...new Set(inStructure2(jobs).map(j => placeOf(j.path).client))].sort(alpha)
+}
+
+/** A client's divisions; none for a client whose projects sit right under it (True North Internal). */
+export function divisionsOf(jobs: readonly Pick<PanelJob, 'path' | 'structure'>[], client: string): string[] {
+  return [...new Set(inStructure2(jobs).map(j => placeOf(j.path)).filter(p => p.client === client && p.division).map(p => p.division))].sort(alpha)
+}
+
+/** The projects under a client and division (division '' for a client with none). */
+export function projectsOf<J extends Pick<PanelJob, 'path' | 'structure'>>(jobs: readonly J[], client: string, division: string): J[] {
+  return inStructure2(jobs).filter(j => { const p = placeOf(j.path); return p.client === client && p.division === division }).sort((a, b) => alpha(placeOf(a.path).project, placeOf(b.path).project))
+}
+
+/** What the person still has to pick before a record is whole: every field but Notes (Notes too when the Activity asks for them). */
+export function stillToPick(x: { client: string; division: string; hasDivisions: boolean; jobId: number | null; activity: string; notes: string }): string[] {
+  const out: string[] = []
+  if (!x.client) out.push('Client')
+  else if (x.hasDivisions && !x.division) out.push('Division')
+  if (x.client && (!x.hasDivisions || x.division) && !x.jobId) out.push('Project')
+  if (x.jobId && !x.activity) out.push('Activity')
+  if (x.jobId && x.activity && activityNeedsNotes(x.activity) && !x.notes.trim()) out.push('Notes')
+  return out
 }

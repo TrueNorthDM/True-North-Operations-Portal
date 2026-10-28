@@ -1,0 +1,103 @@
+'use client'
+
+/**
+ * What you are working on, picked field by field, always on the panel's first
+ * screen as David's structure defines it: Client, Division, Project, Activity,
+ * Billable (set by the project, shown only) and Notes. Every field but Notes
+ * must be picked; Notes are asked only when the Activity says so ("Other",
+ * "Meeting: Other"). Each field narrows the next: a Division lists the
+ * Client's divisions, a Project the Division's projects. Clock in, or keep the
+ * choice as a combination.
+ */
+
+import { useState } from 'react'
+import { BTN_ICON } from '@/lib/ui/buttons'
+import { activityNeedsNotes } from '@/lib/timeclock/entry-rules'
+import type { ClockPanelData } from '@/lib/timeclock/clocky-types'
+import { clientsOf, divisionsOf, draftFor, fieldByKey, jobsOn, optionsOf, placeOf, projectsOf, stillToPick, type Draft } from './clock-model'
+import { BillableFromProject } from './ClockViews'
+import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, PlayIcon, SectionLabel } from './ClockParts'
+
+/** A field that cannot be picked yet: drawn like Billable, with why. */
+function LockedField({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="flex flex-col gap-[5px] min-w-0">
+      <div className="flex items-center gap-1.5 min-h-4"><SectionLabel>{label}</SectionLabel></div>
+      <div className="h-10 px-3 flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] font-sans text-[12.5px] text-muted overflow-hidden whitespace-nowrap text-ellipsis">{text}</div>
+    </div>
+  )
+}
+
+export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
+  data: ClockPanelData
+  busy: boolean
+  /** Clock in with this choice. */
+  onClockIn: (d: Draft) => void
+  /** Keep the choice as a combination: the panel's save window opens with it. */
+  onSaveAs: (d: Draft) => void
+}) {
+  const todays = jobsOn(data.jobs, data.today, data.switchDate)
+  const [client, setClient] = useState('')
+  const [division, setDivision] = useState('')
+  const [jobId, setJobId] = useState<number | null>(null)
+  const [activity, setActivity] = useState('')
+  const [notes, setNotes] = useState('')
+
+  const clients = clientsOf(todays)
+  const divisions = client ? divisionsOf(todays, client) : []
+  const hasDivisions = divisions.length > 0
+  const projects = client && (!hasDivisions || division) ? projectsOf(todays, client, division) : []
+  const job = data.jobs.find(j => j.id === jobId)
+  const activityField = fieldByKey(data.fields, 'activity', job ?? { structure: 2 })
+  const missing = stillToPick({ client, division, hasDivisions, jobId, activity, notes })
+  const ready = missing.length === 0
+  const notesRequired = !!activity && activityNeedsNotes(activity)
+
+  const pickClient = (v: string) => { setClient(v); setDivision(''); setJobId(null); setActivity('') }
+  const pickDivision = (v: string) => { setDivision(v); setJobId(null); setActivity('') }
+  const draft = (): Draft | null => (job ? draftFor(data, job, { activity, notes }) : null)
+  const clockIn = () => { const d = draft(); if (d && ready) { onClockIn(d) } }
+  const saveAs = () => { const d = draft(); if (d && ready) onSaveAs(d) }
+
+  return (
+    <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
+      <SectionLabel>What are you working on?</SectionLabel>
+      <div className="grid grid-cols-2 gap-3">
+        <ClockField label="Client" value={client} placeholder="Choose" options={clients} onChange={pickClient} />
+        {!client
+          ? <LockedField label="Division" text="Pick the client first" />
+          : hasDivisions
+            ? <ClockField label="Division" value={division} placeholder="Choose" options={divisions} onChange={pickDivision} />
+            : <LockedField label="Division" text={`Not used for ${client}`} />}
+      </div>
+
+      {client && (!hasDivisions || division)
+        ? <ClockField label="Project" value={job ? String(job.id) : ''} placeholder="Choose" search
+            options={projects.map(j => ({ value: String(j.id), label: placeOf(j.path).project }))} onChange={v => { setJobId(Number(v)); setActivity('') }} />
+        : <LockedField label="Project" text={client ? 'Pick the division first' : 'Pick the client first'} />}
+
+      <div className="grid grid-cols-2 gap-3">
+        {job && activityField
+          ? <ClockField label="Activity" value={activity} placeholder="Search activities" search options={optionsOf(activityField)} onChange={setActivity} />
+          : <LockedField label="Activity" text="Pick the project first" />}
+        {job ? <BillableFromProject billable={job.billable} /> : <LockedField label="Billable" text="Set by the project" />}
+      </div>
+
+      <label className="flex flex-col gap-[5px]">
+        <SectionLabel>{notesRequired ? 'Notes (required for this Activity)' : 'Notes (optional)'}</SectionLabel>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
+          className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+      </label>
+
+      {!ready && <div className="text-[12px] text-muted leading-[1.5]">{`Still to pick: ${missing.join(', ')}.`}</div>}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button type="button" onClick={clockIn} disabled={!ready || busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
+          <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
+        </button>
+        <button type="button" onClick={saveAs} disabled={!ready || busy} className={`${CK_BTN_WHITE} disabled:opacity-60 ${FOCUS}`}>
+          <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
+        </button>
+      </div>
+    </div>
+  )
+}

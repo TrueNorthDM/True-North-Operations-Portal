@@ -12,7 +12,7 @@ import { wallToInstant } from '@/lib/timeclock/clock'
 import { addDays } from '@/lib/timeclock/periods'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
 import { correctionOverlapLine, END_AFTER_START, structureOn } from '@/lib/timeclock/entry-rules'
-import { fieldsForJob, jobsOn, optionsOf } from '@/components/clocky/clock/clock-model'
+import { fieldsForJob, jobsOn, optionsOf, sortedOptions } from '@/components/clocky/clock/clock-model'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
@@ -50,7 +50,7 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
   const job = catalog.jobs.find(j => j.id === rq.jobcodeId)
   // The Activity of the job's structure (of the day's, before a job is picked).
   const activity = fieldsForJob(catalog.fields, job ?? { structure: structureOn(rq.date, catalog.switchDate) }).find(f => f.key === 'activity')
-  const comboOptions = catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label }))
+  const comboOptions = sortedOptions(catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label })))
   const disabled = busy || (check.bad && !rq.error) || !rq.jobcodeId || !rq.reason.trim()
 
   return (
@@ -81,7 +81,7 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
           onChange={v => setRq({ values: { ...rq.values, activity: v }, error: null })} />
       </div>
       <LabeledSelect label="Job" value={rq.jobcodeId ? String(rq.jobcodeId) : ''} search placeholder="Search jobs"
-        options={jobsOn(catalog.jobs, rq.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path }))}
+        options={sortedOptions(jobsOn(catalog.jobs, rq.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path })))}
         onChange={v => {
           const id = Number(v)
           const j = catalog.jobs.find(x => x.id === id)

@@ -235,10 +235,11 @@ function data2026(): Pick<ClockPanelData, 'jobs' | 'folders' | 'fields' | 'defau
   const jobs: PanelJob[] = [], folders: PanelFolder[] = []
   let id = 2000
   for (const c of STRUCTURE) {
-    const groups = [...c.divisions.map(d => ({ name: d.name, projects: d.projects })), ...(c.projects.length ? [{ name: c.name, projects: c.projects }] : [])]
+    // A client's own projects (True North Internal) sit right under it; a division, even one named like its client (i7 Marketing), is a level of its own.
+    const groups = [...c.divisions.map(d => ({ name: d.name, projects: d.projects, direct: false })), ...(c.projects.length ? [{ name: c.name, projects: c.projects, direct: true }] : [])]
     for (const g of groups) {
       const fid = ++id
-      const own = g.name === c.name ? c.name : `${c.name} › ${g.name}`
+      const own = g.direct ? c.name : `${c.name} › ${g.name}`
       const f: PanelFolder = { id: fid, name: own, jobIds: [], use: null, order: fid }
       for (const p of g.projects) {
         const path = `${own} › ${p.name}`
@@ -264,8 +265,14 @@ export const FRAMES: ClockFrame[] = [
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
   // The 2026 structure, from the switch date (owner, 26 October 2026).
+  { code: '26L', title: '2026 first screen, five combinations', data: (() => {
+      const d = data2026(); const base1 = d.combinations[0]
+      const mk = (id: number, name: string, activity: string, path?: string) => { const j = d.jobs.find(x => x.path === path) ?? d.jobs.find(x => x.id === base1.jobcodeId)!; return { ...base1, combinationId: id, name, jobcodeId: j.id, path: j.path, short: j.short, activity, label: name } }
+      const more = [mk(32, 'AAAF Writing', 'Content: Writing', 'COE Group › Seeker Outreach › AAAF'), mk(33, 'Africa Social', 'Marketing: Social Media & Community', 'COE Group › Africa › Africa Social Media'), mk(34, 'WM Marketing', 'Marketing: Strategy & Campaigns', 'i7 Marketing › Wagner Meters › WM-MKTG'), mk(35, 'TN Admin', 'Admin', 'True North Internal › TN Operations')]
+      return base({ ...d, combinations: [...d.combinations, ...more] })
+    })() },
+  { code: '26H', title: '2026 first screen, with combinations', data: base(data2026()) },
   { code: '26A', title: '2026 off, no combinations', data: base({ ...data2026(), combinations: [], recents: [], resume: null }) },
-  { code: '26N', title: 'New combination', data: base({ ...data2026(), combinations: [], recents: [], resume: null }), ui: { modal: 'save', save: saveDraftFrom({ jobs: [], fields: data2026().fields }, { jobId: 0, values: {}, notes: '' }) } },
   { code: '26C', title: '2026 browse', data: base(data2026()), ui: { view: 'choose', browse: data2026().folders.find(f => f.name === 'COE Group › Africa')!.id } },
   { code: '26D', title: '2026 details', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!) } },
   { code: '26E', title: '2026 Activity', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!, { activity: 'Other' }) } },
