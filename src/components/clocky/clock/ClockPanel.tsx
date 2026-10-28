@@ -14,9 +14,9 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import type { ClockChoice, ClockPanelData, Fail } from '@/lib/timeclock/clocky-types'
 import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
-import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, runningJobOf, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
+import { choiceRow, choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, runningJobOf, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
-import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, type NoteStatus } from './ClockViews'
+import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, SwitchBar, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
@@ -24,9 +24,12 @@ export type Gate = { kind: 'switch'; to: ClockChoice } | { kind: 'out' }
 
 /** What the person is doing in the panel, over what the data says (off, on, auto). */
 export interface PanelUi {
-  view: 'base' | 'choose' | 'details'
+  /** 'switch': the first screen again, opened from Switch to while the clock runs. */
+  view: 'base' | 'choose' | 'details' | 'switch'
   /** Choosing for a switch rather than a clock in. */
   ret: 'switch' | null
+  /** Switching: what was picked on the first screen ('form', a combination 'c<id>', a recent 'r<i>'), waiting for Switch. */
+  pick: { key: string; choice: ClockChoice } | null
   query: string
   /** The folder open in Browse; null for the top of the tree. */
   browse: number | null
@@ -45,7 +48,7 @@ export interface PanelUi {
 }
 
 export const PANEL_UI: PanelUi = {
-  view: 'base', ret: null, query: '', browse: null, draft: null, gate: null, editKey: null, more: false,
+  view: 'base', ret: null, pick: null, query: '', browse: null, draft: null, gate: null, editKey: null, more: false,
   modal: null, save: null, back: false, later: false, autoEnd: null,
 }
 
@@ -149,7 +152,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const auto = data.toConfirm[0] ?? null
   // Everyone starts on the same first screen: combinations, choosing it yourself, Browse. (A first-time person has no combinations yet.)
   const base: 'off' | 'on' | 'auto' | 'choose' = auto ? 'auto' : running ? 'on' : 'off'
-  const mode = base === 'auto' ? 'auto' : ui.view !== 'base' && !(ui.view === 'details' && !ui.draft) ? ui.view : base
+  const view = ui.view === 'switch' && base !== 'on' ? 'base' : ui.view
+  const mode = base === 'auto' ? 'auto' : view !== 'base' && !(view === 'details' && !ui.draft) ? view : base
   const first = data.firstTime && ui.ret !== 'switch'
   const header = panelHeader(mode, { data, nowMs, switching: ui.ret === 'switch', first })
   const runningJob = running ? runningJobOf(data.jobs, running) : null
@@ -320,7 +324,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 
   const goBack = () => {
     if (mode === 'details') set({ view: 'choose', draft: null })
-    else if (mode === 'choose') set({ view: 'base', query: '', browse: null, ret: null })
+    else if (mode === 'choose') set(ui.ret === 'switch' ? { view: 'switch', query: '', browse: null } : { view: 'base', query: '', browse: null, ret: null })
+    else if (mode === 'switch') set({ view: 'base', pick: null, more: false })
   }
 
   const pickJob = (jobId: number) => {
@@ -335,14 +340,23 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   }
 
   const detailsGo = () => { if (ui.draft) goWith(ui.draft) }
-  const goWith = (d: Draft) => {
+  const choiceOf = (d: Draft): ClockChoice => {
     const job = data.jobs.find(j => j.id === d.jobId)
-    const choice = { jobcodeId: d.jobId, fields: choiceValues(d.values, data.fields, job), notes: d.notes }
-    if (ui.ret === 'switch' && running) {
-      const to: ClockChoice = { combinationId: null, name: null, jobcodeId: d.jobId, path: job?.path ?? '', short: job?.short ?? '', isI7: !!job?.isI7, fields: choice.fields, notes: d.notes, label: job?.short ?? '', activity: valueOf(d.values, data.fields, 'activity'), billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : valueOf(d.values, data.fields, 'billable') }
-      switchTo(choice, to)
-    } else startWith(choice)
+    const fields = choiceValues(d.values, data.fields, job)
+    return { combinationId: null, name: null, jobcodeId: d.jobId, path: job?.path ?? '', short: job?.short ?? '', isI7: !!job?.isI7, fields, notes: d.notes, label: job?.short ?? '', activity: valueOf(d.values, data.fields, 'activity'), billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : valueOf(d.values, data.fields, 'billable') }
   }
+  const goWith = (d: Draft) => {
+    const to = choiceOf(d)
+    if (ui.ret === 'switch' && running) switchTo(to, to)
+    else startWith(to)
+  }
+
+  // Switch to: the first screen marks a choice; the bar on top makes the switch.
+  const openSwitch = () => set({ view: 'switch', pick: null, more: false, ret: 'switch', draft: null })
+  const pickRow = (key: string, c: ClockChoice) => set({ pick: ui.pick?.key === key ? null : { key, choice: c } })
+  const pickForm = (d: Draft | null) => setUi(u => (d ? { ...u, pick: { key: 'form', choice: choiceOf(d) } } : u.pick?.key === 'form' ? { ...u, pick: null } : u))
+  const switchGo = () => { if (ui.pick) switchTo(ui.pick.choice, ui.pick.choice) }
+  const pickedRow = ui.pick ? choiceRow(ui.pick.choice, ui.pick.key.startsWith('c')) : null
 
   // 1L
   const autoEnd = auto ? ui.autoEnd ?? (ui.later ? auto.laterOptions[0] : auto.options[0]) ?? '' : ''
@@ -372,6 +386,29 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         {offline && <OfflineBanner />}
         {lockedLine && <ErrorBanner text={lockedLine} />}
         {error && error !== lockedLine && <ErrorBanner text={error} />}
+
+        {mode === 'switch' && running && (
+          <>
+            <SwitchBar now={[running.label || running.short, valueOf(values, data.fields, 'activity')].filter(Boolean).join(' · ')} picked={pickedRow} busy={busy}
+              onCancel={goBack} onSwitch={switchGo} />
+            <OffView data={data} phone={phone} more={ui.more} busy={busy} draft={ui.draft}
+              switching={{ picked: ui.pick?.key ?? null, jobcodeId: running.jobcodeId, activity: valueOf(values, data.fields, 'activity') }}
+              onFormPick={pickForm}
+              onPickProject={id => { const job = data.jobs.find(j => j.id === id); if (job) set({ draft: draftFor(data, job) }) }}
+              onField={setDraftField}
+              onNotes={v => ui.draft && set({ draft: { ...ui.draft, notes: v } })}
+              onGo={detailsGo}
+              onSaveDraft={() => ui.draft && openSave({ jobId: ui.draft.jobId, values: ui.draft.values, notes: ui.draft.notes })}
+              onResume={() => {}} onClockIn={() => {}}
+              onToggleMore={() => set({ more: !ui.more })}
+              onStart={(c, key) => pickRow(key, c)}
+              onSave={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes })}
+              onManage={() => { setError(null); set({ modal: 'manage' }) }}
+              onNew={() => openSave({ jobId: 0, values: {}, notes: '' })}
+              onSaveAs={d => openSave({ jobId: d.jobId, values: d.values, notes: d.notes })}
+              onBrowse={() => set({ view: 'choose', browse: null, query: '', draft: null, ret: 'switch' })} />
+          </>
+        )}
 
         {mode === 'off' && (
           <OffView data={data} phone={phone} more={ui.more} busy={busy || !!lockedLine} draft={ui.draft}
@@ -420,9 +457,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
             onNotesCommit={onNotesBlur}
             onGateGo={gateGo}
             onGateCancel={() => set({ gate: null })}
-            onSwitch={c => switchTo(c, c)}
-            onSave={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes })}
-            onSwitchQuery={q => set({ query: q, view: 'choose', ret: 'switch', browse: null })} />
+            onOpenSwitch={openSwitch} />
         )}
 
         {mode === 'auto' && auto && (

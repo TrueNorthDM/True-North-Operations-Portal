@@ -205,6 +205,23 @@ const on = (o: Partial<ClockPanelData> = {}) => {
   })
 }
 
+/** The 2026 structure with five combinations. */
+function five2026() {
+  const d = data2026(); const base1 = d.combinations[0]
+  const mk = (id: number, name: string, activity: string, path?: string) => { const j = d.jobs.find(x => x.path === path) ?? d.jobs.find(x => x.id === base1.jobcodeId)!; return { ...base1, combinationId: id, name, jobcodeId: j.id, path: j.path, short: j.short, activity, label: name } }
+  const more = [mk(32, 'AAAF Writing', 'Content: Writing', 'COE Group › Seeker Outreach › AAAF'), mk(33, 'Africa Social', 'Marketing: Social Media & Community', 'COE Group › Africa › Africa Social Media'), mk(34, 'WM Marketing', 'Marketing: Strategy & Campaigns', 'i7 Marketing › Wagner Meters › WM-MKTG'), mk(35, 'TN Admin', 'Admin', 'True North Internal › TN Operations')]
+  return { ...d, combinations: [...d.combinations, ...more] }
+}
+
+/** `on2026()`: the 2026 structure, on the clock with the last of the five combinations. */
+const on2026 = () => {
+  const d = five2026()
+  const c = d.combinations[d.combinations.length - 1]
+  const now = et(11, 50, 34)
+  return on({ ...d, running: runningOf(c, { real: et(9, 52), session: et(8, 7), now }), safety: safetyOf(et(8, 7), c.label),
+    todayByCombination: [{ label: c.label, seconds: H(2, 0), running: true }] })
+}
+
 const autoItem = (): ToConfirm => {
   const opts: string[] = []
   for (let t = Date.parse(et(13)); t >= Date.parse(et(8, 15)); t -= 900_000) opts.push(new Date(t).toISOString())
@@ -265,12 +282,10 @@ export const FRAMES: ClockFrame[] = [
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
   // The 2026 structure, from the switch date (owner, 26 October 2026).
-  { code: '26L', title: '2026 first screen, five combinations', data: (() => {
-      const d = data2026(); const base1 = d.combinations[0]
-      const mk = (id: number, name: string, activity: string, path?: string) => { const j = d.jobs.find(x => x.path === path) ?? d.jobs.find(x => x.id === base1.jobcodeId)!; return { ...base1, combinationId: id, name, jobcodeId: j.id, path: j.path, short: j.short, activity, label: name } }
-      const more = [mk(32, 'AAAF Writing', 'Content: Writing', 'COE Group › Seeker Outreach › AAAF'), mk(33, 'Africa Social', 'Marketing: Social Media & Community', 'COE Group › Africa › Africa Social Media'), mk(34, 'WM Marketing', 'Marketing: Strategy & Campaigns', 'i7 Marketing › Wagner Meters › WM-MKTG'), mk(35, 'TN Admin', 'Admin', 'True North Internal › TN Operations')]
-      return base({ ...d, combinations: [...d.combinations, ...more] })
-    })() },
+  { code: '26L', title: '2026 first screen, five combinations', data: base(five2026()) },
+  // Switch to opens the first screen; the bar on top confirms (owner, 28 October 2026).
+  { code: '26N', title: '2026 on the clock', data: on2026() },
+  { code: '26W', title: '2026 switch to', data: on2026(), ui: { view: 'switch', ret: 'switch' } },
   { code: '26H', title: '2026 first screen, with combinations', data: base(data2026()) },
   { code: '26A', title: '2026 off, no combinations', data: base({ ...data2026(), combinations: [], recents: [], resume: null }) },
   { code: '26C', title: '2026 browse', data: base(data2026()), ui: { view: 'choose', browse: data2026().folders.find(f => f.name === 'COE Group › Africa')!.id } },

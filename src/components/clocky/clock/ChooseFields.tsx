@@ -28,9 +28,11 @@ function LockedField({ label, text }: { label: string; text: string }) {
   )
 }
 
-export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
+export function ChooseFields({ data, busy, onClockIn, onSaveAs, onPick }: {
   data: ClockPanelData
   busy: boolean
+  /** Switching: no Clock in here; each complete choice (or null once it is not) goes up to the Switch button at the top. */
+  onPick?: (d: Draft | null) => void
   /** Clock in with this choice. */
   onClockIn: (d: Draft) => void
   /** Keep the choice as a combination: the panel's save window opens with it. */
@@ -53,8 +55,19 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
   const ready = missing.length === 0
   const notesRequired = !!activity && activityNeedsNotes(activity)
 
-  const pickClient = (v: string) => { setClient(v); setDivision(''); setJobId(null); setActivity('') }
-  const pickDivision = (v: string) => { setDivision(v); setJobId(null); setActivity('') }
+  // Switching: tell the panel what the form now says, from the values just picked.
+  const report = (n: Partial<{ client: string; division: string; jobId: number | null; activity: string; notes: string }>) => {
+    if (!onPick) return
+    const s = { client, division, jobId, activity, notes, ...n }
+    const j = data.jobs.find(x => x.id === s.jobId)
+    const hasDiv = !!s.client && divisionsOf(todays, s.client).length > 0
+    onPick(j && stillToPick({ ...s, hasDivisions: hasDiv }).length === 0 ? draftFor(data, j, { activity: s.activity, notes: s.notes }) : null)
+  }
+  const pickClient = (v: string) => { setClient(v); setDivision(''); setJobId(null); setActivity(''); report({ client: v, division: '', jobId: null, activity: '' }) }
+  const pickDivision = (v: string) => { setDivision(v); setJobId(null); setActivity(''); report({ division: v, jobId: null, activity: '' }) }
+  const pickProject = (id: number) => { setJobId(id); setActivity(''); report({ jobId: id, activity: '' }) }
+  const pickActivity = (v: string) => { setActivity(v); report({ activity: v }) }
+  const typeNotes = (v: string) => { setNotes(v); report({ notes: v }) }
   const draft = (): Draft | null => (job ? draftFor(data, job, { activity, notes }) : null)
   const clockIn = () => { const d = draft(); if (d && ready) { onClockIn(d) } }
   const saveAs = () => { const d = draft(); if (d && ready) onSaveAs(d) }
@@ -85,27 +98,29 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
 
       {client && (!hasDivisions || division)
         ? <ClockField label="Project" value={job ? String(job.id) : ''} placeholder="Choose" search
-            options={projects.map(j => ({ value: String(j.id), label: placeOf(j.path).project }))} onChange={v => { setJobId(Number(v)); setActivity('') }} />
+            options={projects.map(j => ({ value: String(j.id), label: placeOf(j.path).project }))} onChange={v => pickProject(Number(v))} />
         : <LockedField label="Project" text={client ? 'Pick the division first' : 'Pick the client first'} />}
 
       <div className="grid grid-cols-2 gap-3">
         {job && activityField
-          ? <ClockField label="Activity" value={activity} placeholder="Search activities" search options={optionsOf(activityField)} onChange={setActivity} />
+          ? <ClockField label="Activity" value={activity} placeholder="Search activities" search options={optionsOf(activityField)} onChange={pickActivity} />
           : <LockedField label="Activity" text="Pick the project first" />}
         {job ? <BillableFromProject billable={job.billable} /> : <LockedField label="Billable" text="Set by the project" />}
       </div>
 
       <label className="flex flex-col gap-[5px]">
         <SectionLabel>{notesRequired ? 'Notes (required for this Activity)' : 'Notes (optional)'}</SectionLabel>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
+        <textarea value={notes} onChange={e => typeNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
           className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
       </label>
 
       {!ready && <div className="text-[12px] text-muted leading-[1.5]">{`Still to pick: ${missing.join(', ')}.`}</div>}
       <div className="flex items-center gap-2 flex-wrap">
-        <button type="button" onClick={clockIn} disabled={!ready || busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
-          <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
-        </button>
+        {!onPick && (
+          <button type="button" onClick={clockIn} disabled={!ready || busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
+            <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
+          </button>
+        )}
         <button type="button" onClick={saveAs} disabled={!ready || busy} className={`${CK_BTN_WHITE} disabled:opacity-60 ${FOCUS}`}>
           <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
         </button>

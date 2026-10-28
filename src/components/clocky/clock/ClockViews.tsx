@@ -18,7 +18,7 @@ import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
   FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf, sortedOptions,
-  overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, switchChoices, timerStart, valueOf, type Draft,
+  overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
@@ -46,16 +46,19 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, draft, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs }: {
+export function OffView({ data, phone, more, busy, draft, switching, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
   data: ClockPanelData
   phone: Phone
+  /** The same screen opened from Switch to: picking here only marks the choice; the Switch button at the top makes it. */
+  switching?: { picked: string | null; jobcodeId: number | null; activity: string }
   more: boolean
   busy: boolean
   /** The project, fields and notes being picked right here, before clocking in. */
   draft: Draft | null
   onToggleMore: () => void
   onResume: () => void
-  onStart: (c: ClockChoice) => void
+  /** A combination or recent row; its key ('c<id>', 'r<i>') marks it when switching. */
+  onStart: (c: ClockChoice, key: string) => void
   onSave: (c: ClockChoice) => void
   onManage: () => void
   /** A combination made from scratch: its job, fields and name picked in the window, no clock needed. */
@@ -69,15 +72,22 @@ export function OffView({ data, phone, more, busy, draft, onToggleMore, onResume
   onNotes: (v: string) => void
   onGo: () => void
   onSaveDraft: () => void
+  /** Switching: what the form says now, or null once it is not complete. */
+  onFormPick?: (d: Draft | null) => void
 }) {
   const todays = jobsOn(data.jobs, data.today, data.switchDate)
-  const resume = data.resume ? resumeCard(data.resume) : null
-  const combos = more ? data.combinations : data.combinations.slice(0, SHOWN_COMBINATIONS)
+  const resume = data.resume && !switching ? resumeCard(data.resume) : null
+  // Switching: what is running now is not offered again.
+  const notNow = (c: ClockChoice) => !switching || !(c.jobcodeId === switching.jobcodeId && (c.activity || '') === switching.activity)
+  const allCombos = data.combinations.filter(notNow)
+  const combos = more ? allCombos : allCombos.slice(0, SHOWN_COMBINATIONS)
+  const recents = data.recents.filter(notNow).slice(0, 3)
+  const rowAct = switching ? { action: 'swap' as const, actionLabel: 'Pick' } : { action: 'play' as const, actionLabel: 'Clock in with' }
   return (
     <>
       {/* Choose it yourself, always on the screen. On the 2026 structure: Client, Division, Project, Activity, Billable, Notes. Before it: the project, then its fields. */}
       {todays.some(j => j.structure === 2) ? (
-        <ChooseFields data={data} busy={busy} onClockIn={onClockIn} onSaveAs={onSaveAs} />
+        <ChooseFields data={data} busy={busy} onClockIn={onClockIn} onSaveAs={onSaveAs} onPick={switching ? onFormPick : undefined} />
       ) : (
       <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
         <SectionLabel>Or choose it yourself</SectionLabel>
@@ -87,8 +97,9 @@ export function OffView({ data, phone, more, busy, draft, onToggleMore, onResume
           <>
             <DraftFields data={data} draft={draft} onField={onField} onNotes={onNotes} />
             <div className="flex items-center gap-2 flex-wrap">
+              {/* The TSheets jobs (days before the switch date): this form switches straight away. */}
               <button type="button" onClick={onGo} disabled={busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
-                <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
+                {switching ? <><Icon d={ICON.swap} size={15} stroke={BTN_ICON.navy} sw={2.2} />Switch</> : <><PlayIcon size={14} color={BTN_ICON.navy} />Clock in</>}
               </button>
               <button type="button" onClick={onSaveDraft} className={`${CK_BTN_WHITE} ${FOCUS}`}>
                 <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
@@ -130,21 +141,21 @@ export function OffView({ data, phone, more, busy, draft, onToggleMore, onResume
         )}
         {combos.map(c => {
             const r = choiceRow(c, true)
-            return <ChoiceRowView key={`c${c.combinationId}`} {...r} saved phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} disabled={busy} />
+            return <ChoiceRowView key={`c${c.combinationId}`} {...r} saved phone={phone} {...rowAct} onGo={() => onStart(c, `c${c.combinationId}`)} disabled={busy} selected={switching?.picked === `c${c.combinationId}`} />
           })}
-          {data.combinations.length > SHOWN_COMBINATIONS && (
+          {allCombos.length > SHOWN_COMBINATIONS && (
             <button type="button" onClick={onToggleMore} className={`self-start border-0 bg-transparent cursor-pointer px-2 py-1 text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink ${FOCUS}`}>
-              {more ? 'Show fewer' : `See all (${data.combinations.length})`}
+              {more ? 'Show fewer' : `See all (${allCombos.length})`}
             </button>
           )}
       </div>
 
-      {data.recents.length > 0 && (
+      {recents.length > 0 && (
         <div className="flex flex-col gap-0.5">
           <div className="px-0.5 pb-1.5"><SectionLabel inline>Recent</SectionLabel></div>
-          {data.recents.slice(0, 3).map((c, i) => {
+          {recents.map((c, i) => {
             const r = choiceRow(c, false)
-            return <ChoiceRowView key={`r${i}`} {...r} saved={false} phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} onStar={() => onSave(c)} disabled={busy} />
+            return <ChoiceRowView key={`r${i}`} {...r} saved={false} phone={phone} {...rowAct} onGo={() => onStart(c, `r${i}`)} onStar={() => onSave(c)} disabled={busy} selected={switching?.picked === `r${i}`} />
           })}
         </div>
       )}
@@ -318,8 +329,8 @@ export function DetailsView({ data, draft, switching, busy, onChangeJob, onField
 export type NoteStatus = 'typing' | 'saving' | 'saved' | 'failed' | null
 
 export function OnView({
-  data, running, values, nowMs, phone, busy, editKey, gate, gateLabel, missing, notes, noteStatus, noteError,
-  onKeepGoing, onClockOut, onEditKey, onField, onNotes, onNotesCommit, onGateGo, onGateCancel, onSwitch, onSave, onSwitchQuery,
+  data, running, values, nowMs, busy, editKey, gate, gateLabel, missing, notes, noteStatus, noteError,
+  onKeepGoing, onClockOut, onEditKey, onField, onNotes, onNotesCommit, onGateGo, onGateCancel, onOpenSwitch,
 }: {
   data: ClockPanelData
   running: RunningEntry
@@ -343,9 +354,8 @@ export function OnView({
   onNotesCommit: () => void
   onGateGo: () => void
   onGateCancel: () => void
-  onSwitch: (c: ClockChoice) => void
-  onSave: (c: ClockChoice) => void
-  onSwitchQuery: (q: string) => void
+  /** Opens the first screen again, to pick what comes next. */
+  onOpenSwitch: () => void
 }) {
   const zone = data.me.zone
   const warn = overWarn(data, nowMs)
@@ -358,7 +368,6 @@ export function OnView({
   const noteOpen = noteEditing || !notes.trim() || noteStatus === 'typing' || noteStatus === 'saving' || noteStatus === 'failed'
   const commitNote = () => { setNoteEditing(false); onNotesCommit() }
   const runningJob = runningJobOf(data.jobs, running)
-  const switchRows = switchChoices(data, { jobcodeId: running.jobcodeId, fields: values })
   const gateFields = gate ? missing.filter((m): m is FieldName => m !== 'notes') : []
   const gateOut = gate?.kind === 'out'
   const field = (k: FieldName) => fieldByKey(data.fields, k, runningJob)
@@ -483,23 +492,52 @@ export function OnView({
         </div>
       )}
 
+      {/* Switch to opens the first screen; the choice is made there and confirmed at its top (owner, 28 October 2026). */}
       {!gate && (
-        <div className="flex flex-col gap-0.5 rounded-[14px]">
-          <div className="flex items-center justify-between px-0.5 pb-1.5">
-            <SectionLabel>Switch to</SectionLabel>
-            <span className="text-[11.5px] text-muted">Ends this entry now, starts the next</span>
-          </div>
-          {switchRows.map((r, i) => {
-            const v = choiceRow(r.choice, r.saved)
-            return <ChoiceRowView key={`${r.saved ? 'c' : 'r'}${r.choice.combinationId ?? i}`} {...v} saved={r.saved} phone={phone} action="swap" actionLabel="Switch to"
-              onGo={() => onSwitch(r.choice)} onStar={() => { if (!r.saved) onSave(r.choice) }} disabled={busy} />
-          })}
-          <div className="relative mt-1.5">
-            <SearchInput value="" onChange={onSwitchQuery} placeholder="Something else: search jobs" height={40} iconTop={12} fontSize={13} />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <button type="button" onClick={onOpenSwitch} disabled={busy}
+            className={`w-full h-[46px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[14.5px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60 ${FOCUS}`}>
+            <Icon d={ICON.swap} size={17} stroke="#ffffff" sw={2.2} />Switch to…
+          </button>
+          <span className="text-[11.5px] text-muted text-center">Ends this entry when you confirm, starts the next</span>
         </div>
       )}
     </>
+  )
+}
+
+// ── Switch to: the bar on top of the first screen ───────────────────────────
+
+/** What runs now, what was picked below, and the button that makes the switch. */
+export function SwitchBar({ now, picked, busy, onCancel, onSwitch }: {
+  now: string
+  picked: { title: string; sub: string } | null
+  busy: boolean
+  onCancel: () => void
+  onSwitch: () => void
+}) {
+  return (
+    <div className="sticky -top-4 z-[2] -mx-[18px] -mt-4 px-[18px] pt-4 pb-3 bg-white border-b border-[var(--row-rule)] flex flex-col gap-2.5">
+      <div className="text-[12px] text-muted leading-[1.4]">Now: <b className="text-tn-ink font-semibold">{now}</b> · ends when you switch</div>
+      <div className={`rounded-[12px] px-3 py-2.5 border ${picked ? 'border-tn-teal bg-tn-teal-soft' : 'border-dashed border-[var(--panel-border)] bg-subtle'}`}>
+        <SectionLabel className={picked ? 'text-tn-teal' : ''}>Switch to</SectionLabel>
+        {picked ? (
+          <>
+            <div className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink mt-0.5 truncate">{picked.title}</div>
+            <div className="text-[12px] text-foreground mt-0.5 truncate">{picked.sub}</div>
+          </>
+        ) : (
+          <div className="text-[12.5px] text-muted mt-0.5 leading-[1.4]">Pick below: fill in the form, or tap a combination, a recent one or Browse.</div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>
+        <button type="button" onClick={onSwitch} disabled={!picked || busy}
+          className={`${CK_BTN_NAVY_FLAT} flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}>
+          <Icon d={ICON.swap} size={16} stroke="#ffffff" sw={2.2} />Switch
+        </button>
+      </div>
+    </div>
   )
 }
 

@@ -281,7 +281,7 @@ export const zoneCity = (zone: string): string => (zone.split('/').pop() ?? zone
 
 /** The header of the panel for each mode. */
 export function panelHeader(
-  mode: 'off' | 'choose' | 'details' | 'on' | 'auto',
+  mode: 'off' | 'choose' | 'details' | 'on' | 'auto' | 'switch',
   o: { data: ClockPanelData; nowMs: number; switching: boolean; first: boolean },
 ): { title: string; sub: string; dot: 'green' | 'red' | null; back: boolean } {
   const d = o.data
@@ -293,6 +293,7 @@ export function panelHeader(
     const t = d.toConfirm[0]
     return { title: 'Auto clocked out', sub: `${dayLabel(t.date)} · stopped at ${timeLabel(t.stoppedAt, zone)}`, dot: 'red', back: false }
   }
+  if (mode === 'switch') return { title: 'North Time', sub: 'Switch to something else', dot: null, back: true }
   if (mode === 'choose') return { title: 'North Time', sub: o.switching ? 'Switch to something else' : o.first ? 'Your first clock in' : 'Choose a job', dot: null, back: !o.first }
   if (mode === 'details') return { title: 'North Time', sub: o.switching ? 'Check the details, then switch' : 'Check the details, then clock in', dot: null, back: true }
   const t = liveTotals(d, o.nowMs)

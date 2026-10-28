@@ -226,7 +226,7 @@ export type Phone = boolean | 'css'
 export const byWidth = (phone: Phone, onPhone: string, onDesktop: string, css: string) =>
   phone === 'css' ? css : phone ? onPhone : onDesktop
 
-export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, onGo, onStar, disabled }: {
+export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, onGo, onStar, disabled, selected }: {
   title: string
   sub: string
   saved: boolean
@@ -237,9 +237,11 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
   /** Recent rows only: save it as a combination. */
   onStar?: () => void
   disabled?: boolean
+  /** Switching: the row picked, waiting for the Switch button. */
+  selected?: boolean
 }) {
   return (
-    <div className={`group relative flex items-center gap-2.5 rounded-[11px] hover:bg-[var(--row-hover)] ${byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')}`}>
+    <div className={`group relative flex items-center gap-2.5 rounded-[11px] ${selected ? 'bg-tn-teal-soft shadow-[inset_0_0_0_1.5px_#1E7D7F]' : 'hover:bg-[var(--row-hover)]'} ${byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')}`}>
       {/* A saved combination's star is only a mark (Manage changes it); a recent row's star saves it. */}
       {saved ? (
         <span title="Saved combination" className="relative z-[1] shrink-0 w-[26px] h-[26px] rounded-[7px] flex items-center justify-center">
@@ -251,7 +253,7 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
           <Icon d={ICON.star} size={16} fill="none" stroke="#8593a4" sw={1.8} cap="butt" />
         </button>
       )}
-      <button type="button" onClick={onGo} disabled={disabled} title={action === 'play' ? 'Clock in with this' : 'Switch to this'} aria-label={`${actionLabel} ${title}`}
+      <button type="button" onClick={onGo} disabled={disabled} title={action === 'play' ? 'Clock in with this' : 'Switch to this'} aria-label={`${actionLabel} ${title}`} aria-pressed={selected}
         className={`flex-1 min-w-0 flex items-center gap-2.5 border-0 bg-transparent p-0 text-left cursor-pointer disabled:cursor-wait after:absolute after:inset-0 after:rounded-[11px] after:content-[''] ${FOCUS}`}>
         <span className="flex-1 min-w-0">
           <span className="block font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink truncate">{title}</span>
