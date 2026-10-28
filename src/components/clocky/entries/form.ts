@@ -161,6 +161,10 @@ export interface RequestState {
   values: FieldValues
   reason: string
   error: string | null
+  /** The 2026 structure, picked with the clock panel's first screen (JobPick): its remount key, See all, Browse. */
+  formKey?: number
+  more?: boolean
+  browsing?: { folder: number | null; query: string } | null
 }
 
 export function blankRequest(p: Partial<RequestState> & { date: string }): RequestState {

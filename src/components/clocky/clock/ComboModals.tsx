@@ -2,7 +2,8 @@
 
 /**
  * The two windows over the clock panel (Clock Panel.dc.html): 1J, save a
- * combination (or edit one), and 1K, manage them (drag to reorder, edit,
+ * combination (or edit one), its job picked on the 2026 structure with the
+ * clock panel's own form (ChooseFields, owner 28 October 2026), and 1K, manage them (drag to reorder, edit,
  * delete). Keyboard as every portal window: focus in, Tab kept inside, Escape
  * closes, focus back (useModal). A refusal from the server shows inside the
  * window, since the panel's own banner sits under it.
@@ -15,6 +16,7 @@ import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
 import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, optionsOf, sortedOptions, suggestName, valueOf, type SaveDraft } from './clock-model'
 import { ErrorBanner } from './ClockViews'
+import { ChooseFields } from './ChooseFields'
 import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
 /** Escape inside an open dropdown closes the dropdown, not the window under it. */
@@ -83,6 +85,8 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
     onChange({ ...save, jobId: next.id, values, name: suggestName(next.short, next.folderId != null, valueOf(values, data.fields, 'activity')) })
   }
   const title = save.editing ? 'Edit combination' : fresh ? 'New combination' : 'Save a combination'
+  // The 2026 structure: the clock panel's own form picks Client, Division, Project and Activity.
+  const s2 = job ? job.structure === 2 : jobsOn(data.jobs, data.today, data.switchDate).some(j => j.structure === 2)
   return (
     <ClockWindow label="Save a combination" width={514} contained={contained} onClose={onClose}>
       <div className="flex flex-col gap-4">
@@ -92,7 +96,16 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
           <input value={save.name} onChange={e => onChange({ ...save, name: e.target.value })}
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[14px] text-tn-ink ${INPUT_FOCUS}`} />
         </label>
-        {jobEdit ? (
+        {s2 ? (
+          <ChooseFields data={data} busy={busy} hideNotes
+            initial={{ jobId: save.jobId || null, activity: valueOf(save.values, data.fields, 'activity'), notes: '' }}
+            onPick={d => {
+              const next = d ? data.jobs.find(j => j.id === d.jobId) : undefined
+              onChange(d && next
+                ? { ...save, jobId: d.jobId, values: d.values, name: save.name.trim() ? save.name : suggestName(next.short, next.folderId != null, valueOf(d.values, data.fields, 'activity')) }
+                : { ...save, jobId: 0 })
+            }} />
+        ) : jobEdit ? (
           <ClockField label={job?.structure === 2 || fresh ? 'Project' : 'Job'} value={save.jobId ? String(save.jobId) : ''} placeholder="Search projects" options={sortedOptions(jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path })))} onChange={setJob} search />
         ) : (
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-[11px] flex items-center gap-3 bg-subtle">
@@ -105,7 +118,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
         )}
         {/* The fields are those of the project's structure, so none until a project is picked. */}
         <div className="grid grid-cols-2 gap-3">
-          {job && keysFor(!!job.isI7).map(key => {
+          {job && !s2 && keysFor(!!job.isI7).map(key => {
             const f = fieldByKey(data.fields, key, job)
             if (!f) return null
             return (

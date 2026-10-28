@@ -28,12 +28,14 @@ function LockedField({ label, text }: { label: string; text: string }) {
   )
 }
 
-export function ChooseFields({ data, busy, initial, onClockIn, onSaveAs, onPick }: {
+export function ChooseFields({ data, busy, initial, hideNotes = false, onClockIn, onSaveAs, onPick }: {
   /** The clock panel's data, or Add time's catalog with `today` set to the entry's day. */
   data: Pick<ClockPanelData, 'jobs' | 'today' | 'switchDate' | 'fields' | 'defaults'>
   busy: boolean
   /** What the form opens with (Add time: the entry being edited, a combination picked); remount it to start again. */
   initial?: { jobId: number | null; activity: string; notes: string }
+  /** No Notes field, and none asked (a correction request, whose "What happened" says it). */
+  hideNotes?: boolean
   /** Picking (Switch to, Add time): no Clock in here; each complete choice (or null once it is not) goes up to whoever asked. */
   onPick?: (d: Draft | null) => void
   /** Clock in with this choice. */
@@ -56,7 +58,9 @@ export function ChooseFields({ data, busy, initial, onClockIn, onSaveAs, onPick 
   const projects = client && (!hasDivisions || division) ? projectsOf(todays, client, division) : []
   const job = data.jobs.find(j => j.id === jobId)
   const activityField = fieldByKey(data.fields, 'activity', job ?? { structure: 2 })
-  const missing = stillToPick({ client, division, hasDivisions, jobId, activity, notes })
+  // Without the field, Notes are never what is missing.
+  const notesFor = (n: string) => (hideNotes ? 'n/a' : n)
+  const missing = stillToPick({ client, division, hasDivisions, jobId, activity, notes: notesFor(notes) })
   const ready = missing.length === 0
   const notesRequired = !!activity && activityNeedsNotes(activity)
 
@@ -66,7 +70,7 @@ export function ChooseFields({ data, busy, initial, onClockIn, onSaveAs, onPick 
     const s = { client, division, jobId, activity, notes, ...n }
     const j = data.jobs.find(x => x.id === s.jobId)
     const hasDiv = !!s.client && divisionsOf(todays, s.client).length > 0
-    onPick(j && stillToPick({ ...s, hasDivisions: hasDiv }).length === 0 ? draftFor(data, j, { activity: s.activity, notes: s.notes }) : null)
+    onPick(j && stillToPick({ ...s, notes: notesFor(s.notes), hasDivisions: hasDiv }).length === 0 ? draftFor(data, j, { activity: s.activity, notes: s.notes }) : null)
   }
   const pickClient = (v: string) => { setClient(v); setDivision(''); setJobId(null); setActivity(''); report({ client: v, division: '', jobId: null, activity: '' }) }
   const pickDivision = (v: string) => { setDivision(v); setJobId(null); setActivity(''); report({ division: v, jobId: null, activity: '' }) }
@@ -113,11 +117,13 @@ export function ChooseFields({ data, busy, initial, onClockIn, onSaveAs, onPick 
         {job ? <BillableFromProject billable={job.billable} /> : <LockedField label="Billable" text="Set by the project" />}
       </div>
 
-      <label className="flex flex-col gap-[5px]">
-        <SectionLabel>{notesRequired ? 'Notes (required for this Activity)' : 'Notes (optional)'}</SectionLabel>
-        <textarea value={notes} onChange={e => typeNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
-          className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
-      </label>
+      {!hideNotes && (
+        <label className="flex flex-col gap-[5px]">
+          <SectionLabel>{notesRequired ? 'Notes (required for this Activity)' : 'Notes (optional)'}</SectionLabel>
+          <textarea value={notes} onChange={e => typeNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
+            className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+        </label>
+      )}
 
       {!ready && <div className="text-[12px] text-muted leading-[1.5]">{`Still to pick: ${missing.join(', ')}.`}</div>}
       <div className="flex items-center gap-2 flex-wrap">

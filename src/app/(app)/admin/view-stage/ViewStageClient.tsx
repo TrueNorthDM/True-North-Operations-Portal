@@ -110,6 +110,19 @@ export default function ViewStageClient({ myName }: { myName: string }) {
 
   const swap = (i: number, t: Tier) => setCols(cs => cs.map((c, j) => (j === i ? t : c)))
 
+  // Full screen (owner, 28 October 2026): one column over the whole window, at its real size.
+  const [full, setFull] = useState<number | null>(null)
+  useEffect(() => {
+    if (full === null) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFull(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [full])
+  const srcOf = (t: Tier) => {
+    const st = IMPERSONATE(t) ? toks[t] : undefined
+    return { st, name: t === 'super_admin' ? `${myName} · you` : (st?.name ?? '-'), src: IMPERSONATE(t) ? (st?.token ? `/?_vs=${encodeURIComponent(st.token)}` : null) : '/' }
+  }
+
   return (
     <div className="-mx-6 -my-8 flex flex-col h-[calc(100vh-var(--chrome-top))] bg-background text-foreground overflow-hidden">
       {/* topbar */}
@@ -198,15 +211,18 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         <div ref={contentRef} className="absolute top-0 left-0" style={{ transform: `translate(${tr.x}px, ${tr.y}px) scale(${tr.s})`, transformOrigin: '0 0', transition: dragging ? 'none' : 'transform .16s ease-out' }}>
           <div className="flex items-start gap-6 p-8">
             {cols.map((t, i) => {
-              const st = IMPERSONATE(t) ? toks[t] : undefined
-              const name = t === 'super_admin' ? `${myName} · you` : (st?.name ?? '-')
-              const src = IMPERSONATE(t) ? (st?.token ? `/?_vs=${encodeURIComponent(st.token)}` : null) : '/'
+              const { st, name, src } = srcOf(t)
               return (
                 <div key={i} className="flex flex-col items-center gap-2" style={{ width: DV.w * DV.base }}>
                   {/* column header */}
                   <div className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal">{LABEL[t]}</span>
+                      <span className="flex-1" />
+                      <button type="button" onClick={() => setFull(i)} disabled={!src} title="Full screen" aria-label={`${LABEL[t]}: full screen`}
+                        className="w-7 h-7 rounded border border-slate-200 bg-subtle text-tn-ink flex items-center justify-center hover:border-tn-teal hover:text-tn-teal disabled:opacity-40">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+                      </button>
                       <Select
                         value={t}
                         onChange={v => swap(i, v as Tier)}
@@ -258,6 +274,29 @@ export default function ViewStageClient({ myName }: { myName: string }) {
             })}
           </div>
         </div>
+
+        {full !== null && cols[full] && (() => {
+          const t = cols[full]
+          const { name, src } = srcOf(t)
+          return (
+            <div role="dialog" aria-modal="true" aria-label={`${LABEL[t]}, full screen`} className="fixed inset-0 z-[90] flex flex-col bg-white" onMouseDown={e => e.stopPropagation()}>
+              <div className="h-12 shrink-0 flex items-center gap-3 px-4 bg-tn-primary text-[#ffffff]">
+                <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[#94C4C5]">{LABEL[t]}</span>
+                <span className="text-sm font-semibold truncate">{name}</span>
+                <span className="flex-1" />
+                <span className="text-xs text-[#ffffff]/70 hidden md:inline">Esc to leave</span>
+                <button type="button" onClick={() => setFull(null)}
+                  className="inline-flex items-center gap-2 rounded-lg px-3 h-8 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-[#eaf4f4]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg>
+                  Exit full screen
+                </button>
+              </div>
+              {src
+                ? <iframe key={`full-${t}-${reloadNonce}`} src={src} title={`${LABEL[t]}, full screen`} className="flex-1 w-full border-0" />
+                : <div className="flex-1 flex items-center justify-center text-sm text-muted">No user of this tier.</div>}
+            </div>
+          )
+        })()}
 
         <div className="absolute left-4 bottom-4 text-[11px] text-muted bg-white/90 border border-slate-200 rounded-lg px-3 py-2 max-w-md shadow-sm">
           Drag the background to move · scroll to zoom. Each tier is a live preview of what that access level sees; the <b className="text-tn-ink font-semibold">Super Admin</b> column is your own session. <b className="text-tn-ink font-semibold">Refresh</b> reloads every column.

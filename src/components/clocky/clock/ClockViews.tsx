@@ -46,7 +46,7 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, draft, switching, formInitial, formKey, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
+export function OffView({ data, phone, more, busy, draft, switching, formInitial, formKey, hideNotes, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
   /** The clock panel's data, or Add time's catalog with `today` set to the entry's day. */
   data: Pick<ClockPanelData, 'jobs' | 'today' | 'switchDate' | 'fields' | 'defaults' | 'combinations' | 'recents' | 'resume'>
   phone: Phone
@@ -59,6 +59,8 @@ export function OffView({ data, phone, more, busy, draft, switching, formInitial
   /** Add time: what the form opens with, and a key that changes when a row refills it. */
   formInitial?: { jobId: number | null; activity: string; notes: string }
   formKey?: string
+  /** A correction request: the form asks no Notes. */
+  hideNotes?: boolean
   more: boolean
   busy: boolean
   /** The project, fields and notes being picked right here, before clocking in. */
@@ -96,7 +98,7 @@ export function OffView({ data, phone, more, busy, draft, switching, formInitial
     <>
       {/* Choose it yourself, always on the screen. On the 2026 structure: Client, Division, Project, Activity, Billable, Notes. Before it: the project, then its fields. */}
       {todays.some(j => j.structure === 2) ? (
-        <ChooseFields key={formKey} data={data} busy={busy} initial={formInitial} onClockIn={onClockIn} onSaveAs={onSaveAs} onPick={switching ? onFormPick : undefined} />
+        <ChooseFields key={formKey} data={data} busy={busy} initial={formInitial} hideNotes={hideNotes} onClockIn={onClockIn} onSaveAs={onSaveAs} onPick={switching ? onFormPick : undefined} />
       ) : (
       <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
         <SectionLabel>Or choose it yourself</SectionLabel>

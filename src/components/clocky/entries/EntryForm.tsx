@@ -18,10 +18,10 @@ import { activityNeedsNotes, overlapLine, structureOn } from '@/lib/timeclock/en
 import { localMinutes } from '@/lib/timeclock/format'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
-import { fieldsForJob, jobsOn, optionsOf, sortedOptions, type Draft } from '@/components/clocky/clock/clock-model'
-import type { ClockChoice } from '@/lib/timeclock/clocky-types'
-import { BillableFromProject, ChooseView, OffView } from '@/components/clocky/clock/ClockViews'
-import { EMPTY_VALUES, FIELD_ORDER, formJob, formSpan, overlapAmong, valuesOf, withCombination, withJob, type FormState } from './form'
+import { fieldsForJob, jobsOn, optionsOf, sortedOptions } from '@/components/clocky/clock/clock-model'
+import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
+import { EMPTY_VALUES, FIELD_ORDER, formJob, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
+import { JobPick } from './JobPick'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
 import {
@@ -79,21 +79,8 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const ownStructure = f.jobcodeId ? job?.structure ?? f.structure : undefined
   const s2 = (ownStructure ?? structureOn(f.date, catalog.switchDate)) === 2
   const todays = jobsOn(catalog.jobs, f.date, catalog.switchDate)
-  // The clock panel's data as of the entry's day: what it offers is what that day can record.
-  const dayData = { ...catalog, today: f.date, resume: null }
   const cleared = { jobcodeId: null, jobPath: '', values: { ...EMPTY_VALUES }, auto: {}, combo: '', error: null }
   const incomplete = s2 && (!f.values.activity || (activityNeedsNotes(f.values.activity) && !f.notes.trim()))
-
-  /** The form, complete: the entry takes its project, Activity and notes. */
-  const fromDraft = (d: Draft) => {
-    const j = catalog.jobs.find(x => x.id === d.jobId)
-    setForm({ jobcodeId: d.jobId, jobPath: j?.path ?? '', values: valuesOf(d.values, fieldsForJob(catalog.fields, j)), auto: {}, notes: d.notes, combo: '', error: null })
-  }
-  /** A combination or a recent row: it fills the form, which opens again with it. */
-  const fromChoice = (c: ClockChoice, key: string) => {
-    const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
-    setForm({ combo: key, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, auto: {}, notes: f.notes || c.notes, formKey: (f.formKey ?? 0) + 1, error: null })
-  }
 
   const disabled = busy || !f.jobcodeId || incomplete || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly && !f.error) || !f.reason.trim()
 
@@ -170,30 +157,9 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         </button>
       )}
 
-      {s2 && f.browsing ? (
-        <div className="flex flex-col gap-3">
-          <button type="button" onClick={() => setForm({ browsing: null })}
-            className="self-start inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
-            <Icon d={ICON.left} size={13} />Back to the form
-          </button>
-          <ChooseView data={dayData} day={f.date} phone={false} first={false} query={f.browsing.query} browse={f.browsing.folder}
-            onQuery={q => setForm({ browsing: { folder: f.browsing?.folder ?? null, query: q } })}
-            onBrowse={id => setForm({ browsing: { folder: id, query: f.browsing?.query ?? '' } })}
-            onPick={id => {
-              const j = catalog.jobs.find(x => x.id === id)
-              setForm({ ...cleared, jobcodeId: id, jobPath: j?.path ?? '', browsing: null, formKey: (f.formKey ?? 0) + 1 })
-            }} />
-        </div>
-      ) : s2 ? (
-        // The clock panel's first screen, picking: the form, My combinations, Recent and Browse fill the entry.
-        <OffView data={dayData} phone={false} more={!!f.more} busy={busy} draft={null}
-          switching={{ picked: f.combo || null, jobcodeId: null, activity: '', action: 'pick' }}
-          formKey={String(f.formKey ?? 0)} formInitial={{ jobId: f.jobcodeId, activity: f.values.activity, notes: f.notes }}
-          onFormPick={d => (d ? fromDraft(d) : setForm({ jobcodeId: null, combo: '' }))}
-          onStart={fromChoice}
-          onToggleMore={() => setForm({ more: !f.more })}
-          onBrowse={() => setForm({ browsing: { folder: null, query: '' } })}
-          onResume={() => {}} onClockIn={() => {}} onPickProject={() => {}} onField={() => {}} onNotes={() => {}} onGo={() => {}} onSaveDraft={() => {}} />
+      {s2 ? (
+        // The clock panel's first screen, picking (JobPick): the form, My combinations, Recent and Browse fill the entry.
+        <JobPick catalog={catalog} day={f.date} busy={busy} s={f} set={p => setForm({ ...p, auto: {}, error: null })} />
       ) : (
         <>
           <LabeledSelect label={job?.structure === 2 ? 'Project' : 'Job'} value={f.jobcodeId ? String(f.jobcodeId) : ''} options={jobOptions} search placeholder="Search jobs"
