@@ -12,16 +12,12 @@
  */
 
 import { cache } from 'react'
-import { headers } from 'next/headers'
 
 interface Tally { path: string; started: number; n: number; sum: number }
 
 // One tally per request while rendering; outside a request (cron, scripts) each call stands alone.
-const tally = cache(async (): Promise<Tally> => {
-  let path = '?'
-  try { path = (await headers()).get('x-perf-path') ?? '?' } catch { /* not in a request */ }
-  return { path, started: performance.now(), n: 0, sum: 0 }
-})
+// No next/headers here: the admin client is also reached from a client component's import graph.
+const tally = cache((): Tally => ({ path: '?', started: performance.now(), n: 0, sum: 0 }))
 
 /** Table or endpoint and method, never the query string (it can carry ids and filters). */
 function what(input: RequestInfo | URL, init?: RequestInit): string {
@@ -30,9 +26,11 @@ function what(input: RequestInfo | URL, init?: RequestInit): string {
   return `${method} ${url.pathname.replace(/^\/(rest|auth|storage)\/v1/, '$1')}`
 }
 
-export const timedFetch: typeof fetch = async (input, init) => {
+/** The fetch for a client; `path` is the page asking (the session client knows it from the proxy's x-perf-path). */
+export const timedFetch = (path?: string | null): typeof fetch => async (input, init) => {
   if (process.env.PERF_DB !== '1') return fetch(input, init)
-  const t = await tally().catch(() => ({ path: '?', started: performance.now(), n: 0, sum: 0 }))
+  const t = tally()
+  if (path && t.path === '?') t.path = path
   const t0 = performance.now()
   try {
     return await fetch(input, init)

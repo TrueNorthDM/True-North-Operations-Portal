@@ -26,7 +26,7 @@ export function createAdminClient() {
     )
   }
   return createClient<Database>(url, key, {
-    global: { headers: gateHeaders(), fetch: timedFetch },
+    global: { headers: gateHeaders(), fetch: timedFetch() },
     auth: {
       // No cookie/session storage, service_role doesn't need to be a "user".
       persistSession: false,
