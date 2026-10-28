@@ -38,6 +38,8 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
   const [error, setError] = useState<string | null>(null)
   const job = catalog.jobs.find(j => j.id === s.jobcodeId)
   const activity = s.values.activity
+  // What is already a row is not offered again (as the short list of a TSheets week).
+  const fresh = (c: { jobcodeId: number; activity: string }) => !taken(gridRowKey(c.jobcodeId, c.activity))
 
   const add = () => {
     if (!job || !activity) return
@@ -60,7 +62,8 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
       ) : (
         <>
           {choices.error && <SaveError text={choices.error} />}
-          <JobPick catalog={{ ...catalog, combinations: choices.combinations, recents: choices.recents }} day={day} busy={false} hideNotes combosLabel={combosLabel} s={s}
+          <JobPick catalog={{ ...catalog, combinations: choices.combinations.filter(fresh), recents: choices.recents.filter(fresh) }} day={day} busy={false} hideNotes combosLabel={combosLabel} s={s}
+            combosEmpty={choices.combinations.length ? 'Every saved combination is already a row this week.' : 'None saved yet.'}
             set={p => { setS(x => ({ ...x, ...p })); setError(null) }} />
         </>
       )}
