@@ -88,13 +88,18 @@ describe('rows and totals', () => {
 
 describe('columns', () => {
   it('shows the defaults, Person only in All', () => {
-    expect(visibleColumns(DEFAULT_COLUMNS, false).map(c => c.key)).toEqual(['time', 'duration', 'job', 'activity', 'billable', 'notes', 'status'])
+    expect(visibleColumns(DEFAULT_COLUMNS, false).map(c => c.key)).toEqual(['time', 'duration', 'client', 'division', 'place', 'activity', 'billable', 'notes', 'status'])
     expect(visibleColumns(DEFAULT_COLUMNS, true)[0].key).toBe('person')
   })
-  it('lets Job and Notes grow and keeps the actions column', () => {
+  it('lets Client, Division, Project and Notes grow and keeps the actions column', () => {
     const vis = visibleColumns(DEFAULT_COLUMNS, false)
-    expect(gridTemplate(vis)).toBe('200px 86px minmax(230px,1.4fr) 150px 80px minmax(160px,1fr) 170px 140px')
-    expect(minWidth(vis)).toBe(200 + 86 + 230 + 150 + 80 + 160 + 170 + 140)
+    expect(gridTemplate(vis)).toBe('164px 86px minmax(150px,.8fr) minmax(130px,.8fr) minmax(140px,1.2fr) 150px 80px minmax(110px,1fr) 128px 140px')
+    // The 1278 px inside the list's border, beside the summary column.
+    expect(minWidth(vis)).toBe(1278)
+  })
+  it('still lets the whole Job path grow when it is chosen', () => {
+    const vis = visibleColumns({ ...DEFAULT_COLUMNS, job: true, client: false, division: false, place: false }, false)
+    expect(gridTemplate(vis)).toBe('164px 86px minmax(230px,1.4fr) 150px 80px minmax(110px,1fr) 128px 140px')
   })
 })
 

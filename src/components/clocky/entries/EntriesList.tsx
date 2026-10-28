@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
+import { placeOf } from '@/components/clocky/clock/clock-model'
 import { COLUMNS, gridTemplate, groupByDay, liveSeconds, minWidth, overTen, visibleColumns, type ColumnKey } from './model'
 import { BTN_MODAL_NAVY, BTN_PAGE_WHITE, BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
 
@@ -50,18 +51,23 @@ function Cell({ k, r, all, nowMs, onEdit }: { k: ColumnKey; r: EntryView; all: b
     return <div className={CELL}><div className="flex gap-1 flex-wrap">{r.pills.map((p, i) => <Pill key={i} text={p.text} tone={p.tone} tip={p.tip} />)}</div></div>
   }
   if (r.rowType === 'time_off') {
-    if (k === 'job') return <div className={`${CELL} text-tn-ink font-semibold`}>{r.path}</div>
+    if (k === 'job' || k === 'place') return <div className={`${CELL} text-tn-ink font-semibold`}>{r.path}</div>
     if (k === 'notes') return <div className={`${CELL} text-muted`}>{r.notes || DASH}</div>
     return <div className={CELL}>{DASH}</div>
   }
   if (k === 'job') return <div className={`${CELL} text-tn-ink font-semibold`} title={r.path}>{r.path}</div>
+  if (k === 'client' || k === 'division' || k === 'place') {
+    const p = placeOf(r.path)
+    const v = k === 'client' ? p.client : k === 'division' ? p.division : p.project
+    return <div className={`${CELL} ${k === 'place' ? 'text-tn-ink font-semibold' : 'text-foreground'}`} title={v || undefined}>{v || DASH}</div>
+  }
   if (k === 'company') return <div className={`${CELL} text-foreground`}>{r.company || DASH}</div>
   if (k === 'project') return <div className={`${CELL} text-foreground`}>{r.project || DASH}</div>
   if (k === 'billable') return <div className={`${CELL} text-foreground`}>{r.billable ? (r.billable === 'yes' ? 'Yes' : 'No') : DASH}</div>
   if (k === 'code') return <div className={`${CELL} text-foreground`}>{r.code || DASH}</div>
   if (k === 'notes') return <div className={`${CELL} text-muted`} title={r.notes || undefined}>{r.notes || DASH}</div>
   // Activity: "+ Add Activity" where it can be fixed, "Missing" where it cannot.
-  if (r.activity) return <div className={`${CELL} text-foreground`}>{r.activity}</div>
+  if (r.activity) return <div className={`${CELL} text-foreground`} title={r.activity}>{r.activity}</div>
   if (r.canEdit) {
     return (
       <div className={CELL}>

@@ -145,25 +145,34 @@ export const overTen = (r: EntryView, nowMs: number): boolean => isWork(r) && li
 
 // ── The list's columns (3A, the Columns menu) ──────────────────────────────
 
-export type ColumnKey = 'person' | 'time' | 'duration' | 'job' | 'company' | 'project' | 'activity' | 'billable' | 'code' | 'notes' | 'status'
+export type ColumnKey = 'person' | 'time' | 'duration' | 'job' | 'client' | 'division' | 'place' | 'company' | 'project' | 'activity' | 'billable' | 'code' | 'notes' | 'status'
 
+// Widths measured from the text they hold plus the cell's 24 px of padding (owner,
+// 28 October 2026: no empty space after Time in to out): "10:00 AM to 11:30 AM" is
+// 137 px, "True North Internal" 128, "Seeker Outreach" 109, Open + Edited 104. With
+// Client, Division and Project the list fits the 1278 px inside its border beside the summary.
 export const COLUMNS: readonly { key: ColumnKey; label: string; width: number }[] = [
   { key: 'person', label: 'Person', width: 170 },
-  { key: 'time', label: 'Time in to out', width: 200 },
+  { key: 'time', label: 'Time in to out', width: 164 },
   { key: 'duration', label: 'Duration', width: 86 },
   { key: 'job', label: 'Job', width: 230 },
-  { key: 'company', label: 'Company', width: 110 },
-  { key: 'project', label: 'Project', width: 110 },
+  // The job's path in its own columns (the 2026 structure: Client, Division, Project). A TSheets job has no division.
+  { key: 'client', label: 'Client', width: 150 },
+  { key: 'division', label: 'Division', width: 130 },
+  { key: 'place', label: 'Project', width: 140 },
+  // The TSheets i7 fields, named so they are not taken for the 2026 Project.
+  { key: 'company', label: 'Company (TSheets)', width: 130 },
+  { key: 'project', label: 'Project (TSheets)', width: 130 },
   { key: 'activity', label: 'Activity', width: 150 },
   { key: 'billable', label: 'Billable', width: 80 },
   { key: 'code', label: 'i7 Code', width: 100 },
-  { key: 'notes', label: 'Notes', width: 160 },
-  { key: 'status', label: 'Status', width: 170 },
+  { key: 'notes', label: 'Notes', width: 110 },
+  { key: 'status', label: 'Status', width: 128 },
 ]
 
-/** What shows until the person changes it: Company, Project and i7 Code hidden. */
+/** What shows until the person changes it: the job in Client, Division and Project (owner, 28 October 2026); the whole path, the TSheets fields and i7 Code hidden. */
 export const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
-  person: true, time: true, duration: true, job: true, company: false, project: false,
+  person: true, time: true, duration: true, job: false, client: true, division: true, place: true, company: false, project: false,
   activity: true, billable: true, code: false, notes: true, status: true,
 }
 
@@ -175,7 +184,7 @@ export function visibleColumns(cols: Record<ColumnKey, boolean>, all: boolean) {
 }
 
 export function gridTemplate(vis: readonly { key: ColumnKey; width: number }[]): string {
-  return vis.map(c => (c.key === 'job' ? `minmax(${c.width}px,1.4fr)` : c.key === 'notes' ? `minmax(${c.width}px,1fr)` : `${c.width}px`)).join(' ') + ` ${ACTIONS_WIDTH}px`
+  return vis.map(c => (c.key === 'job' ? `minmax(${c.width}px,1.4fr)` : c.key === 'place' ? `minmax(${c.width}px,1.2fr)` : c.key === 'client' || c.key === 'division' ? `minmax(${c.width}px,.8fr)` : c.key === 'notes' ? `minmax(${c.width}px,1fr)` : `${c.width}px`)).join(' ') + ` ${ACTIONS_WIDTH}px`
 }
 
 export const minWidth = (vis: readonly { width: number }[]): number => vis.reduce((a, c) => a + c.width, ACTIONS_WIDTH)
