@@ -230,7 +230,7 @@ export function oldI7Code(code: string): Translation {
     : { old: code, to: null, sure: 'none', why: 'Not an i7 code.' }
 }
 
-const norm = (s: string) => s.trim().toLowerCase()
+const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
 const lookup = (list: Translation[]) => (old: string | null | undefined): Translation | null =>
   old ? list.find(t => norm(t.old) === norm(old)) ?? null : null
 
