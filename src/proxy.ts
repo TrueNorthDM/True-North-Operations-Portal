@@ -66,6 +66,8 @@ export async function proxy(request: NextRequest) {
   const vs = request.nextUrl.searchParams.get('_vs')
   if (vs) requestHeaders.set('x-vs', vs)
   else requestHeaders.delete('x-vs')
+  // Measuring navigation speed (lib/supabase/timed-fetch.ts): the page each database call belongs to.
+  if (process.env.PERF_DB === '1') requestHeaders.set('x-perf-path', `${request.nextUrl.pathname}${request.headers.get('rsc') ? ' (nav)' : ''}`)
 
   // Before any session work, and after the header is cleaned: skipping the
   // session must never also skip stripping a forged x-vs.
@@ -113,8 +115,10 @@ export async function proxy(request: NextRequest) {
   // whether its session was revoked, so a signed-out user can pass here for up to
   // the token's hour. Pages then read roles live from the database, and writes
   // verify with getUser() themselves. See lib/auth/session.ts.
+  const claimsAt = performance.now()
   const { data: claimsData } = await supabase.auth.getClaims()
   const user = claimsData?.claims ?? null
+  if (process.env.PERF_DB === '1') console.log(`[perf] proxy ${pathname}${request.headers.get('rsc') ? ' (nav)' : ''}${request.headers.get('next-router-prefetch') ? ' (prefetch)' : ''} getClaims=${Math.round(performance.now() - claimsAt)}ms`)
 
   // Public routes, always allowed
   if (isPublic(pathname)) {

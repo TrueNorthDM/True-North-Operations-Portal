@@ -15,6 +15,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { gateHeaders } from './gate'
+import { timedFetch } from './timed-fetch'
 
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -25,7 +26,7 @@ export function createAdminClient() {
     )
   }
   return createClient<Database>(url, key, {
-    global: { headers: gateHeaders() },
+    global: { headers: gateHeaders(), fetch: timedFetch },
     auth: {
       // No cookie/session storage, service_role doesn't need to be a "user".
       persistSession: false,
