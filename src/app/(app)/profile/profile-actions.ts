@@ -11,6 +11,7 @@
 import { verifiedSession } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
+import { publicFileUrl } from '@/lib/supabase/addresses'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { revalidatePath } from 'next/cache'
 
@@ -58,8 +59,8 @@ export async function uploadMyAvatar(formData: FormData): Promise<Result<{ url: 
   const { error: upErr } = await createUploadClient().storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: true })
   if (upErr) { console.error('[avatar] upload:', upErr.message); return { ok: false, error: 'The photo could not be saved. Try again.' } }
 
-  const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)
-  const url = `${pub.publicUrl}?v=${Date.now()}` // cache-bust, path is stable, so bump the query
+  // On the public address: the admin client talks to the internal one (lib/supabase/addresses.ts).
+  const url = `${publicFileUrl(BUCKET, path)}?v=${Date.now()}` // cache-bust, path is stable, so bump the query
   const { error: updErr } = await admin.from('people').update({ avatar_url: url }).eq('id', personId)
   if (updErr) { console.error('[avatar] save:', updErr.message); return { ok: false, error: 'The photo could not be saved. Try again.' } }
 

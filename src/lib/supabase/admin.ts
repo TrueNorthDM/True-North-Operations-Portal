@@ -16,9 +16,11 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { gateHeaders } from './gate'
 import { timedFetch } from './timed-fetch'
+import { serverDbUrl } from './addresses'
 
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  // The internal address (lib/supabase/addresses.ts): never build a browser link from this client.
+  const url = serverDbUrl()
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
     throw new Error(

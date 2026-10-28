@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   // puppeteer-core drives the server's Chromium for the PDF and image exports
   // (lib/pdf/browser.ts); it stays out of the bundler.
   serverExternalPackages: ['puppeteer-core'],
+  // A page seen in the last 30 seconds opens from the browser's memory instead of
+  // being rendered again (owner, 28 October 2026: switching screens took 2 to 3
+  // seconds). A save (revalidatePath, router.refresh) still clears it at once, so
+  // one's own changes show straight away; someone else's can take up to 30 s.
+  experimental: { staleTimes: { dynamic: 30 } },
   // Old addresses keep working. Every rule lands in one hop, the query string
   // kept, and all are temporary (307) so no browser caches them for good in
   // case a name moves again. Order matters: first match wins, and grant-pass
