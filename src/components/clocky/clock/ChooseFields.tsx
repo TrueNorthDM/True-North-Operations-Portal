@@ -60,6 +60,18 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
   const saveAs = () => { const d = draft(); if (d && ready) onSaveAs(d) }
 
   return (
+    <>
+    {/* Every client, division and project with when to use it, for whoever is unsure (owner: make it obvious). */}
+    <a href="/clocky-hours/which-job" className={`group flex items-center gap-3 rounded-[12px] border border-[#cfe5e5] bg-[#eaf4f4] px-3.5 py-2.5 no-underline hover:border-tn-teal ${FOCUS}`}>
+      <span className="grid place-items-center shrink-0 w-8 h-8 rounded-full bg-tn-teal text-[#ffffff]" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>
+      </span>
+      <span className="flex-1 min-w-0">
+        <b className="block font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">Not sure what to pick?</b>
+        <span className="block text-[12px] text-muted leading-[1.4]">See every client, division and project with when to use it.</span>
+      </span>
+      <span className="shrink-0 text-tn-teal text-[18px] font-bold transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+    </a>
     <div className="flex flex-col gap-3 border border-[var(--panel-border)] rounded-[14px] p-3.5 bg-[#fbfaf7]">
       <SectionLabel>What are you working on?</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
@@ -99,5 +111,6 @@ export function ChooseFields({ data, busy, onClockIn, onSaveAs }: {
         </button>
       </div>
     </div>
+    </>
   )
 }
