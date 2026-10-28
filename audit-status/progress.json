@@ -1,0 +1,450 @@
+{
+  "updated": "2026-10-15T12:00:00-04:00",
+  "tests": {
+    "start": 945,
+    "now": 1359
+  },
+  "waiting": [],
+  "layers": [
+    {
+      "key": "c1",
+      "title": "Layer 1 · Global architecture",
+      "status": "done",
+      "summary": "Map of the system, global inconsistencies and the most urgent fixes.",
+      "commits": [
+        "15c9ad4",
+        "33e72bf",
+        "f664c22"
+      ],
+      "migrations": [
+        "096"
+      ],
+      "items": [
+        "Hours and time off approved only by Super Admins (migration 096)",
+        "Test pages out of the production build (they leaked sample data)",
+        "Donations and purchased hours can no longer be erased by a failed read",
+        "My Team tools read from the right table",
+        "Login page no longer shows text taken from the address",
+        "Dead code, em dashes and two unused libraries removed",
+        "Database types generated from the database itself (37 untyped clients removed)"
+      ],
+      "open": "Items mapped but not approved were carried into the modules that own them."
+    }
+  ],
+  "modules": [
+    {
+      "n": 1,
+      "title": "Login and session",
+      "status": "done",
+      "commits": [
+        "aad115a"
+      ],
+      "highlights": [
+        "Open redirect closed",
+        "Two-step and active/invited checked on every write",
+        "Session cookies httpOnly and secure",
+        "Limits on asking for and typing codes",
+        "A shared link survives two-step"
+      ],
+      "found": 18,
+      "fixed": 17,
+      "decided": 3
+    },
+    {
+      "n": 2,
+      "title": "Access model",
+      "status": "done",
+      "commits": [
+        "2ad969d",
+        "69c70fd"
+      ],
+      "migrations": [
+        "097"
+      ],
+      "highlights": [
+        "Teams and positions are Super Admin only",
+        "Nothing saves during a View Stage preview",
+        "Every access change and its log row in one transaction",
+        "Undo refused when something changed since",
+        "Access levels page split into seven files"
+      ],
+      "found": 20,
+      "fixed": 20,
+      "decided": 7
+    },
+    {
+      "n": 3,
+      "title": "Navigation",
+      "status": "done",
+      "commits": [
+        "1387048"
+      ],
+      "highlights": [
+        "View Stage keeps its preview everywhere, server redirects included",
+        "Search lists people without a link when their page does not open",
+        "Rail, search and drawer usable by keyboard",
+        "Every rail link checked against its page's guard, per level"
+      ],
+      "found": 14,
+      "fixed": 14,
+      "decided": 5
+    },
+    {
+      "n": 4,
+      "title": "People",
+      "status": "done",
+      "commits": [
+        "b7a37ce",
+        "aa3caf7",
+        "b06d54c"
+      ],
+      "migrations": [
+        "098",
+        "099"
+      ],
+      "highlights": [
+        "URGENT, fixed: the server move had reopened salaries, rates, personal contact and six server-only functions in the database (migration 098, in production)",
+        "Daily health check 'Database protections', in production and showing ok",
+        "One company mailbox per person: a login can no longer link to the wrong person (migration 099)",
+        "Removing someone with hours or rates makes them inactive, so reports stay true",
+        "Add person takes name and Work only; Personal and HR stay behind their own items",
+        "Team Leaders see active people only; the Directory list carries emails and Work only with their items",
+        "Every People and Teams action reports its real result, with portal confirmation dialogs",
+        "50 new tests, including what each viewer's person page reads"
+      ],
+      "found": 13,
+      "fixed": 13,
+      "decided": 5,
+      "note": "In production (b06d54c). Three older screens (Projects progress, admin Settings, one action) use a query the new server refuses; fixes will be proposed in modules 10 to 12."
+    },
+    {
+      "n": 5,
+      "title": "Settings and notifications",
+      "status": "done",
+      "scope": "Personal settings, notification rules, the daily summary email",
+      "found": 31,
+      "fixed": 31,
+      "decided": 4,
+      "note": "In production (747499a, migration 100). Health check now daily; all six checks ok.",
+      "commits": [
+        "747499a"
+      ],
+      "migrations": [
+        "100"
+      ],
+      "highlights": [
+        "Notifications and summary emails only for people active and invited",
+        "A failed read can no longer drop the day's summary emails",
+        "System notifications follow access items, not the level",
+        "Summaries claimed before sending: never twice, retries never double",
+        "Sign out everywhere and move to a new phone refused in View Stage",
+        "New health check \"Daily summary email\"; integrations checked daily",
+        "39 new tests, including the first ones for the summary run"
+      ]
+    },
+    {
+      "n": 6,
+      "title": "Clocky Hours and My Hours",
+      "status": "skipped",
+      "scope": "Time clock, approvals, import from QuickBooks Time",
+      "found": 45,
+      "fixed": 0,
+      "decided": 1,
+      "note": "Skipped by your decision: the clock switch-over has not happened yet. Its 45 findings are kept for when it does.",
+      "commits": [],
+      "highlights": []
+    },
+    {
+      "n": 7,
+      "title": "Client reports",
+      "status": "done",
+      "scope": "i7 and Project Hours, PDF/CSV/image exports",
+      "found": 50,
+      "fixed": 42,
+      "decided": 4,
+      "note": "In production (ffe611d, migration 101). Kept as you decided: report holders still see per-person hours beside costs; every hour counts, approved or not.",
+      "commits": [
+        "ffe611d"
+      ],
+      "migrations": [
+        "101"
+      ],
+      "highlights": [
+        "Hand-added hours: the list no longer empties in 30-day months; a batch lands once; the panel touches only its own lines",
+        "A failed read shows as an error, never as $0 or the whole budget left",
+        "Invoice lines add up to their total, to the cent",
+        "Over budget prints as \"over\", in red; the client PDF waits for every rate",
+        "The Project Hours client file carries nothing internal",
+        "Rates start on the 1st; prepaid purchases keep a change history",
+        "26 new tests"
+      ]
+    },
+    {
+      "n": 8,
+      "title": "Report",
+      "status": "done",
+      "scope": "Delivery, held time, lateness, people",
+      "note": "In production (b850e36, bde5867; migrations 102 and 103). 572 false hand-offs moved to a reserve table. Backlog column left as is: it clears on its own by about Nov 25.",
+      "found": 45,
+      "fixed": 43,
+      "decided": 5,
+      "commits": [
+        "b850e36",
+        "bde5867"
+      ],
+      "migrations": [
+        "102",
+        "103"
+      ],
+      "highlights": [
+        "Everyone, last 90 days: Delivered went from 0 (the log's first morning only) to 893 on staging",
+        "Hours over 13 weeks: 7,757h instead of the 2,442h the 1,000-row read saw",
+        "Held time in working days; late and today on the New York day",
+        "My team is the teams you lead; See everyone opens on Everyone; a filter is named everywhere",
+        "The person drawer opens, only for people your People tab lists",
+        "572 false hand-offs moved to a reserve table; repeats and hand-offs of finished steps ignored",
+        "21 new tests"
+      ]
+    },
+    {
+      "n": 9,
+      "title": "My Work",
+      "status": "done",
+      "scope": "Monday work list, team priority, ingest",
+      "note": "In production (6826179; migrations 104 and 105). First production sync on the new code: 37 boards, no failures. The webhook check (S8) moves to module 11.",
+      "found": 60,
+      "fixed": 57,
+      "decided": 6,
+      "commits": [
+        "6826179"
+      ],
+      "migrations": [
+        "104",
+        "105"
+      ],
+      "highlights": [
+        "A bad Monday answer no longer empties a board",
+        "The change log and the board are written together",
+        "Work coming back after a setting is not announced as new",
+        "Monday tables are read by the server only",
+        "Two leaders editing one order get a warning instead of losing work",
+        "123 false events moved to a reserve table",
+        "37 new tests"
+      ]
+    },
+    {
+      "n": 10,
+      "title": "Publishing Goals",
+      "status": "done",
+      "scope": "Publishing targets and the boards snapshot",
+      "found": 40,
+      "fixed": 38,
+      "decided": 7,
+      "note": "In production (8c3d434; migration 106). First production pull on the new code: both boards whole (AAAF 16,553 log entries, HFA 13,424); all 7 health checks ok.",
+      "commits": [
+        "1c9d317",
+        "8c3d434"
+      ],
+      "migrations": [
+        "106"
+      ],
+      "highlights": [
+        "The dashboard opens again for everyone with the tool",
+        "A partial Monday read keeps the good data",
+        "One busy month on AAAF had been cut at 10,000 entries: now read whole",
+        "Weeks in New York; targets judged by the week they applied to",
+        "Publishers editable in Settings; paused languages left out",
+        "Old Supabase login and editor removed from the dashboard",
+        "52 new tests"
+      ]
+    },
+    {
+      "n": 11,
+      "title": "SEO",
+      "status": "done",
+      "scope": "Href Links (AAAF, HFA) and the coming-soon SEO tools",
+      "note": "Per-site access was removed on Oct 13: Href Links follows the tool's team setting, like every other tool (migration 109).",
+      "found": 35,
+      "fixed": 33,
+      "decided": 9,
+      "commits": [
+        "9e320e9",
+        "afc02f4",
+        "5a64c9e"
+      ],
+      "migrations": [
+        "107"
+      ],
+      "highlights": [
+        "The overview counts again (it showed zeros since Oct 5)",
+        "The Monday webhook acts on what Monday says now and processes each delivery once",
+        "Links must be https on the site's own domain; hreflang code escaped",
+        "Per-site access applies everywhere",
+        "Recent activity from Monday shown, failures included",
+        "Href Links tables server-only"
+      ]
+    },
+    {
+      "n": 12,
+      "title": "Admin",
+      "status": "done",
+      "scope": "Company settings, automations, inventories, system health",
+      "found": 35,
+      "fixed": 33,
+      "decided": 9,
+      "note": "In production (9ac9daf; migration 108). Crontab reinstalled: health every 4 hours; all 7 checks ok after the promote.",
+      "commits": [
+        "c18088a",
+        "9ac9daf"
+      ],
+      "migrations": [
+        "108"
+      ],
+      "highlights": [
+        "API tokens and the webhook secret server-only and Super Admin only",
+        "Token changes logged (who and when, never the value)",
+        "Health every 4 hours; could-not-run and long Monday silence count",
+        "One health summary for Automations and the Home banner, warnings in amber",
+        "Tickets retired; Tests checklist and the manual's Access section rewritten",
+        "Lint clean for the first time in the audit"
+      ]
+    }
+  ],
+  "final": {
+    "title": "Layer 3 · Global report",
+    "status": "done",
+    "summary": "The report: report.html, next to this page."
+  },
+  "closing_migrations": [
+    "109",
+    "110"
+  ],
+  "closing": [
+    {
+      "n": 1,
+      "what": "i7: hours added up by first name",
+      "status": "done",
+      "label": "Done",
+      "outcome": "By person; a shared first name shows the last initial (ef65eaf)."
+    },
+    {
+      "n": 2,
+      "what": "i7: percentages that did not add to 100%",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Largest remainder on every list of parts of a whole: PDF, screen, CSV."
+    },
+    {
+      "n": 3,
+      "what": "My Work list read in 1,000-row pieces",
+      "status": "done",
+      "label": "Done",
+      "outcome": "One database call, my_work_list (migration 110)."
+    },
+    {
+      "n": 4,
+      "what": "Jonatas without the i7 report",
+      "status": "closed",
+      "label": "Closed",
+      "outcome": "Your decision: stays without it."
+    },
+    {
+      "n": 5,
+      "what": "Tina's second, unlinked login",
+      "status": "done",
+      "label": "Done",
+      "outcome": "tinag@truenorthdigitalmarketing.com deleted; her access log kept."
+    },
+    {
+      "n": 6,
+      "what": "Href Links site access in View Stage",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Per-site grants removed: the tool's team setting decides (migration 109)."
+    },
+    {
+      "n": 7,
+      "what": "Native dropdowns on the publishing boards page",
+      "status": "done",
+      "label": "Done",
+      "outcome": "The portal's dropdown, with keyboard."
+    },
+    {
+      "n": 8,
+      "what": "i7 period filter",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Inline row from the approved mockup (6698c58)."
+    },
+    {
+      "n": 9,
+      "what": "Two oversized components (ManualHours, PageList)",
+      "status": "done",
+      "label": "Done",
+      "outcome": "PageList 594 to 228 lines, ManualHours 470 to 135; rules in tested modules (1a90ea7)."
+    },
+    {
+      "n": 10,
+      "what": "Four CSV copies and 19 month lists",
+      "status": "done",
+      "label": "Done",
+      "outcome": "One CSV module and one list of month names; 7 CSV builders and 23 lists replaced (cd58e69)."
+    },
+    {
+      "n": 11,
+      "what": "Fallbacks for migrations 084 and 087 in My Work",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Removed."
+    },
+    {
+      "n": 12,
+      "what": "Join casts, throwing actions, browser confirm, QuickBooks timeouts",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Fixed; 3 lesser join casts left for the next audit."
+    },
+    {
+      "n": 13,
+      "what": "Six checklist items that may describe old behaviour",
+      "status": "done",
+      "label": "Done",
+      "outcome": "SIGN-6 and SIGN-9 still right; ACC-8, REP-6, PG-3, PG-7 rewritten. The check found two bugs, both fixed: paused languages on the Home card, \"On time\" for steps with no due date (28ba3c3)."
+    },
+    {
+      "n": 14,
+      "what": "Backup schema undo_095",
+      "status": "done",
+      "label": "Done",
+      "outcome": "Dumped to the server, then dropped."
+    },
+    {
+      "n": 15,
+      "what": "Layer 3: the global report",
+      "status": "done",
+      "label": "Done",
+      "outcome": "This page."
+    },
+    {
+      "n": 16,
+      "what": "History entry for the audit",
+      "status": "closed",
+      "label": "Closed",
+      "outcome": "Your decision: not added."
+    }
+  ],
+  "still_open": [
+    "Module 6, Clocky Hours and My Hours: skipped until the clock switch-over; 45 findings kept for it.",
+    "Three lesser join casts (my-team.ts, href-links data page names, report directory): typed reads, same fix as the three done.",
+    "The empty grants table: merge_people() still writes to it; it can go with the next change to that function.",
+    "Other reports (Full history export, Project Hours) still use the period popover; the i7 inline row can be reused there if wanted."
+  ],
+  "next_steps": [
+    "Run the next audit when the clock switches from QuickBooks Time to Clocky, starting with module 6.",
+    "Keep \"Database protections\" green: any new server-only table or function goes into db_protections_check() in its own migration.",
+    "New pages keep passing coverage.test.ts, so a page never opens without its access check.",
+    "Changes keep the flow: staging first, then promote."
+  ],
+  "report_intro": "From the architecture to each of the twelve modules, then a closing round of sixteen open items. Every change was approved by you, tried on staging first and then promoted to production. Nothing here is waiting for a decision.",
+  "report_footer": "Audit of October 2026 · report written Oct 15, 2026"
+}

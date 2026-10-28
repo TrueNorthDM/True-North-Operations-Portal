@@ -12,6 +12,17 @@
       "autoPort": true
     },
     {
+      "name": "dev-3002",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "./node_modules/next/dist/bin/next",
+        "dev",
+        "-p",
+        "3002"
+      ],
+      "port": 3002
+    },
+    {
       "name": "migration-status",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -19,6 +30,33 @@
         "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('migration-status');const t={'.html':'text/html','.json':'application/json','.png':'image/png'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(root,u);if(fp!==root&&!fp.startsWith(root+p.sep)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4321,'127.0.0.1')"
       ],
       "port": 4321
+    },
+    {
+      "name": "audit-status",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('audit-status');const t={'.html':'text/html','.json':'application/json','.png':'image/png'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(root,u);if(fp!==root&&!fp.startsWith(root+p.sep)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4322,'127.0.0.1')"
+      ],
+      "port": 4322
+    },
+    {
+      "name": "clocky-design",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('Design/design_handoff_clocky');const t={'.html':'text/html; charset=utf-8','.js':'text/javascript','.png':'image/png','.md':'text/plain'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/Clocky (todas as telas).dc.html';const fp=p.join(root,u);if(fp!==root&&!fp.startsWith(root+p.sep)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4323,'127.0.0.1')"
+      ],
+      "port": 4323
+    },
+    {
+      "name": "clocky-design-2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('Design/design_handoff_clocky 2');const t={'.html':'text/html; charset=utf-8','.js':'text/javascript','.png':'image/png','.md':'text/plain'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/Clocky parte 2 (todas as telas).dc.html';const fp=p.join(root,u);if(fp!==root&&!fp.startsWith(root+p.sep)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4324,'127.0.0.1')"
+      ],
+      "port": 4324
     }
   ]
 }

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#e9e6dd;font-family:'Open Sans',sans-serif;color:#435066}a{color:#1E7D7F;text-decoration:none}a:hover{color:#012358}button{font-family:inherit}
+@keyframes tn-spin{to{transform:rotate(360deg)}}@keyframes tn-spin-rev{to{transform:rotate(-360deg)}}
+@keyframes tn-breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.09)}}
+@keyframes tn-core{0%,100%{box-shadow:0 0 22px 5px rgba(242,196,10,.5);transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 44px 13px rgba(242,196,10,.85);transform:translate(-50%,-50%) scale(1.18)}}
+@keyframes tn-ripple{0%{transform:scale(.28);opacity:.55}100%{transform:scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.tn-anim{animation:none!important}}</style>
+</helmet>
+<div style="max-width:1440px;margin:0 auto;padding:36px 28px 80px;display:flex;flex-direction:column;gap:18px">
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:24px;color:#012358;letter-spacing:-.01em">Home, como está hoje</div>
+    <div style="font-size:13.5px;color:#8593a4;line-height:1.5;max-width:860px;text-wrap:pretty">Reconstruída do repositório TrueNorthDM/True-North-Operations-Portal (main, 25 Oct 2026): src/app/(app)/page.tsx e os componentes em src/components/home. Dados de exemplo. Troque o nível para ver o que cada um recebe.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:3px;gap:2px">
+        <sc-for list="{{ levels }}" as="l" hint-placeholder-count="3"><button onClick="{{ l.go }}" style="border:0;cursor:pointer;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;background:{{ l.bg }};color:{{ l.fg }}">{{ l.label }}</button></sc-for>
+      </div>
+      <span style="font-size:12.5px;color:#8593a4">{{ meLine }}</span>
+    </div>
+  </div>
+
+  <div data-screen-label="Home atual" style="border:1px solid #d9d6cc;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(1,35,88,.08)">
+    <div style="height:65px;box-sizing:border-box;flex:none;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px">
+      <a href="#" style="display:flex;align-items:flex-end;gap:10px">
+        <img src="true-north.png" alt="True North Digital Marketing" style="height:36px;width:auto;display:block">
+        <span style="font-size:14px;font-weight:600;color:#64748b;padding-bottom:2px;white-space:nowrap">Operations Portal</span>
+      </a>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button title="Search" style="width:40px;height:40px;border:0;background:transparent;cursor:pointer;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8" style-hover="background:#f1f5f9;color:#012358"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5"></path></svg></button>
+        <button title="Chat and email" style="width:40px;height:40px;border:0;background:transparent;cursor:pointer;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8" style-hover="background:#f1f5f9;color:#012358"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-3.6-.7L3 21l1.9-4.6A8.4 8.4 0 1 1 21 11.5zM8 11h8M8 14h5"></path></svg></button>
+        <sc-if value="{{ canWho }}" hint-placeholder-val="{{ false }}"><button title="Who's working" style="position:relative;width:40px;height:40px;border:0;background:transparent;cursor:pointer;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8" style-hover="background:#f1f5f9;color:#012358"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM22 21v-2a4 4 0 0 0-3-3.870M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span style="position:absolute;top:3px;right:2px;min-width:18px;height:18px;box-sizing:border-box;border-radius:9px;background:#177a52;color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff">4</span></button></sc-if>
+        <button style="height:40px;border:0;cursor:pointer;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:10px;background:#012358;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;color:#fff;white-space:nowrap" style-hover="background:#0a2f6b"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"></path></svg>Clock in</button>
+        <button title="Notifications" style="position:relative;width:40px;height:40px;border:0;background:transparent;cursor:pointer;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8" style-hover="background:#f1f5f9;color:#012358"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span style="position:absolute;top:3px;right:2px;min-width:18px;height:18px;box-sizing:border-box;border-radius:9px;background:#012358;color:#F2C40A;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff">3</span></button>
+      </div>
+    </div>
+
+    <div style="display:flex;min-height:0;background:#f1efe8">
+      <nav style="width:64px;flex:none;background:#012358;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <sc-for list="{{ rail }}" as="it" hint-placeholder-count="11">
+          <sc-if value="{{ it.rule }}" hint-placeholder-val="{{ false }}"><div style="width:28px;height:1px;background:rgba(255,255,255,.16);margin:7px 0"></div></sc-if>
+          <sc-if value="{{ it.isItem }}" hint-placeholder-val="{{ true }}"><button title="{{ it.label }}" aria-label="{{ it.label }}" style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;border-radius:12px;background:{{ it.bg }};color:{{ it.fg }}" style-hover="background:rgba(255,255,255,.10)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ it.d }}"></path></svg></button></sc-if>
+        </sc-for>
+        <div style="margin-top:auto;padding:24px 0 6px;position:sticky;bottom:0"><div style="width:36px;height:36px;border-radius:50%;background:#F2C40A;color:#012358;box-shadow:0 0 0 2px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-size:12px;font-weight:800">{{ meIni }}</div></div>
+      </nav>
+
+      <main style="flex:1;min-width:0;padding:32px 24px;display:flex;flex-direction:column;gap:32px">
+        <section style="position:relative;overflow:hidden;border-radius:16px;padding:36px;background:linear-gradient(160deg,#012358,#0a2f63);box-shadow:0 12px 34px -16px rgba(1,35,88,.55)">
+          {{ sunrise }}
+          <div style="position:relative;max-width:1100px">
+            <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.2em;color:#94C4C5">TRUE NORTH DIGITAL MARKETING</div>
+            <h2 style="font-family:Raleway,sans-serif;font-weight:800;font-size:30px;line-height:1.25;letter-spacing:-.015em;color:#fff;margin:8px 0 0">Hello, {{ first }}</h2>
+            <p style="font-size:15px;color:rgba(255,255,255,.8);margin:6px 0 0">Welcome back to the True North Operations Portal.</p>
+            <p style="font-size:13.5px;color:rgba(255,255,255,.6);margin:4px 0 0;line-height:1.5">Where you find tools, dashboards, and team celebrations, all in one place, gathering and displaying the information that makes your day-to-day more efficient.</p>
+          </div>
+        </section>
+
+        <sc-if value="{{ sheetOn }}" hint-placeholder-val="{{ true }}">
+          <section aria-label="Timesheet to send" style="background:#fff;border:1px solid {{ sheet.border }};border-radius:16px;padding:16px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px">
+            <span style="width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;background:{{ sheet.bg }};color:{{ sheet.fg }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"></path></svg></span>
+            <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:{{ sheet.titleFg }}">{{ sheet.title }}</span>
+              <span style="font-size:13px;color:#8593a4;font-variant-numeric:tabular-nums lining-nums">{{ sheet.sub }}</span>
+            </div>
+            <a href="#" style="display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:10px 16px;background:#012358;color:#fff;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;white-space:nowrap" style-hover="background:#0a2f6b;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="#F2C40A"><path d="M7 4.5v15l12-7.5z"></path></svg>Review and send</a>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ favOn }}" hint-placeholder-val="{{ true }}">
+          <section aria-label="Your favourites" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <h2 style="font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#8593a4;margin:0">Your favourites</h2>
+              <a href="#" style="font-size:12.5px;font-weight:600">Edit</a>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+              <sc-for list="{{ favs }}" as="f" hint-placeholder-count="5">
+                <a href="#" style="display:flex;align-items:center;gap:12px;border-radius:12px;border:1px solid #e2e8f0;background:#fff;padding:14px 16px;transition:all .15s" style-hover="border-color:#1E7D7F;transform:translateY(-1px);box-shadow:0 8px 20px -12px rgba(1,35,88,.35)">
+                  <span style="width:36px;height:36px;border-radius:10px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:rgba(30,125,127,.1);color:#1E7D7F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ f.d }}"></path></svg></span>
+                  <span style="min-width:0;font-family:Raleway,sans-serif;font-weight:800;font-size:14px;color:#012358;line-height:1.35">{{ f.label }}</span>
+                </a>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+        <sc-if value="{{ favOff }}" hint-placeholder-val="{{ false }}">
+          <p style="font-size:13px;color:#8593a4;margin:0">Pin up to five pages you use most to the top of Home in <a href="#" style="font-weight:600">Settings</a>.</p>
+        </sc-if>
+
+        <sc-if value="{{ healthOn }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="border-radius:14px;border:1px solid {{ health.border }};background:{{ health.bg }}">
+            <a href="#" style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px">
+              <span style="flex:none;width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:{{ health.chipBg }};color:{{ health.chipFg }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg></span>
+              <div style="min-width:0;flex:1">
+                <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:13.5px;color:{{ health.titleFg }}">{{ health.title }}</div>
+                <div style="margin-top:4px;font-size:12.5px;color:{{ health.textFg }}"><b>{{ health.service }}</b>: {{ health.detail }}</div>
+              </div>
+              <span style="flex:none;font-size:12.5px;font-weight:700;color:{{ health.titleFg }}">Open Automations →</span>
+            </a>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ i7On }}" hint-placeholder-val="{{ false }}">
+          <a href="#" style="display:block;border-radius:16px;border:1px solid #e2e8f0;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(1,35,88,.06)" style-hover="box-shadow:0 10px 28px -14px rgba(1,35,88,.45)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:#012358;padding:14px 20px">
+              <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:18px;color:#fff">i7 Budget</span>
+              <span style="font-family:Raleway,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.7)">October 2026</span>
+            </div>
+            <div style="padding:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+                <div style="font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">Budget balance</div>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-family:Raleway,sans-serif;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid #c3ead5;color:#1E9E6A;background:#eafaf1"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>On track</span>
+              </div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px">
+                <div>
+                  <div style="font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">Budget total this month</div>
+                  <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:26px;font-family:Raleway,sans-serif;font-weight:800;color:#012358;font-variant-numeric:tabular-nums">$12,400.00</span><span style="font-size:13px;color:#8593a4">($10,000.00 + $2,400.00)</span></div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">Balance left</div>
+                  <div style="font-size:26px;font-family:Raleway,sans-serif;font-weight:800;color:#1E9E6A;font-variant-numeric:tabular-nums">$4,540.00</div>
+                </div>
+              </div>
+              <div style="margin-bottom:8px;font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">Budget used</div>
+              <div style="position:relative;padding-top:20px">
+                <div style="position:absolute;top:0;left:63%;transform:translateX(-50%)"><span style="font-size:12px;font-family:Raleway,sans-serif;font-weight:800;color:#012358">$7,860.00</span></div>
+                <div style="position:relative;height:10px;border-radius:999px;overflow:hidden;background-image:linear-gradient(90deg,#1E7D7F 0%,#31a39a 50%,#f59e0b 78%,#ef4444 100%)"><div style="position:absolute;top:0;bottom:0;right:0;left:63%;background:#eef0f3"></div></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px"><span style="font-family:Raleway,sans-serif;font-weight:800;color:#012358">63% used</span><span style="color:#8593a4">$4,540.00 remaining</span></div>
+            </div>
+          </a>
+        </sc-if>
+
+        <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:24px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:24px">
+            <div style="background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:17px;color:#012358">This week</span><span style="font-size:12px;color:#8593a4">Oct 19 to 25</span></div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8593a4">Who is out</span>
+                <sc-for list="{{ out }}" as="o" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="width:28px;height:28px;border-radius:50%;color:#012358;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;background:{{ o.soft }}">{{ o.ini }}</span>
+                    <span style="flex:1;font-size:13px;color:#012358;font-weight:600">{{ o.name }}</span>
+                    <span style="font-size:12px;color:#8593a4;white-space:nowrap">{{ o.when }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8593a4">Birthdays and anniversaries</span>
+                <sc-for list="{{ celebs }}" as="o" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <sc-if value="{{ o.isBday }}" hint-placeholder-val="{{ true }}"><span style="width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;background:#fdf1e0;color:#b8790a"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg></span></sc-if>
+                    <sc-if value="{{ o.isAnn }}" hint-placeholder-val="{{ false }}"><span style="width:28px;height:28px;box-sizing:border-box;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:15px;background:{{ o.badge.bg }};border:{{ o.badge.border }};color:{{ o.badge.ink }}">{{ o.yrs }}</span></sc-if>
+                    <span style="flex:1;font-size:13px;color:#012358;font-weight:600">{{ o.name }}</span>
+                    <span style="font-size:12px;white-space:nowrap;color:{{ o.whenFg }};font-weight:{{ o.whenW }}">{{ o.when }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8593a4">Next event</span>
+                <div style="display:flex;gap:12px;align-items:center;background:#f4f2ec;border-radius:12px;padding:11px 13px">
+                  <span style="width:44px;flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#c8323d">Wed</span><span style="font-family:Raleway,sans-serif;font-weight:900;font-size:22px;color:#012358">11</span></span>
+                  <span style="display:flex;flex-direction:column;gap:2px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:14px;color:#012358">Veterans Day</span><span style="font-size:12px;color:#435066">Company holiday</span></span>
+                </div>
+              </div>
+              <a href="#" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;align-self:flex-start">Open Agenda<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+            </div>
+
+            <a href="#" aria-label="Publishing goals, open the dashboard" style="display:block;border-radius:16px;border:1px solid #e2e8f0;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(1,35,88,.06);color:inherit" style-hover="border-color:#1E7D7F;box-shadow:0 10px 28px -14px rgba(1,35,88,.45);color:inherit">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:#012358;padding:12px 20px">
+                <h2 style="margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:18px;color:#fff">Publishing goals</h2>
+                <span style="font-family:Raleway,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.7)">Last 4 weeks</span>
+              </div>
+              <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+                <sc-for list="{{ boards }}" as="b" hint-placeholder-count="2">
+                  <div>
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px">
+                      <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:13.5px;color:#012358">{{ b.name }}</span>
+                      <span style="font-size:11.5px;color:#8593a4;white-space:nowrap"><b style="color:#012358">{{ b.hits }}</b> on target<sc-if value="{{ b.en }}" hint-placeholder-val="{{ false }}"> · <b style="color:{{ b.enFg }}">{{ b.enHits }}</b> EN</sc-if></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:16px;padding-bottom:6px">
+                      <span style="width:76px;flex:none"></span>
+                      <span style="width:164px;flex:none;text-align:right;font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">Targeted languages</span>
+                      <sc-if value="{{ b.en }}" hint-placeholder-val="{{ false }}"><span style="width:96px;flex:none;text-align:right;font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#8593a4">English</span></sc-if>
+                      <span style="flex:1"></span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                      <sc-for list="{{ b.weeks }}" as="w" hint-placeholder-count="4">
+                        <div style="display:flex;align-items:center;gap:16px">
+                          <span style="width:76px;flex:none;font-size:11.5px;color:#8593a4;white-space:nowrap;font-variant-numeric:tabular-nums">{{ w.label }}</span>
+                          <span style="width:164px;flex:none;display:flex;align-items:baseline;justify-content:flex-end;gap:8px">
+                            <sc-if value="{{ w.hasOther }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:#8593a4;white-space:nowrap">+{{ w.other }} other</span></sc-if>
+                            <span style="font-size:13px;font-family:Raleway,sans-serif;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;color:{{ w.fg }}">{{ w.count }}</span>
+                            <span style="font-size:26px;line-height:1;font-family:Raleway,sans-serif;font-weight:800;color:#012358;font-variant-numeric:tabular-nums">{{ w.pct }}<span style="font-size:15px">%</span></span>
+                          </span>
+                          <sc-if value="{{ b.en }}" hint-placeholder-val="{{ false }}">
+                            <span style="width:96px;box-sizing:border-box;flex:none;display:flex;align-items:baseline;justify-content:flex-end;gap:6px;border-left:1px solid #e2e8f0;padding-left:12px">
+                              <span style="font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ w.enFg }}">{{ w.enCount }}</span>
+                              <span style="font-size:17px;line-height:1;font-family:Raleway,sans-serif;font-weight:800;color:#012358;font-variant-numeric:tabular-nums">{{ w.enPct }}<span style="font-size:11px">%</span></span>
+                            </span>
+                          </sc-if>
+                          <span style="flex:1;height:10px;border-radius:999px;background:#f4f2ec;overflow:hidden"><span style="display:block;height:100%;border-radius:999px;width:{{ w.barW }};background:{{ w.bar }}"></span></span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="border-top:1px solid #f1f5f9;padding:10px 20px;font-size:11.5px;color:#8593a4">Updated Oct 25, 9:05 AM</div>
+            </a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:24px">
+            <div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px"><h2 style="font-family:Raleway,sans-serif;font-size:18px;font-weight:700;color:#012358;margin:0;letter-spacing:-.015em">Birthdays</h2><span style="font-size:12px;color:#8593a4">October</span></div>
+              <div style="border-radius:12px;border:1px solid #e2e8f0;background:#fff;padding:16px;display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ bdays }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="width:32px;height:32px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:11px;color:#fff;background:{{ p.color }}">{{ p.ini }}</span>
+                    <span style="min-width:0;flex:1">
+                      <span style="display:block;font-size:13px;font-weight:700;color:#012358">{{ p.name }}</span>
+                      <span style="display:inline-block;margin-top:2px;font-family:Raleway,sans-serif;font-weight:800;font-size:9px;letter-spacing:.025em;text-transform:uppercase;border-radius:999px;padding:2px 6px;color:{{ p.color }};background:{{ p.soft }}">{{ p.team }}</span>
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;flex:none;font-family:Raleway,sans-serif;font-weight:800;font-size:12px;color:#b8790a;background:rgba(224,138,30,.12);border-radius:999px;padding:4px 10px 4px 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8H4v8M4 16h16M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01"></path></svg>{{ p.when }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px"><h2 style="font-family:Raleway,sans-serif;font-size:18px;font-weight:700;color:#012358;margin:0;letter-spacing:-.015em">Work anniversaries</h2><span style="font-size:12px;color:#8593a4">October</span></div>
+              <div style="border-radius:12px;border:1px solid #e2e8f0;background:#fff;padding:16px;display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ anns }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="width:32px;height:32px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:11px;color:#fff;background:{{ p.color }}">{{ p.ini }}</span>
+                    <span style="min-width:0;flex:1">
+                      <span style="display:block;font-size:13px;font-weight:700;color:#012358">{{ p.name }}</span>
+                      <span style="display:flex;align-items:center;gap:6px;margin-top:2px">
+                        <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:9px;letter-spacing:.025em;text-transform:uppercase;border-radius:999px;padding:2px 6px;color:{{ p.color }};background:{{ p.soft }}">{{ p.team }}</span>
+                        <span style="font-size:11px;color:#8593a4">Joined {{ p.joined }}</span>
+                      </span>
+                    </span>
+                    <span style="width:40px;height:40px;box-sizing:border-box;border-radius:50%;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;background:{{ p.badge.bg }};border:{{ p.badge.border }};box-shadow:{{ p.badge.ring }};color:{{ p.badge.ink }}"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:17px">{{ p.yrs }}</span><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:5.5px;letter-spacing:.05em;text-transform:uppercase;margin-top:1px">{{ p.yrsWord }}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style="border-radius:12px;border:1px solid #e2e8f0;background:rgba(255,255,255,.6);padding:16px">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px"><h2 style="font-family:Raleway,sans-serif;font-size:18px;font-weight:700;color:#012358;margin:0;letter-spacing:-.015em">Organization</h2><span style="font-size:13px;color:#8593a4">{{ orgTotal }} people</span></div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onClick="{{ openFull }}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#8593a4;border:1px solid #e2e8f0;border-radius:9px;padding:6px 13px;background:#fff;cursor:pointer" style-hover="border-color:#1E7D7F;color:#012358"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>Full screen</button></div>
+          <div ref="{{ orgRef }}" style="width:100%;overflow:hidden;height:{{ orgFitH }}">
+            <div style="position:relative;transform-origin:top left;width:{{ orgW }};height:{{ orgH }};transform:{{ orgScale }}">
+              {{ orgEdges }}
+              <sc-for list="{{ orgCards }}" as="c" hint-placeholder-count="6">
+                <div style="position:absolute;left:{{ c.x }};top:{{ c.y }};width:200px;height:92px;box-sizing:border-box;border-radius:14px;border:1px solid #e2e8f0;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+                  <div style="height:10px;background:{{ c.color }}"></div>
+                  <div style="padding:10px 16px">
+                    <div style="font-family:Raleway,sans-serif;font-size:17px;font-weight:700;color:#012358;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div>
+                    <div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#64748b;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:{{ c.color }}"></span>{{ c.team }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+<sc-if value="{{ full }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:50;background:#f1efe8;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #e2e8f0;background:rgba(255,255,255,.8)">
+      <h2 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Organization</h2>
+      <button onClick="{{ closeFull }}" style="font-size:12px;font-weight:500;color:#475569;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;background:#fff;cursor:pointer">Close ✕</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:32px">
+      <div style="position:relative;width:{{ orgW }};height:{{ orgH }}">
+        {{ orgEdges }}
+        <sc-for list="{{ orgCards }}" as="c" hint-placeholder-count="6">
+          <div style="position:absolute;left:{{ c.x }};top:{{ c.y }};width:200px;height:92px;box-sizing:border-box;border-radius:14px;border:1px solid #e2e8f0;background:#fff;overflow:hidden">
+            <div style="height:10px;background:{{ c.color }}"></div>
+            <div style="padding:10px 16px"><div style="font-family:Raleway,sans-serif;font-size:17px;font-weight:700;color:#012358;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div><div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><span style="width:8px;height:8px;border-radius:50%;background:{{ c.color }}"></span>{{ c.team }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;level&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;user&quot;,&quot;lead&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;admin&quot;,&quot;tsType&quot;:&quot;'user'|'lead'|'admin'&quot;},&quot;timesheet&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;today&quot;,&quot;late&quot;],&quot;default&quot;:&quot;today&quot;,&quot;tsType&quot;:&quot;'none'|'today'|'late'&quot;},&quot;health&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ok&quot;,&quot;warn&quot;,&quot;down&quot;],&quot;default&quot;:&quot;warn&quot;,&quot;tsType&quot;:&quot;'ok'|'warn'|'down'&quot;},&quot;favourites&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  static I = {
+    home: 'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5', work: 'M4 7h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2',
+    chat: 'M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-3.6-.7L3 21l1.9-4.6A8.4 8.4 0 1 1 21 11.5z', emails: 'M3 6h18v12H3zM3 7l9 6 9-6', tools: 'M3 8h18v12H3zM8 8V5h8v3M3 13h18M10 13v3h4v-3',
+    people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75', admin: 'M12 22s8-3 8-9V6l-8-3-8 3v7c0 6 8 9 8 9zM9 12l2 2 4-4',
+    clocky: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2M3.5 9.5h2M18.5 9.5h2', report: 'M21 12a9 9 0 1 1-9-9v9zM21 12h-9V3a9 9 0 0 1 9 9z', pub: 'M22 2 11 13M22 2l-7 20-4-9-9-4z', agenda: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2',
+    requests: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+    chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2', target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01'
+  }
+  static TEAMC = { Africa: '#F0A35E', Graphics: '#C026D3', Leadership: '#1E40AF', Operations: '#92400E', SEO: '#F4C24A', 'Social Media': '#DC2626', 'Special Projects': '#6D5EF5', Translation: '#14B8A6', Web: '#A99BD4', Writers: '#86C06A' }
+  static P = { 'Arnaldo Oliveira': 'Leadership', 'Dave Sharpe': 'Leadership', 'Rock Kai': 'Social Media', 'Tina Gennette': 'Operations', 'Wendy Cacka': 'Web', 'Samuel Manzi': 'Web', 'Justus Tsofa': 'Africa', 'Hosea Moturi': 'Africa', 'Joy Inyele': 'Africa', 'Clarise Nixon': 'Social Media', 'Cheyenne Wilson': 'Writers', 'Stephanie Aguirre': 'Social Media', 'Olivia Hale': 'SEO', 'Amy Prindle': 'Writers', 'Alyssa Sommerville': 'Graphics', 'Saheed Fidimaye': 'Translation', 'Andressa': 'Special Projects', 'Yuliberth': 'Special Projects', 'John': 'Special Projects' }
+  static TREE = ['Dave Sharpe', [['Arnaldo Oliveira', [['Wendy Cacka', ['Samuel Manzi']], 'Tina Gennette', 'Cheyenne Wilson', 'Justus Tsofa', 'Olivia Hale', 'Hosea Moturi', 'Joy Inyele', 'Amy Prindle', 'Alyssa Sommerville', 'Saheed Fidimaye', 'Andressa', 'Yuliberth']], ['Rock Kai', ['Clarise Nixon', 'Stephanie Aguirre']], 'John']]
+  static LEVELS = { user: ['User', 'Cheyenne Wilson'], lead: ['Team Leader', 'Rock Kai'], admin: ['Admin', 'Arnaldo Oliveira'] }
+
+  state = { level: null, full: false, scale: 1 }
+  orgRef = React.createRef()
+
+  componentDidMount() {
+    const el = this.orgRef.current
+    if (!el) return
+    const fit = () => { const w = el.clientWidth; const s = w > 0 ? Math.min(1, w / this.org().w) : 1; if (Math.abs(s - this.state.scale) > 0.001) this.setState({ scale: s }) }
+    fit()
+    this.ro = new ResizeObserver(fit); this.ro.observe(el)
+  }
+  componentWillUnmount() { this.ro && this.ro.disconnect() }
+
+  col(n) { return Component.TEAMC[Component.P[n]] || '#9CA3AF' }
+  ini(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2) }
+
+  org() {
+    if (this._org) return this._org
+    const W = 200, H = 92, GX = 20, GY = 64, RG = 16, COLS = 4
+    const norm = t => (typeof t === 'string' ? { n: t, k: [] } : { n: t[0], k: t[1].map(norm) })
+    const root = norm(Component.TREE)
+    const units = n => {
+      const br = n.k.filter(c => c.k.length), lv = n.k.filter(c => !c.k.length)
+      const u = br.map(b => ({ b, w: width(b) }))
+      if (lv.length) { const cols = Math.min(COLS, lv.length); u.push({ lv, cols, w: cols * W + (cols - 1) * GX }) }
+      return u
+    }
+    const width = n => { if (!n.k.length) return W; const u = units(n); return Math.max(W, u.reduce((a, x) => a + x.w, 0) + GX * (u.length - 1)) }
+    const cards = [], edges = []
+    let maxY = 0
+    const card = (name, x, y) => { cards.push({ name, team: Component.P[name], color: this.col(name), x: x + 'px', y: y + 'px' }); maxY = Math.max(maxY, y + H) }
+    const place = (n, x, y) => {
+      const w = width(n), cx = x + w / 2
+      card(n.n, cx - W / 2, y)
+      if (!n.k.length) return
+      const u = units(n), tot = u.reduce((a, q) => a + q.w, 0) + GX * (u.length - 1)
+      let ux = x + (w - tot) / 2
+      const busY = y + H + GY / 2, cy = y + H + GY
+      for (const q of u) {
+        if (q.b) {
+          const ccx = ux + q.w / 2
+          edges.push({ d: `M${cx} ${y + H}V${busY}H${ccx}V${cy}`, c: this.col(q.b.n) })
+          place(q.b, ux, cy)
+        } else {
+          q.lv.forEach((c, i) => {
+            const ci = i % q.cols, r = Math.floor(i / q.cols), lx = ux + ci * (W + GX), lcx = lx + W / 2, ly = cy + r * (H + RG)
+            if (r === 0) edges.push({ d: `M${cx} ${y + H}V${busY}H${lcx}V${cy}`, c: this.col(c.n) })
+            else edges.push({ d: `M${lcx} ${ly - RG}V${ly}`, c: this.col(c.n) })
+            card(c.n, lx, ly)
+          })
+        }
+        ux += q.w + GX
+      }
+    }
+    const w = width(root)
+    place(root, 0, 0)
+    this._org = { w, h: maxY, cards, edges }
+    return this._org
+  }
+
+  sunrise() {
+    const e = React.createElement, a = (k, s) => e('div', { key: k, className: 'tn-anim', style: s })
+    return e(React.Fragment, null,
+      e('div', { style: { position: 'absolute', left: '86%', top: 14, width: 0, height: 0, pointerEvents: 'none' } },
+        a('r1', { position: 'absolute', left: -330, top: -330, width: 660, height: 660, borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, rgba(242,196,10,.13) 0deg 1.6deg, transparent 1.6deg 15deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', maskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', animation: 'tn-spin 80s linear infinite' }),
+        a('r2', { position: 'absolute', left: -260, top: -260, width: 520, height: 520, borderRadius: '50%', background: 'repeating-conic-gradient(from 4deg, rgba(148,196,197,.10) 0deg 1deg, transparent 1deg 9deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', maskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', animation: 'tn-spin-rev 120s linear infinite' }),
+        ...[0, 1.8, 3.6].map((d, i) => a('p' + i, { position: 'absolute', left: -270, top: -270, width: 540, height: 540, borderRadius: '50%', border: `1px solid ${i === 1 ? 'rgba(242,196,10,.4)' : 'rgba(148,196,197,.5)'}`, animation: 'tn-ripple 5.4s ease-out infinite', animationDelay: d + 's' })),
+        a('c', { position: 'absolute', left: 0, top: 0, width: 12, height: 12, transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#F2C40A', boxShadow: '0 0 26px 6px rgba(242,196,10,.55)', animation: 'tn-core 6.5s ease-in-out infinite' })),
+      a('g', { position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(circle at 86% 34%, rgba(242,196,10,.26), transparent 46%)', transformOrigin: '86% 34%', animation: 'tn-breathe 6.5s ease-in-out infinite' }))
+  }
+
+  badge(y) {
+    const c = ['#1E7D7F', '#6D5EF5', '#CA8A04', '#C026D3', '#1E40AF', '#047857'][(y - 1) % 6]
+    return y % 2 === 0
+      ? { bg: c, border: '0', ring: 'inset 0 0 0 3px ' + c + ', inset 0 0 0 4px rgba(255,255,255,.5)', ink: '#fff' }
+      : { bg: c + '1f', border: '2.75px solid ' + c, ring: 'none', ink: c }
+  }
+
+  renderVals() {
+    const p = this.props, s = this.state
+    const level = s.level || p.level || 'admin'
+    const [lvLabel, me] = Component.LEVELS[level]
+    const rank = { user: 1, lead: 2, admin: 3 }[level]
+    const I = Component.I
+    // src/lib/access/nav.ts RAIL (owner, 25 Oct 2026): day's work | messages | company | Admin.
+    const railDef = [['home', 'Home'], ['agenda', 'Agenda'], ['work', 'My Work'], ['clocky', 'Clocky'], ['requests', 'Requests'], '|', ['chat', 'Chat', 1], ['emails', 'Emails', 1], '|', ['tools', 'Tools'], ['people', 'People'], '|', ['admin', 'Admin']]
+    const rail = railDef.filter(r => r === '|' || r[0] !== 'admin' || rank >= 3)
+      .filter((r, i, all) => r !== '|' || all.slice(i + 1).some(x => x !== '|'))
+      .map(r => r === '|' ? { rule: true, isItem: false } : {
+        rule: false, isItem: true, label: r[2] ? r[1] + ' · Coming soon' : r[1], d: I[r[0]],
+        bg: r[0] === 'home' ? 'rgba(255,255,255,.14)' : 'transparent', fg: r[0] === 'home' ? '#fff' : r[2] ? 'rgba(255,255,255,.40)' : 'rgba(255,255,255,.62)'
+      })
+
+    const sheetMode = p.timesheet ?? 'today'
+    const sheets = {
+      today: { border: '#f0e2a8', bg: '#fdf8e7', fg: '#8a6d1a', titleFg: '#012358', title: 'Your Oct 12 to 25 timesheet closes today', sub: '71h 30m logged for October 12 to 25, 2026. Check your entries and send it when the day is done.' },
+      late: { border: '#f3c6ca', bg: '#fdeeef', fg: '#c8323d', titleFg: '#c8323d', title: 'Your Sep 28 to Oct 11 timesheet is 14 days late', sub: '76h 15m logged for September 28 to October 11, 2026. Send it so it can be approved.' }
+    }
+    const healthMode = p.health ?? 'warn'
+    const healths = {
+      warn: { border: 'rgba(217,148,9,.4)', bg: '#fff7e6', chipBg: 'rgba(217,148,9,.15)', chipFg: '#8a5a00', titleFg: '#6b4500', textFg: '#5c3b00', title: 'QuickBooks Time has a warning', service: 'QuickBooks Time', detail: 'the last sync finished 3 hours ago; it runs every hour.' },
+      down: { border: 'rgba(215,57,47,.35)', bg: '#fdecea', chipBg: 'rgba(215,57,47,.12)', chipFg: '#b3271f', titleFg: '#8f1f18', textFg: '#7d1d17', title: 'Monday is down', service: 'Monday', detail: 'the API answered 401 on the last three checks.' }
+    }
+    const favOn = p.favourites ?? true
+
+    const G = '#167a52', A = '#9a5a00'
+    const wk = ['Sep 21-27', 'Sep 28-Oct 4', 'Oct 5-11', 'Oct 12-18']
+    const mk = (rows, en) => rows.map(([d, t, o, ed, et], i) => {
+      const pct = Math.round(d / t * 100)
+      return { label: wk[i], count: d + '/' + t, pct, fg: d >= t ? G : A, barW: Math.min(100, pct) + '%', bar: d >= t ? '#1E9E6A' : '#e08a1e', hasOther: o > 0, other: o,
+        enCount: en ? ed + '/' + et : '', enPct: en ? Math.round(ed / et * 100) : 0, enFg: ed >= et ? G : A }
+    })
+    const boards = [
+      { name: 'AskAnAdventistFriend', hits: '3/4', en: true, enHits: '2/4', enFg: A, weeks: mk([[12, 11, 0, 2, 2], [9, 11, 2, 0, 2], [11, 11, 0, 2, 2], [13, 11, 1, 1, 2]], true) },
+      { name: 'Hope for Africa', hits: '2/4', en: false, weeks: mk([[6, 6, 0], [4, 6, 0], [7, 6, 0], [5, 6, 0]], false) }
+    ]
+
+    const person = (n, extra) => { const c = this.col(n); return { name: n, ini: this.ini(n), color: c, soft: c + '1a', team: Component.P[n], ...extra } }
+    const o = this.org()
+    const sc = s.scale
+
+    return {
+      levels: Object.entries(Component.LEVELS).map(([k, [l]]) => ({ label: l, go: () => this.setState({ level: k }), bg: k === level ? '#012358' : 'transparent', fg: k === level ? '#fff' : '#435066' })),
+      meLine: `Vendo como ${me} (${lvLabel}).`,
+      rail, meIni: this.ini(me), first: me.split(' ')[0],
+      canWho: rank >= 2,
+      sunrise: this.sunrise(),
+      sheetOn: sheetMode !== 'none', sheet: sheets[sheetMode] || sheets.today,
+      favOn, favOff: !favOn,
+      favs: [['My Work', I.work], ['Report', I.report], ['Publishing Goals', I.pub], ['Directory', I.people], ['Agenda', I.agenda]].map(([label, d]) => ({ label, d })),
+      healthOn: rank >= 3 && healthMode !== 'ok', health: healths[healthMode] || healths.warn,
+      i7On: rank >= 3,
+      out: [['Hosea Moturi', 'Mon to Wed'], ['Amy Prindle', 'Fri']].map(([n, when]) => ({ name: n, ini: this.ini(n), soft: this.col(n) + '55', when })),
+      celebs: [
+        { name: 'Joy Inyele', isBday: true, isAnn: false, when: 'Today', whenFg: '#c8323d', whenW: 800 },
+        { name: 'Cheyenne Wilson', isBday: false, isAnn: true, yrs: 1, badge: this.badge(1), when: 'Wed, Oct 21', whenFg: '#8593a4', whenW: 400 }
+      ],
+      bdays: [person('Olivia Hale', { when: 'Oct 8' }), person('Joy Inyele', { when: 'Oct 25' }), person('Saheed Fidimaye', { when: 'Oct 30' })],
+      anns: [
+        person('Justus Tsofa', { joined: 'Oct 3, 2020', yrs: 6, yrsWord: 'years', badge: this.badge(6) }),
+        person('Cheyenne Wilson', { joined: 'Oct 21, 2025', yrs: 1, yrsWord: 'year', badge: this.badge(1) }),
+        person('Tina Gennette', { joined: 'Oct 29, 2023', yrs: 3, yrsWord: 'years', badge: this.badge(3) })
+      ],
+      boards,
+      orgTotal: o.cards.length,
+      orgRef: this.orgRef,
+      orgW: o.w + 'px', orgH: o.h + 'px', orgFitH: Math.round(o.h * sc) + 'px', orgScale: `scale(${sc})`,
+      orgCards: o.cards,
+      orgEdges: React.createElement('svg', { width: o.w, height: o.h, style: { position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' } },
+        o.edges.map((e, i) => React.createElement('path', { key: i, d: e.d, fill: 'none', stroke: e.c, strokeWidth: 2 }))),
+      full: s.full, openFull: () => this.setState({ full: true }), closeFull: () => this.setState({ full: false })
+    }
+  }
+}
+</script>
+</body>
+</html>

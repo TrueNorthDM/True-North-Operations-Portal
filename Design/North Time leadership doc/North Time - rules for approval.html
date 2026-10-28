@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>North Time: rules for approval</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #1f2a3a; line-height: 1.45; }
+  h1 { font-size: 22pt; color: #012358; margin: 0 0 4pt; }
+  h2 { font-size: 15pt; color: #012358; margin: 20pt 0 6pt; }
+  h3 { font-size: 12pt; color: #1E7D7F; margin: 14pt 0 4pt; }
+  p { margin: 0 0 8pt; }
+  ul { margin: 0 0 8pt; }
+  li { margin: 0 0 3pt; }
+  table { border-collapse: collapse; width: 100%; margin: 4pt 0 10pt; }
+  th, td { border: 1px solid #c9d1dc; padding: 5pt 7pt; vertical-align: top; text-align: left; font-size: 10pt; }
+  th { background: #eef1f5; color: #012358; }
+  .sub { color: #5b6b82; font-size: 10.5pt; }
+  .box { background: #fdf8e7; border: 1px solid #f0e2a8; padding: 8pt 10pt; margin: 6pt 0 10pt; }
+</style>
+</head>
+<body>
+
+<h1>North Time: rules for approval</h1>
+<p class="sub">True North Operations Portal · October 2026 · Prepared by Arnaldo Oliveira</p>
+
+<div class="box">
+<p><b>What I am asking for:</b> approval of the rules below. North Time and the new modules around it (Requests, Agenda, invoices) are built and running on our test site (staging). Nothing has gone live yet.</p>
+<p><b>To try it:</b> <a href="https://staging.truenorthportal.online">https://staging.truenorthportal.online</a>. Sign in the same way you sign in to the live portal. The test site runs on a copy of our data, so nothing you do there changes the live portal.</p>
+<p><b>Still needed before we switch from TSheets:</b> Tina's confirmation of the job codes (what we have today against what we will keep), and Tina's list of the TSheets features and screens she considers essential and cannot lose.</p>
+</div>
+
+<h2>1. The name: North Time</h2>
+<p>The time clock was called "Clocky" while we built it. I asked the Team Leaders for name suggestions. Stephanie was the only one who sent suggestions, and from her list I chose <b>North Time</b>. The new name is already in the portal.</p>
+
+<h2>2. What North Time is</h2>
+<p>North Time replaces TSheets (QuickBooks Time) inside our own portal. Everyone clocks in and out in the portal, sends their timesheet at the end of the period, and the approvals, invoices, time off, reimbursements and the company calendar all happen in the same place, with the same rules for everyone and a full history of who did what and when.</p>
+
+<h2>3. The rules to approve</h2>
+
+<h3>3.1 The clock</h3>
+<ul>
+  <li>Everyone clocks in from the portal's top bar (or from the Home page), choosing a job and its details: Company, Project, Activity and Billable. i7 work also needs its i7 code.</li>
+  <li>People can save favourite combinations of job and details, and switch from one job to another without clocking out.</li>
+  <li>Recorded times are rounded to the quarter hour; the real times are kept in the history.</li>
+  <li>A clock-out can be undone within 10 seconds.</li>
+  <li><b>Safety limit:</b> after 4h 30m on the clock, the person is asked "Still working?". At 5h the clock stops by itself, and the person is asked to confirm when they really stopped (bell and email). Super Admins get a daily summary of automatic stops.</li>
+  <li>Super Admins, Admins and Team Leaders see <b>Who's working</b> right now (Team Leaders see their own team). Super Admins can clock someone out, with a reason that is recorded.</li>
+</ul>
+<div class="box">
+<p><b>Decision needed: breaks and the 5-hour limit</b></p>
+<p>When I presented the safety limit, some Team Leaders objected that they usually stay clocked in for 8 hours straight. When asked about breaks, they said they were told that a break of less than 15 minutes does not need a clock-out. I said I would check with leadership.</p>
+<p>Questions for leadership:</p>
+<ul>
+  <li>Should people be encouraged, or required, to take a longer break after a set number of hours?</li>
+  <li>Lunch: do we pay for the time people stop to have or prepare lunch, or should they clock out for it?</li>
+  <li>Is "breaks under 15 minutes do not need a clock-out" our rule?</li>
+</ul>
+<p><b>A possible next step (not built today):</b> the portal could measure activity on the person's computer and clock them out after a set time of inactivity, for example 15 minutes. Upwork and other platforms already do this. We would confirm it with our legal and privacy rules (including LGPD) before building it.</p>
+<p><b>Why it matters:</b> today nobody checks whether the time recorded was really worked. Time can be recorded that was not worked, on purpose or because someone forgot to fix their timesheet. As the team grows with the new projects and initiatives, this protects True North and gives the Admins peace of mind.</p>
+</div>
+
+<h3>3.2 Time entries and corrections</h3>
+<ul>
+  <li>Hours come from the clock. A User can only shorten their own entries (never add time).</li>
+  <li>To add missing time, a person sends a <b>time correction request</b> to their Team Leader, with a reason. It only counts once approved.</li>
+  <li><b>Team Leaders</b> can add and edit the entries of everyone on the teams they lead, but not their own: like everyone else, they can only shorten their own entries, and ask for a time correction to add missing time. <b>Admins and Super Admins</b> can add and edit everyone's. Every change needs a reason and is kept in the entry's history.</li>
+  <li>Overlapping entries are refused, with a one-click way to fix them.</li>
+</ul>
+
+<h3>3.3 Pay periods and timesheets</h3>
+<ul>
+  <li><b>US employees</b> (and Arnaldo) send their timesheet <b>every 2 weeks</b> (Sunday to Saturday, counting from Sep 27, 2026). <b>Contractors</b> send it <b>monthly</b>. Each person's period is set in their profile, and changes are scheduled from a future date.</li>
+  <li>The person reviews and sends their timesheet with one button. Once sent, those entries are locked.</li>
+  <li><b>Reminders:</b> contractors the day before the month ends; employees the Thursday before their pay period ends. If a timesheet is late, the person and the Super Admins are reminded <b>every morning from the first day late</b> until it is sent.</li>
+  <li>On the day a period closes, the Home page shows a card "Your timesheet closes today" (amber), and "N days late" (red) after that, until it is sent.</li>
+</ul>
+
+<h3>3.4 Approvals: one process for the timesheet and the invoice</h3>
+<ul>
+  <li>The <b>hours</b> are approved by the person's <b>Reports to</b> (from their profile).</li>
+  <li>The <b>invoice</b> is approved by Arnaldo, or by Dave for the people who report to him.</li>
+  <li>When the same person approves both, it is <b>one step</b>: approving the timesheet approves the invoice at the same time. Employees are always one step (their hours go to payroll).</li>
+  <li>Dave's own timesheet (Deputy Director) is recorded without an approval.</li>
+  <li>Any approver can <b>send it back</b> with a reason: the timesheet and the invoice go back together, and everyone who had approved is told.</li>
+  <li>Hours over the allowance cannot be logged (see 3.7), so approvers only see time within it.</li>
+  <li>Every decision keeps who, when and why.</li>
+</ul>
+
+<h3>3.5 Invoices (contractors)</h3>
+<ul>
+  <li><b>The invoice is created automatically when the contractor sends their timesheet.</b> Nobody builds it by hand.</li>
+  <li>Numbered INV-YYYY-NNNN. Lines: hours by client (hours × rate), or the fixed monthly amount, plus the approved reimbursements.</li>
+  <li>Once made, the lines are frozen: a later change of rate never changes an invoice already made. If it is sent back, it is remade.</li>
+  <li>Three ways a contractor can be paid, set in Rates &amp; Costs: <b>hourly</b>, <b>fixed monthly</b> (hours still tracked), or <b>fixed with no timesheet</b> (the invoice is created on the 1st of the month and goes straight to the invoice approver).</li>
+  <li>States: waiting, approved, paid. <b>Only Finance marks an invoice paid</b>, with the date and the payment reference.</li>
+  <li>All invoices are in USD. Every PDF opens a preview first, then downloads.</li>
+  <li>Contractors see their own invoices. Super Admins, Admins and Finance see all of them. <b>Team Leaders never see anyone else's money.</b></li>
+</ul>
+
+<h3>3.6 Requests</h3>
+<table>
+  <tr><th style="width:80pt">Request</th><th style="width:100pt">Who can ask</th><th style="width:75pt">Who decides</th><th style="width:213pt">What happens</th></tr>
+  <tr><td><b>Time off (PTO)</b></td><td>US employees</td><td>Super Admins</td><td>The form shows the working days, the balance and who else is off. On approval: the days go to payroll (Rippling), the team calendar and the time entries. An approved request can be cancelled through a Super Admin.</td></tr>
+  <tr><td><b>Reimbursement</b></td><td>Everyone</td><td>Super Admins</td><td>Receipt required (photo or PDF); several receipts can go in one request (for example a trip). A contractor's goes on their next invoice. An employee's becomes a reimbursement document (RMB-YYYY-NNNN) that Finance pays and marks paid. Contractors ask in USD.</td></tr>
+  <tr><td><b>Extra hours</b></td><td>Everyone with an hours allowance; Team Leaders can ask for someone on their team</td><td>Super Admins</td><td>Asked before going over the allowance. Approved hours are added to the allowance for that week or month.</td></tr>
+</table>
+
+<h3>3.7 Hours allowance</h3>
+<ul>
+  <li>Each person's profile sets how many hours they can log per week or per month, based on their contract (for example part time or full time). This is their <b>allowance</b>.</li>
+  <li><b>Nobody can log hours over their allowance.</b> The clock will not start once the allowance is used, a running clock stops by itself when it is reached, and no one can add time past it. To work more, the person (or their Team Leader) sends an <b>extra hours request</b> first, with the reason. Approved extra hours are added to the allowance for that week or month.</li>
+  <li>The person is told at 90% of their allowance, and again when they reach it.</li>
+  <li><b>Why:</b> some time ago Stephanie sent an invoice with more hours than she usually sends. Only then did the VPO, who approves her timesheet and invoice, find out that she had been authorized to work more hours. With this rule, the approval happens before the hours are worked, and the approver sees it.</li>
+</ul>
+
+<h3>3.8 Agenda (the company calendar)</h3>
+<ul>
+  <li><b>The company calendar</b> (office@truenorthdigitalmarketing.com) holds the official company events, time off and vacations, birthdays (day and month only, never the year, and anyone can opt out), work anniversaries and holidays.</li>
+  <li><b>Super Admins and Admins</b> can change it. Everyone else can only see it.</li>
+  <li><b>Personal calendars:</b> each person can also connect their own calendar and see both together in the Agenda (comes with the Google connection, section 4.1).</li>
+  <li><b>Holidays:</b> everyone sees the company's holiday calendar (the US holidays, the team's official calendar). People who do not live in the US also see their own country's holidays, based on the address in their profile. Super Admins see all of them.</li>
+  <li>Month, week and list views, and a phone layout.</li>
+  <li>The reason for time off is shown only to Super Admins and the person; everyone else sees "Unavailable".</li>
+</ul>
+
+<h3>3.9 Job catalogue and "Which job?"</h3>
+<ul>
+  <li>The jobs, their details and the clients are now owned by the portal, no longer by TSheets.</li>
+  <li>Each job carries a "When to use" line, whether it is billable, and its default Company and Project.</li>
+  <li>The "Which job?" page works as a user manual for the jobs: it lists every job with its "When to use" line and the i7 codes by brand, so people pick the right job.</li>
+</ul>
+
+<h3>3.10 Reports</h3>
+<ul>
+  <li>Who can see reports: Super Admins and Admins (everyone), Team Leaders (their own team), and each person their own hours.</li>
+  <li>Hours by client, team, person and billable, with a PDF export.</li>
+  <li>Money columns only for people allowed to see money. Team Leaders get a Timesheet column instead.</li>
+</ul>
+
+<h3>3.11 Profiles, settings and changes of contract</h3>
+<ul>
+  <li>Each person's profile has a <b>Payments</b> tab (invoices or pay periods, and reimbursements), visible to the person, Super Admins, Admins and Finance.</li>
+  <li>Company settings hold the integrations, the invoice numbering and billing details, the invoice approvers and Finance, the reminders and the timesheet periods.</li>
+  <li><b>Contractor to employee:</b> scheduled from the person's profile. The last contractor month closes with a final invoice, then pay periods and payroll start.</li>
+</ul>
+
+<h3>3.12 The new Home page</h3>
+<ul>
+  <li>Home now answers one question for each person: what do I need to do today.</li>
+  <li>It shows the day with the clock, a "Needs you" list (approvals, requests to decide, system alerts), the person's My Work tasks and requests, their pay period, the Agenda, the i7 budget and the publishing goals, each according to their access level.</li>
+</ul>
+
+<h3>3.13 Privacy and history</h3>
+<ul>
+  <li>Team Leaders never see money: no rates, amounts or invoices other than their own.</li>
+  <li>Every decision and every change to an entry keeps who, when and why.</li>
+</ul>
+
+<h2>4. Built, and waiting to be connected</h2>
+<p>These parts are built. They only need the connection (an account or access key) once the rules are approved.</p>
+
+<h3>4.1 Google Calendar (Agenda)</h3>
+<p>The Agenda is ready to send approved time off and company events to Google Calendar, and to read the Good News calendar. The plan is that each person can also connect their own Google accounts.</p>
+
+<h3>4.2 Rippling (Paylocity when we move)</h3>
+<p>Time off can be requested in the portal and, once approved, sent to Rippling automatically, without anyone going to Rippling. Today an employee has to:</p>
+<ol>
+  <li>request the time off in Rippling,</li>
+  <li>record it again in TSheets (North Time),</li>
+  <li>email Tina with the dates,</li>
+  <li>and Tina adds it to the calendar by hand.</li>
+</ol>
+<p>With the connection, the employee asks once in the portal. On approval it goes to Rippling, to the calendar and to the time entries by itself. The same connection sends the approved hours to payroll. When we move to Paylocity, only the connection changes; the process in the portal stays the same.</p>
+
+<h3>4.3 Timesheet and invoice approved together, without Monday</h3>
+<p>The contractor sends the timesheet, the invoice is created from it, and the approver approves both in one step. The invoice no longer goes through Monday as a separate process.</p>
+
+<h3>4.4 No more downloading invoices by hand</h3>
+<p>Today Devon downloads the invoices from Monday and uploads them to Tina's database on the Drive (and possibly elsewhere). With the invoices made and stored in the portal, this step can be automated, with no manual step left.</p>
+
+<h2>5. What happens to TSheets</h2>
+<p>When we switch to North Time and stop reading from TSheets, the whole TSheets history is kept for future reference. The portal already holds every TSheets time entry since 2017, and the reports read it, so nothing from the past is lost.</p>
+
+<h2>6. Still pending</h2>
+<table>
+  <tr><th style="width:190pt">Item</th><th style="width:100pt">Who</th><th style="width:178pt">Why it matters</th></tr>
+  <tr><td>Confirm the job codes: what we have today against what will stay</td><td>Tina</td><td>The job catalogue is what everyone clocks into from day one.</td></tr>
+  <tr><td>List of TSheets features and screens that must not be lost</td><td>Tina</td><td>So we can confirm North Time covers each of them before the switch.</td></tr>
+  <tr><td>Rates for every contractor in Rates &amp; Costs</td><td>Arnaldo</td><td>An invoice cannot be created for a contractor without a rate (or a fixed amount).</td></tr>
+  <tr><td>Rippling API access and the access key</td><td>Leadership / Rippling admin</td><td>Needed to send time off and payroll hours automatically.</td></tr>
+  <tr><td>Confirm the company holiday list</td><td>Leadership</td><td>The portal uses the US federal holidays today.</td></tr>
+</table>
+
+<h2>7. Next steps</h2>
+<ol>
+  <li>Leadership makes its recommendations and approves the rules in section 3 (or tells me what to change).</li>
+  <li>Tina confirms the job codes and sends her list of essential TSheets features.</li>
+  <li>Arnaldo reviews who can approve timesheets, who can approve invoices, and who can mark invoices and reimbursements paid (each person's Reports to, and the invoice approvers and Finance in Company settings).</li>
+  <li>Arnaldo refines the user manual, creates tutorials, and plans a training session with all Team Leaders.</li>
+  <li>Arnaldo refines the transition plan for the weeks when TSheets and North Time run side by side.</li>
+  <li>We connect Google Calendar and Rippling.</li>
+  <li><b>Rollout in three waves:</b> Admins and Team Leaders move first. After one week, they train their teams. One week later, the rest of the team is onboarded and TSheets can be discontinued.</li>
+</ol>
+
+<h3>Timeline</h3>
+<p>Each date is the day the item must be <b>completed</b>. If the transition goes smoothly, we may bring some of these dates forward.</p>
+<table>
+  <tr><th style="width:110pt">Complete by</th><th style="width:358pt">Item</th></tr>
+  <tr><td>October 30</td><td>Leadership makes its recommendations and approves the rules.</td></tr>
+  <tr><td>October 30</td><td>Tina confirms the job codes and sends her list of essential TSheets features.</td></tr>
+  <tr><td>October 30</td><td>Arnaldo reviews who can approve timesheets and invoices, and who can mark them paid.</td></tr>
+  <tr><td>October 30</td><td>Arnaldo refines the transition plan for the time TSheets and North Time run side by side.</td></tr>
+  <tr><td>November 6</td><td>Arnaldo connects Google and Rippling to the portal, and trains the Team Leaders.</td></tr>
+  <tr><td>November 13</td><td>Admins and Team Leaders start using North Time.</td></tr>
+  <tr><td>November 20</td><td>Admins and Team Leaders have used North Time for a week and send their feedback to Arnaldo.</td></tr>
+  <tr><td>November 27</td><td>Team Leaders have trained their teams.</td></tr>
+  <tr><td>December 1</td><td>Everyone has moved to North Time (the portal). TSheets is no longer used.</td></tr>
+</table>
+
+</body>
+</html>

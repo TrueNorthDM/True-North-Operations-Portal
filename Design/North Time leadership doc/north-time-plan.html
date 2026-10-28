@@ -1,0 +1,371 @@
+
+
+
+
+
+<title>North Time Launch Plan</title>
+<style id="css">
+/* Layout: the checklist (phases of tickable items, in the rollout's order), then how the transition works, then the decisions log; a sticky summary bar on top. */
+:root{
+  --navy:#012358; --gold:#F2C40A; --teal:#1E7D7F; --teal-soft:#eaf4f4;
+  --page:#f1efe8; --card:#ffffff; --subtle:#f4f2ec; --line:#e4e7ec; --rule:#eceff3;
+  --ink:#012358; --body:#435066; --muted:#8593a4; --secondary:#5b6b82;
+  --red:#c8323d; --red-soft:#fdeeef; --amber:#8a6d1a; --amber-soft:#fdf8e7; --green:#0d7a4f; --green-soft:#e6f6ee;
+  --btn-ink:#ffffff;
+  --display:'Raleway',system-ui,sans-serif; --text:'Open Sans',system-ui,sans-serif;
+}
+/* Always light, as the portal (owner, 26 October 2026). */
+:root{color-scheme:light}
+body{background:var(--page);color:var(--body);font-family:var(--text);font-size:14px;line-height:1.5}
+a{color:var(--teal);font-weight:700}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+.hero{background:linear-gradient(180deg,#0a2f63,#012358);color:#ffffff;margin:0 -16px;padding:28px 28px 26px}
+.hero .eyebrow{font:800 11px var(--display);letter-spacing:.2em;color:#94C4C5}
+.hero h1{font:800 30px/1.15 var(--display);letter-spacing:-.015em;margin:8px 0 6px;text-wrap:balance;color:#ffffff}
+.hero p{margin:0;color:rgba(255,255,255,.82);font-size:14.5px}
+.hero a{color:#94C4C5}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--page);padding:14px 0 12px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;border-bottom:1px solid var(--rule)}
+.meter{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px}
+.meter b{font:900 22px var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.meter span{font-size:12.5px;color:var(--secondary)}
+.track{height:10px;border-radius:999px;background:var(--rule);overflow:hidden}
+.fill{height:100%;background:var(--teal);border-radius:999px;transition:width .4s}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:700 12.5px var(--display);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#ffffff}
+.chip:focus-visible,.item input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.status{font-size:12.5px;color:var(--secondary);min-height:18px}
+.part{font:800 13px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin:34px 0 0}
+.phase{background:var(--card);border:1px solid var(--line);border-radius:18px;margin-top:20px;overflow:hidden}
+.phase header{padding:18px 22px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;border-bottom:1px solid var(--rule)}
+.phase h2{font:800 18px var(--display);color:var(--ink);margin:0;text-wrap:balance}
+.phase .when{font:800 11px var(--display);letter-spacing:.12em;color:var(--teal);text-transform:uppercase}
+.phase .count{margin-left:auto;font:700 12.5px var(--display);color:var(--secondary);font-variant-numeric:tabular-nums}
+.toggle{border:1px solid var(--line);background:var(--card);border-radius:9px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);align-self:center}
+.toggle:hover{border-color:var(--teal)}
+.toggle:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.toggle svg{transition:transform .2s}
+.phase.collapsed .toggle svg{transform:rotate(-90deg)}
+.phase.collapsed header{border-bottom:0}
+.phase.collapsed .item,.phase.collapsed .body{display:none}
+.phase .why{flex-basis:100%;margin:0;font-size:13px;color:var(--secondary)}
+.item{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 12px;padding:13px 22px;border-bottom:1px solid var(--rule);align-items:start}
+.item:last-child{border-bottom:0}
+.item input{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:2px 0 0;border:1.5px solid #b9c2cf;border-radius:5px;background:#ffffff;cursor:pointer;display:grid;place-content:center}
+.item input:checked{background:var(--teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/13px no-repeat;border-color:var(--teal)}
+.item input:hover:not(:disabled){border-color:var(--teal)}
+.item input:disabled{cursor:default}
+.item .t{font-weight:700;color:var(--ink);font-size:14px}
+.item .d{grid-column:2;font-size:12.5px;color:var(--secondary);margin-top:2px}
+.item.done .t{text-decoration:line-through;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tag{font:700 11px var(--display);padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--subtle);color:var(--secondary)}
+.tag.who{background:var(--teal-soft);color:var(--teal)}
+.tag.due{background:var(--amber-soft);color:var(--amber)}
+.tag.state-done{background:var(--green-soft);color:var(--green)}
+.tag.state-wip{background:var(--amber-soft);color:var(--amber)}
+.tag.state-decide{background:var(--red-soft);color:var(--red)}
+.body{padding:16px 22px 18px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
+.body p{margin:0}
+.body ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.dec{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:4px 14px;padding:12px 22px;border-bottom:1px solid var(--rule);align-items:start}
+.dec:last-child{border-bottom:0}
+.dec .date{font:800 12px var(--display);color:var(--teal);font-variant-numeric:tabular-nums;padding-top:1px}
+.dec .t{font-weight:700;color:var(--ink)}
+.dec .d{grid-column:2;font-size:12.5px;color:var(--secondary)}
+.foot{margin-top:22px;font-size:12.5px;color:var(--muted)}
+@media (max-width:640px){.item{grid-template-columns:22px minmax(0,1fr)}.tags{grid-column:2;justify-content:flex-start;margin-top:6px}.dec{grid-template-columns:54px minmax(0,1fr)}.dec .tags{grid-column:2}.hero{padding:22px 18px}.hero h1{font-size:24px}}
+@media (prefers-reduced-motion:reduce){.fill,.toggle svg{transition:none}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@700;800;900&display=swap">
+<div id="root"></div>
+<script type="application/json" id="data">
+{"done":["d-data-staging","d-home","d-topay","d-rmb","d-limit","d-tl","d-doc","a-holidays","a-favourites","a-approvers","a-holidays-who","a-structure-changes","a-tasks","a-events","a-waves","a-tsheets-users","a-close","a-joy-rock","c-reports","c-cadence","c-david","c-billing","j-translation","b-manual-hours","b-chrome","b-agenda","b-safety","j-portal-lists","j-freeze","j-check","j-reports","j-links","j-import","j-waves","j-close","b-holidays","b-fonts","a-africa","j-inventory"],"wip":["j-northtime","j-tsheets","b-manual","t-audit","c-catalogue"]}
+</script>
+<script id="app-js">
+// ── Content: the plan, how the transition works, and every decision. The Google Doc's "Transition Plan" tab is made from these same lists. ──
+const DOC_URL = 'https://docs.google.com/document/d/1hO0ITs5DGgwwaBGi42iyAVM1UmRqpmIP-mRPy2cItBs/edit?tab=t.38sp81eepwuo';
+const INTRO = 'Everything left before North Time replaces TSheets on December 1, 2026: the decisions, the data, the new job structure, the parts still to build, testing, production and the rollout. Below the checklist: how the transition works, and every decision with its reason.';
+
+const PHASES = [
+  { id:'done', title:'Done on staging', when:'Oct 25, 2026', why:'Built and on the test site (staging); production unchanged until the owner asks.', items:[
+    ['d-home','The new Home','Day banner with the clock, Needs you / My Work / Requests, Pay period, Agenda, i7 budget and Publishing goals.','Claude',''],
+    ['d-topay','To pay on Home and the rail','One pinned line each, "Invoices to pay" and "Reimbursements to pay", at the top of Needs you for Super Admins, Admins and Finance, with a count on the rail icon.','Claude',''],
+    ['d-rmb','Reimbursement documents list','Requests > Reimbursements > Documents: approved, paid and still to pay, like the Invoices page.','Claude',''],
+    ['d-limit','A real allowance limit','The clock does not run past a person\'s hours allowance; extra hours are asked for and approved first.','Claude',''],
+    ['d-tl','Team Leaders change only their team\'s hours','Their own hours: they can only shorten them or ask for a correction.','Claude',''],
+    ['d-data-staging','September close on staging','Test data so Tina and David can explore: invoices waiting, approved and paid, reimbursement documents, time off.','Claude',''],
+    ['d-doc','Rules document for leadership','This Google Doc, tab "Rules for Approval", with the timeline.','Arnaldo',''],
+  ]},
+  { id:'decide', title:'Decisions', when:'by Oct 30', why:'Leadership, David and Tina; the build and the data depend on them. Each decision taken is also in the Decisions log below.', items:[
+    ['a-rules','Leadership approves the rules','Or says what to change (tab "Rules for Approval").','Leadership','Oct 30'],
+    ['a-breaks','Breaks and lunch policy','Longer breaks after a set time? Is lunch paid or clocked out? Are breaks under 15 minutes really without a clock-out?','Leadership','Oct 30'],
+    ['a-idle','Inactivity auto clock-out: yes or no','Clock out after 15 minutes of inactivity, as Upwork does; legal and privacy check first.','Leadership','Oct 30'],
+    ['a-jobs','New job structure confirmed','David\'s document "Time-Tracking Structure: Job Codes and Activities" with the changes decided on Oct 26 and 27 (see "The new job structure" below); David and Tina confirm the final lists.','David + Tina','Oct 30'],
+    ['a-jobs-open','David\'s open items','The True North Internal project list (TN Website, TN Operations, TN General), one Event activity or separate prep, attendance and follow-up, and the name of the SEO family.','David','Oct 30'],
+    ['a-translation-review','Tina and David review the translation table','Doc tab "Translation Table": 6 lines to confirm (the "1 - True North" job, Training, Fundraising, Research/Development, SME, Translation: Review/Edit); comment on any row.','Tina + David','Oct 30'],
+    ['a-must','Tina\'s list of TSheets features she cannot lose','Then each one is checked against North Time.','Tina','Oct 30'],
+    ['a-africa','Rock confirms the activities cover the Africa team','The Africa team used the TSheets "Tasks" field the most (about 4,200 hours this year); the 26 new activities must cover what they record, especially translation review and writing.','Rock','Oct 30'],
+    ['a-switch','Date the new structure starts','The day TSheets is rebuilt and the old jobs are archived. Set once we see how far the build gets.','Arnaldo','later'],
+    ['a-transition','Transition plan','How TSheets and North Time run side by side. Decided in parts: waves, TSheets users, November close (see the Decisions log); this item closes when the whole plan is approved.','Arnaldo','Oct 30'],
+    ['a-approvers','Who approves and who pays','Hours by each person\'s Reports to; invoices by David for his reports and Arnaldo for everyone else; David\'s own timesheet recorded only; Super Admins Arnaldo and David; Finance Tina, with David as backup.','Arnaldo','Oct 30'],
+    ['a-holidays','Company holiday list','The 11 US federal holidays, no extra days.','Arnaldo','Oct 30'],
+    ['a-holidays-who','Holidays for contractors and people outside the US','Contractors are paid only for hours worked; they may work any day, holidays included, within their allowance. Paid holidays are for US employees.','Arnaldo','Oct 30'],
+    ['a-favourites','Favourites in Settings','Leave Settings as it is.','Arnaldo','Oct 30'],
+    ['a-structure-changes','Changes to David\'s structure','i7 gets divisions; Grants Pass, NAD and events under COE Group; Billable automatic and read only; time off outside the structure.','Arnaldo','Oct 30'],
+    ['a-tasks','The TSheets "Tasks" field','Ends on the switch date; Activity alone says the kind of work.','Arnaldo','Oct 30'],
+    ['a-events','Old projects not in David\'s document','ASI, NAD, Rwanda, GYC, Messiah\'s Mansion, Called! and Internship placed (see the Decisions log).','Arnaldo','Oct 30'],
+    ['a-waves','North Time start dates','Sunday Nov 8: Team Leaders and above. Sunday Nov 22: everyone else.','Arnaldo','Oct 30'],
+    ['a-tsheets-users','TSheets users on their start date','Archived through the TSheets API on the person\'s North Time date, so nobody clocks in both.','Arnaldo','Oct 30'],
+    ['a-close','November close','In the portal for everyone, including the hours still recorded in TSheets.','Arnaldo','Oct 30'],
+    ['a-joy-rock','Joy and Rock','They become True North employees; David\'s "Employer" setting is not needed.','Arnaldo','Oct 30'],
+  ]},
+  { id:'data', title:'Data ready for go-live', when:'by Nov 6', why:'Without it invoices cannot be made and the limits block the wrong people.', items:[
+    ['c-rates','A rate (or fixed amount) for every contractor','Rates & Costs: only one contractor has a Rate / cost on production today; no invoice without it.','Arnaldo','Nov 6'],
+    ['c-allow','Allowances per person','With the hard limit, a wrong allowance stops someone\'s clock.','Arnaldo','Nov 6'],
+    ['c-reports','Reports to for everyone','Done Oct 26: all 30 active people who clock time have a Reports to, confirmed by Arnaldo (checked on the Oct 7 copy; anyone new before go-live needs one).','Arnaldo','Nov 6'],
+    ['c-cadence','Pay cadence per person','Confirmed Oct 26: the 14 US employees and Arnaldo every 2 weeks (Sunday to Saturday from Sep 27, 2026), the other 14 contractors monthly. Applied on production when North Time goes live.','Arnaldo','Nov 6'],
+    ['c-joy-rock','Joy and Rock become employees','Paid through Rippling every 2 weeks like the other employees, no invoices; they record hours the same way.','Arnaldo','Nov 6'],
+    ['c-catalogue','Job catalogue finished in the portal','Written Oct 28 on staging: a "When to use" line for all 70 clients, divisions and projects, from David\'s document, shown in the clock, Add time and Which job?; Billable comes from the project and the i7 codes are the projects. Arnaldo and David read the lines in Company settings > Job catalogue > 2026 structure and correct any.','Arnaldo + David','Nov 6'],
+    ['c-billing','Invoice numbering and billing details','Decided Oct 26 (see the Decisions log). On staging now; typed into Company settings > Invoices on production at go-live.','Arnaldo','Nov 6'],
+    ['c-david','Invite David Sharpe to the portal','Done Oct 26: invited on the live portal; he signs in with his Good News address and the emailed code.','Arnaldo','Nov 6'],
+    ['c-leads-invite','Invite every Team Leader','Not invited yet (Oct 7 copy): Amy Prindle (Writers), John Huynh (Fund Raising), Kathleen Aguilar (Social Media), Rock Kai (Africa), and Ed Wagner (Leadership) if he should sign in. Directory > Portal access > Not invited.','Arnaldo','Nov 6'],
+    ['c-logins','Everyone can sign in','Check every active person is invited (Directory > Portal access): someone not invited cannot ask for a sign-in code.','Arnaldo','Nov 20'],
+    ['r-train','Training session with the Team Leaders','Approvals, team hours, corrections, extra hours, the new job structure and the new Home.','Arnaldo','Nov 6'],
+    ['c-train-tina','Training session with Tina','Her Finance part: Invoices to pay and Reimbursements to pay on Home, the Invoices page, the Documents list, Mark paid, Export CSV.','Arnaldo','Nov 6'],
+  ]},
+  { id:'jobs', title:'New job structure', when:'from Oct 27', why:'David\'s structure in TSheets and North Time, without touching the history.', items:[
+    ['j-inventory','Inventory of the TSheets structure today','Done Oct 28 on live data: Arnaldo ran /api/admin/translation-coverage on production (entries since Jan 1, to Oct 27): 70 values covered, none missing (no new job, field value or i7 code since the staging copy), and the same 5 still to confirm (the 1 - True North job, Translation: Review/Edit, Fundraising, Training, SME). The check stays on production to run again on the switch date.','Claude','Oct 28'],
+    ['j-translation','Translation table, old to new','Done Oct 27: every old job and field value (with its hours in 2026) against its new Client, Division, Project and Activity, in the Doc tab "Translation Table" and in the portal\'s code. Used only to put reports before and after the switch side by side; old entries are never rewritten.','Claude','Oct 30'],
+    ['j-portal-lists','The new structure in the portal','Done Oct 27 on staging: the 70 clients, divisions and projects and the 26 activities are in the portal (migration 125); Company settings > Job catalogue shows the 2026 structure beside the TSheets jobs, where clients, divisions and projects are added, never deleted.','Claude','Nov 1'],
+    ['j-northtime','North Time picker in the new structure','Built Oct 27 on staging: from the switch date the clock and the forms offer the 2026 projects (Client › Division › Project), the Activity by family, Billable from the project (read only), Notes required for Other and Meeting: Other. To test with a switch date on staging.','Claude','Nov 6'],
+    ['j-tsheets','Rebuild TSheets through its API','Ready Oct 27 (dry run on staging): archive the 6 old custom fields, create the 70 clients, divisions and projects and the Activity field with its 26 values, archive the 23 old work jobs (time off stays). Runs on the switch date only, switched on by hand.','Claude','switch date'],
+    ['j-freeze','Freeze the old structure','Done Oct 27 on staging (portal side): from the switch date a TSheets job or option can be switched off but not renamed or moved; the TSheets rebuild leaves the old names alone.','Claude','switch date'],
+    ['j-import','The import reads the new structure','Done Oct 27: the rebuild writes each new TSheets id onto the portal\'s 2026 row, so the import brings every entry in one to one, with no copies.','Claude','switch date'],
+    ['j-reports','Reports read the right structure by date','Done Oct 27 on staging: the i7 report reads a 2026 i7 project as its code under its division (Moisture Meters is the MME block); Project hours reads AAAF, GP Church, GP School and the Africa division\'s projects beside the old field, each entry once; Grants Pass, North Time reports, Approvals and Who\'s working read the 2026 Activity and the project\'s Billable.','Claude','Nov 6'],
+    ['j-check','Transition report','Done Oct 27 on staging: North Time > TSheets transition (Super Admins and Admins) lists every TSheets entry from the switch date as recorded and as the portal read it, problems first (unknown job, an old job after the switch, Activity or Notes missing).','Claude','Nov 6'],
+    ['j-links','Monday boards and favourites','Done Oct 27 on staging: a Monday board can be linked to a 2026 project by its full path. No board is linked to a job and nobody has saved a favourite on the Oct 7 copy; favourites on old jobs simply stop showing from the switch date (nothing deleted).','Claude','Nov 6'],
+    ['j-waves','North Time start date per person','Done Oct 27 on staging (migration 129): Company settings > North Time rollout holds the two dates and who is in each wave (Team Leader and above automatically, anyone can be moved). Before their date a person cannot clock in North Time; from it the import sets their TSheets entries aside in "Clocked in TSheets after switching" instead of counting them twice, and their TSheets user is archived (switched on by hand: TSHEETS_ARCHIVE_USERS=on). The dates are left empty on staging so people can keep testing the clock. Since Oct 27 each set-aside entry has Count it (it becomes a Time entry; past the allowance it needs a reason) or Discard it, with a Decided tab and a count of those to decide (migration 130).','Claude','Nov 6'],
+    ['j-close','November close for people still on TSheets','Done Oct 27: a timesheet\'s invoice counts every hour of the period whatever app it came from, so people who clocked part of November in TSheets are invoiced and approved in the portal like everyone else. Devon\'s manual invoices stop.','Claude','Nov 30'],
+  ]},
+  { id:'build', title:'Still to build or connect', when:'by Nov 6', why:'Parts that need an account, a key or a decision above.', items:[
+    ['b-google','Google Calendar','Company calendar (office@) and each person\'s own calendars by Google sign-in; who sees each event.','Claude','Nov 6'],
+    ['b-rippling','Rippling','Access key from the Rippling admin; time off and payroll hours go there by themselves (Paylocity later).','Leadership + Claude','Nov 6'],
+    ['b-drive','Invoices to Tina\'s Drive database','Replaces Devon\'s manual download and upload.','Claude','Nov 6'],
+    ['b-idle','Inactivity auto clock-out','Only if leadership says yes.','Claude','after decision'],
+    ['b-holidays','Holidays by the person\'s country','Done Oct 23 on staging: in the Agenda each person sees the US holidays plus their own country\'s (from the profile address, else the location), each with its country\'s flag; Super Admins and Admins see every country. Shown only: paid holidays stay the 11 US federal ones, for US employees.','Claude','Nov 6'],
+    ['b-safety','Allowance stops on the Clock safety page','Done Oct 27 on staging: clocks stopped at the hours allowance are listed on Clock safety with the reason "Allowance reached" (migration 126).','Claude','Nov 6'],
+    ['b-manual-hours','Limit for manual hours and the import','Done Oct 27 on staging: the client reports\' manual hours now stop at the allowance like the clock (all or nothing per batch). The QuickBooks import is not cut, because it is history recorded elsewhere; its hours already count, raise the "over the allowance" notices and need a reason in Approvals.','Claude','Nov 6'],
+    ['b-fonts','Fonts inside the project','Done Oct 27 on staging: the six typefaces are files in the project, the same ones Google served, so no build downloads them (twice on Oct 25 a build failed doing so). Pages look exactly as before.','Claude','Nov 6'],
+    ['b-chrome','Top bar height fix','Done Oct 27 on staging: the bar\'s height (69px) is one value the rail, drawers and panels all follow.','Claude','Nov 6'],
+    ['b-agenda','Agenda: edit and delete events','Done Oct 27 on staging: Edit and Delete on each event for whoever may create it (Admins every event, Team Leaders their team\'s); the Google Calendar copy is updated or removed.','Claude','Nov 13'],
+    ['b-manual','User manual and tutorials','Draft on staging Oct 27: Admin > System manual has Home, North Time, a quick start for everyone, contractors, Team Leaders and Admins/Finance, "Moving from TSheets" and "Where do I find...". Arnaldo reviews it; the short tutorials are still to make.','Arnaldo','Nov 6'],
+  ]},
+  { id:'test', title:'Testing on staging', when:'Nov 2 to 6', why:'Real people, real screens, before production and before the first wave on Nov 8.', items:[
+    ['t-tina','Tina tests To pay, Invoices and Documents','Mark paid, filters, Export CSV.','Tina','Nov 6'],
+    ['t-david','David tests approvals','Invite him on staging first.','Arnaldo','Nov 6'],
+    ['t-leads','Team Leaders test their screens','Approvals without money, team hours, corrections.','Team Leaders','Nov 6'],
+    ['t-audit','Full audit before production','Code audit done Oct 27 on staging by two reviewers: fixed a 2026 Activity edit that was silently lost, week grid rows that merged two Activities, a date moved across the switch date, manual hours on the wrong structure, and a pending extra-hours request that could hide. Still to do with people: click through every screen on staging, desktop and phone, with the switch date on and off.','Claude','Nov 6'],
+  ]},
+  { id:'prod', title:'Production', when:'by Nov 7', why:'Only when the owner says so; it must be live before the first wave on Sunday Nov 8.', items:[
+    ['p-migrations','Database changes on production','Migrations 112 onward, in order.','Claude','Nov 7'],
+    ['p-code','Promote the code','The staging version that passed the audit.','Claude','Nov 7'],
+    ['p-cron','Scheduled jobs','Safety, reminders, outbox, invoices on the 1st.','Claude','Nov 7'],
+    ['p-settings','Company settings on production','Numbering and billing (decided Oct 26), reminders, Finance (Tina and David), the North Time rollout dates (Nov 8 and Nov 22), the switch date, the Rippling key, Google calendars.','Arnaldo','Nov 7'],
+  ]},
+  { id:'roll', title:'Rollout', when:'Nov 8 to Dec 1', why:'Two waves, then TSheets stops.', items:[
+    ['r-wave1','Wave 1: Team Leaders and above start on North Time','Sunday Nov 8, the first day of a pay period. Everyone else stays on TSheets.','Admins + Team Leaders','Nov 8'],
+    ['r-feedback','Two weeks of use, feedback to Arnaldo','Fixes go in before the teams move.','Team Leaders','Nov 20'],
+    ['r-teams','Team Leaders train their teams','','Team Leaders','Nov 21'],
+    ['r-wave2','Wave 2: everyone else on North Time','Sunday Nov 22, the first day of a pay period. Their TSheets users are archived that day.','Everyone','Nov 22'],
+    ['r-close','November close in the portal','Everyone\'s November timesheets and invoices, whether the hours came from TSheets or North Time.','Claude + Tina','Dec 1'],
+    ['r-tsheets-end','TSheets no longer used','The TSheets history stays in the portal for reference.','Arnaldo','Dec 1'],
+  ]},
+];
+
+// How the transition works. A string is a paragraph; a list of strings is a bulleted list.
+const CONCEPTS = [
+  { id:'k-structure', title:'The new job structure', body:[
+    'From David\'s document "Time-Tracking Structure: Job Codes and Activities", with the changes decided on Oct 26 and 27. Every block of time answers: who pays (Client), what it serves (Division and Project), what kind of work it was (Activity) and whether True North can invoice it (Billable). The old TSheets "Job" level goes away.',
+    ['Client: i7 Marketing, COE Group or True North Internal.',
+     'Division: the program area. i7 Marketing has four: i7 Marketing, Wagner Meters, Bessemeter and Moisture Meters. COE Group has Seeker Outreach, Education, Sharing Tools, Fundraising, Trust & Authority, Africa, Client: Grants Pass, Client: NAD and Event: ASI. True North Internal has none.',
+     'Project: the body of work. For i7 the project is the i7 code (for example WM-MKTG under Wagner Meters). Every COE division has a "[Name] General" project for work that spans its projects (Fundraising General, ASI General, NAD General). Grants Pass has GP Church and GP School. True North Internal has TN Website, TN Operations and TN General.',
+     'Activity: the kind of work, one shared list of 26 in families (Content, Creative, Web & Systems, SEO, Marketing, Outreach, Events, Operations).',
+     'Billable: comes from the project and is shown read only. i7 and COE Group are billable; True North Internal is not. The "50%" option is retired.',
+     'Notes: optional, required for "Other" and "Meeting: Other". For i7, the assignment name and the brands covered go in Notes.'],
+    'Time off (Vacation, Sick, Holiday, Jury duty, Rwanda-Incidental) stays outside the structure, as it is today: asked in Requests, never in the job picker. Items are archived, never deleted: an archived item leaves the menus but all its history stays in the reports.',
+  ]},
+  { id:'k-switch', title:'The switch date and the history', body:[
+    'The switch date is the day the new structure starts. On that day TSheets is rebuilt through its API (Client > Division > Project as jobs, a new Activity field with the 26 values, Billable on each project) and the old jobs, the old fields and the Tasks field are archived. It does not have to be the same day as the North Time waves.',
+    'Nothing before the switch date changes. Old entries keep their old job and fields, and the old structure is frozen: it cannot be renamed or moved, because the portal shows each entry with its job\'s current name.',
+  ]},
+  { id:'k-reports', title:'How the reports read both structures', body:[
+    'Every report decides by the date of each entry: the old fields before the switch date, the new structure from it.',
+    ['i7 Budget Usage: before, by the "1 - i7 Code" field; after, by the project (the same codes) under its division. The Moisture Meters division is the separate MME block. Same report, same numbers.',
+     'Project hours and Grants Pass: before, by the old "2 Project" field and the GP job names; after, by the new project or division (AAAF, Africa, Grants Pass > GP Church and GP School).',
+     'A period that crosses the switch date adds the two halves through the translation table.'],
+    'The translation table is a dictionary at the level of report rows (old project "AAAF" is new project AAAF, old "Africa" is the Africa division). It never changes an entry. Old values with no new home (In-House, GYC, Messiah\'s Mansion, Called!, Internship) stay as their own rows in the history.',
+  ]},
+  { id:'k-why-rebuild', title:'Why TSheets is rebuilt instead of translated', body:[
+    'Translating each new TSheets entry from the old structure to the new one would mean guessing. An entry "1 - True North > Content", Activity "Translation", Project "In-House", Company "COE" belongs to COE Group, but which division and which project? The old entry does not say.',
+    'Rebuilt on the switch date, TSheets records in the new structure from day one, and the import brings each entry in one to one, with nothing to guess.',
+  ]},
+  { id:'k-waves', title:'TSheets and North Time side by side', body:[
+    'Two waves, set once in Company settings and applied by the portal on their own: Sunday Nov 8 for Team Leaders and above (taken from the access levels, plus anyone added by hand), Sunday Nov 22 for everyone else. Both are the first day of a pay period, so no employee\'s period is split between the two apps.',
+    'On each person\'s date, with no one doing anything:',
+    ['North Time\'s clock opens for them; before it they see the day they start.',
+     'The import stops taking their TSheets hours from that date.',
+     'Their TSheets user is archived through the API, so they cannot clock there.',
+     'Any TSheets entry dated after their switch is listed for a decision instead of being counted twice.'],
+    'The reports do not care where an hour came from: everything lands in the same table in the portal. North Time hours arrive at once; TSheets hours arrive with the import, every 4 hours.',
+  ]},
+  { id:'k-check', title:'The transition report', body:[
+    'While both apps run, a page lists every TSheets entry from the switch date: what was recorded in TSheets (job path and fields) next to how the portal read it (Client, Division, Project, Activity, Billable). Anything the portal could not read is at the top, so it is fixed in TSheets before a report uses it.',
+  ]},
+  { id:'k-close', title:'The November close', body:[
+    'November closes in the portal for everyone. People still on TSheets for part of the month have their timesheets and invoices made from the imported hours, the same way as North Time hours, and approved the same way. Devon\'s manual invoices stop.',
+  ]},
+  { id:'k-mirror', title:'This plan and the Google Doc', body:[
+    'The North Time Launch Plan (Claude artifact) and the "Transition Plan" tab of the Google Doc "North Time - Explanations & Rules" are the same content. The plan is the master: before each update Claude reads the Doc and brings over anything ticked or written there, then updates both together.',
+  ]},
+];
+
+// Every decision: [date, decision, what and why, who decided].
+const DECISIONS = [
+  ['Oct 22','North Time is the module\'s name','Renamed from "Clocky"; nothing North Time goes to production until the owner asks.','Arnaldo'],
+  ['Oct 25','A real allowance limit','The clock stops at a person\'s hours allowance instead of only warning; extra hours are asked for first, so nobody works hours that were not approved.','Arnaldo'],
+  ['Oct 25','Team Leaders change only their team\'s hours','Their own hours they can only shorten or ask to correct, so nobody approves their own time.','Arnaldo'],
+  ['Oct 25','Everyone can see their own report','A person sees the report of their own hours; Team Leaders never see money.','Arnaldo'],
+  ['Oct 25','"To pay": one line per kind','Instead of one row per invoice, a single pinned line "Invoices to pay" (and "Reimbursements to pay") with the count, the total and what is past due, for Super Admins, Admins and Finance.','Arnaldo'],
+  ['Oct 26','Who approves and who pays','Hours: each person\'s Reports to, as today, employees included. Invoices: David for the people who report to him, Arnaldo for everyone else. David\'s own timesheet is recorded only. Super Admins: Arnaldo and David (always at least two). Finance: Tina, with David as backup.','Arnaldo'],
+  ['Oct 26','Company holidays','The 11 US federal holidays, no extra days.','Arnaldo'],
+  ['Oct 26','Holidays and contractors','Contractors are paid only for hours worked; holidays do not change that, and they may work any day within their allowance. Paid holidays are for US employees.','Arnaldo'],
+  ['Oct 26','Reports to and pay cadence confirmed','All 30 active people have a Reports to. US employees and Arnaldo every 2 weeks (Sunday to Saturday from Sep 27, 2026); the other contractors monthly.','Arnaldo'],
+  ['Oct 26','Favourites in Settings','Left as they are.','Arnaldo'],
+  ['Oct 26','Invoice numbering','INV-2026-001 and RMB-2026-001. The count never restarts: in January only the year changes (INV-2026-059, then INV-2027-060). Prefixes INV and RMB kept.','Arnaldo'],
+  ['Oct 26','Billing details on invoices','Billed to True North Digital Marketing, 5150 Pleasant Creek Rd., Rogue River, OR 97537, United States, office@truenorthdigitalmarketing.com; payment in 15 days.','Arnaldo'],
+  ['Oct 26','David\'s job structure adopted','Client, Division, Project, Activity, Billable and Notes replace the TSheets job tree, as in David\'s document.','Arnaldo'],
+  ['Oct 26','i7 gets divisions','i7 Marketing, Wagner Meters, Bessemeter and Moisture Meters, with the i7 codes as projects; it matches the i7 report, where Moisture Meters is a separate block.','Arnaldo'],
+  ['Oct 26','Grants Pass','COE Group > Client: Grants Pass > GP Church and GP School; the names stay exactly so the Grants Pass report keeps finding them.','Arnaldo'],
+  ['Oct 26','Billable is automatic','Taken from the project; the person still sees it, read only.','Arnaldo'],
+  ['Oct 26','Time off stays outside the structure','Vacation, Sick, Holiday, Jury duty and Rwanda-Incidental stay as they are: they feed time off and Rippling.','Arnaldo'],
+  ['Oct 26','Joy and Rock become True North employees','Paid through Rippling like the other employees, no invoices; they record hours the same way. David\'s "Employer" setting is not needed.','Arnaldo'],
+  ['Oct 26','Menus by role left out','Everyone sees the same lists for now.','Arnaldo'],
+  ['Oct 26','The history is never rewritten','Old entries keep the old structure; the old structure is frozen on the switch date; reports read by date and compare through the translation table.','Arnaldo'],
+  ['Oct 26','TSheets rebuilt through its API','Claude creates the new structure in TSheets and archives the old one on the switch date, so whoever is still on TSheets records in the new structure.','Arnaldo'],
+  ['Oct 26','A transition report','Shows each TSheets entry as recorded and as the portal read it, while both apps run.','Arnaldo'],
+  ['Oct 27','Wave dates','Team Leaders and above on Sunday Nov 8; everyone else on Sunday Nov 22; set once and applied by the portal on its own.','Arnaldo'],
+  ['Oct 27','TSheets users archived on their date','So nobody clocks in both apps.','Arnaldo'],
+  ['Oct 27','November closes in the portal','For everyone, including hours still recorded in TSheets; Devon\'s manual invoices stop.','Arnaldo'],
+  ['Oct 27','The Tasks field ends','On the switch date. Activity alone says the kind of work; the 26 new activities cover what Tasks was used for. Old entries keep their Tasks values.','Arnaldo'],
+  ['Oct 27','Old projects placed','ASI: COE Group > Event: ASI > ASI General. NAD: COE Group > Client: NAD > NAD General. Rwanda: COE Group > Africa > Africa Small Projects. GYC, Messiah\'s Mansion, Called! and Internship (no hours in 2026): not created now; added as "Event: Name" when one comes back. Events are always named "Event: " and the event.','Arnaldo'],
+  ['Oct 27','The plan and the Doc are mirrors','This plan is the master; the Doc tab "Transition Plan" is the same content, updated together.','Arnaldo'],
+];
+
+// ── Rendering (the page republishes itself from #css, #data and this script) ──
+const SHELL = `<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">TRUE NORTH OPERATIONS PORTAL · NORTH TIME</div>
+    <h1>North Time launch plan</h1>
+    <p>${INTRO}</p>
+  </div>
+  <div class="bar" role="region" aria-label="Progress">
+    <div class="meter"><span id="sum-label">Progress</span><b id="sum"></b><div class="track"><div class="fill" id="fill"></div></div></div>
+    <div class="filters" id="filters" role="group" aria-label="Show"></div>
+    <div class="status" id="status" role="status"></div>
+  </div>
+  <main><div id="phases"></div><div id="concepts"></div><div id="decisions"></div></main>
+  <p class="foot">Dates are when each item must be done; if the transition goes smoothly some may come earlier. The same content is in the <a href="${DOC_URL}" target="_blank" rel="noopener">Google Doc, tab "Transition Plan"</a>. Updated by Arnaldo Oliveira and Claude.</p>
+</div>`;
+document.getElementById('root').innerHTML = SHELL;
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const state = { done: new Set(DATA.done || []), wip: new Set(DATA.wip || []) };
+// Opens on what is still to do (owner, 26 October 2026).
+let filter = 'open';
+let writable = true;
+// Each viewer's own folded blocks, kept in this browser only (owner, 26 October 2026).
+const FOLD_KEY = 'ntplan.collapsed';
+let collapsed = new Set();
+try { collapsed = new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || '[]')); } catch { collapsed = new Set(); }
+const saveFolds = () => { try { localStorage.setItem(FOLD_KEY, JSON.stringify([...collapsed])); } catch { /* no storage here: the blocks just open again next time */ } };
+let saving = false;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const owners = [...new Set(PHASES.flatMap(p => p.items.map(i => i[3])))];
+const chevron = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+const head = (id, when, title, count, why) => {
+  const folded = collapsed.has(id);
+  return `<header>${when ? `<span class="when">${esc(when)}</span>` : ''}<h2 id="h-${id}">${esc(title)}</h2>${count != null ? `<span class="count">${count}</span>` : '<span class="count"></span>'}<button type="button" class="toggle" data-fold="${id}" aria-expanded="${!folded}" aria-label="${folded ? 'Show' : 'Hide'} ${esc(title)}">${chevron}</button>${why ? `<p class="why">${esc(why)}</p>` : ''}</header>`;
+};
+
+function render(){
+  const all = PHASES.flatMap(p => p.items);
+  const n = all.filter(i => state.done.has(i[0])).length;
+  $('#sum').textContent = `${n} of ${all.length} done · ${Math.round(n / all.length * 100)}%`;
+  $('#fill').style.width = `${Math.round(n / all.length * 100)}%`;
+  $('#filters').innerHTML = [['all','All'],['open','Open'], ...owners.map(o => [o, o])]
+    .map(([k, l]) => `<button type="button" class="chip" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)}</button>`).join('');
+  $('#phases').innerHTML = '<h2 class="part">The plan</h2>' + PHASES.map(p => {
+    const items = p.items.filter(i => filter === 'all' || (filter === 'open' ? !state.done.has(i[0]) : i[3] === filter));
+    if (!items.length) return '';
+    const d = p.items.filter(i => state.done.has(i[0])).length;
+    return `<section class="phase${collapsed.has(p.id) ? ' collapsed' : ''}" aria-labelledby="h-${p.id}">${head(p.id, p.when, p.title, `${d} / ${p.items.length}`, p.why)}${items.map(([id, t, d2, who, due]) => {
+      const done = state.done.has(id), wip = !done && state.wip.has(id), decide = !done && p.id === 'decide';
+      const st = done ? '<span class="tag state-done">Done</span>' : wip ? '<span class="tag state-wip">In progress</span>' : decide ? '<span class="tag state-decide">To decide</span>' : '';
+      return `<div class="item${done ? ' done' : ''}"><input type="checkbox" id="c-${id}" data-id="${id}" ${done ? 'checked' : ''} ${writable && !saving ? '' : 'disabled'} aria-describedby="t-${id}"><label for="c-${id}" class="t" id="t-${id}">${esc(t)}</label><span class="tags">${st}<span class="tag who">${esc(who)}</span>${due ? `<span class="tag due">${esc(due)}</span>` : ''}</span>${d2 ? `<div class="d">${esc(d2)}</div>` : ''}</div>`;
+    }).join('')}</section>`;
+  }).join('');
+  $('#concepts').innerHTML = '<h2 class="part">How the transition works</h2>' + CONCEPTS.map(c => `<section class="phase${collapsed.has(c.id) ? ' collapsed' : ''}" aria-labelledby="h-${c.id}">${head(c.id, '', c.title, null, '')}<div class="body">${c.body.map(b => Array.isArray(b) ? `<ul>${b.map(li => `<li>${esc(li)}</li>`).join('')}</ul>` : `<p>${esc(b)}</p>`).join('')}</div></section>`).join('');
+  $('#decisions').innerHTML = '<h2 class="part">Decisions log</h2>' + `<section class="phase${collapsed.has('log') ? ' collapsed' : ''}" aria-labelledby="h-log">${head('log', '', 'Every decision, with its reason', `${DECISIONS.length} decisions`, '')}<div class="body" style="padding:0;gap:0">${DECISIONS.map(([date, t, d, who]) => `<div class="dec"><span class="date">${esc(date)}</span><span class="t">${esc(t)}</span><span class="tags"><span class="tag who">${esc(who)}</span></span><div class="d">${esc(d)}</div></div>`).join('')}</div></section>`;
+}
+
+function doc(){
+  const reset = ':root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}';
+  const json = JSON.stringify({ done: [...state.done], wip: [...state.wip] });
+  const body = `<title>${document.title}</title><style id="css">${document.getElementById('css').textContent}</style>`
+    + `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@700;800;900&display=swap">`
+    + `<div id="root"></div><script type="application/json" id="data">${json}<\/script><script id="app-js">${document.getElementById('app-js').textContent}<\/script>`;
+  return `<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>${reset}</style></head><body>${body}</body></html>`;
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-f]');
+  if (b) { filter = b.dataset.f; render(); return; }
+  const f = e.target.closest('[data-fold]');
+  if (f) {
+    const id = f.dataset.fold;
+    if (collapsed.has(id)) collapsed.delete(id); else collapsed.add(id);
+    saveFolds(); render();
+    document.querySelector(`[data-fold="${id}"]`)?.focus();
+  }
+});
+document.addEventListener('change', async e => {
+  const box = e.target.closest('input[data-id]');
+  if (!box || !writable) return;
+  const id = box.dataset.id;
+  if (box.checked) { state.done.add(id); state.wip.delete(id); } else state.done.delete(id);
+  saving = true; render(); $('#status').textContent = 'Saving...';
+  try {
+    const artifact = await window.claude?.use?.('artifact');
+    if (!artifact) throw { code: 'not_granted' };
+    await artifact.publish(doc());
+  } catch (err) {
+    const code = err && err.code;
+    if (code === 'not_writer' || code === 'not_granted' || code === 'not_declared' || code === 'capability_disabled' || code === 'capability_removed' || code === 'consent_required') {
+      writable = false; $('#status').textContent = 'Read only: you can see the plan, but not tick items.';
+    } else if (code === 'conflict') {
+      $('#status').textContent = 'Someone else just saved; loading their version.';
+    } else {
+      $('#status').textContent = 'Not saved. Try again in a moment.';
+    }
+    if (box.checked) state.done.delete(id); else state.done.add(id);
+  }
+  saving = false; render();
+});
+render();
+</script>
+
+
+
+
+

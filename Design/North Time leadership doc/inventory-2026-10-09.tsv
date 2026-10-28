@@ -1,0 +1,127 @@
+MAXDATE	2026-10-09
+JOB	1 - True North	regular	false	
+JOB	1 - True North > Administrative	regular	false	3142
+JOB	1 - True North > Content	regular	false	5947
+JOB	1 - True North > Management	regular	false	2688
+JOB	1 - True North > Marketing	regular	false	2564
+JOB	1 - True North > Meetings	regular	false	601
+JOB	1 - True North > Project Management	regular	false	2794
+JOB	1 - True North > SEO	regular	false	1483
+JOB	1 - True North > Web Dev	regular	false	1894
+JOB	2 -  i7 Marketing	regular	false	13
+JOB	2 -  i7 Marketing > Administrative	regular	false	70
+JOB	2 -  i7 Marketing > Content	regular	false	1212
+JOB	2 -  i7 Marketing > Management	regular	false	
+JOB	2 -  i7 Marketing > Marketing	regular	false	822
+JOB	2 -  i7 Marketing > Meetings	regular	false	121
+JOB	2 -  i7 Marketing > Project Management	regular	false	6
+JOB	2 -  i7 Marketing > SEO	regular	false	980
+JOB	2 -  i7 Marketing > Strategy Sprint	regular	false	
+JOB	2 -  i7 Marketing > Web Dev	regular	false	1080
+JOB	A.org Job	regular	false	
+JOB	Adventist Messengers/HFA	regular	false	4788
+JOB	DDI	regular	false	
+JOB	GNA	regular	false	
+JOB	Holiday	pto	false	240
+JOB	Jury duty	unpaid	false	24
+JOB	Rwanda-Incidental	pto	false	
+JOB	Sick	pto	false	87
+JOB	Vacation	pto	false	102
+FIELD	19156	3 Activity	true
+FIELD	19158	4 Billable	true
+FIELD	126808	Tasks	false
+FIELD	129626	1 Company	true
+FIELD	129628	1 - i7 Code	true
+FIELD	129636	2 Project	true
+OPT	3 Activity	Meeting: Status	true	298
+OPT	3 Activity	WebDev	true	3047
+OPT	3 Activity	SEO (unspecified)	true	11
+OPT	3 Activity	General admin	true	2911
+OPT	3 Activity	Project management	true	562
+OPT	3 Activity	Content: Writing	true	4140
+OPT	3 Activity	Management	true	2092
+OPT	3 Activity	Event: Prep	true	36
+OPT	3 Activity	Content: Revision	true	531
+OPT	3 Activity	Content: Review/Edit	true	1280
+OPT	3 Activity	Content Briefs	true	404
+OPT	3 Activity	SEO: Routine	true	1722
+OPT	3 Activity	Event: Attendance	true	269
+OPT	3 Activity	Event: Travel	true	101
+OPT	3 Activity	SEO: Issues/Incidents	true	197
+OPT	3 Activity	SEO Reports	true	86
+OPT	3 Activity	SEO Research	true	158
+OPT	3 Activity	Training	true	524
+OPT	3 Activity	Meeting: Project	true	131
+OPT	3 Activity	Meeting: Other (indicate in Notes)	true	592
+OPT	3 Activity	Industry Monitoring	true	455
+OPT	3 Activity	Other (indicate in Notes)	true	4424
+OPT	3 Activity	Marketing: Newsletter	true	22
+OPT	3 Activity	Marketing: Social Media	true	127
+OPT	3 Activity	Marketing: AAF Cards	true	
+OPT	3 Activity	Marketing: Plan/Strategy	true	
+OPT	3 Activity	Research/Development	true	
+OPT	3 Activity	Marketing: Other (specify in Notes)	true	
+OPT	3 Activity	Meeting: SEO/Content	true	79
+OPT	3 Activity	SME	true	1
+OPT	3 Activity	Graphic creation	true	1007
+OPT	3 Activity	Social Media	true	492
+OPT	3 Activity	Translation	true	3842
+OPT	3 Activity	Fundraising	true	632
+OPT	4 Billable	yes	true	21549
+OPT	4 Billable	no	true	8626
+OPT	Tasks	Brief Development	true	79
+OPT	Tasks	Content: Review/Edit	true	670
+OPT	Tasks	SEO - Routine	true	305
+OPT	Tasks	SEO: Issues/Incidents	true	1
+OPT	Tasks	Project Management	true	1377
+OPT	Tasks	Project Meeting	true	135
+OPT	Tasks	SEO: Reporting	true	1
+OPT	Tasks	Content: Writing	true	748
+OPT	Tasks	Content: Revision	true	2
+OPT	Tasks	SEO Research	true	39
+OPT	Tasks	SEO: A.org	true	
+OPT	Tasks	Content Process	true	1
+OPT	Tasks	test	true	
+OPT	Tasks	Misc (add note to explain)	true	391
+OPT	Tasks	Graphics	true	17
+OPT	Tasks	Web Dev	true	
+OPT	Tasks	Translation: Review/Edit	true	1002
+OPT	1 Company	True North	true	10260
+OPT	1 Company	COE	true	13715
+OPT	1 Company	DDI	true	5
+OPT	1 Company	GNA/COEI	true	1915
+OPT	1 - i7 Code	WM-MKTG	true	1362
+OPT	1 - i7 Code	WMFL-ADMIN	true	
+OPT	1 - i7 Code	WMFP-MKTG	true	30
+OPT	1 - i7 Code	WMW-ADMIN	true	
+OPT	1 - i7 Code	BE-MKTG	true	1090
+OPT	1 - i7 Code	i7-MKTG	true	27
+OPT	1 - i7 Code	1 None	true	
+OPT	1 - i7 Code	BE-WEBDVT	true	113
+OPT	1 - i7 Code	BE-ADMIN	true	2
+OPT	1 - i7 Code	i7-WEBDVT	true	38
+OPT	1 - i7 Code	i7-ADMIN	true	109
+OPT	1 - i7 Code	MME-MKTG	true	141
+OPT	1 - i7 Code	MME-WEBDVT	true	3
+OPT	1 - i7 Code	MME-ADMIN	true	4
+OPT	1 - i7 Code	WM-WEBDVT	true	938
+OPT	1 - i7 Code	WM-ADMIN	true	39
+OPT	1 - i7 Code	WMFP-WEBDVT	true	
+OPT	1 - i7 Code	WMFP-ADMIN	true	
+OPT	1 - i7 Code	WMFL-MKTG	true	79
+OPT	1 - i7 Code	WMFL-WEBDVT	true	
+OPT	1 - i7 Code	WMW-MKTG	true	331
+OPT	1 - i7 Code	WMW-WEBDVT	true	
+OPT	2 Project	AAAF	true	8728
+OPT	2 Project	Rwanda	true	2
+OPT	2 Project	ASI	true	200
+OPT	2 Project	GYC	true	
+OPT	2 Project	GP church	true	3
+OPT	2 Project	GP School	true	3
+OPT	2 Project	Messiah's Mansion	true	
+OPT	2 Project	In-House	true	10682
+OPT	2 Project	not listed--ask Dave	true	52
+OPT	2 Project	Called!	true	
+OPT	2 Project	Internship	true	
+OPT	2 Project	Africa	true	6198
+OPT	2 Project	NAD	true	17

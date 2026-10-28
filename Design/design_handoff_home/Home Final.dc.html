@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#e9e6dd;font-family:'Open Sans',sans-serif;color:#435066}a{color:#1E7D7F;text-decoration:none}a:hover{color:#012358}button{font-family:inherit}
+@keyframes tn-spin{to{transform:rotate(360deg)}}@keyframes tn-spin-rev{to{transform:rotate(-360deg)}}
+@keyframes tn-breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.09)}}
+@keyframes tn-core{0%,100%{box-shadow:0 0 22px 5px rgba(242,196,10,.5);transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 44px 13px rgba(242,196,10,.85);transform:translate(-50%,-50%) scale(1.18)}}
+@keyframes tn-ripple{0%{transform:scale(.28);opacity:.55}100%{transform:scale(1);opacity:0}}
+@keyframes tn-live{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.tn-anim{animation:none!important}}</style>
+</helmet>
+<section style="padding:56px 56px 120px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:1100px">
+    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:30px;color:#012358;letter-spacing:-.015em">Home</div>
+    <div style="font-size:15px;color:#5b6b82;line-height:1.55;text-wrap:pretty">A nova Home do portal: o que cada nível precisa fazer hoje. Troque o nível e o estado do pay period para ver cada caso. Data de exemplo: segunda, 26 de outubro, 10:46.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;background:#fff;border:1px solid #d9d6cc;border-radius:12px;padding:4px;gap:2px">
+        <sc-for list="{{ levels }}" as="l" hint-placeholder-count="5"><button onClick="{{ l.go }}" style="border:0;cursor:pointer;border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;white-space:nowrap;background:{{ l.bg }};color:{{ l.fg }}">{{ l.label }}</button></sc-for>
+      </div>
+      <span style="font-size:13.5px;color:#5b6b82">{{ lv.line }}</span>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13.5px;font-weight:700;color:#012358">Pay period:</span>
+      <div style="display:flex;background:#fff;border:1px solid #d9d6cc;border-radius:12px;padding:4px;gap:2px">
+        <sc-for list="{{ ppModes }}" as="m" hint-placeholder-count="5"><button onClick="{{ m.go }}" style="border:0;cursor:pointer;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;white-space:nowrap;background:{{ m.bg }};color:{{ m.fg }}">{{ m.label }}</button></sc-for>
+      </div>
+      <span style="font-size:13px;color:#8593a4">{{ ppModeNote }}</span>
+      <span style="font-size:13.5px;font-weight:700;color:#012358;margin-left:12px">Bessemeters:</span>
+      <div style="display:flex;background:#fff;border:1px solid #d9d6cc;border-radius:12px;padding:4px;gap:2px">
+        <sc-for list="{{ bessModes }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.go }}" style="border:0;cursor:pointer;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;white-space:nowrap;background:{{ m.bg }};color:{{ m.fg }}">{{ m.label }}</button></sc-for>
+      </div>
+      <button onClick="{{ reset }}" style="border:1px solid #d9d6cc;background:#fff;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;color:#435066;cursor:pointer;white-space:nowrap">Desfazer marcados</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:56px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="home" style="display:flex;flex-direction:column;gap:14px;width:1280px;flex:none">
+      
+      <div data-screen-label="Home" style="position:relative;border:1px solid #d9d6cc;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 8px 30px rgba(1,35,88,.08)">
+        <div style="height:64px;box-sizing:border-box;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 24px">
+          <div style="display:flex;align-items:flex-end;gap:10px"><img src="true-north.png" alt="True North" style="height:34px;display:block"><span style="font-size:14px;font-weight:600;color:#64748b;padding-bottom:2px">Operations Portal</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#94a3b8"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5"></path></svg></span>
+            <span style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#94a3b8"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-3.6-.7L3 21l1.9-4.6A8.4 8.4 0 1 1 21 11.5zM8 11h8M8 14h5"></path></svg></span>
+            <sc-if value="{{ hasWorking }}" hint-placeholder-val="{{ true }}"><span title="Who's working" aria-label="Who's working, {{ lv.onN }} on the clock" style="position:relative;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span style="position:absolute;top:3px;right:2px;min-width:18px;height:18px;box-sizing:border-box;border-radius:9px;background:#177a52;color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;font-variant-numeric:tabular-nums">{{ lv.onN }}</span></span></sc-if>
+            <span style="height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:10px;background:#012358;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;color:#fff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"></path></svg>{{ lv.clockPill }}</span>
+            <span style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#94a3b8"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></span>
+          </div>
+        </div>
+        <div style="display:flex;background:#f1efe8;min-height:860px">
+          <nav style="width:64px;flex:none;background:#012358;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <sc-for list="{{ rail }}" as="it" hint-placeholder-count="10"><sc-if value="{{ it.rule }}" hint-placeholder-val="{{ false }}"><div style="width:28px;height:1px;background:rgba(255,255,255,.16);margin:7px 0"></div></sc-if><sc-if value="{{ it.isItem }}" hint-placeholder-val="{{ true }}"><span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:{{ it.bg }};color:{{ it.fg }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ it.d }}"></path></svg></span></sc-if></sc-for>
+            <div style="margin-top:auto;width:36px;height:36px;border-radius:50%;background:#F2C40A;color:#012358;display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-size:12px;font-weight:800;margin-bottom:6px">{{ lv.ini }}</div>
+          </nav>
+          <main style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <section style="position:relative;overflow:hidden;height:310px;flex:none;background:linear-gradient(180deg,#0a2f63,#012358);padding:30px 36px 0;box-sizing:border-box">
+              {{ sunC }}
+              <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:24px">
+                <div>
+                  <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.2em;color:#94C4C5">MONDAY, OCTOBER 26 · 10:46 AM</div>
+                  <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:32px;letter-spacing:-.015em;color:#fff;margin-top:8px">Good morning, {{ lv.first }}</div>
+                  <div style="font-size:15.5px;color:rgba(255,255,255,.85);margin-top:8px">{{ summary }}</div>
+                </div>
+                <div style="flex:none;width:300px;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                    <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:{{ clk.dot }};box-shadow:0 0 0 4px {{ clk.halo }}"></span><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:{{ clk.labelFg }}">{{ clk.label }}</span></span>
+                    <span style="font-size:12px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums">{{ clk.sinceShort }}</span>
+                  </div>
+                  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+                    <span style="font-family:Raleway,sans-serif;font-weight:900;font-size:38px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ clk.today }}</span>
+                    <span style="font-size:11.5px;color:rgba(255,255,255,.6);padding-bottom:3px">today</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:9px;padding:8px 10px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94C4C5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 7h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg>
+                    <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ clk.job }}</span>
+                    <sc-if value="{{ clk.canSwitch }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;font-weight:700;color:#94C4C5;cursor:pointer">Switch</span></sc-if>
+                  </div>
+                  <button onClick="{{ toggleClock }}" style="border:0;cursor:pointer;border-radius:10px;padding:11px 14px;font-family:Raleway,sans-serif;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ clk.btnBg }};color:#012358"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#012358" stroke-width="2.3" stroke-linecap="round"><path d="{{ clk.btnD }}"></path></svg>{{ clk.btn }}</button>
+                </div>
+              </div>
+              <div style="position:absolute;left:36px;right:36px;bottom:20px">
+                <div style="position:relative;height:12px;border-radius:999px;background:rgba(255,255,255,.10)">
+                  <sc-for list="{{ segs }}" as="g" hint-placeholder-count="1"><div style="position:absolute;top:0;bottom:0;border-radius:999px;background:#F2C40A;left:{{ g.l }};width:{{ g.w }}"></div></sc-for>
+                  <div style="position:absolute;top:-10px;bottom:-10px;width:2px;background:#fff;border-radius:2px;left:{{ nowL }}"></div>
+                </div>
+                <div style="position:relative;height:22px;margin-top:8px">
+                  <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="7"><span style="position:absolute;font-size:11.5px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums;white-space:nowrap;left:{{ t.l }};transform:{{ t.tr }}">{{ t.label }}</span></sc-for>
+                </div>
+              </div>
+            </section>
+            <div style="padding:28px;display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-rows:1fr auto auto;gap:22px 24px;align-items:start">
+              <div style="display:contents">
+                <div style="grid-column:1;grid-row:2;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 18px 40px -26px rgba(1,35,88,.45);padding:24px 28px;display:flex;flex-direction:column;gap:18px;border:1px solid {{ pp.border }}">
+                  <sc-if value="{{ pp.alert }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin:-24px -28px 0;padding:18px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:{{ pp.aBg }};border-bottom:1px solid {{ pp.border }}">
+                      <span style="width:42px;height:42px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;background:#fff;color:{{ pp.aFg }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"></path></svg></span>
+                      <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:3px">
+                        <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:17px;color:{{ pp.aTitleFg }}">{{ pp.aTitle }}</span>
+                        <span style="font-size:13px;color:#5b6b82">{{ pp.aSub }}</span>
+                      </div>
+                      <div style="display:flex;gap:8px">
+                        <button onClick="{{ pp.send }}" style="cursor:pointer;border:0;border-radius:10px;padding:11px 16px;font-family:Raleway,sans-serif;font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:8px;background:#012358;color:#fff;white-space:nowrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="#F2C40A"><path d="M7 4.5v15l12-7.5z"></path></svg>Review and send</button>
+                        <button style="cursor:pointer;border:1px solid #d9dee6;background:#fff;border-radius:10px;padding:11px 14px;font-family:Raleway,sans-serif;font-weight:800;font-size:13.5px;color:#012358;white-space:nowrap">Open Time entries</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                      <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8593a4">{{ pp.label }}</span>
+                      <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:20px;color:#012358">{{ pp.range }}</span>
+                    </div>
+                    <sc-if value="{{ pp.hasChip }}" hint-placeholder-val="{{ true }}"><span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#5b6b82;background:{{ pp.chipBg }};border-radius:999px;padding:6px 12px"><span style="width:7px;height:7px;border-radius:50%;background:{{ pp.prevDot }}"></span>{{ pp.prev }}</span></sc-if>
+                  </div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end">
+                    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                      <span style="font-family:Raleway,sans-serif;font-weight:900;font-size:46px;line-height:1;color:#012358;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ pp.total }}</span>
+                      <span style="font-size:14px;color:#8593a4">of {{ pp.expected }} in the period</span>
+                    </div>
+                    <div style="display:flex;gap:26px">
+                      <sc-for list="{{ pp.stats }}" as="st" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:10.5px;font-family:Raleway,sans-serif;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8593a4">{{ st.k }}</span><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:{{ st.fg }};font-variant-numeric:tabular-nums;white-space:nowrap">{{ st.v }}</span></div></sc-for>
+                    </div>
+                  </div>
+                  <div style="position:relative;padding-bottom:18px">
+                    <div style="position:relative;height:12px;border-radius:999px;background:#eef0f3;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#012358;width:{{ pp.fillW }}"></div></div>
+                    <sc-if value="{{ pp.hasPace }}" hint-placeholder-val="{{ true }}">
+                      <div style="position:absolute;top:-4px;height:20px;width:2px;background:#F2C40A;border-radius:1px;left:{{ pp.paceL }}"></div>
+                      <span style="position:absolute;top:22px;font-size:11px;font-weight:700;color:#8a6d1a;white-space:nowrap;left:{{ pp.paceL }};transform:{{ pp.paceShift }}">expected by today</span>
+                    </sc-if>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;align-items:end;height:74px">
+                    <sc-for list="{{ pp.days }}" as="d" hint-placeholder-count="14"><div title="{{ d.title }}" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%"><div style="width:100%;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;outline:{{ d.outline }};outline-offset:2px"><sc-for list="{{ d.segs }}" as="g" hint-placeholder-count="1"><div style="height:{{ g.h }};background:{{ g.bg }}"></div></sc-for></div><span style="font-size:10.5px;font-weight:{{ d.w }};color:{{ d.fg }}">{{ d.label }}</span></div></sc-for>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:-6px">
+                    <sc-for list="{{ pp.legend }}" as="l" hint-placeholder-count="2"><span style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#5b6b82"><span style="width:10px;height:10px;border-radius:3px;background:{{ l.bg }}"></span>{{ l.label }} <b style="color:#012358;font-variant-numeric:tabular-nums">{{ l.v }}</b></span></sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #eceff3;padding-top:14px;font-size:13px;color:#5b6b82"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{ pp.afterD }}"></path></svg>{{ pp.after }}</div>
+                  <sc-if value="{{ pp.hasNextLine }}" hint-placeholder-val="{{ false }}"><div style="margin:-4px -28px -24px;padding:12px 28px;background:#f8f7f3;border-top:1px solid #eceff3;display:flex;align-items:center;gap:10px;font-size:13px;color:#5b6b82"><span style="width:7px;height:7px;border-radius:50%;background:#1E9E6A"></span>{{ pp.nextLine }}</div></sc-if>
+                </div>
+
+
+
+                <div style="grid-column:1;grid-row:1;align-self:stretch;display:flex;flex-direction:column;background:#fff;border-radius:18px;border:1px solid #e4e7ec;padding:8px 22px 8px">
+                  <div style="display:flex;gap:4px;border-bottom:1px solid #eceff3">
+                    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.go }}" style="border:0;background:transparent;cursor:pointer;padding:14px 12px 12px;margin-bottom:-1px;display:flex;align-items:center;gap:8px;font-family:Raleway,sans-serif;font-weight:800;font-size:14px;color:{{ t.fg }};border-bottom:2.5px solid {{ t.line }}">{{ t.label }}<span style="min-width:20px;height:20px;box-sizing:border-box;padding:0 6px;border-radius:999px;font-size:11px;display:flex;align-items:center;justify-content:center;background:{{ t.cbg }};color:{{ t.cfg }}">{{ t.count }}</span></button></sc-for>
+                  </div>
+                  <div style="flex:1;min-height:250px;contain:size;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);padding-bottom:20px">
+                  <sc-for list="{{ tabItems }}" as="it" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #f1f3f6;opacity:{{ it.op }}">
+                      <span title="{{ it.t.label }}" style="width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:{{ it.t.bg }};color:{{ it.t.fg }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ it.t.d }}"></path></svg></span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;color:#012358;text-decoration:{{ it.strike }}">{{ it.title }}</span><span style="font-size:12.5px;color:#8593a4;font-variant-numeric:tabular-nums">{{ it.sub }}</span></span>
+                      <span style="flex:none;font-size:12.5px;font-weight:700;color:{{ it.dueFg }};white-space:nowrap">{{ it.due }}</span>
+                      <sc-if value="{{ it.open }}" hint-placeholder-val="{{ true }}"><button onClick="{{ it.openP }}" style="flex:none;cursor:pointer;border:1px solid #e4e7ec;background:#fff;border-radius:9px;padding:7px 11px;font-family:Raleway,sans-serif;font-weight:800;font-size:12.5px;color:#012358">{{ it.btn }}</button></sc-if>
+                      <sc-if value="{{ it.done }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font-size:12px;font-weight:700;color:#0d7a4f">Done</span></sc-if>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ tabEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:26px 0;text-align:center;font-size:13.5px;color:#8593a4">{{ tabEmptyText }}</div></sc-if>
+                  </div>
+                </div>
+                <sc-if value="{{ pubOn }}" hint-placeholder-val="{{ false }}">
+                  <a href="#" aria-label="Publishing goals, open the dashboard" style="grid-column:1 / -1;grid-row:3;display:block;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden;color:inherit" style-hover="border-color:#1E7D7F;box-shadow:0 10px 28px -14px rgba(1,35,88,.45);color:inherit">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:#012358;padding:14px 24px">
+                      <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:18px;color:#fff">Publishing goals</span>
+                      <span style="font-family:Raleway,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.7)">Last 5 weeks</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid #eceff3">
+                    <sc-for list="{{ pv.boards }}" as="b" hint-placeholder-count="2">
+                      <div style="padding:20px 24px;border-right:1px solid #eceff3;display:flex;flex-direction:column;gap:14px">
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:#012358">{{ b.name }}</span><span style="font-size:12.5px;color:#8593a4"><b style="color:{{ b.enHitFg }}">{{ b.enHits }}</b> weeks English on target · <b style="color:#012358">{{ b.hits }}</b> all languages</span></div>
+                        <div style="display:flex;flex-direction:column;gap:18px">
+                          <div>
+                            <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#012358">English</span><span style="font-size:12px;color:#8593a4">{{ b.enTarget }} a week</span></div>
+                            <div style="position:relative;height:150px;margin-top:8px">
+                              <div style="position:absolute;left:0;right:0;border-top:1.5px dashed #c9d1dc;top:{{ b.line100 }}"></div>
+                              <svg viewBox="0 0 330 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:150px;overflow:visible"><path d="{{ b.area }}" fill="rgba(1,35,88,.06)"></path><path d="{{ b.path }}" fill="none" stroke="#012358" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path></svg>
+                              <sc-for list="{{ b.pts }}" as="p" hint-placeholder-count="4">
+                                <div style="position:absolute;transform:translate(-50%,-50%);left:{{ p.xp }};top:{{ p.y }}"><div style="width:12px;height:12px;border-radius:50%;box-sizing:border-box;border:2.5px solid #fff;box-shadow:0 0 0 1.5px {{ p.c }};background:{{ p.c }}"></div><span style="position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font-family:Raleway,sans-serif;font-weight:800;font-size:12.5px;color:{{ p.c }};white-space:nowrap">{{ p.v }}</span></div>
+                              </sc-for>
+                            </div>
+                            <div style="position:relative;height:18px;margin-top:6px"><sc-for list="{{ b.pts }}" as="p" hint-placeholder-count="4"><span style="position:absolute;transform:translateX(-50%);font-size:11px;color:#8593a4;white-space:nowrap;left:{{ p.xp }}">{{ p.wk }}</span></sc-for></div>
+                          </div>
+                          <div style="display:flex;flex-direction:column">
+                            <sc-for list="{{ b.sparks }}" as="l" hint-placeholder-count="4">
+                              <div style="display:grid;grid-template-columns:52px 104px minmax(0,1fr) auto;gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f3f6">
+                                <span title="{{ l.name }}" style="display:flex;flex-direction:column;line-height:1.2"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:12.5px;color:#012358">{{ l.code }}</span><span style="font-size:11px;color:#8593a4">{{ l.t }}/wk</span></span>
+                                <span style="position:relative;height:26px;display:block">
+                                  <svg width="104" height="26" viewBox="0 0 104 26" style="position:absolute;inset:0;overflow:visible"><path d="{{ l.tline }}" stroke="#d6dbe3" stroke-width="1" stroke-dasharray="3 3" fill="none"></path><path d="{{ l.path }}" fill="none" stroke="#1E7D7F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+                                  <sc-for list="{{ l.dots }}" as="d" hint-placeholder-count="4"><span style="position:absolute;width:6px;height:6px;border-radius:50%;transform:translate(-50%,-50%);left:{{ d.x }};top:{{ d.y }};background:{{ d.c }}"></span></sc-for>
+                                </span>
+                                <span style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px"><sc-for list="{{ l.cells }}" as="c" hint-placeholder-count="4"><span style="height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;background:{{ c.bg }};color:{{ c.fg }}">{{ c.v }}</span></sc-for></span>
+                                <span style="font-size:12px;font-weight:800;border-radius:999px;padding:2px 8px;color:{{ l.fg }};background:{{ l.bg }};font-variant-numeric:tabular-nums">{{ l.hits }}</span>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-for>
+                    </div>
+                    <sc-if value="{{ bess.on }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:18px 24px 20px;border-bottom:1px solid #eceff3;display:flex;flex-direction:column;gap:14px">
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><span style="display:flex;align-items:baseline;gap:10px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:#012358">Bessemeters</span><span style="font-size:12.5px;color:#8593a4">English · every 2 weeks · 2 per cycle</span></span><span style="font-size:12.5px;color:#8593a4"><b style="color:#167a52">{{ bess.hits }}</b> cycles on target</span></div>
+                        <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+                          <sc-for list="{{ bess.cells }}" as="c" hint-placeholder-count="5">
+                            <div style="display:flex;flex-direction:column;gap:7px;border-radius:12px;padding:12px 14px;background:{{ c.bg }}">
+                              <span style="font-size:11.5px;color:#5b6b82;white-space:nowrap">{{ c.label }}</span>
+                              <span style="display:flex;align-items:baseline;gap:7px"><span style="font-family:Raleway,sans-serif;font-weight:900;font-size:22px;line-height:1;color:#012358;font-variant-numeric:tabular-nums">{{ c.pct }}<span style="font-size:13px">%</span></span><span style="font-size:12px;font-weight:800;color:{{ c.fg }};font-variant-numeric:tabular-nums">{{ c.count }}</span></span>
+                              <span style="height:6px;border-radius:999px;background:rgba(1,35,88,.08);overflow:hidden"><span style="display:block;height:100%;border-radius:999px;width:{{ c.w }};background:{{ c.bar }}"></span></span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <sc-for list="{{ bess.pending }}" as="c" hint-placeholder-count="1">
+                      <div style="padding:16px 24px;border-bottom:1px solid #eceff3;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+                        <div style="display:flex;flex-direction:column;gap:3px;min-width:170px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:#012358">{{ c.name }}</span><span style="font-size:12px;color:#8593a4">{{ c.rule }}</span></div>
+                        <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:#5b6b82">{{ c.cycle }}</span><b style="color:{{ c.fg }};font-variant-numeric:tabular-nums">{{ c.count }}</b></div><div style="height:8px;border-radius:999px;background:#eef0f3;overflow:hidden"><div style="height:100%;border-radius:999px;background:#e08a1e;width:{{ c.w }}"></div></div></div>
+                        <span style="font-size:12px;font-weight:700;border-radius:999px;padding:4px 11px;background:#fdeeef;color:#c8323d;white-space:nowrap">{{ c.ends }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="padding:10px 24px 12px;font-size:11.5px;color:#8593a4">Updated Oct 15, 2:04 AM · dashed lines are the targets · pills count weeks on target</div>
+                  </a>
+                </sc-if>
+              </div>
+              <div style="grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;gap:20px">
+                <div style="background:#fff;border:1px solid #e4e7ec;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px">
+                  <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:#012358">Agenda</span>
+                  <div style="display:flex;flex-direction:column;gap:10px;background:#f8f7f3;border:1px solid #eceff3;border-radius:12px;padding:12px">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8593a4">Out today</span><span style="font-size:12px;color:#8593a4">{{ outCount }}</span></div>
+                    <sc-for list="{{ outToday }}" as="o" hint-placeholder-count="2">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="position:relative;width:30px;height:30px;box-sizing:border-box;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;color:#435066;background:#eef1f5;border:1px solid #dfe4ea;background-size:cover;background-position:center;background-image:{{ o.bgImg }}">{{ o.iniShown }}</span>
+                        <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:700;color:#012358">{{ o.name }}</span><span style="font-size:12px;color:#8593a4">{{ o.why }}</span></span>
+                        <span style="font-size:12px;color:#5b6b82;white-space:nowrap">{{ o.until }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <sc-for list="{{ agenda }}" as="e" hint-placeholder-count="5">
+                      <sc-if value="{{ e.head }}" hint-placeholder-val="{{ false }}"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8593a4;padding:8px 2px 4px">{{ e.headLabel }}</span></sc-if>
+                      <div style="display:flex;gap:12px;align-items:center;border-radius:12px;padding:10px 12px;background:{{ e.bg }}">
+                        <span style="width:44px;flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:{{ e.topFg }}">{{ e.top }}</span><span style="font-family:Raleway,sans-serif;font-weight:900;font-size:{{ e.size }};color:#012358;font-variant-numeric:tabular-nums">{{ e.big }}</span></span>
+                        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:14px;color:#012358">{{ e.title }}</span><span style="font-size:12px;color:#435066">{{ e.sub }}</span></span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <a href="#" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;align-self:flex-start">Open Agenda<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+                </div>
+                <sc-if value="{{ i7On }}" hint-placeholder-val="{{ false }}">
+                  <a href="#" aria-label="i7 Budget, open the report" style="display:block;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden;color:inherit" style-hover="border-color:#1E7D7F;box-shadow:0 10px 28px -14px rgba(1,35,88,.45);color:inherit">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#012358;padding:12px 18px">
+                      <span style="font-family:Raleway,sans-serif;font-weight:800;font-size:16px;color:#fff">i7 Budget</span>
+                      <span style="font-family:Raleway,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.7)">October 2026</span>
+                    </div>
+                    <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px">
+                      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                        <div>
+                          <div style="font-size:10px;font-family:Raleway,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8593a4">Balance left</div>
+                          <div style="font-size:26px;font-family:Raleway,sans-serif;font-weight:800;color:#1E9E6A;font-variant-numeric:tabular-nums;line-height:1.2">$82,143.63</div>
+                        </div>
+                        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-family:Raleway,sans-serif;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid #c3ead5;color:#1E9E6A;background:#eafaf1;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>On track</span>
+                      </div>
+                      <div style="position:relative;height:8px;border-radius:999px;overflow:hidden;background-image:linear-gradient(90deg,#1E7D7F 0%,#31a39a 50%,#f59e0b 78%,#ef4444 100%)"><div style="position:absolute;top:0;bottom:0;right:0;left:4%;background:#eef0f3"></div></div>
+                      <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-variant-numeric:tabular-nums"><span style="font-family:Raleway,sans-serif;font-weight:800;color:#012358">4% used · $3,568.75</span><span style="color:#8593a4">of $85,712.38</span></div>
+                    </div>
+                  </a>
+                </sc-if>
+              </div>
+            </div>
+          </main>
+        </div>
+        <sc-if value="{{ pOn }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeP }}" style="position:absolute;left:0;right:0;top:64px;bottom:0;background:rgba(1,35,88,.18);z-index:20"></div>
+          <div role="dialog" aria-label="{{ p.title }}" style="position:absolute;top:64px;right:0;bottom:0;width:460px;z-index:21;background:#fff;border-left:1px solid #e4e7ec;box-shadow:-24px 0 50px -24px rgba(1,35,88,.35);display:flex;flex-direction:column">
+            <div style="padding:22px 24px 18px;border-bottom:1px solid #eceff3;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:{{ p.t.bg }};color:{{ p.t.fg }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ p.t.d }}"></path></svg></span><span style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:{{ p.t.fg }}">{{ p.t.label }}</span><span style="font-size:12.5px;font-weight:700;color:{{ p.dueFg }}">· {{ p.due }}</span></span>
+                <button onClick="{{ closeP }}" aria-label="Close" style="width:32px;height:32px;border:0;background:transparent;border-radius:8px;cursor:pointer;color:#8593a4;display:flex;align-items:center;justify-content:center" style-hover="background:#f4f2ec;color:#012358"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+              </div>
+              <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:22px;line-height:1.25;color:#012358">{{ p.title }}</div>
+              <div style="font-size:14px;color:#5b6b82;line-height:1.5;font-variant-numeric:tabular-nums">{{ p.sub }}</div>
+            </div>
+            <div style="flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px">
+              <div style="border:1px solid #e4e7ec;border-radius:14px;overflow:hidden">
+                <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 16px;border-bottom:1px solid #f1f3f6">
+                    <span style="font-size:13px;color:#8593a4">{{ r.k }}</span>
+                    <span style="font-size:13.5px;font-weight:700;color:#012358;text-align:right;font-variant-numeric:tabular-nums">{{ r.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ p.hasNote }}" hint-placeholder-val="{{ true }}"><div style="background:#f4f2ec;border-radius:12px;padding:14px 16px;font-size:13.5px;color:#435066;line-height:1.55">{{ p.note }}</div></sc-if>
+              <a href="#" style="font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;align-self:flex-start">{{ p.full }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></a>
+            </div>
+            <div style="padding:16px 24px;border-top:1px solid #eceff3;display:flex;gap:10px">
+              <button onClick="{{ p.doPrimary }}" style="flex:1;cursor:pointer;border:0;border-radius:11px;padding:13px 16px;font-family:Raleway,sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;background:#012358;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{ p.b.d }}"></path></svg>{{ p.primary }}</button>
+              <sc-if value="{{ p.hasSecondary }}" hint-placeholder-val="{{ true }}"><button onClick="{{ closeP }}" style="cursor:pointer;border:1px solid #d9dee6;background:#fff;border-radius:11px;padding:13px 16px;font-family:Raleway,sans-serif;font-weight:800;font-size:14px;color:#012358">{{ p.secondary }}</button></sc-if>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static I = {
+    home: 'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5', agenda: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2',
+    work: 'M4 7h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2',
+    clocky: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2M3.5 9.5h2M18.5 9.5h2',
+    requests: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+    chat: 'M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-3.6-.7L3 21l1.9-4.6A8.4 8.4 0 1 1 21 11.5z', emails: 'M3 6h18v12H3zM3 7l9 6 9-6',
+    tools: 'M3 8h18v12H3zM8 8V5h8v3M3 13h18M10 13v3h4v-3', people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+    admin: 'M12 22s8-3 8-9V6l-8-3-8 3v7c0 6 8 9 8 9zM9 12l2 2 4-4',
+    tests: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2H9zM9 14l2 2 4-4',
+    clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2', alert: 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+    invoice: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M12 11v8M14 13h-3a1 1 0 0 0 0 2h2a1 1 0 0 1 0 2h-3',
+    check: 'M5 12l5 5 9-10', play: 'M7 4.5v15l12-7.5z', arrow: 'M9 6l6 6-6 6'
+  }
+  static TEAMC = { Africa: '#F0A35E', Leadership: '#1E40AF', Operations: '#92400E', SEO: '#F4C24A', 'Social Media': '#DC2626', Translation: '#14B8A6', Web: '#A99BD4', Writers: '#86C06A', Graphics: '#C026D3' }
+
+  static W = (n, team, job, since, on = true) => ({ n, team, job, since, on })
+  static ALL_WORKING = [
+    ['Cheyenne Wilson', 'Writers', 'AAAF · Articles', 'since 7:50'], ['Justus Tsofa', 'Africa', 'HFA · Translation', 'since 6:30'],
+    ['Saheed Fidimaye', 'Translation', 'HFA · Translation', 'since 8:15'], ['Clarise Nixon', 'Social Media', 'AAAF · Social posts', 'since 9:02'],
+    ['Samuel Manzi', 'Web', 'AAAF · Website', 'since 9:40'], ['Olivia Hale', 'SEO', 'i7 · SEO', 'since 10:05']
+  ]
+
+  static L = {
+    super: {
+      label: 'Super Admin', name: 'Arnaldo Oliveira', note: 'contractor, approves invoices and decides requests',
+      clock: { on: true, since: '8:05 AM', job: 'Leadership · Operations', mins: 161, week: [161, 0, 0, 0, 0] }, segs: [[8.08, 10.77]],
+      items: [
+        { id: 's1', sec: 'late', type: 'system', title: 'QuickBooks Time has a warning', sub: 'The last sync finished 3 hours ago. It runs every hour.', due: 'Since 7:40', btn: 'Open Automations' },
+        { id: 's2', sec: 'today', type: 'approve', title: 'Samuel Manzi, Oct 12 to 25', sub: 'Wendy Cacka approved 76h 30m. Approve the invoice: $2,295.00.', due: 'Today', btn: 'Approve invoice' },
+        { id: 's3', sec: 'today', type: 'decide', title: 'Time off: Tina Gennette', sub: 'Vacation, Wed, Nov 25 to Fri, Nov 27. 3 days.', due: 'Today', btn: 'Decide' },
+        { id: 's4', sec: 'today', type: 'decide', title: 'Extra hours: Olivia Hale', sub: '6h over her allowance this period, for the HFA audit.', due: 'Today', btn: 'Decide' },
+        { id: 's5', sec: 'late', type: 'task', title: 'HFA translation targets for November', sub: 'My Work · Hope for Africa', due: 'Was due Fri', btn: 'Open' },
+        { id: 's6', sec: 'week', type: 'task', title: 'Sign off the i7 October report', sub: 'My Work · i7', due: 'Wed, Oct 28', btn: 'Open' },
+        { id: 's7', sec: 'week', type: 'decide', title: 'Reimbursement: Justus Tsofa', sub: '$48.00, internet for October. Goes on his next invoice.', due: 'Fri, Oct 30', btn: 'Decide' },
+        { id: 's8', sec: 'week', type: 'invoice', title: '3 fixed-pay invoices are created Nov 1', sub: 'Andressa, Yuliberth and John. They come straight to you.', due: 'Sun, Nov 1', btn: '' }
+      ],
+      working: 'all', requests: [['Your Oct 12 to 25 timesheet', 'With Dave Sharpe since Sun', 'wait']]
+    },
+    admin: {
+      label: 'Admin', name: 'Dave Sharpe', note: 'employee, Admin access, approves nothing',
+      clock: { on: false, mins: 0, week: [0, 0, 0, 0, 0] }, segs: [],
+      items: [
+        { id: 'a1', sec: 'late', type: 'system', title: 'Monday sync failed twice', sub: 'Last good sync Sun, 11:40 PM. My Work may be out of date.', due: 'Since 6:00', btn: 'Open Automations' },
+        { id: 'a2', sec: 'today', type: 'access', title: 'John has not accepted his invitation', sub: 'Sent Tue, Oct 20. Access level: User.', due: 'Today', btn: 'Resend' },
+        { id: 'a3', sec: 'today', type: 'task', title: 'Q4 budget review with Arnaldo', sub: 'My Work · Leadership', due: 'Today', btn: 'Open' },
+        { id: 'a4', sec: 'week', type: 'task', title: 'Bessemeters launch brief', sub: 'My Work · Bessemeters', due: 'Wed, Oct 28', btn: 'Open' },
+        { id: 'a5', sec: 'week', type: 'send', title: 'Pay period Oct 18 to 31 closes Saturday', sub: '32h 00m logged so far. It goes to Rippling for payroll.', due: 'Sat, Oct 31', btn: 'Open Time entries' }
+      ],
+      working: 'all', requests: [['Time off, Dec 28 to 31', 'Approved, on the team calendar', 'ok']]
+    },
+    lead: {
+      label: 'Team Leader', name: 'Rock Kai', note: 'contractor, leads Social Media',
+      clock: { on: true, since: '9:20 AM', job: 'AAAF · Social strategy', mins: 86, week: [86, 0, 0, 0, 0] }, segs: [[9.33, 10.77]],
+      items: [
+        { id: 'l1', sec: 'late', type: 'send', title: 'Your Oct 12 to 25 timesheet', sub: '74h 50m logged. Send it so Dave Sharpe can approve it.', due: '1 day late', btn: 'Review and send' },
+        { id: 'l2', sec: 'today', type: 'approve', title: 'Clarise Nixon, Oct 12 to 25', sub: '38h 10m, sent Sun, 6:40 PM. Arnaldo Oliveira approves the invoice after you.', due: 'Today', btn: 'Review hours' },
+        { id: 'l3', sec: 'today', type: 'approve', title: 'Stephanie Aguirre, Oct 12 to 25', sub: '40h 00m. 2 entries were edited by hand.', due: 'Today', btn: 'Review hours' },
+        { id: 'l4', sec: 'today', type: 'task', title: 'Approve the November posting calendar', sub: 'My Work · AAAF Social', due: 'Today', btn: 'Open' },
+        { id: 'l5', sec: 'week', type: 'task', title: 'Holiday campaign assets brief', sub: 'My Work · AAAF Social', due: 'Thu, Oct 29', btn: 'Open' }
+      ],
+      working: [['Clarise Nixon', 'Social Media', 'AAAF · Social posts', 'since 9:02', 1], ['Stephanie Aguirre', 'Social Media', 'Not on the clock', 'last out Fri', 0]],
+      requests: [['Extra hours for Clarise Nixon, 4h', 'Waiting on Arnaldo Oliveira', 'wait']]
+    },
+    emp: {
+      label: 'User · employee', name: 'Tina Gennette', note: 'employee, Operations',
+      clock: { on: false, mins: 0, week: [0, 0, 0, 0, 0] }, segs: [],
+      items: [
+        { id: 'e1', sec: 'late', type: 'task', title: 'Send Hope for Africa monthly numbers', sub: 'My Work · Hope for Africa', due: 'Was due Fri', btn: 'Open' },
+        { id: 'e2', sec: 'today', type: 'task', title: 'Update the October publishing tracker', sub: 'My Work · Operations', due: 'Today', btn: 'Open' },
+        { id: 'e3', sec: 'today', type: 'task', title: 'Prepare the i7 invoice backup', sub: 'My Work · i7', due: 'Today', btn: 'Open' },
+        { id: 'e4', sec: 'week', type: 'send', title: 'Pay period Oct 18 to 31 closes Saturday', sub: '40h 00m logged last week. It goes to Rippling for payroll.', due: 'Sat, Oct 31', btn: 'Open Time entries' },
+        { id: 'e5', sec: 'week', type: 'task', title: 'Board cleanup: Bessemeters', sub: 'My Work · Bessemeters', due: 'Fri, Oct 30', btn: 'Open' }
+      ],
+      working: null, requests: [['Time off, Nov 25 to 27', 'Waiting on Arnaldo Oliveira', 'wait'], ['Reimbursement, $32.00', 'Approved, paid on Nov 6', 'ok']]
+    },
+    con: {
+      label: 'User · contractor', name: 'Cheyenne Wilson', note: 'contractor, Writers',
+      clock: { on: true, since: '7:50 AM', job: 'AAAF · Articles', mins: 176, week: [176, 0, 0, 0, 0] }, segs: [[7.83, 10.77]],
+      items: [
+        { id: 'c1', sec: 'late', type: 'send', title: 'Your Oct 12 to 25 timesheet', sub: '72h 15m logged. Arnaldo Oliveira approves it and it goes on your invoice.', due: '1 day late', btn: 'Review and send' },
+        { id: 'c2', sec: 'today', type: 'task', title: 'AAAF article: questions about the Sabbath, draft', sub: 'My Work · AAAF Writers', due: 'Today', btn: 'Open' },
+        { id: 'c3', sec: 'today', type: 'task', title: 'Edit 3 translated posts', sub: 'My Work · AAAF Translation', due: 'Today', btn: 'Open' },
+        { id: 'c4', sec: 'week', type: 'task', title: 'HFA donor story', sub: 'My Work · Hope for Africa', due: 'Thu, Oct 29', btn: 'Open' }
+      ],
+      working: null, requests: [['Extra hours, 5h', 'Waiting on Arnaldo Oliveira', 'wait'], ['September invoice, $2,180.00', 'Paid on Oct 6', 'ok']]
+    }
+  }
+
+  static MEETS = {
+    super: [[11, 11.5, 'Leadership sync'], [14, 15, 'i7 monthly review']],
+    admin: [[11, 11.5, 'Leadership sync'], [15.5, 16, 'Bessemeters kickoff']],
+    lead: [[13, 13.5, 'Social team standup']],
+    emp: [[10, 10.5, 'Ops weekly'], [14, 14.5, 'i7 call']],
+    con: [[12, 12.5, 'Writers check-in']]
+  }
+  // Pay period per level. days: one entry per calendar day from start; [worked, pto, holiday, sick] in minutes, 'T' marks today.
+  static PERIOD = {
+    super: { range: 'Oct 26 to Nov 8', start: 26, kind: 'con', after: 'When it closes, Dave Sharpe approves it and it becomes your invoice.', prev: 'Oct 12 to 25: with Dave Sharpe', prevDot: '#e0940e', days: ['T'] },
+    admin: { range: 'Oct 18 to 31', start: 18, kind: 'emp', after: 'Goes to Rippling for payroll when it closes on Sat, Oct 31.', prev: 'Oct 4 to 17: paid Oct 23', prevDot: '#1E9E6A', days: [[0], [480], [480], [480], [480], [0, 480], [0], [0], 'T'] },
+    lead: { range: 'Oct 26 to Nov 8', start: 26, kind: 'con', after: 'When it closes, Dave Sharpe approves it and it becomes your invoice.', prev: 'Oct 12 to 25: not sent, 1 day late', prevDot: '#c8323d', days: ['T'] },
+    emp: { range: 'Oct 18 to 31', start: 18, kind: 'emp', after: 'Goes to Rippling for payroll when it closes on Sat, Oct 31.', prev: 'Oct 4 to 17: paid Oct 23', prevDot: '#1E9E6A', days: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0], 'T'] },
+    con: { range: 'Oct 26 to Nov 8', start: 26, kind: 'con', after: 'When it closes, Arnaldo Oliveira approves it and it becomes your invoice.', prev: 'Oct 12 to 25: not sent, 1 day late', prevDot: '#c8323d', days: ['T'] }
+  }
+  // The period just closed, for the "closes today" and "late" states.
+  static CLOSED = {
+    super: { range: 'Oct 12 to 25', start: 12, approver: 'Dave Sharpe', days: [[480], [480], [480], [480], [480], [0], [0], [480], [480], [480], [480], [480], [0], [0]] },
+    lead: { range: 'Oct 12 to 25', start: 12, approver: 'Dave Sharpe', days: [[480], [480], [480], [480], [330], [0], [0], [480], [480], [480], [480], [320], [0], [0]] },
+    con: { range: 'Oct 12 to 25', start: 12, approver: 'Arnaldo Oliveira', days: [[480], [480], [480], [480], [0], [0], [0], [480], [480], [480], [480], [495], [0], [0]] },
+    admin: { range: 'Oct 18 to 31', start: 18, approver: 'Rippling', days: [[0], [480], [480], [480], [480], [0, 480], [0], [0], [480], [480], [480], [480], [480], [0]] },
+    emp: { range: 'Oct 18 to 31', start: 18, approver: 'Rippling', days: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0], [480], [480], [480], [480], [480], [0]] }
+  }
+  // Directory photos by name (avatar_url). Empty here: no photos in this project yet.
+  static PHOTOS = {}
+  static UPCOMING = [['Tue', '27', 'All-hands', '10:00 AM, everyone'], ['Thu', '29', 'Tina Gennette, 3 years', 'Work anniversary'], ['Fri', '30', 'Saheed Fidimaye', 'Birthday'], ['Sat', '31', 'Pay period closes', 'Oct 18 to 31'], ['Wed', '11', 'Veterans Day', 'Company holiday'], ['Thu', '26', 'Thanksgiving', 'Company holiday']]
+  static OUT = [['Hosea Moturi', 'Africa', 'Unavailable', 'until Wed'], ['Amy Prindle', 'Writers', 'Unavailable', 'today only']]
+  static D = {
+    s1: { rows: [['Service', 'QuickBooks Time'], ['Last good sync', 'Mon, 7:40 AM'], ['Schedule', 'Every hour'], ['Affects', 'Imported time entries']], note: 'Clocky keeps working. Entries made in QuickBooks Time after 7:40 come in when the sync recovers.', primary: 'Run sync now', secondary: 'Close', full: 'Open Automations' },
+    s2: { rows: [['Period', 'Oct 12 to 25'], ['Hours', '76h 30m'], ['Rate', '$30.00 / h'], ['Invoice', '$2,295.00'], ['Timesheet', 'Approved by Wendy Cacka, Sun 8:12 PM']], note: 'No hours over the allowance. Approving sends the invoice to Finance for payment.', primary: 'Approve invoice', secondary: 'Send back', full: 'Open in Approvals' },
+    s3: { rows: [['Type', 'Vacation'], ['Dates', 'Wed, Nov 25 to Fri, Nov 27'], ['Working days', '3'], ['After approval', 'Rippling and the team calendar'], ['Also out', 'Nobody on Operations']], note: '"Thanksgiving week with my family."', primary: 'Approve', secondary: 'Decline', full: 'Open in Requests' },
+    s4: { rows: [['Allowance', '80h 00m this period'], ['Logged so far', '74h 10m'], ['Asking for', '+6h 00m'], ['Reason', 'HFA audit, 40 pages'], ['Cost', '+$162.00']], note: 'If declined, hours past the allowance stay on her timesheet but are not paid.', primary: 'Approve', secondary: 'Decline', full: 'Open in Requests' },
+    s7: { rows: [['Amount', '$48.00'], ['For', 'Internet, October'], ['Receipt', 'receipt-oct.pdf'], ['Paid', 'On his November invoice']], primary: 'Approve', secondary: 'Decline', full: 'Open in Requests' },
+    a1: { rows: [['Service', 'Monday'], ['Last good sync', 'Sun, 11:40 PM'], ['Failed', '6:00 and 7:00 AM'], ['Error', '401 Unauthorized']], note: 'The token may have expired. A Super Admin replaces it in Company settings, APIs and tokens.', primary: 'Retry now', secondary: 'Close', full: 'Open Automations' },
+    a2: { rows: [['Person', 'John'], ['Team', 'Special Projects'], ['Access level', 'User'], ['Sent', 'Tue, Oct 20'], ['Link expires', 'Tue, Oct 27']], primary: 'Resend invitation', secondary: 'Copy link', full: 'Open in Directory' },
+    a5: { rows: [['Period', 'Oct 18 to 31'], ['Logged', '32h 00m'], ['Expected', '80h 00m'], ['Closes', 'Sat, Oct 31'], ['Goes to', 'Rippling, for payroll']], primary: 'Open Time entries', full: 'Open in Clocky' },
+    e4: { rows: [['Period', 'Oct 18 to 31'], ['Logged', '40h 00m'], ['Expected', '80h 00m'], ['Closes', 'Sat, Oct 31'], ['Goes to', 'Rippling, for payroll']], primary: 'Open Time entries', full: 'Open in Clocky' },
+    l1: { rows: [['Period', 'Oct 12 to 25'], ['Logged', '74h 50m'], ['Days with entries', '10 of 10'], ['Approves', 'Dave Sharpe'], ['Then', 'Your invoice, also Dave Sharpe']], note: 'Send it as it is, or open Time entries to fix something first.', primary: 'Send timesheet', secondary: 'Not yet', full: 'Open Time entries' },
+    l2: { rows: [['Period', 'Oct 12 to 25'], ['Hours', '38h 10m'], ['Edited by hand', 'None'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']], note: 'You approve the hours. Amounts are never shown to Team Leaders.', primary: 'Approve hours', secondary: 'Send back', full: 'Open in Approvals' },
+    l3: { rows: [['Period', 'Oct 12 to 25'], ['Hours', '40h 00m'], ['Edited by hand', '2 entries'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']], note: 'Oct 19: 9:00 AM to 1:00 PM added, "forgot to clock in". Oct 22: end changed from 6:40 to 5:30 PM.', primary: 'Approve hours', secondary: 'Send back', full: 'Open in Approvals' },
+    c1: { rows: [['Period', 'Oct 12 to 25'], ['Logged', '72h 15m'], ['Days with entries', '9 of 10'], ['Approves', 'Arnaldo Oliveira'], ['Then', 'It goes on your October invoice']], note: 'Send it as it is, or open Time entries to fix something first.', primary: 'Send timesheet', secondary: 'Not yet', full: 'Open Time entries' }
+  }
+
+  static T = {
+    approve: { label: 'Approval', bg: '#e8edf5', fg: '#012358', d: 'tests' },
+    decide: { label: 'Request', bg: '#fbf1cf', fg: '#8a6703', d: 'requests' },
+    send: { label: 'Timesheet', bg: '#fdf8e7', fg: '#8a6d1a', d: 'clock' },
+    task: { label: 'My Work', bg: '#eaf4f4', fg: '#1E7D7F', d: 'work' },
+    system: { label: 'System', bg: '#fdecea', fg: '#b3271f', d: 'alert' },
+    access: { label: 'Access', bg: '#f1f3f6', fg: '#5b6b82', d: 'admin' },
+    invoice: { label: 'Invoices', bg: '#f1f3f6', fg: '#5b6b82', d: 'invoice' }
+  }
+
+  state = { level: 'super', done: {}, later: [], tab: 'needs', clock: {}, bessData: true }
+
+  sun(left, top, glow, scale = 1) {
+    const e = React.createElement, a = (k, s) => e('div', { key: k, className: 'tn-anim', style: s }), R = v => v * scale
+    return e(React.Fragment, null,
+      e('div', { style: { position: 'absolute', left, top, width: 0, height: 0, pointerEvents: 'none', transition: 'left 1.2s ease' } },
+        a('r1', { position: 'absolute', left: R(-330), top: R(-330), width: R(660), height: R(660), borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, rgba(242,196,10,.13) 0deg 1.6deg, transparent 1.6deg 15deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', maskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', animation: 'tn-spin 80s linear infinite' }),
+        a('r2', { position: 'absolute', left: R(-260), top: R(-260), width: R(520), height: R(520), borderRadius: '50%', background: 'repeating-conic-gradient(from 4deg, rgba(148,196,197,.10) 0deg 1deg, transparent 1deg 9deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', maskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', animation: 'tn-spin-rev 120s linear infinite' }),
+        ...[0, 1.8, 3.6].map((d, i) => a('p' + i, { position: 'absolute', left: R(-270), top: R(-270), width: R(540), height: R(540), borderRadius: '50%', border: `1px solid ${i === 1 ? 'rgba(242,196,10,.4)' : 'rgba(148,196,197,.5)'}`, animation: 'tn-ripple 5.4s ease-out infinite', animationDelay: d + 's' })),
+        a('c', { position: 'absolute', left: 0, top: 0, width: 12, height: 12, transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#F2C40A', boxShadow: '0 0 26px 6px rgba(242,196,10,.55)', animation: 'tn-core 6.5s ease-in-out infinite' })),
+      a('g', { position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(circle at ${glow}, rgba(242,196,10,.26), transparent 46%)`, transformOrigin: glow, animation: 'tn-breathe 6.5s ease-in-out infinite' }))
+  }
+
+  static PUB = [
+    { name: 'AAAF', langs: [['English', 2, [2, 1, 0, 2, 2]], ['Spanish', 3, [3, 3, 1, 3, 3]], ['Portuguese', 2, [2, 2, 1, 2, 2]], ['Swahili', 2, [2, 2, 0, 2, 2]], ['Hindi', 2, [2, 2, 1, 2, 1]]] },
+    { name: 'HFA', langs: [['English', 5, [4, 5, 2, 6, 5]], ['French', 2, [2, 2, 1, 3, 2]], ['Swahili', 2, [1, 2, 0, 3, 1]], ['Portuguese', 1, [1, 1, 0, 1, 1]]] }
+  ]
+  pubVariants() {
+    if (this._pv8) return this._pv8
+    const G = '#167a52', A = '#9a5a00', R = '#c8323d'
+    const weeks = ['Sep 21-27', 'Sep 28-Oct 4', 'Oct 5-11', 'Oct 12-18', 'Oct 19-25'], short = ['Sep 21', 'Sep 28', 'Oct 5', 'Oct 12', 'Oct 19']
+    const N = weeks.length, IDX = [...Array(N).keys()]
+    const tints = ['#1E7D7F', '#3a9b98', '#62b3ae', '#8ec9c4', '#b6dcd8', '#d6ecea']
+    const boards = Component.PUB.map(b => {
+      const en = b.langs[0], others = b.langs.slice(1)
+      const target = b.langs.reduce((a, l) => a + l[1], 0)
+      const tot = IDX.map(i => b.langs.reduce((a, l) => a + l[2][i], 0))
+      const hits = tot.filter(t => t >= target).length, enHits = en[2].filter(d => d >= en[1]).length
+      // 2a line: y scale 0..150%
+      const W = 330, Hh = 150, top = 22, bot = 10, maxP = 150
+      const y = p => top + (1 - Math.min(p, maxP) / maxP) * (Hh - top - bot)
+      const xs = IDX.map(i => 16 + i * (W - 32) / (N - 1))
+      const pcts = en[2].map(d => Math.round(d / en[1] * 100))
+      const path = 'M' + xs.map((x, i) => `${x.toFixed(1)} ${y(pcts[i]).toFixed(1)}`).join(' L')
+      const area = path + ` L${xs[N - 1]} ${Hh - bot} L${xs[0]} ${Hh - bot} Z`
+      const pts = pcts.map((p, i) => ({ x: xs[i] + 'px', xp: (xs[i] / W * 100).toFixed(2) + '%', y: y(p) + 'px', v: p + '%', wk: short[i], c: p >= 100 ? G : p > 0 ? A : R }))
+      const cell = (d, t) => d >= t ? ['#d6f0e3', G] : d > 0 ? ['#fbe9cf', A] : ['#fbe1e1', R]
+      const heat = []
+      others.forEach(([n, t, ds]) => {
+        heat.push({ v: { Spanish: 'ES', Portuguese: 'PT', French: 'FR', German: 'DE', Russian: 'RU', Swahili: 'SW', Hindi: 'HI' }[n] || n.slice(0, 2).toUpperCase(), bg: 'transparent', fg: '#5b6b82', jc: 'flex-start', fs: '11px', fw: 800 })
+        ds.forEach(d => { const [bg, fg] = cell(d, t); heat.push({ v: `${d}/${t}`, bg, fg, jc: 'center', fs: '12px', fw: 700 }) })
+      })
+      // 2b stacked
+      const scale = 10
+      const cols = IDX.map(i => ({
+        wk: short[i], total: `${tot[i]}/${target}`, en: `${en[2][i]}/${en[1]}`,
+        enFg: en[2][i] >= en[1] ? G : en[2][i] > 0 ? A : R, enBg: en[2][i] >= en[1] ? '#e6f6ee' : en[2][i] > 0 ? '#fdf3e3' : '#fdeeef',
+        segs: b.langs.filter(l => l[2][i] > 0).map((l, k) => ({ h: l[2][i] * scale + 'px', bg: l[0] === 'English' ? '#012358' : tints[b.langs.indexOf(l) - 1], title: `${l[0]}: ${l[2][i]} of ${l[1]}` }))
+      }))
+      const legend = b.langs.map((l, k) => ({ name: l[0], bg: k === 0 ? '#012358' : tints[k - 1] }))
+      // 2c bullets
+      const bullets = b.langs.map(([n, t, ds], k) => {
+        const isEn = k === 0, mx = Math.max(t, ...ds) * 1.25
+        return {
+          lang: n, t, fs: isEn ? '15px' : '13px', h: isEn ? '14px' : '7px', nfs: isEn ? '14px' : '12px', rowBg: isEn ? '#f4f2ec' : 'transparent', pad: isEn ? '12px 12px 12px 0' : '7px 12px 7px 0', margin: isEn ? '0 0 6px' : '0', pl: isEn ? '12px' : '12px',
+          cells: ds.map(d => ({ w: Math.min(100, d / mx * 100) + '%', tick: (t / mx * 100) + '%', v: `${d}/${t}`, bg: isEn ? (d >= t ? '#012358' : '#e08a1e') : (d >= t ? '#1E9E6A' : d > 0 ? '#e08a1e' : '#eef0f3'), fg: d >= t ? (isEn ? '#012358' : G) : d > 0 ? A : R }))
+        }
+      })
+      const CODE = { English: 'EN', Spanish: 'ES', Portuguese: 'PT', French: 'FR', German: 'DE', Russian: 'RU', Swahili: 'SW', Hindi: 'HI' }
+      const sx = IDX.map(i => 4 + i * 96 / (N - 1))
+      const sparks = others.map(([n, t, ds]) => {
+        const mx = Math.max(t * 1.5, ...ds), sy = v => 23 - v / mx * 20
+        const h = ds.filter(d => d >= t).length
+        return { code: CODE[n], name: n, t, cells: ds.map(d => { const [bg, fg] = cell(d, t); return { v: `${d}/${t}`, bg, fg } }), path: 'M' + ds.map((d, i) => `${sx[i]} ${sy(d).toFixed(1)}`).join(' L'), tline: `M0 ${sy(t).toFixed(1)} H104`,
+          dots: ds.map((d, i) => ({ x: sx[i] + 'px', y: sy(d) + 'px', c: d >= t ? '#1E9E6A' : d > 0 ? '#e08a1e' : '#c8323d' })),
+          hits: `${h}/${N}`, fg: h === N ? G : h >= 2 ? A : R, bg: h === N ? '#e6f6ee' : h >= 2 ? '#fdf3e3' : '#fdeeef' }
+      })
+      const enCells = en[2].map((d, i) => {
+        const p = Math.round(d / en[1] * 100), prev = i ? en[2][i - 1] : null
+        const [bg, fg] = d >= en[1] ? ['#d6f0e3', G] : d > 0 ? ['#fbe9cf', A] : ['#fbe1e1', R]
+        return { pct: p, count: `${d}/${en[1]}`, delta: prev === null ? '' : d > prev ? '▲' : d < prev ? '▼' : '', bg, fg }
+      })
+      const bandPath = 'M' + en[2].map((d, i) => { const p = Math.min(d / en[1], 1.5); return `${(i * 400 / N + 200 / N).toFixed(0)} ${(14 + (1 - p / 1.5) * 26).toFixed(1)}` }).join(' L')
+      const heat2 = []
+      others.forEach(([n, t, ds]) => {
+        heat2.push({ v: `${n} · ${t}`, bg: 'transparent', fg: '#5b6b82', jc: 'flex-start', fs: '12px', fw: 600 })
+        ds.forEach(d => { const [bg, fg] = cell(d, t); heat2.push({ v: `${d}/${t}`, bg, fg, jc: 'center', fs: '12px', fw: 700 }) })
+      })
+      const totCells = tot.map(t => ({ pct: Math.round(t / target * 100), count: `${t}/${target}`, fg: t >= target ? G : A }))
+      return {
+        sparks, enCells, bandPath, heat2, totCells,
+        name: b.name, target, enTarget: en[1], hits: `${hits}/${N}`, enHits: `${enHits}/${N}`, enHitFg: enHits >= N - 1 ? G : A,
+        line100: y(100) + 'px', path, area, pts, heat,
+        tH: target * scale + 'px', cols, legend, bullets
+      }
+    })
+    const cycles = [{ name: 'Bessemeters', rule: 'English · every 2 weeks · 1 per cycle', short: 'English, every 2 weeks', cycle: 'First cycle, Oct 12 to 25', count: '0 of 1 so far', fg: '#9a5a00', w: '0%', ends: 'Ends Sun, Oct 25' }]
+    this._pv8 = { boards, weeks, weeksShort: short, cycles }
+    return this._pv8
+  }
+
+  ppModeOf(key) {
+    const m = this.state.ppMode || 'auto'
+    if (m !== 'auto') return m
+    if ((this.state.sent || {})[key]) return 'sent'
+    return { super: 'sent', lead: 'late', con: 'late' }[key] || 'running'
+  }
+
+  buildPeriod(P, todayMins) {
+    const TYPES = [['Worked', '#012358'], ['PTO', '#1E7D7F'], ['Holiday', '#F2C40A'], ['Sick', '#94C4C5']]
+    const dowOf = d => ['S', 'M', 'T', 'W', 'T', 'F', 'S'][(d - 18 + 70) % 7]
+    const days = [], sums = [0, 0, 0, 0]
+    let wdDone = 0, wdTotal = 0, daysWith = 0
+    for (let i = 0; i < 14; i++) {
+      const dateN = P.start + i, dow = dowOf(dateN), weekend = dow === 'S'
+      const raw = P.days[i], isToday = raw === 'T', future = raw === undefined
+      const v = isToday ? [todayMins] : future ? [] : raw
+      v.forEach((m, k) => { sums[k] += m || 0 })
+      if (!weekend) { wdTotal++; if (!isToday && !future) wdDone++; if (v.some(m => m > 0)) daysWith++ }
+      const segs = v.map((m, k) => ({ h: Math.round((m || 0) / 480 * 50) + 'px', bg: TYPES[k][1] })).filter(g => g.h !== '0px')
+      if (!segs.length) segs.push({ h: '3px', bg: weekend ? 'transparent' : '#e4e7ec' })
+      const parts = v.map((m, k) => (m ? `${TYPES[k][0]} ${this.hm(m)}` : '')).filter(Boolean)
+      const dLabel = dateN > 31 ? `Nov ${dateN - 31}` : `Oct ${dateN}`
+      days.push({ label: dow, segs, title: `${dLabel}: ${parts.join(', ') || (future ? 'not yet' : 'nothing logged')}`,
+        fg: isToday ? '#012358' : weekend ? '#cbd2da' : '#8593a4', w: isToday ? 800 : 600, outline: isToday ? '2px solid #F2C40A' : 'none' })
+    }
+    const counted = sums.reduce((a, b) => a + b, 0), expected = wdTotal * 480, pace = wdDone * 480
+    const diff = counted - pace, left = wdTotal - wdDone, r = pace / expected
+    return {
+      total: this.hm(counted), expected: this.hm(expected), daysWith, wdTotal,
+      fillW: Math.min(100, counted / expected * 100).toFixed(1) + '%', paceL: (r * 100).toFixed(1) + '%', hasPace: pace > 0,
+      paceShift: r < 0.12 ? 'translateX(0)' : r > 0.88 ? 'translateX(-100%)' : 'translateX(-50%)',
+      stats: [
+        { k: 'Working days left', v: String(left), fg: '#012358' },
+        { k: 'Pace', v: diff >= -30 ? 'On pace' : `${this.hm(-diff)} behind`, fg: diff >= -30 ? '#167a52' : '#9a5a00' },
+        { k: 'Per day', v: this.hm(Math.round(counted / Math.max(1, wdDone + (todayMins ? 1 : 0)))), fg: '#012358' }
+      ],
+      days, legend: TYPES.map(([label, bg], k) => ({ label, bg, v: this.hm(sums[k]), on: k === 0 || sums[k] > 0 })).filter(l => l.on)
+    }
+  }
+
+  hm(m) { return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm' }
+  ini(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2) }
+
+  renderVals() {
+    const s = this.state, C = Component, I = C.I
+    const key = s.level, L = C.L[key], rank = { super: 4, admin: 3, lead: 2, emp: 1, con: 1 }[key]
+    const on = s.clock[key] ?? L.clock.on
+    const done = s.done
+    const btnStyle = t => (t === 'task' || t === 'access'
+      ? { bg: '#fff', fg: '#012358', bd: '#d9dee6', ic: '#1E9E6A', d: I.arrow }
+      : { bg: '#012358', fg: '#fff', bd: '#012358', ic: '#F2C40A', d: t === 'approve' ? I.check : t === 'send' ? I.play : I.arrow })
+    const secFg = { late: '#c8323d', today: '#012358', week: '#8593a4' }
+    const items = L.items.map(it => {
+      const t0 = C.T[it.type], late = it.sec === 'late'
+      const t = { ...t0, d: I[t0.d], ...(it.type === 'send' && late ? { bg: '#fdeeef', fg: '#c8323d' } : {}) }
+      const d = !!done[it.id]
+      return { ...it, t, b: btnStyle(it.type), done: d, open: !!it.btn && !d, op: d ? 0.45 : 1, strike: d ? 'line-through' : 'none',
+        dueFg: late ? '#c8323d' : it.sec === 'today' ? '#012358' : '#8593a4', go: () => this.setState(p => ({ done: { ...p.done, [it.id]: true } })), openP: () => this.setState({ panel: it.id }) }
+    })
+    const order = { late: 0, today: 1, week: 2 }
+    const open = items.filter(i => !i.done && i.btn)
+    const urgent = open.filter(i => i.sec !== 'week')
+    const lateN = open.filter(i => i.sec === 'late').length
+    const summary = urgent.length
+      ? `${urgent.length} ${urgent.length === 1 ? 'thing needs' : 'things need'} you today${lateN ? `, ${lateN} of them late` : ''}.`
+      : open.length ? `Today is clear. ${open.length} more this week.` : 'Nothing is waiting on you.'
+
+    const mins = on ? L.clock.mins : 0
+    const clk = on
+      ? { label: 'On the clock', labelFg: '#7fd1ad', halo: 'rgba(30,158,106,.25)', sinceShort: `since ${L.clock.since || '10:46 AM'}`, canSwitch: true, btnD: 'M6 6h12v12H6z', dot: '#1E9E6A', state: `On the clock since ${L.clock.since || '10:46 AM'}`, today: this.hm(mins), job: L.clock.job || 'No job picked', btn: 'Clock out', btnBg: '#fff', pct: Math.max(2, Math.round(mins / 2400 * 100)) + '%', week: `${this.hm(mins)} of 40h 00m this week` }
+      : { label: 'Off the clock', labelFg: 'rgba(255,255,255,.7)', halo: 'rgba(255,255,255,.08)', sinceShort: 'not started today', canSwitch: false, btnD: 'M7 4.5v15l12-7.5z', dot: 'rgba(255,255,255,.4)', state: 'Not clocked in today', today: '0h 00m', job: 'Pick a job when you clock in', btn: 'Clock in', btnBg: '#F2C40A', pct: '0%', week: '0h 00m of 40h 00m this week' }
+
+    const tone = { wait: ['#fdf8e7', '#8a6d1a', '#F2C40A'], ok: ['#e6f6ee', '#0d7a4f', '#7fd1ad'] }
+    const requests = L.requests.map(([title, status, k]) => ({ title, status, bg: tone[k][0], fg: tone[k][1], navyFg: tone[k][2] }))
+    const wsrc = L.working === 'all' ? C.ALL_WORKING.map(w => [...w, 1]) : L.working
+    const working = wsrc ? wsrc.map(([n, team, job, since, o]) => ({ name: n, ini: this.ini(n), color: C.TEAMC[team] || '#9CA3AF', bgImg: C.PHOTOS[n] ? `url(${C.PHOTOS[n]})` : 'none', iniShown: C.PHOTOS[n] ? '' : this.ini(n), job, since, dot: o ? '#1E9E6A' : '#cbd2da', op: o ? 1 : 0.6 })) : []
+    const onN = wsrc ? wsrc.filter(w => w[4]).length : 0
+
+    const sections = ['late', 'today', 'week'].map(k => {
+      const list = items.filter(i => i.sec === k)
+      return { label: { late: 'Late', today: 'Today', week: 'This week' }[k], fg: secFg[k], items: list, has: list.length > 0 }
+    })
+
+    const needs = items.filter(i => i.type !== 'task' && i.type !== 'send'), tasks = items.filter(i => i.type === 'task')
+    const cols = [
+      { title: 'Needs you', hint: rank >= 2 ? 'Approvals, requests to decide, your timesheet.' : 'Your timesheet and pay period.', items: needs, people: [], count: needs.filter(i => !i.done).length, cbg: '#012358', cfg: '#F2C40A' },
+      { title: 'My Work', hint: 'Due this week, from your Monday boards.', items: tasks, people: [], count: tasks.filter(i => !i.done).length, cbg: '#eaf4f4', cfg: '#1E7D7F' },
+      wsrc
+        ? { title: L.working === 'all' ? "Who's working" : 'Your team now', hint: L.working === 'all' ? `${onN} of 19 people on the clock.` : `${onN} of ${wsrc.length} on the clock.`, items: [], people: working, count: onN, cbg: '#e6f6ee', cfg: '#0d7a4f' }
+        : { title: 'Your requests', hint: 'What you asked for, and where it is.', items: L.requests.map(([title, status, k], i) => ({ id: 'r' + i, title, sub: status, t: { label: 'Request', fg: tone[k][1] }, due: '', dueFg: '#8593a4', open: false, done: false, op: 1, strike: 'none', b: {} })), people: [], count: L.requests.length, cbg: '#fbf1cf', cfg: '#8a6703' }
+    ].map(c => ({ ...c, empty: !c.items.length && !c.people.length, emptyText: 'Nothing here.' }))
+
+    const queue = open.filter(i => !s.later.includes(i.id)).concat(open.filter(i => s.later.includes(i.id)))
+      .sort((a, b) => (s.later.includes(a.id) - s.later.includes(b.id)) || order[a.sec] - order[b.sec])
+    const next = queue[0]
+    const tabDefs = [['needs', 'Needs you', needs], ['work', 'My Work', tasks], ['req', 'Requests', null]]
+    const reqRows = L.requests.map(([title, status, k], i) => ({ title, sub: status, t: { label: 'Request', fg: tone[k][1], bg: tone[k][0], d: /invoice/i.test(title) ? I.invoice : /hours/i.test(title) ? I.clock : I.requests }, due: '', dueFg: '#8593a4', open: false, done: false, op: 1, strike: 'none' }))
+    const tabs = tabDefs.map(([k, label, list]) => {
+      const n = list ? list.filter(i => !i.done && i.btn).length : reqRows.length, a = s.tab === k
+      return { label, count: n, go: () => this.setState({ tab: k }), fg: a ? '#012358' : '#8593a4', line: a ? '#F2C40A' : 'transparent', cbg: a ? '#012358' : '#f1f3f6', cfg: a ? '#F2C40A' : '#5b6b82' }
+    })
+    const tabItems = s.tab === 'req' ? reqRows : (s.tab === 'work' ? tasks : needs)
+    const pit = items.find(i => i.id === s.panel)
+    let p = { t: {}, b: {}, rows: [] }
+    if (pit) {
+      const d = C.D[pit.id] || { rows: [['Board', pit.sub.replace('My Work · ', '')], ['Status', 'Working on it'], ['Due', pit.due], ['Owner', L.name]], primary: 'Mark done', secondary: 'Close', full: 'Open in My Work' }
+      p = { ...pit, rows: d.rows.map(([k, v]) => ({ k, v })), note: d.note || '', hasNote: !!d.note, primary: d.primary, secondary: d.secondary || '', hasSecondary: !!d.secondary, full: d.full,
+        doPrimary: () => this.setState(x => ({ panel: null, done: { ...x.done, [pit.id]: true } })) }
+    }
+    const H = h => ((h - 7) / 12 * 100).toFixed(2) + '%'
+    const nowH = 10.77
+
+    const railDef = [['home', 'Home'], ['agenda'], ['work'], ['clocky'], ['requests'], '|', ['chat', 1], ['emails', 1], '|', ['tools'], ['people'], '|', ['admin']]
+    const rail = railDef.filter(r => r === '|' || r[0] !== 'admin' || rank >= 3)
+      .filter((r, i, all) => r !== '|' || all.slice(i + 1).some(x => x !== '|'))
+      .map(r => r === '|' ? { rule: true, isItem: false } : { rule: false, isItem: true, d: I[r[0]], bg: r[0] === 'home' ? 'rgba(255,255,255,.14)' : 'transparent', fg: r[0] === 'home' ? '#fff' : r[1] ? 'rgba(255,255,255,.40)' : 'rgba(255,255,255,.62)' })
+
+    const maxM = 480
+    const wk = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((label, i) => {
+      const m = i === 0 ? mins : 0
+      return { label, h: Math.max(4, Math.round(m / maxM * 70)) + 'px', bg: i === 0 ? '#F2C40A' : '#eef0f3', fg: i === 0 ? '#012358' : '#8593a4', w: i === 0 ? 800 : 600 }
+    })
+
+    return {
+      levels: Object.entries(C.L).map(([k, v]) => ({ label: v.label, go: () => this.setState({ level: k, tab: 'needs', later: [] }), bg: k === key ? '#012358' : 'transparent', fg: k === key ? '#fff' : '#435066' })),
+      lv: { ...L, first: L.name.split(' ')[0], ini: this.ini(L.name), line: `${L.name}, ${L.note}.`, clockPill: on ? this.hm(mins) : 'Clock in', requests, working,
+        onN, workTitle: L.working === 'all' ? "Who's working" : 'Your team now', workCount: L.working === 'all' ? `${onN} of 19 on the clock` : `${onN} of ${wsrc ? wsrc.length : 0} on the clock`, week: wk },
+      rail, summary, clk,
+      toggleClock: () => this.setState(p => ({ clock: { ...p.clock, [key]: !on } })),
+      reset: () => this.setState({ done: {}, later: [] }),
+      sections, openCount: `${open.length} open`, allClear: open.length === 0,
+      hasWorking: !!wsrc,
+      cols,
+      ppModes: [['auto', 'Auto'], ['running', 'Em andamento'], ['today', 'Fecha hoje'], ['late', 'Atrasado'], ['sent', 'Enviado']].map(([k, label]) => ({ label, go: () => this.setState({ ppMode: k }), bg: (s.ppMode || 'auto') === k ? '#012358' : 'transparent', fg: (s.ppMode || 'auto') === k ? '#fff' : '#435066' })),
+      ppModeNote: `Agora: ${{ running: 'em andamento', today: 'fecha hoje', late: 'atrasado', sent: 'enviado' }[this.ppModeOf(key)]}`,
+      pp: (() => {
+        const mode = this.ppModeOf(key)
+        if (mode === 'today' || mode === 'late') {
+          const Cl = C.CLOSED[key], P0 = C.PERIOD[key]
+          const b = this.buildPeriod(Cl, 0)
+          const amber = mode === 'today'
+          return { ...b, alert: true, label: 'Period to send', range: Cl.range, hasChip: false, hasPace: false,
+            border: amber ? '#f0e2a8' : '#f3c6ca', aBg: amber ? '#fdf8e7' : '#fdeeef', aFg: amber ? '#8a6d1a' : '#c8323d', aTitleFg: amber ? '#012358' : '#c8323d',
+            aTitle: amber ? `Your ${Cl.range} timesheet closes today` : `Your ${Cl.range} timesheet is 1 day late`,
+            aSub: amber ? `${b.total} logged. Check your entries and send it when the day is done.` : `${b.total} logged. Send it so ${Cl.approver} can approve it.`,
+            stats: [{ k: 'Days with entries', v: `${b.daysWith} of ${b.wdTotal}`, fg: '#012358' }, { k: 'Approves', v: Cl.approver, fg: '#012358' }],
+            after: P0.after, afterD: P0.kind === 'emp' ? 'M3 12h18M14 5l7 7-7 7' : I.invoice,
+            hasNextLine: P0.kind === 'con', nextLine: `Next period, ${P0.range}, started today: ${this.hm(mins)} so far.`,
+            send: () => this.setState(x => ({ sent: { ...(x.sent || {}), [key]: true }, ppMode: 'auto' })) }
+        }
+        const P = C.PERIOD[key], Cl = C.CLOSED[key]
+        const b = this.buildPeriod(P, mins)
+        const sentNow = mode === 'sent'
+        return { ...b, alert: false, label: 'Pay period', range: P.range, hasChip: true, border: '#e4e7ec', hasNextLine: false, send: () => {},
+          prev: sentNow && P.kind === 'con' ? `${Cl.range}: sent, with ${Cl.approver}` : P.prev, prevDot: sentNow && P.kind === 'con' ? '#1E7D7F' : P.prevDot, chipBg: sentNow && P.kind === 'con' ? '#eaf4f4' : '#f4f2ec',
+          after: P.after, afterD: P.kind === 'emp' ? 'M3 12h18M14 5l7 7-7 7' : I.invoice }
+      })(),
+      ppOld: (() => {
+        const P = C.PERIOD[key], TYPES = [['Worked', '#012358'], ['PTO', '#1E7D7F'], ['Holiday', '#F2C40A'], ['Sick', '#94C4C5']]
+        const dowOf = d => ['S', 'M', 'T', 'W', 'T', 'F', 'S'][(d - 18 + 0 + 7 * 10) % 7] // Oct 18, 2026 is a Sunday
+        const days = [], sums = [0, 0, 0, 0]
+        let workDaysDone = 0, workDaysTotal = 0
+        for (let i = 0; i < 14; i++) {
+          const dateN = P.start + i, date = dateN > 31 ? dateN - 31 : dateN, dow = dowOf(dateN), weekend = dow === 'S'
+          const raw = P.days[i], isToday = raw === 'T', future = raw === undefined
+          const v = isToday ? [mins] : future ? [] : raw
+          v.forEach((m, k) => { sums[k] += m || 0 })
+          if (!weekend) { workDaysTotal++; if (!isToday && !future) workDaysDone++ }
+          const segs = v.map((m, k) => ({ h: Math.round((m || 0) / 480 * 50) + 'px', bg: TYPES[k][1] })).filter(g => g.h !== '0px')
+          if (!segs.length) segs.push({ h: '3px', bg: weekend ? 'transparent' : '#e4e7ec' })
+          const parts = v.map((m, k) => m ? `${TYPES[k][0]} ${this.hm(m)}` : '').filter(Boolean)
+          days.push({ label: dow, segs, title: `Oct ${date}${dateN > 31 ? ' (Nov)' : ''}: ${parts.join(', ') || (future ? 'not yet' : 'nothing logged')}`,
+            fg: isToday ? '#012358' : weekend ? '#cbd2da' : '#8593a4', w: isToday ? 800 : 600, outline: isToday ? '2px solid #F2C40A' : 'none' })
+        }
+        const counted = sums.reduce((a, b) => a + b, 0), expected = workDaysTotal * 480, pace = workDaysDone * 480
+        const diff = counted - pace, left = workDaysTotal - workDaysDone
+        const legend = TYPES.map(([label, bg], k) => ({ label, bg, v: this.hm(sums[k]), on: k === 0 || sums[k] > 0 })).filter(l => l.on)
+        return {
+          range: P.range, prev: P.prev, prevDot: P.prevDot, after: P.after,
+          afterD: P.kind === 'emp' ? 'M3 12h18M14 5l7 7-7 7' : I.invoice,
+          total: this.hm(counted), expected: this.hm(expected),
+          fillW: Math.min(100, counted / expected * 100).toFixed(1) + '%', paceL: (pace / expected * 100).toFixed(1) + '%', hasPace: pace > 0,
+          paceShift: pace / expected < 0.12 ? 'translateX(0)' : pace / expected > 0.88 ? 'translateX(-100%)' : 'translateX(-50%)',
+          stats: [
+            { k: 'Working days left', v: String(left), fg: '#012358' },
+            { k: 'Pace', v: diff >= -30 ? 'On pace' : `${this.hm(-diff)} behind`, fg: diff >= -30 ? '#167a52' : '#9a5a00' },
+            { k: 'Per day', v: this.hm(Math.round(counted / Math.max(1, workDaysDone + (mins ? 1 : 0)))), fg: '#012358' }
+          ],
+          days, legend
+        }
+      })(),
+      tabs, tabItems, tabEmpty: tabItems.length === 0, tabEmptyText: s.tab === 'req' ? 'No requests open.' : 'Nothing else here.',
+      segs: (on ? L.segs : []).map(([a, b]) => ({ l: H(a), w: ((b - a) / 12 * 100).toFixed(2) + '%' })),
+      pv: this.pubVariants(),
+      bess: (() => {
+        const on = !!s.bessData
+        const rows = [['Aug 17-30', 2, 2], ['Aug 31-Sep 13', 2, 1], ['Sep 14-27', 2, 2], ['Sep 28-Oct 11', 2, 2], ['Oct 12-25', 2, 3]]
+        return { on, pending: on ? [] : this.pubVariants().cycles, hits: `${rows.filter(r => r[2] >= r[1]).length}/${rows.length}`,
+          cells: rows.map(([label, t, d]) => { const p = Math.round(d / t * 100), met = d >= t; return { label, pct: p, count: `${d} of ${t}`, fg: met ? '#167a52' : '#9a5a00', bg: met ? '#f1f9f5' : '#fdf6ea', w: Math.min(100, p) + '%', bar: met ? '#1E9E6A' : '#e08a1e' } }) }
+      })(),
+      bessModes: [[false, 'Sem dados (hoje)'], [true, 'Com dados']].map(([k, label]) => ({ label, go: () => this.setState({ bessData: k }), bg: !!s.bessData === k ? '#012358' : 'transparent', fg: !!s.bessData === k ? '#fff' : '#435066' })),
+      i7On: rank >= 3,
+      pubOn: rank >= 2,
+
+      pubBoards: (() => {
+        const G = '#167a52', A = '#9a5a00'
+        const wk = rows => rows.map(([d, t, ed, et]) => { const pct = Math.round(d / t * 100); return { pct, count: `${d}/${t}`, fg: d >= t ? G : A, barW: Math.min(100, pct) + '%', bar: d >= t ? '#1E9E6A' : '#e08a1e', en: `${ed}/${et}`, enFg: ed >= et ? G : A } })
+        return [
+          { name: 'AAAF', score: '2/4 on target · 2/4 EN', pending: false, weeks: wk([[11, 11, 2, 2], [10, 11, 1, 2], [3, 11, 0, 2], [11, 11, 2, 2]]) },
+          { name: 'HFA', score: '2/4 on target · 2/4 EN', pending: false, weeks: wk([[8, 10, 4, 5], [10, 10, 5, 5], [3, 10, 2, 5], [13, 10, 6, 5]]) },
+          { name: 'Bessemeters', score: 'every 2 weeks', pending: true, pendingText: 'First cycle ends Oct 25.', weeks: [] }
+        ]
+      })(),
+      pOn: !!pit, p, closeP: () => this.setState({ panel: null }),
+      meets: C.MEETS[key].map(([a, b, t]) => ({ l: H(a), w: ((b - a) / 12 * 100).toFixed(2) + '%', label: `${Math.floor(a) > 12 ? Math.floor(a) - 12 : Math.floor(a)}:${a % 1 ? '30' : '00'} ${t}`, op: b < nowH ? 0.55 : 1 })),
+      outToday: C.OUT.map(([n, team, why, until]) => ({ name: n, ini: this.ini(n), bgImg: C.PHOTOS[n] ? `url(${C.PHOTOS[n]})` : 'none', iniShown: C.PHOTOS[n] ? '' : this.ini(n), why, until })),
+      outCount: C.OUT.length + ' people',
+      agenda: (() => {
+        const fmt = h => { const hh = Math.floor(h), m = h % 1 ? '30' : '00'; return [(hh > 12 ? hh - 12 : hh) + ':' + m, hh >= 12 ? 'PM' : 'AM'] }
+        const today = C.MEETS[key].filter(([, b]) => b > nowH).map(([a, b, t]) => { const [big, ap] = fmt(a); return { top: ap, topFg: '#c8323d', big, size: '17px', title: t, sub: `Today, ${Math.round((b - a) * 60)} min`, bg: '#f4f2ec', day: 'today' } })
+        const later = C.UPCOMING.map(([dow, n, t, sub]) => ({ top: dow, topFg: '#8593a4', big: n, size: '22px', title: t, sub, bg: 'transparent', day: 'later' }))
+        return today.concat(later).slice(0, 5).map((e, i, all) => ({ ...e, head: i === 0 || all[i - 1].day !== e.day, headLabel: e.day === 'today' ? 'Today' : 'Coming up' }))
+      })(),
+      nowL: H(nowH), ticks: [7, 9, 11, 13, 15, 17, 19].map((h, i, all) => ({ l: H(h), tr: i === 0 ? 'translateX(0)' : i === all.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)', label: (h > 12 ? h - 12 : h) + (h >= 12 ? ' PM' : ' AM') })),
+      sunA: this.sun('84%', 30, '84% 30%', 0.7),
+      sunB: this.sun('70%', 70, '70% 8%', 0.8),
+      sunC: this.sun(`calc(36px + (100% - 72px) * ${(nowH - 7) / 12})`, 180, `${Math.round(((nowH - 7) / 12) * 100)}% 60%`, 0.75)
+    }
+  }
+}
+</script>
+</body>
+</html>

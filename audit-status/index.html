@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portal Audit</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+  /* The Operations Portal's own tokens (src/app/globals.css). Light only. */
+  :root {
+    color-scheme: light;
+    --background: #f1efe8;
+    --subtle: #f4f2ec;
+    --card: #ffffff;
+    --panel-border: #e4e7ec;
+    --row-rule: #eceff3;
+    --foreground: #435066;
+    --muted: #6b7889;
+    --faint: #cbd2da;
+    --navy: #012358;
+    --gold: #F2C40A;
+    --gold-bg: #fbf1cf;
+    --gold-fg: #8a6703;
+    --teal: #1E7D7F;
+    --teal-soft: #eaf4f4;
+    --ok-bg: #e6f6ee;
+    --ok-fg: #0d7a4f;
+    --red-bg: #fce8e9;
+    --red-fg: #c8323d;
+    --chip-bg: #f1f3f6;
+    --chip-fg: #5b6b82;
+    --display: "Raleway", "Open Sans", system-ui, sans-serif;
+    --sans: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+  h1, h2, h3 { font-family: var(--display); color: var(--navy); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 18px; }
+
+  /* Header band */
+  .band { background: var(--navy); border-radius: 18px; padding: 26px 26px 22px; color: #ffffff; display: grid; gap: 16px; }
+  .band .kicker { font-family: var(--display); font-weight: 800; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  .band h1 { color: #ffffff; font-size: 30px; font-weight: 900; }
+  .band p { margin: 0; color: rgba(255,255,255,.78); font-size: 14px; }
+  .meter { display: grid; gap: 8px; }
+  .meter-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: rgba(255,255,255,.85); font-variant-numeric: tabular-nums; }
+  .bar { height: 12px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; display: flex; }
+  .bar .done { background: var(--gold); }
+  .bar .doing { background: repeating-linear-gradient(45deg, rgba(242,196,10,.55) 0 6px, rgba(242,196,10,.25) 6px 12px); }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+  .stat { background: rgba(255,255,255,.08); border-radius: 12px; padding: 10px 14px; min-width: 120px; }
+  .stat b { display: block; font-family: var(--display); font-size: 22px; font-weight: 900; color: #ffffff; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: rgba(255,255,255,.7); }
+
+  /* Waiting for you */
+  .waiting { background: var(--gold-bg); border: 1px solid rgba(166,124,4,.25); border-radius: 16px; padding: 18px 20px; display: grid; gap: 10px; }
+  .waiting h2 { font-size: 17px; color: var(--gold-fg); display: flex; align-items: center; gap: 8px; }
+  .waiting ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+  .waiting li b { color: var(--navy); }
+  .waiting li div { font-size: 13.5px; color: #6b5a1c; }
+
+  /* Sections and cards */
+  .section-title { font-family: var(--display); font-weight: 800; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); margin: 6px 2px 0; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--panel-border); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .card.done { border-left: 4px solid var(--ok-fg); }
+  .card.in-progress { border-left: 4px solid var(--gold); box-shadow: 0 10px 24px -16px rgba(1,35,88,.35); }
+  .card.pending { opacity: .82; }
+  .card.skipped { border-left: 4px solid var(--faint); opacity: .9; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .card h3 { font-size: 16px; }
+  .num { font-family: var(--display); font-weight: 900; color: var(--faint); font-size: 13px; margin-right: 6px; }
+  .pill { font-family: var(--display); font-weight: 800; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .pill.done { background: var(--ok-bg); color: var(--ok-fg); }
+  .pill.in-progress { background: var(--gold-bg); color: var(--gold-fg); }
+  .pill.pending { background: var(--chip-bg); color: var(--chip-fg); }
+  .pill.skipped { background: var(--chip-bg); color: var(--muted); }
+  .scope { font-size: 13.5px; color: var(--muted); margin: 0; }
+  ul.hl { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+  ul.hl li.urgent { color: var(--red-fg); font-weight: 600; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+  .chip { background: var(--chip-bg); color: var(--chip-fg); border-radius: 7px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+  .chip code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  .note { font-size: 13px; color: var(--gold-fg); background: var(--gold-bg); border-radius: 8px; padding: 6px 10px; margin: 0; }
+  .counts { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .counts b { color: var(--navy); }
+  footer { font-size: 12.5px; color: var(--muted); text-align: center; }
+  .error { background: var(--red-bg); color: var(--red-fg); padding: 14px 16px; border-radius: 12px; }
+  @media (max-width: 520px) { .band h1 { font-size: 24px; } .stat { min-width: 0; flex: 1 1 40%; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite">
+  <p class="scope">Loading the audit's progress…</p>
+</main>
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const LABEL = { done: 'Done', 'in-progress': 'In progress', pending: 'Not started', skipped: 'Skipped' }
+  const pill = st => `<span class="pill ${st}">${LABEL[st] ?? st}</span>`
+  const chips = (label, list) => (list && list.length) ? list.map(x => `<span class="chip">${label} <code>${esc(x)}</code></span>`).join('') : ''
+
+  function moduleCard(m) {
+    const hl = (m.highlights ?? []).map(h => `<li class="${/^URGENT/.test(h) ? 'urgent' : ''}">${esc(h)}</li>`).join('')
+    const counts = m.status === 'pending' || m.status === 'skipped' ? '' : `<div class="counts"><span><b>${m.found ?? 0}</b> found</span><span><b>${m.fixed ?? 0}</b> fixed</span><span><b>${m.decided ?? 0}</b> of your decisions</span></div>`
+    return `<article class="card ${m.status}">
+      <div class="card-head"><h3><span class="num">${String(m.n).padStart(2, '0')}</span>${esc(m.title)}</h3>${pill(m.status)}</div>
+      ${m.scope ? `<p class="scope">${esc(m.scope)}</p>` : ''}
+      ${hl ? `<ul class="hl">${hl}</ul>` : ''}
+      ${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}
+      ${counts}
+      <div class="meta">${chips('commit', m.commits)}${chips('migration', m.migrations)}</div>
+    </article>`
+  }
+
+  function render(d) {
+    const mods = d.modules
+    // A skipped module is closed too: it counts toward the progress.
+    const done = mods.filter(m => m.status === 'done' || m.status === 'skipped').length
+    const doing = mods.filter(m => m.status === 'in-progress').length
+    const total = mods.length
+    const pct = n => (100 * n / total).toFixed(1)
+    const layer1 = d.layers[0]
+    const fixed = mods.reduce((s, m) => s + (m.fixed ?? 0), 0) + (layer1.items?.length ?? 0)
+    const migrations = [...new Set([...(layer1.migrations ?? []), ...mods.flatMap(m => m.migrations ?? [])])]
+    const when = new Date(d.updated).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+    document.getElementById('app').innerHTML = `
+      <header class="band">
+        <div><div class="kicker">True North Operations Portal</div><h1>Portal Audit</h1>
+        <p>Three layers: the architecture, then each of the ${total} modules, then the global report. Nothing changes without your approval.</p></div>
+        <div class="meter">
+          <div class="meter-row"><span>Layer 2 modules</span><span>${done} of ${total} done${doing ? `, ${doing} in progress` : ''}</span></div>
+          <div class="bar" role="img" aria-label="${done} of ${total} modules done"><div class="done" style="width:${pct(done)}%"></div><div class="doing" style="width:${pct(doing)}%"></div></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b>${layer1.status === 'done' ? '✓' : '…'}</b><span>Layer 1</span></div>
+          <div class="stat"><b>${done}/${total}</b><span>Modules done</span></div>
+          <div class="stat"><b>${fixed}</b><span>Fixes applied</span></div>
+          <div class="stat"><b>${migrations.length}</b><span>Migrations (${migrations.join(', ')})</span></div>
+          <div class="stat"><b>${d.tests.start} → ${d.tests.now}</b><span>Tests</span></div>
+        </div>
+      </header>
+
+      ${d.waiting?.length ? `<section class="waiting" aria-labelledby="w">
+        <h2 id="w">⏳ Waiting for you</h2>
+        <ol>${d.waiting.map(w => `<li><b>${esc(w.title)}</b><div>${esc(w.detail)}</div></li>`).join('')}</ol>
+      </section>` : ''}
+
+      <div class="section-title">Layer 1</div>
+      <article class="card ${layer1.status}">
+        <div class="card-head"><h3>${esc(layer1.title)}</h3>${pill(layer1.status)}</div>
+        <p class="scope">${esc(layer1.summary)}</p>
+        <ul class="hl">${layer1.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+        ${layer1.open ? `<p class="scope">${esc(layer1.open)}</p>` : ''}
+        <div class="meta">${chips('commit', layer1.commits)}${chips('migration', layer1.migrations)}</div>
+      </article>
+
+      <div class="section-title">Layer 2 · Module by module</div>
+      <div class="grid">${mods.map(moduleCard).join('')}</div>
+
+      <div class="section-title">Layer 3</div>
+      <article class="card ${d.final.status}">
+        <div class="card-head"><h3>${esc(d.final.title)}</h3>${pill(d.final.status)}</div>
+        <p class="scope">${esc(d.final.summary)}</p>
+        ${d.final.status === 'done' ? '<p class="scope"><a href="report.html">Open the report</a></p>' : ''}
+      </article>
+
+      <footer>Updated ${esc(when)} · reloads by itself every minute</footer>`
+  }
+
+  async function load() {
+    try {
+      const r = await fetch('progress.json', { cache: 'no-store' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      render(await r.json())
+    } catch (e) {
+      document.getElementById('app').innerHTML = `<p class="error">The progress could not be read (${esc(e.message)}).</p>`
+    }
+  }
+  load()
+  setInterval(load, 60000)
+</script>
+</body>
+</html>
