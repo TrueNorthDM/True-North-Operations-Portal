@@ -51,12 +51,12 @@ export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen
                 <Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={3} />Add row
               </button>
               {addRowOpen && (
-                <div className={`${MENU} top-10 left-0 w-[314px] p-1.5 gap-px`}>
+                <div className={`${MENU} top-10 left-0 w-max min-w-[314px] max-w-[min(480px,calc(100vw-32px))] p-1.5 gap-px`}>
                   <div className={`${LABEL} text-muted px-2.5 pt-1.5 pb-1`}>Add a combination</div>
                   {options.map(c => (
                     <button key={`${c.combinationId}`} type="button"
                       onClick={() => onAddRow({ key: gridRowKey(c.jobcodeId, c.activity), jobcodeId: c.jobcodeId, path: c.path, activity: c.activity, fields: c.fields })}
-                      className="flex flex-col gap-0.5 border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-2 bg-transparent hover:bg-subtle">
+                      className="flex flex-col gap-0.5 border-0 text-left rounded-[8px] px-2.5 py-2 bg-transparent hover:bg-subtle">
                       <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{c.name}</span>
                       <span className="text-[11.5px] text-muted">{c.path} · {c.activity}</span>
                     </button>
