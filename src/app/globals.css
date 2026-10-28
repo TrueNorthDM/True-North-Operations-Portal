@@ -134,6 +134,18 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* No scrollbars anywhere in the portal, vertical or horizontal (owner, 28 October
+   2026): everything still scrolls by wheel, trackpad, touch and keyboard. A bar drawn
+   inside a rounded box (a modal) also squared off its right corners. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Headings speak in the display face. Brand pages override per-element with
    their own font utilities (higher specificity), so AAAF/HFA stay on-brand. */
 h1, h2, h3 {
