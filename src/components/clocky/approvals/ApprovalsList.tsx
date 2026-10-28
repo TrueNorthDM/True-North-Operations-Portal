@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -122,8 +123,8 @@ export function ApprovalsList({ initialData, api, initial }: {
       }
       void reload()
       router.refresh()
-    } catch {
-      say('That did not go through. Check your connection and try again.', true)
+    } catch (e) {
+      say(failText(e), true)
     } finally {
       setBusy(false)
     }
@@ -146,8 +147,8 @@ export function ApprovalsList({ initialData, api, initial }: {
       say('toast' in res && typeof res.toast === 'string' ? res.toast : decision === 'approve' ? `Time off approved. ${first} gets a notification.` : `Time off denied. ${first} gets the reason.`)
       void reload()
       router.refresh()
-    } catch {
-      say('That did not go through. Check your connection and try again.', true)
+    } catch (e) {
+      say(failText(e), true)
     } finally {
       setBusy(false)
     }

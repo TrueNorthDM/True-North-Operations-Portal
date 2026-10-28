@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { UPDATED_TEXT, isStalePage } from '@/lib/ui/action-error'
 import { useConfirm } from '@/components/ui/useConfirm'
 import type { ClockChoice, ClockPanelData, Fail } from '@/lib/timeclock/clocky-types'
 import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
@@ -166,7 +167,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     setBusy(true)
     setError(null)
     let res: T | Fail
-    try { res = await call() } catch { res = NETWORK }
+    try { res = await call() } catch (e) { res = isStalePage(e) ? { ok: false, error: UPDATED_TEXT } : NETWORK }
     if (res.ok) await then?.(res as Extract<T, { ok: true }>)
     else {
       const f = res as Fail
@@ -258,7 +259,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     const id = running.id
     setNoteSt({ id, st: 'saving', error: null })
     let res: { ok: boolean; error?: string }
-    try { res = await api.saveRunningDetails({ notes: text }) } catch { res = NETWORK }
+    try { res = await api.saveRunningDetails({ notes: text }) } catch (e) { res = isStalePage(e) ? { ok: false, error: UPDATED_TEXT } : NETWORK }
     if (res.ok) {
       setNoteSt({ id, st: 'saved', error: null })
       if (savedTimer.current) clearTimeout(savedTimer.current)

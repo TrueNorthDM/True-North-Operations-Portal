@@ -14,6 +14,7 @@
  */
 
 import { useState, type ReactNode } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { Segmented } from '@/components/ui/Segmented'
 import { NewTag } from '@/components/clocky/periods/ui'
@@ -114,8 +115,8 @@ export function PayHoursSection({ view, save, startEditing = false, after }: {
       if (!r.ok) return setError(r.error)
       setEditing(false)
       router.refresh()
-    } catch {
-      setError('That did not go through. Check your connection and try again.')
+    } catch (e) {
+      setError(failText(e))
     } finally {
       setBusy(false)
     }

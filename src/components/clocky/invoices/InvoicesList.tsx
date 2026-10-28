@@ -14,6 +14,7 @@
  */
 
 import { useRef, useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -83,8 +84,8 @@ export function InvoicesList({ data, api, initial }: {
       const res = await api.getInvoiceDoc({ id: r.id })
       if (res.ok) setPdf(res.doc)
       else say({ text: res.error, error: true })
-    } catch {
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } catch (e) {
+      say({ text: failText(e), error: true })
     } finally {
       setBusy(null)
     }

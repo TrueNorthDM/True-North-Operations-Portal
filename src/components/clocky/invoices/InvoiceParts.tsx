@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import type { Result } from '@/lib/timeclock/clocky-types'
@@ -55,8 +56,8 @@ export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder 
       const r = await save({ id: target.id, paidOn: day, ref, note: noteText })
       if (r.ok) onSaved(r.toast)
       else setError(r.error)
-    } catch {
-      setError('That did not go through. Check your connection and try again.')
+    } catch (e) {
+      setError(failText(e))
     } finally {
       setBusy(false)
     }

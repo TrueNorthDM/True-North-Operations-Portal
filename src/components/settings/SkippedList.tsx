@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import type { SkippedEntry } from '@/lib/timeclock/waves-data'
 import type { Decided } from '@/app/(app)/admin/settings/skipped-actions'
@@ -80,8 +81,8 @@ export function SkippedList({ entries, zone, abbr, canDecide, decide }: {
       const gone = new Set(r.results.filter(x => x.outcome === 'done' || x.outcome === 'already').map(x => x.id))
       setPicked(p => p.filter(id => !gone.has(id)))
       if (r.results.some(x => x.outcome === 'done' || x.outcome === 'already')) router.refresh()
-    } catch {
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } catch (e) {
+      say({ text: failText(e), error: true })
     } finally {
       setBusy(false)
     }

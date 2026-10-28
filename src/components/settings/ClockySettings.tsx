@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
@@ -70,8 +71,8 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
       const r = await p
       say(r.ok ? { text: r.toast } : { text: r.error, error: true })
       if (r.ok) { after?.(); router.refresh() }
-    } catch {
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } catch (e) {
+      say({ text: failText(e), error: true })
     } finally {
       setBusy(false)
     }
@@ -212,8 +213,8 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
       const r = await save(f)
       say(r.ok ? { text: r.toast } : { text: r.error, error: true })
       if (r.ok) router.refresh()
-    } catch {
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } catch (e) {
+      say({ text: failText(e), error: true })
     } finally {
       setBusy(false)
     }
@@ -293,9 +294,9 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
     let r: Done
     try {
       r = await set({ key, on: next })
-    } catch {
+    } catch (e) {
       setState(s => ({ ...s, [key]: !next }))
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+      say({ text: failText(e), error: true })
       return
     }
     if (!r.ok) { setState(s => ({ ...s, [key]: !next })); say({ text: r.error, error: true }); return }
@@ -373,8 +374,8 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
       const r = await p()
       say(r.ok ? { text: r.toast } : { text: r.error, error: true })
       if (r.ok) router.refresh()
-    } catch {
-      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } catch (e) {
+      say({ text: failText(e), error: true })
     } finally {
       setBusy(false)
     }

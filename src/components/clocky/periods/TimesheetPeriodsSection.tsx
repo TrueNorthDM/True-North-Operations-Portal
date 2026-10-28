@@ -15,6 +15,7 @@
  */
 
 import Link from 'next/link'
+import { failText } from '@/lib/ui/action-error'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
@@ -135,8 +136,8 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
         const r = await actions.setPayPeriodAnchor({ anchor: anchorDraft })
         if (!r.ok) { setError(r.error); return }
         finish(`Saved. Pay periods start ${longDateLabel(anchorDraft)}, every 2 weeks.`)
-      } catch {
-        setError('That did not go through. Check your connection and try again.')
+      } catch (e) {
+        setError(failText(e))
       }
     })
   }

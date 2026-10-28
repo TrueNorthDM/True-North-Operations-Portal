@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
@@ -87,8 +88,8 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
       after?.()
       say(res.toast)
       router.refresh()
-    } catch {
-      say('That did not go through. Check your connection and try again.', true)
+    } catch (e) {
+      say(failText(e), true)
     } finally {
       setBusy(false)
     }

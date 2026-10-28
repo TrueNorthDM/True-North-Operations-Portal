@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Segmented } from '@/components/ui/Segmented'
@@ -242,7 +243,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   // network error or a deploy mid-request rejects instead of answering).
   const call = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true)
-    try { return await fn() } catch { say('That did not go through. Check your connection and try again.', true); return null } finally { setBusy(false) }
+    try { return await fn() } catch (e) { say(failText(e), true); return null } finally { setBusy(false) }
   }
   const saveForm = async (f: FormState) => {
     const body = bodyOf(f)

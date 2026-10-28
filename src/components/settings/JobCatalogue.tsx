@@ -12,6 +12,7 @@
  */
 
 import { useState } from 'react'
+import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
@@ -19,7 +20,7 @@ import { FieldLabel, Icon, LabeledSelect, Toast, type ToastState } from '@/compo
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 /** A call that never answered (the connection dropped) reads as a refusal, so busy resets and the toast says so. */
-const settle = (p: Promise<Done>): Promise<Done> => p.catch(() => ({ ok: false, error: 'That did not go through. Check your connection and try again.' }))
+const settle = (p: Promise<Done>): Promise<Done> => p.catch((e: unknown) => ({ ok: false, error: failText(e) }))
 export interface CatalogueApi {
   saveJob: (i: { id: number; name: string; parentId: number | null; active: boolean; billable: boolean; company: string; project: string; use: string }) => Promise<Done>
   addFolder: (i?: { structure?: 1 | 2; parentId?: number | null }) => Promise<Done>
