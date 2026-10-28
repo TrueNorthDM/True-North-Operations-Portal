@@ -14,6 +14,7 @@
  * figure and want to fix that figure.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation } from '@/lib/timeclock/money-in-actions'
@@ -237,7 +238,7 @@ function Row(
     start(async () => {
       const res = await saveDonation({
         project: entry.project, month: entry.month, amount: nextAmount, note,
-      }).catch(() => ({ ok: false, error: 'That did not save. Try again in a moment.' }))
+      }).catch(e => ({ ok: false, error: staleOr(e, 'That did not save. Try again in a moment.') }))
       // Saved but without its history line: said, not hidden.
       if (res.ok && (res as { warning?: string }).warning) { setError((res as { warning?: string }).warning!); return }
       if (res.ok) onSaved()

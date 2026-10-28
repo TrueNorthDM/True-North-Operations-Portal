@@ -10,6 +10,7 @@
  * one tab panel).
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
@@ -54,7 +55,7 @@ export function NotificationPreview({ t, hour, sendTest, onClose }: { t: Notific
     if (!sendTest) { setState({ kind: 'sent', text: 'Here in the design check nothing is sent.' }); return }
     setState({ kind: 'sending' })
     start(async () => {
-      const res = await sendTest(t.key, tab).catch(() => ({ ok: false, error: 'Not sent. Try again in a moment.' }))
+      const res = await sendTest(t.key, tab).catch(e => ({ ok: false, error: staleOr(e, 'Not sent. Try again in a moment.') }))
       if (res.ok) {
         setState({ kind: 'sent', text: tab === 'app' ? 'Sent: it is in your bell now, marked Test.' : 'Sent: check your inbox in a minute.' })
         if (tab === 'app') router.refresh()

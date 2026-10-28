@@ -23,6 +23,7 @@
  * leaves the grid, in Edit too; Save still saves every change.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { SearchInput } from '@/components/clocky/clock/ClockParts'
@@ -321,7 +322,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
     setError(null)
     if (cadChanged.length) {
       setSaving(true)
-      const items = await cadenceItems().catch(() => { setError('The changes could not be checked. Try again in a moment.'); return null })
+      const items = await cadenceItems().catch(e => { setError(staleOr(e, 'The changes could not be checked. Try again in a moment.')); return null })
       setSaving(false)
       if (items) setCadDialog(items)
       return

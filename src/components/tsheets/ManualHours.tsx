@@ -10,6 +10,7 @@
  * twice (a double click, a retry after a timeout) lands it once.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useConfirm } from '@/components/ui/useConfirm'
@@ -69,7 +70,7 @@ export function ManualHours(
     const id = batch.current
     start(async () => {
       const r = await addManualEntries(toSend, id)
-        .catch(() => ({ ok: false, error: 'The hours were not added. Try again in a moment.' }))
+        .catch(e => ({ ok: false, error: staleOr(e, 'The hours were not added. Try again in a moment.') }))
       if (!r.ok) { setError(r.error ?? 'Something went wrong.'); return }
       batch.current = null
       setLines([]); patch({ hours: '', notes: '' })
@@ -87,7 +88,7 @@ export function ManualHours(
     if (!yes) return
     setError(null)
     start(async () => {
-      const res = await deleteManualEntry(r.id).catch(() => ({ ok: false, error: 'The line was not removed. Try again in a moment.' }))
+      const res = await deleteManualEntry(r.id).catch(e => ({ ok: false, error: staleOr(e, 'The line was not removed. Try again in a moment.') }))
       if (!res.ok) setError(res.error ?? 'Something went wrong.')
       else router.refresh()
     })

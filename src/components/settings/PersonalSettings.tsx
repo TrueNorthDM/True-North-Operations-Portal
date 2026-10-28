@@ -17,6 +17,7 @@
  * (the notification table and two-step sign-in) come in as nodes.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useConfirm } from '@/components/ui/useConfirm'
@@ -181,7 +182,7 @@ export function PersonalSettings({
     if (!save) { setStatus({ key, state: 'saved' }); return }
     setStatus({ key, state: 'saving' })
     start(async () => {
-      const res = await save(patch).catch(() => ({ ok: false, error: 'Not saved. Try again in a moment.' }))
+      const res = await save(patch).catch(e => ({ ok: false, error: staleOr(e, 'Not saved. Try again in a moment.') }))
       if (!res.ok) revert()
       setStatus({ key, state: res.ok ? 'saved' : 'error', error: res.error })
       // The Notifications section says when the summary arrives: drawn by the
@@ -209,7 +210,7 @@ export function PersonalSettings({
     if (!yes) return
     setStatus(null)
     start(async () => {
-      const res = await signOutEverywhere().catch(() => ({ ok: false as const, error: 'Could not sign out every device. Try again in a moment.' }))
+      const res = await signOutEverywhere().catch(e => ({ ok: false as const, error: staleOr(e, 'Could not sign out every device. Try again in a moment.') }))
       if (res && !res.ok) setStatus({ key: 'signout', state: 'error', error: res.error })
     })
   }

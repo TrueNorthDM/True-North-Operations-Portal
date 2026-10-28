@@ -22,6 +22,7 @@
  * Open time entries, Open Clock safety) or, once acted on, what was done.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import Link from 'next/link'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useEffect, useRef, useState } from 'react'
@@ -116,7 +117,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
   const markRead = (ids: string[], save: () => Promise<{ ok: boolean; error?: string }>) => {
     onRead(ids)
     setError(null)
-    save().catch(() => ({ ok: false, error: 'Not marked read. Try again in a moment.' })).then(res => {
+    save().catch(e => ({ ok: false, error: staleOr(e, 'Not marked read. Try again in a moment.') })).then(res => {
       if (res.ok) return
       onUnread?.(ids)
       setError(res.error ?? 'Not marked read.')
@@ -232,10 +233,11 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                     if (b.action === 'keep-going') {
                       setBusy(i.id)
                       setError(null)
-                      keepGoing({ notificationId: i.id }).catch(() => null).then(res => {
+                      let thrown: unknown = null
+                      keepGoing({ notificationId: i.id }).catch(e => { thrown = e; return null }).then(res => {
                         setBusy(null)
-                        // No answer (the connection dropped): nothing changed on the server, so the row stays unread.
-                        if (!res) { setError('Not saved. Try again in a moment.'); return }
+                        // No answer (the connection dropped, or a page older than the deploy): nothing changed on the server, so the row stays unread.
+                        if (!res) { setError(staleOr(thrown, 'Not saved. Try again in a moment.')); return }
                         // A refusal: the server already marked an outdated reminder read, so the row reads that way here too.
                         if (!res.ok) { setError(res.error); onRead([i.id]); return }
                         // The server marked the row read and wrote what was done; the refresh brings it.

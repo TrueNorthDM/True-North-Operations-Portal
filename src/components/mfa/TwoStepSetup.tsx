@@ -6,6 +6,7 @@
  * shows TwoStepEnroll with it.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useEffect, useState } from 'react'
 import { TwoStepEnroll } from './TwoStepEnroll'
 import { startEnroll, verifyEnroll, skipTwoStep, type EnrollStart } from '@/app/auth/two-step-actions'
@@ -24,7 +25,7 @@ export function TwoStepSetup({ email, skipLabel }: { email: string; skipLabel: s
       if (!live) return
       if ('error' in r) setError(r.error)
       else setFactor(r)
-    }).catch(() => { if (live) setError('Could not start the setup. Check your connection and try again.') })
+    }).catch(e => { if (live) setError(staleOr(e, 'Could not start the setup. Check your connection and try again.')) })
     return () => { live = false }
   }, [attempt])
 

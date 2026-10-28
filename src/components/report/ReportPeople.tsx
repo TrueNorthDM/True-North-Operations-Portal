@@ -9,6 +9,7 @@
 import { useRef, useState } from 'react'
 import { chip } from '@/components/monday/tokens'
 import { formatDays } from '@/lib/report/overview'
+import { staleOr } from '@/lib/ui/action-error'
 import { PersonDrawer, type DrawerPerson } from '@/components/report/PersonDrawer'
 import type { PersonDetail } from '@/lib/report/drawer'
 
@@ -74,7 +75,7 @@ export function ReportPeople({
         if (r.ok) setDetail(r.detail)
         else setError(r.error)
       })
-      .catch(() => { if (mine()) setError('Their detail could not be read. Try again in a moment.') })
+      .catch(e => { if (mine()) setError(staleOr(e, 'Their detail could not be read. Try again in a moment.')) })
   }
   const close = () => { asked.current = null; setOpen(null) }
 

@@ -18,3 +18,6 @@ export const isStalePage = (e: unknown): boolean => unstable_isUnrecognizedActio
 
 /** The sentence for a save that threw: reload after a deploy, else the connection. */
 export const failText = (e: unknown): string => (isStalePage(e) ? UPDATED_TEXT : NETWORK_TEXT)
+
+/** A screen's own sentence for a call that threw, unless the page is older than the deploy. */
+export const staleOr = (e: unknown, text: string): string => (isStalePage(e) ? UPDATED_TEXT : text)

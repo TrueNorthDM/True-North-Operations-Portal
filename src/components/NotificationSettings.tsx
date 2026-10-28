@@ -19,6 +19,7 @@
  * The pieces are in components/notifications (parts, the preview window).
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useState, useTransition } from 'react'
 import { NavIcon } from '@/components/NavIcon'
 import { Switch } from '@/components/ui/Switch'
@@ -78,7 +79,7 @@ export function NotificationSettings({
     if (!run) { setStatus({ key, state: 'saved' }); return }
     setStatus({ key, state: 'saving' })
     start(async () => {
-      const res = await run().catch(() => ({ ok: false, error: 'Not saved. Try again in a moment.' }))
+      const res = await run().catch(e => ({ ok: false, error: staleOr(e, 'Not saved. Try again in a moment.') }))
       if (!res.ok) revert()
       setStatus({ key, state: res.ok ? 'saved' : 'error', error: res.error })
     })

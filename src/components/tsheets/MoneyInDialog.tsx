@@ -21,6 +21,7 @@
  * more clicks and six more chances to leave half of it done.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { Fragment, useRef, useState, useTransition } from 'react'
 import { useModal } from '@/components/ui/useModal'
 import { useRouter } from 'next/navigation'
@@ -69,14 +70,14 @@ export function MoneyInDialog(
       const failed = { ok: false, error: 'Not saved. Try again in a moment.' }
       let warning: string | undefined
       for (const p of projects.filter(p => !p.prepaid)) {
-        const r = await saveDonation({ project: p.label, month: data.month, amount: gifts[p.label] ?? '' }).catch(() => failed)
+        const r = await saveDonation({ project: p.label, month: data.month, amount: gifts[p.label] ?? '' }).catch(e => ({ ...failed, error: staleOr(e, failed.error) }))
         if (!r.ok) { setError(r.error ?? 'Could not save.'); return }
         warning ??= (r as { warning?: string }).warning
       }
 
       for (const p of projects.filter(p => p.prepaid)) {
         const b = buys[p.label] ?? { hours: '', amount: '' }
-        const r = await savePurchase({ project: p.label, month: data.month, hours: b.hours, amount: b.amount }).catch(() => failed)
+        const r = await savePurchase({ project: p.label, month: data.month, hours: b.hours, amount: b.amount }).catch(e => ({ ...failed, error: staleOr(e, failed.error) }))
         if (!r.ok) { setError(r.error ?? 'Could not save.'); return }
         warning ??= (r as { warning?: string }).warning
       }

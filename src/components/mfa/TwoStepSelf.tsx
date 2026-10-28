@@ -8,6 +8,7 @@
  * Admin's own account, not the person on screen.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { moveTwoStep } from '@/app/auth/two-step-actions'
@@ -38,7 +39,7 @@ export function TwoStepSelf({ since, daysLeft, blocked }: {
     if (!yes) return
     setError(null)
     start(async () => {
-      const res = await moveTwoStep().catch(() => ({ ok: false as const, error: 'Could not move it. Try again in a moment.' }))
+      const res = await moveTwoStep().catch(e => ({ ok: false as const, error: staleOr(e, 'Could not move it. Try again in a moment.') }))
       if (res && !res.ok) setError(res.error)
     })
   }

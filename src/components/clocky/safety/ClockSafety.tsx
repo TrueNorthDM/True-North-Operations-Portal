@@ -13,6 +13,7 @@
  * the prototype's sample data.
  */
 
+import { staleOr } from '@/lib/ui/action-error'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -90,7 +91,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
           if (n !== asked.current) return
           if (res.ok) { setData(res.data); setError(null) } else setError(res.error)
         })
-        .catch(() => { if (n === asked.current) setError('Clock safety could not be read. Try again in a moment.') })
+        .catch(e => { if (n === asked.current) setError(staleOr(e, 'Clock safety could not be read. Try again in a moment.')) })
     }, q ? 250 : 0)
     return () => clearTimeout(t)
   }, [period, q, load])
