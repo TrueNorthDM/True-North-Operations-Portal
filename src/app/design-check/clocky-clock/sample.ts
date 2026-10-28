@@ -264,6 +264,8 @@ export const FRAMES: ClockFrame[] = [
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
   // The 2026 structure, from the switch date (owner, 26 October 2026).
+  { code: '26A', title: '2026 off, no combinations', data: base({ ...data2026(), combinations: [], recents: [], resume: null }) },
+  { code: '26N', title: 'New combination', data: base({ ...data2026(), combinations: [], recents: [], resume: null }), ui: { modal: 'save', save: saveDraftFrom({ jobs: [], fields: data2026().fields }, { jobId: 0, values: {}, notes: '' }) } },
   { code: '26C', title: '2026 browse', data: base(data2026()), ui: { view: 'choose', browse: data2026().folders.find(f => f.name === 'COE Group › Africa')!.id } },
   { code: '26D', title: '2026 details', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!) } },
   { code: '26E', title: '2026 Activity', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!, { activity: 'Other' }) } },

@@ -384,6 +384,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
             onStart={c => startWith(c)}
             onSave={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes })}
             onManage={() => { setError(null); set({ modal: 'manage' }) }}
+            onNew={() => openSave({ jobId: 0, values: {}, notes: '' })}
             onBrowse={() => set({ view: 'choose', browse: null, query: '' })} />
         )}
 

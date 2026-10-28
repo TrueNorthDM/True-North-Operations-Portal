@@ -59,7 +59,9 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
   onClose: () => void
   onSave: () => void
 }) {
-  const [jobEdit, setJobEdit] = useState(false)
+  // A combination made from scratch has no job yet (id 0): the job is picked first.
+  const [fresh] = useState(save.jobId === 0)
+  const [jobEdit, setJobEdit] = useState(fresh)
   const job = data.jobs.find(j => j.id === save.jobId)
   const setField = (key: FieldName, v: string) => {
     const f = fieldByKey(data.fields, key, job)
@@ -80,7 +82,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
     setJobEdit(false)
     onChange({ ...save, jobId: next.id, values, name: suggestName(next.short, next.folderId != null, valueOf(values, data.fields, 'activity')) })
   }
-  const title = save.editing ? 'Edit combination' : 'Save a combination'
+  const title = save.editing ? 'Edit combination' : fresh ? 'New combination' : 'Save a combination'
   return (
     <ClockWindow label="Save a combination" width={514} contained={contained} onClose={onClose}>
       <div className="flex flex-col gap-4">
@@ -91,18 +93,19 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[14px] text-tn-ink ${INPUT_FOCUS}`} />
         </label>
         {jobEdit ? (
-          <ClockField label="Job" value={String(save.jobId)} options={jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path }))} onChange={setJob} search />
+          <ClockField label={job?.structure === 2 || fresh ? 'Project' : 'Job'} value={save.jobId ? String(save.jobId) : ''} placeholder="Search projects" options={jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path }))} onChange={setJob} search />
         ) : (
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-[11px] flex items-center gap-3 bg-subtle">
             <div className="flex-1 min-w-0">
-              <SectionLabel>Job</SectionLabel>
+              <SectionLabel>{job?.structure === 2 ? 'Project' : 'Job'}</SectionLabel>
               <div className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink mt-[3px]">{job?.path ?? ''}</div>
             </div>
             <button type="button" onClick={() => setJobEdit(true)} className={LINK_BTN}>Change</button>
           </div>
         )}
+        {/* The fields are those of the project's structure, so none until a project is picked. */}
         <div className="grid grid-cols-2 gap-3">
-          {keysFor(!!job?.isI7).map(key => {
+          {job && keysFor(!!job.isI7).map(key => {
             const f = fieldByKey(data.fields, key, job)
             if (!f) return null
             return (
@@ -119,7 +122,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
         {error && <ErrorBanner text={error} />}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>
-          <button type="button" onClick={onSave} disabled={busy || !save.name.trim()} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
+          <button type="button" onClick={onSave} disabled={busy || !save.name.trim() || !job} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill={BTN_ICON.navy} aria-hidden="true"><path d={ICON.star} /></svg>Save combination
           </button>
         </div>

@@ -44,7 +44,7 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore, onResume, onStart, onSave, onManage, onBrowse }: {
+export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse }: {
   data: ClockPanelData
   phone: Phone
   more: boolean
@@ -56,6 +56,8 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
   onStart: (c: ClockChoice) => void
   onSave: (c: ClockChoice) => void
   onManage: () => void
+  /** A combination made from scratch: its job, fields and name picked in the window, no clock needed. */
+  onNew: () => void
   onBrowse: () => void
 }) {
   const resume = data.resume ? resumeCard(data.resume) : null
@@ -77,13 +79,19 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
         </div>
       )}
 
-      {data.combinations.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center justify-between px-0.5 pb-1.5">
-            <SectionLabel>My combinations</SectionLabel>
-            <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>
-          </div>
-          {combos.map(c => {
+      {/* Always here, even with none yet: it is where a combination is made and managed. */}
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center justify-between px-0.5 pb-1.5">
+          <SectionLabel>My combinations</SectionLabel>
+          <span className="flex items-center gap-3.5">
+            <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>
+            {data.combinations.length > 0 && <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>}
+          </span>
+        </div>
+        {data.combinations.length === 0 && (
+          <div className="px-0.5 pb-1 text-[12.5px] text-muted leading-[1.5]">Save the project and Activity you use often, then clock in with one tap. Combinations made on the old TSheets jobs work for days before the switch date.</div>
+        )}
+        {combos.map(c => {
             const r = choiceRow(c, true)
             return <ChoiceRowView key={`c${c.combinationId}`} {...r} saved phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} disabled={busy} />
           })}
@@ -92,8 +100,7 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
               {more ? 'Show fewer' : `More (${data.combinations.length - SHOWN_COMBINATIONS})`}
             </button>
           )}
-        </div>
-      )}
+      </div>
 
       {data.recents.length > 0 && (
         <div className="flex flex-col gap-0.5">
