@@ -197,7 +197,7 @@ const TREE: Node[] = [
   // what"; owner's decisions in docs/time-clock/05-clocky-build.md). Who sees
   // and changes whose hours is lib/timeclock/scope.ts.
   { key: 'm-clocky', label: 'North Time', kind: 'module', ch: [
-    { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through a time correction request.', ch: [
+    { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through Request to add time.', ch: [
       { key: 'ck-team', label: 'See and change the hours of the teams they lead', kind: 'action', v: [1, 1, 0] },
       { key: 'ck-all', label: "See and change everyone's hours", kind: 'action', v: [1, 0, 0] },
       { key: 'ck-reopen', label: 'Approve, return or reopen a sent timesheet', kind: 'action', superOnly: true },
@@ -205,7 +205,7 @@ const TREE: Node[] = [
       { key: 'ck-import', label: 'Import from QuickBooks Time', kind: 'tab', v: [1, 0, 0] },
       { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [1, 0, 0] },
     ] },
-    { key: 'clocky-approvals', label: 'Approvals: time corrections in their scope', kind: 'page', v: [1, 1, 0], ch: [
+    { key: 'clocky-approvals', label: 'Approvals: requests to add time in their scope', kind: 'page', v: [1, 1, 0], ch: [
       { key: 'ck-timeoff', label: 'Decide time off', kind: 'action', superOnly: true, note: 'Approving hours and time off: Super Admins only (8 October 2026).' },
     ] },
     { key: 'ck-whos-working', label: "Who's working, in their scope", kind: 'page', v: [1, 1, 0], ch: [

@@ -212,9 +212,9 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   },
   {
     key: 'clocky-correction-requested', src: 'North Time · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
-    timings: 'instant', section: 'Time corrections', stat: 'time corrections to review', statOne: 'time correction to review',
-    example: { title: 'Samuel Manzi asked for a time correction', body: '1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.' },
-    title: 'Someone asked for a time correction',
+    timings: 'instant', section: 'Added time', stat: 'requests to add time to review', statOne: 'request to add time to review',
+    example: { title: 'Samuel Manzi asked to add time', body: '1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.' },
+    title: 'Someone asked to add time',
     description: "A person you approve for asked for time they have no entry for. It counts only once approved. In the bell only.",
     who: "The person's Team Leader, Admins and Super Admins", audience: { kind: 'tool', tool: 'clocky-approvals' },
     button: { label: 'Review', href: '/clocky-hours/approvals' },
@@ -222,8 +222,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-correction-decided', src: 'North Time · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Your requests', stat: 'requests decided', statOne: 'request decided',
-    example: { title: 'Rock Kai approved your time correction', body: '1h 30m on Wed, Oct 14. It now counts in your hours.' },
-    title: 'Your time correction was approved or denied',
+    example: { title: 'Rock Kai approved your added time', body: '1h 30m on Wed, Oct 14. It now counts in your hours.' },
+    title: 'Your request to add time was approved or denied',
     description: 'Approved, it counts in your hours; denied, with the reason. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Open time entries', href: '/clocky-hours' },

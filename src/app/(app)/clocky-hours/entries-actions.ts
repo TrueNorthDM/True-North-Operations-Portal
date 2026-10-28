@@ -61,7 +61,7 @@ const PICK_JOB = 'Pick a job code.'
 /** The week grid's note for a User (exact copy), also the refusal of "Add time" to a User. */
 const USER_NO_ADD = 'Hours come from your clock. To add time, ask your Team Leader.'
 /** The same to a Team Leader adding to their own hours (owner, 25 October 2026: "só as do time"). */
-const LEADER_NO_ADD = 'Hours come from your clock. For missing time of your own, request a time correction.'
+const LEADER_NO_ADD = 'Hours come from your clock. For missing time of your own, use Request to add time.'
 const noAddOwn = (v: Viewer) => (isLeader(v) ? LEADER_NO_ADD : USER_NO_ADD)
 /** Whose limit a refusal names: nobody for one's own hours ("your"), else the person. */
 const whose = (v: Viewer, personId: string, dir: { nameOf: (id: string) => string }) => (personId === v.personId ? null : dir.nameOf(personId))
@@ -554,10 +554,10 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
   }
 }
 
-// ── Time correction request (3K) ────────────────────────────────────────────
+// ── Request to add time (3K) ────────────────────────────────────────────────
 
 /**
- * "Request a time correction": a day of this week, a start and an end (on the
+ * "Request to add time": a day of this week, a start and an end (on the
  * quarter hour, the person's zone), the job and Activity, and "What happened".
  * It may not overlap an entry. It counts in no total until approved; the
  * person's Team Lead, Admins and Super Admins are told in the bell.

@@ -147,7 +147,7 @@ export const RAIL: readonly RailEntry[] = [
     key: 'clocky',
     label: NAV_LABEL['/clocky-hours'],
     icon: 'clocky',
-    hint: 'Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.',
+    hint: 'Your own hours: what you clocked, and the time you asked to add. Clock in opens from the top bar.',
     hints: [
       { surface: 'ck-all', hint: "The time module: everyone's hours, and the rules behind them." },
       { surface: 'ck-team', hint: "Your hours and your team's. Clock in and Who's working also open from the top bar." },

@@ -232,7 +232,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     const [first, rest] = r.when.includes(' · ') ? [r.when.slice(0, r.when.indexOf(' · ')), r.when.slice(r.when.indexOf(' · ') + 3)] : [r.when, '']
     push({
       key: r.key, type: 'cor', id: r.id, personId: r.personId, name: r.name, initials: r.initials, team: r.team,
-      main: `Time correction · ${formatDuration(r.seconds)}`,
+      main: `Added time · ${formatDuration(r.seconds)}`,
       sub: `${first} · ${rest}`,
       flag: null,
       why: r.reason ? `"${r.reason}"` : null,
@@ -282,7 +282,7 @@ async function subtitleFor(v: Viewer, settings: InvoiceSettings, dir: Awaited<Re
   if (v.level === 'team_leader') {
     const teams = [...v.ledTeamIds].map(id => dir.teams.get(id)?.name).filter(Boolean)
     const def = settings.defaultApprover ? dir.nameOf(settings.defaultApprover) : 'a Super Admin'
-    return `Hours from the ${teams.join(' and ') || 'your'} team${teams.length > 1 ? 's' : ''}, and time corrections. Invoices are not shown to Team Leaders: ${def} finishes each timesheet after you.`
+    return `Hours from the ${teams.join(' and ') || 'your'} team${teams.length > 1 ? 's' : ''}, and requests to add time. Invoices are not shown to Team Leaders: ${def} finishes each timesheet after you.`
   }
   const mine = (must(await db().from('people').select('full_name').eq('manager_id', v.personId).eq('status', 'active').order('full_name'), 'People could not be read') ?? []).map(p => p.full_name)
   return mine.length

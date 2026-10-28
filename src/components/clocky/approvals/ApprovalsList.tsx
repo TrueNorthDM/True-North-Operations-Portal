@@ -51,13 +51,13 @@ const TYPES: Record<QueueType, { label: string; bg: string; fg: string }> = {
   off: { label: 'Time off', bg: '#eef1fb', fg: '#3b4fa8' },
   rmb: { label: 'Reimbursement', bg: '#fbf3e4', fg: '#8a5a12' },
   xh: { label: 'Extra hours', bg: '#f0edfb', fg: '#5847c9' },
-  cor: { label: 'Time correction', bg: '#eaf4f4', fg: '#1E7D7F' },
+  cor: { label: 'Added time', bg: '#eaf4f4', fg: '#1E7D7F' },
 }
 const TONES: Record<Tone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
   neu: { bg: '#f1f3f6', fg: '#5b6b82' }, teal: { bg: '#eaf4f4', fg: '#1E7D7F' },
 }
-const FILTERS: [Filter, string][] = [['all', 'All'], ['ts', 'Timesheet'], ['off', 'Time off'], ['rmb', 'Reimbursement'], ['xh', 'Extra hours'], ['cor', 'Time correction']]
+const FILTERS: [Filter, string][] = [['all', 'All'], ['ts', 'Timesheet'], ['off', 'Time off'], ['rmb', 'Reimbursement'], ['xh', 'Extra hours'], ['cor', 'Added time']]
 const ROW_GRID = 'grid grid-cols-[minmax(170px,.9fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_250px] gap-x-[22px] gap-y-3 items-center px-[18px] py-4'
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const BTN_WHITE = 'inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer'

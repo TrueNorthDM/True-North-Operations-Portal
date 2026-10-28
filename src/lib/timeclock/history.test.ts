@@ -76,8 +76,8 @@ describe('historyLines', () => {
       request: { requestedAt: '2026-10-09T20:45:00Z', reason: 'I finished the i7 blog draft after my clock stopped.', seconds: 1800, job },
     })
     expect(approved.map(l => l.text)).toEqual([
-      'Arnaldo Oliveira approved the correction',
-      `Wendy Cacka requested a time correction: 0h 30m · ${job}`,
+      'Arnaldo Oliveira approved the request',
+      `Wendy Cacka asked to add time: 0h 30m · ${job}`,
     ])
     expect(approved[1].reason).toBe('I finished the i7 blog draft after my clock stopped.')
   })

@@ -16,7 +16,7 @@ import { NotificationDrawer, clockyTone, type NotificationItem } from './Notific
 const row = (o: Partial<NotificationItem>): NotificationItem => ({
   id: 'n1', who: '', what: '', when: '8:40 AM', src: 'North Time', icon: 'clocky', href: '/clocky-hours', unread: true, ...o,
 })
-const REVIEW = row({ id: 'req', type: 'clocky-correction-requested', src: 'North Time · approvals', href: '/clocky-hours/approvals', who: 'Samuel Manzi asked for a time correction: 1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.', button: { label: 'Review', href: '/clocky-hours/approvals' } })
+const REVIEW = row({ id: 'req', type: 'clocky-correction-requested', src: 'North Time · approvals', href: '/clocky-hours/approvals', who: 'Samuel Manzi asked to add time: 1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.', button: { label: 'Review', href: '/clocky-hours/approvals' } })
 const STILL = row({ id: 'still', type: 'clocky-still-working', href: '/clocky-hours?clock=open', who: 'Still working? Your clock has been running 4h 30m since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going.', button: { label: 'Keep going', action: 'keep-going' } })
 const STOPPED = row({ id: 'stop', type: 'clocky-stopped', href: '/clocky-hours?clock=open', who: 'Your clock stopped by itself at 1:00 PM. Confirm when you really stopped.', button: { label: 'Confirm end time', action: 'open-clock' } })
 
@@ -76,8 +76,8 @@ describe('North Time in the bell', () => {
 
   it('colours each kind as the design does', () => {
     expect(clockyTone({ type: 'clocky-stopped', who: '' }).fg).toBe('#c8323d')
-    expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai approved your time correction: 1h 30m on Wed, Oct 14.' }).fg).toBe('var(--ok-fg)')
-    expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai denied your time correction for Thu, Oct 8 (0h 30m). Reason: "x"' }).fg).toBe('#c8323d')
+    expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai approved your added time: 1h 30m on Wed, Oct 14.' }).fg).toBe('var(--ok-fg)')
+    expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai denied your request to add time for Thu, Oct 8 (0h 30m). Reason: "x"' }).fg).toBe('#c8323d')
     expect(clockyTone({ type: 'clocky-auto-stops', who: '' }).fg).toBe('var(--color-tn-teal)')
     // The allowance's row: red when it says the clock stopped at the limit (owner, 25 October 2026).
     expect(clockyTone({ type: 'clocky-allowance', who: 'Your clock stopped at 4:15 PM: you have used your 140h 00m allowance for October. Ask for extra hours to log more.' }).fg).toBe('#c8323d')

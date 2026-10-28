@@ -108,7 +108,7 @@ describe('the rail', () => {
     expect(hub(railFor('super_admin'), 'clocky')!.hint).toBe("The time module: everyone's hours, and the rules behind them.")
     expect(hub(railFor('admin'), 'clocky')!.hint).toBe("The time module: everyone's hours, and the rules behind them.")
     expect(hub(railFor('team_leader'), 'clocky')!.hint).toBe("Your hours and your team's. Clock in and Who's working also open from the top bar.")
-    expect(hub(railFor('user'), 'clocky')!.hint).toBe('Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.')
+    expect(hub(railFor('user'), 'clocky')!.hint).toBe('Your own hours: what you clocked, and the time you asked to add. Clock in opens from the top bar.')
   })
 
   it('lights a hub on every page under its rows', () => {

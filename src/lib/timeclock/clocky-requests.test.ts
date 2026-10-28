@@ -32,13 +32,13 @@ describe("a request's history (3G)", () => {
   it('says who asked, when and what happened', () => {
     expect(requestHistoryLines({ ...base, decided: null })).toEqual([{
       at: base.requestedAt, when: 'Oct 15, 2026, 8:40 AM', who: 'Clarise Nixon',
-      text: 'Clarise Nixon requested a time correction: 1h 30m · 2 - i7 Marketing › Content',
+      text: 'Clarise Nixon asked to add time: 1h 30m · 2 - i7 Marketing › Content',
       changes: [], reason: 'I kept working on the i7 LinkedIn posts.', dot: '#1E7D7F',
     }])
   })
   it('puts the decision on top, with the reason for a denial', () => {
     const lines = requestHistoryLines({ ...base, decided: { by: 'Rock Kai', at: '2026-10-15T14:02:00.000Z', state: 'denied', note: 'This hour is in your entries.' } })
-    expect(lines.map(l => l.text)).toEqual(['Rock Kai denied the correction', 'Clarise Nixon requested a time correction: 1h 30m · 2 - i7 Marketing › Content'])
+    expect(lines.map(l => l.text)).toEqual(['Rock Kai denied the request', 'Clarise Nixon asked to add time: 1h 30m · 2 - i7 Marketing › Content'])
     expect(lines[0]).toMatchObject({ when: 'Oct 15, 2026, 10:02 AM', reason: 'This hour is in your entries.' })
   })
 })

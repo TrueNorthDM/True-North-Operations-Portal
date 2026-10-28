@@ -7,20 +7,20 @@
 import { dayLabel, timeLabel } from './format'
 import { formatDuration } from './rounding'
 
-/** N3: "Samuel Manzi asked for a time correction: 1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM." */
+/** N3: "Samuel Manzi asked to add time: 1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM." */
 export const correctionRequestedText = (name: string, r: { started_at: string; ended_at: string; entry_date: string }, zone: string): string =>
-  `${name} asked for a time correction: ${formatDuration((Date.parse(r.ended_at) - Date.parse(r.started_at)) / 1000)} on ${dayLabel(r.entry_date)}, ${timeLabel(r.started_at, zone)} to ${timeLabel(r.ended_at, zone)}.`
+  `${name} asked to add time: ${formatDuration((Date.parse(r.ended_at) - Date.parse(r.started_at)) / 1000)} on ${dayLabel(r.entry_date)}, ${timeLabel(r.started_at, zone)} to ${timeLabel(r.ended_at, zone)}.`
 
 /**
- * N4: "Rock Kai approved your time correction: 1h 30m on Wed, Oct 14. It now
- * counts in your hours." / "Rock Kai denied your time correction for Thu, Oct 8
+ * N4: "Rock Kai approved your added time: 1h 30m on Wed, Oct 14. It now
+ * counts in your hours." / "Rock Kai denied your request to add time for Thu, Oct 8
  * (0h 30m). Reason: "That half hour is already in your Oct 8 entries.""
  */
 export function correctionDecidedText(decider: string, r: { started_at: string; ended_at: string; entry_date: string }, approved: boolean, note: string | null): string {
   const d = formatDuration((Date.parse(r.ended_at) - Date.parse(r.started_at)) / 1000)
   return approved
-    ? `${decider} approved your time correction: ${d} on ${dayLabel(r.entry_date)}. It now counts in your hours.`
-    : `${decider} denied your time correction for ${dayLabel(r.entry_date)} (${d}). Reason: "${(note ?? '').trim()}"`
+    ? `${decider} approved your added time: ${d} on ${dayLabel(r.entry_date)}. It now counts in your hours.`
+    : `${decider} denied your request to add time for ${dayLabel(r.entry_date)} (${d}). Reason: "${(note ?? '').trim()}"`
 }
 
 /** "Dave Sharpe approved your time off: Vacation, Fri, Oct 16 (8h 00m)." or denied, with the reason. */

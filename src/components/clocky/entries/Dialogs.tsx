@@ -170,7 +170,7 @@ function DetailGrid({ rows }: { rows: [string, string, boolean?][] }) {
 }
 
 /**
- * 3K-3: "Time correction request", read only, with Approve (the time becomes
+ * 3K-3: "Request to add time", read only, with Approve (the time becomes
  * an entry marked Edited) and Deny (a reason, asked on the first press).
  */
 export function CorrectionReview({ who, goesTo, state, date, time, job, reason, overlap, canDecide, denyFirst, busy, onClose, onApprove, onDeny }: {
@@ -195,10 +195,10 @@ export function CorrectionReview({ who, goesTo, state, date, time, job, reason, 
   const [note, setNote] = useState('')
   const first = who.split(' ')[0]
   return (
-    <Modal label="Time correction request" width={480} onClose={onClose}>
+    <Modal label="Request to add time" width={480} onClose={onClose}>
       <div className="flex items-start justify-between gap-2.5">
         <div>
-          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>Time correction request</h2>
+          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>Request to add time</h2>
           <div className="text-[13px] text-foreground mt-1">{who} · goes to {goesTo}</div>
         </div>
         <Pill text={stateText(state)} tone={STATE_TONE[state] ?? 'neutral'} size="md" />

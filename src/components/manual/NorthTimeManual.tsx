@@ -65,10 +65,10 @@ const NT: Block[] = [
   { t: 'The clock', d: 'The clock button in the top bar opens the clock panel. Pick **Resume** (your last job), one of **My combinations**, a **Recent** one, or search under **Something else** (**Browse** shows every job). Check the details and press **Clock in**. **Switch to** ends one entry and starts the next at the same second. There are no breaks: a break is a clock out. Times are kept on the nearest 15 minutes.' },
   { t: 'The 2026 job structure', d: 'From the switch date you pick a project as **Client › Division › Project**, then its **Activity**, grouped by family. **Billable** comes from the project and shows read only, “from the project”. **Notes** are required for **Other** and **Meeting: Other**. Before the switch date you pick the TSheets jobs, as before. **Which job?** lists every job and when to use it.' },
   { t: 'Combinations', d: 'Your favourites: a job with its Activity and note, saved under a name. Use **Save as combination** in the details, or the star on a Recent row. The panel shows the first 6; **More** shows the rest. **Manage** reorders, edits and deletes them. A combination on a TSheets job stops showing from the switch date; it is not deleted.' },
-  { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Users and Team Leaders can only shorten their own entries. **Add time** is for Team Leaders (their team), Admins and Super Admins; everyone else sends **Request a time correction**. Every change needs a reason and stays in the entry’s history.' },
+  { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Users and Team Leaders can only shorten their own entries. **Add time** is for Team Leaders (their team), Admins and Super Admins; everyone else sends **Request to add time**. Every change needs a reason and stays in the entry’s history.' },
   { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over.' },
   { t: 'Timesheets and approvals', d: 'Each person submits monthly or every 2 weeks. Hours are approved by the person they report to (Directory, Work tab, **Reports to**); a contractor’s invoice by the invoice approver in Company settings, Invoices; when it is the same person it is one step. A submitted period is locked until it is returned or a Super Admin reopens it.' },
-  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Super Admins decide them. Time corrections are decided by the person’s Team Lead, an Admin or a Super Admin, never by the person.' },
+  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Super Admins decide them. Requests to add time are decided by the person’s Team Lead, an Admin or a Super Admin, never by the person.' },
   { t: 'Invoices and documents', d: 'A contractor’s invoice is made when they submit their timesheet, from their hours, their rate in Rates & Costs and their approved reimbursements. An employee’s approved reimbursements go on a reimbursement document. Finance pays both outside Rippling payroll and marks them paid.' },
 ]
 
@@ -117,11 +117,11 @@ const QUICK: Audience[] = [
       ] },
       { t: 'Add time by hand', steps: [
         'Only Team Leaders (for their team), Admins and Super Admins see **Add time** on Time entries.',
-        'Everyone else, and Team Leaders for their own hours, asks with a time correction (below).',
+        'Everyone else, and Team Leaders for their own hours, asks with **Request to add time** (below).',
         'In **Add time**: the date, the start and end (or a duration), the job and Activity, and the reason. Then **Save**.',
       ] },
-      { t: 'Request a correction', steps: [
-        'Open North Time, **Time entries**, and press **Request a time correction**.',
+      { t: 'Request to add time', steps: [
+        'Open North Time, **Time entries**, and press **Request to add time**.',
         'Pick the **Date**, **Start** and **End**.',
         'Pick a combination under **Use a combination**, or the job and Activity.',
         'Write **What happened (required)** and press **Send request**. The window says who it goes to.',
@@ -197,11 +197,11 @@ const QUICK: Audience[] = [
       { t: 'Change only your team’s hours', steps: [
         'On Time entries, set **Whose hours** to **My team** and pick the person.',
         'Use **Add time**, edit an entry, the **Week grid** or the **Day timeline**. Every change needs a reason and is kept in the history.',
-        'Your own hours work like everyone’s: you can only shorten them, and missing time goes through **Request a time correction**.',
-        'Your own corrections are decided by another Lead of a team you are on, an Admin or a Super Admin.',
+        'Your own hours work like everyone’s: you can only shorten them, and missing time goes through **Request to add time**.',
+        'Your own requests are decided by another Lead of a team you are on, an Admin or a Super Admin.',
       ] },
-      { t: 'Corrections', steps: [
-        'Time corrections from your team show in **Approvals**, **Waiting for you**.',
+      { t: 'Requests to add time', steps: [
+        'Requests to add time from your team show in **Approvals**, **Waiting for you**.',
         'Press **Approve**, or **Deny** with a reason. Approved, the time counts, but never past the person’s allowance.',
       ] },
       { t: 'Extra hours', steps: [
@@ -220,7 +220,7 @@ const QUICK: Audience[] = [
     topics: [
       { t: 'Approvals', steps: [
         'North Time, **Approvals**: **Waiting for you**, **With others** (read only) and **Decided** (the last 90 days).',
-        'Super Admins decide time off, reimbursements (each receipt) and extra hours. Admins and Super Admins decide time corrections for everyone.',
+        'Super Admins decide time off, reimbursements (each receipt) and extra hours. Admins and Super Admins decide requests to add time for everyone.',
         'A timesheet goes to the person’s Reports to; the invoice to the approver in Company settings, Invoices.',
         'Hours over the allowance that were not approved before: **Approve** still works, with a **Note to approve (required)**.',
         'A Super Admin can **Reopen** an approved timesheet until its invoice is paid.',
@@ -316,7 +316,7 @@ export function TransitionSection() {
 const WHERE: { what: string; where: string }[] = [
   { what: 'Clock in, switch, clock out', where: 'The clock button in the top bar, or the banner on Home' },
   { what: 'My hours', where: 'North Time, **Time entries**' },
-  { what: 'Fix missing time', where: 'Time entries, **Request a time correction**' },
+  { what: 'Fix missing time', where: 'Time entries, **Request to add time**' },
   { what: 'Which job to use', where: 'North Time, **Which job?**' },
   { what: 'Send my timesheet', where: 'Home, Pay period, **Review and send**, or Time entries, **Submit**' },
   { what: 'Time off', where: 'Requests, **Time off** (US employees)' },

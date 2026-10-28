@@ -153,7 +153,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
       <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums lining-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
       {!leader && check.shortenOnly && (
         <button type="button" onClick={onRequestInstead} className="self-start -mt-2 border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
-          Request a time correction instead
+          Request to add time instead
         </button>
       )}
 

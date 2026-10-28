@@ -128,7 +128,7 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     read('own time off', { text: 'Your time off could not be read just now.' }, needsViewer(access.can('rq-time-off')), withViewer(x => myTimeOff(x, now))),
     read('own reimbursements', { text: 'Your reimbursements could not be read just now.' }, needsViewer(access.can('rq-reimbursements')), withViewer(x => myReimbursements(x, now))),
     read('own extra hours', { text: 'Your extra hours could not be read just now.' }, needsViewer(access.can('rq-extra-hours')), withViewer(x => myExtraHours(x, now))),
-    read('own corrections', { text: 'Your time corrections could not be read just now.' }, needsViewer(access.can('clocky-hours')), withViewer(x => myCorrections(x, now))),
+    read('own corrections', { text: 'Your requests to add time could not be read just now.' }, needsViewer(access.can('clocky-hours')), withViewer(x => myCorrections(x, now))),
     // Your own timesheet and invoice, where each is (owner, 25 October 2026, as the prototype's Requests tab).
     read('own timesheets', { text: 'Your timesheets could not be read just now.' }, needsViewer(access.can('clocky-hours')), withViewer(x => myTimesheets(x, now))),
     // The Invoices page's own gate, not Time entries' (audit, 25 October 2026).
@@ -253,7 +253,7 @@ async function approvalRows(v: Viewer, today: string, now: Date): Promise<HomeRo
 
 function correctionRow(r: QueueRow, today: string): HomeRow {
   const hours = afterDot(r.main)
-  const title = `${r.name}, time correction`
+  const title = `${r.name}, request to add time`
   const sub = `${hours} · ${r.sub}`
   const card = r.card
   const panel: Panel = {
@@ -512,7 +512,7 @@ async function myCorrections(v: Viewer, now: Date): Promise<HomeRow[]> {
   const goesTo = goesToLabel(teamLeadNames(v.personId, dir.target(v.personId).teamIds, dir.led, id => !!dir.people.get(id)?.active, id => dir.nameOf(id)))
   return newestFirst(rows.map(r => {
     const secs = Math.max(0, (Date.parse(r.ended_at) - Date.parse(r.started_at)) / 1000)
-    const title = `Time correction, ${monthDay(r.entry_date)}, ${formatDuration(secs)}`
+    const title = `Added time, ${monthDay(r.entry_date)}, ${formatDuration(secs)}`
     if (r.state === 'pending') return mineRow(`c${r.id}`, title, `Waiting on ${goesTo}`, 'wait', 'clock', r.requested_at)
     return mineRow(`c${r.id}`, title, `${r.state === 'denied' ? 'Denied' : 'Approved'} by ${dir.nameOf(r.decided_by)}, ${monthDay(localDate(r.decided_at!, v.zone))}`, 'done', 'clock', r.decided_at!)
   }))

@@ -62,19 +62,19 @@ export interface RequestHistoryInput {
 }
 
 /**
- * A pending or denied request's lines, newest first: "Clarise Nixon requested
- * a time correction: 1h 30m · 2 - i7 Marketing › Content" with what happened
- * as the reason, then "Rock Kai denied the correction" with the reason given.
+ * A pending or denied request's lines, newest first: "Clarise Nixon asked to
+ * add time: 1h 30m · 2 - i7 Marketing › Content" with what happened
+ * as the reason, then "Rock Kai denied the request" with the reason given.
  * (An approved request is an entry: its history is the entry's.)
  */
 export function requestHistoryLines(h: RequestHistoryInput): HistoryData['lines'] {
   const line = (at: string, who: string, text: string, reason: string | null) =>
     ({ at, when: stampLabel(at, h.viewerZone), who, text, changes: [], reason, dot: TEAL })
-  const out = [line(h.requestedAt, h.owner, `${h.owner} requested a time correction: ${formatDuration(h.seconds)} · ${h.job}`, h.reason || null)]
+  const out = [line(h.requestedAt, h.owner, `${h.owner} asked to add time: ${formatDuration(h.seconds)} · ${h.job}`, h.reason || null)]
   if (h.decided) {
     out.push(h.decided.state === 'approved'
-      ? line(h.decided.at, h.decided.by, `${h.decided.by} approved the correction`, null)
-      : line(h.decided.at, h.decided.by, `${h.decided.by} denied the correction`, h.decided.note))
+      ? line(h.decided.at, h.decided.by, `${h.decided.by} approved the request`, null)
+      : line(h.decided.at, h.decided.by, `${h.decided.by} denied the request`, h.decided.note))
   }
   return out.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0))
 }

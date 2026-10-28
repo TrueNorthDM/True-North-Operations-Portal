@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 3K-1, "Request a time correction" (Time Entries.dc.html, frame 3K1): a day
+ * 3K-1, "Request to add time" (Time Entries.dc.html, frame 3K1): a day
  * of this week, a start and an end on the quarter hour, a combination or a
  * job and its Activity, and "What happened". From the switch date the job is
  * picked with the clock panel's own first screen (JobPick, as in Add time),
@@ -64,10 +64,10 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
   const disabled = busy || (check.bad && !rq.error) || !rq.jobcodeId || (s2 && !rq.values.activity) || !rq.reason.trim()
 
   return (
-    <Modal label="Request a time correction" width={560} onClose={onClose}>
+    <Modal label="Request to add time" width={560} onClose={onClose}>
       <div className="flex items-start justify-between gap-2.5">
         <div>
-          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>Request a time correction</h2>
+          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>Request to add time</h2>
           <p className="m-0 text-[13px] text-foreground mt-[5px] leading-normal">For time you worked but could not clock. It counts only after it is approved.</p>
         </div>
         <CloseButton onClick={onClose} />

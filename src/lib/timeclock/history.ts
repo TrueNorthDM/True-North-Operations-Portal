@@ -135,7 +135,7 @@ export function historyLines(h: HistoryInput): HistoryLine[] {
   if (h.importedAt) out.push(line(h.importedAt, 'North Time', 'Imported from QuickBooks Time'))
   if (h.request) {
     out.push(line(h.request.requestedAt, owner,
-      `${owner} requested a time correction: ${formatDuration(h.request.seconds)} · ${h.request.job}`,
+      `${owner} asked to add time: ${formatDuration(h.request.seconds)} · ${h.request.job}`,
       { reason: h.request.reason }))
   }
 
@@ -192,7 +192,7 @@ export function historyLines(h: HistoryInput): HistoryLine[] {
         break
       }
       case 'correction_approved':
-        out.push(line(a.changed_at, who, `${who} approved the correction`))
+        out.push(line(a.changed_at, who, `${who} approved the request`))
         break
       case 'edit':
       case 'update': {

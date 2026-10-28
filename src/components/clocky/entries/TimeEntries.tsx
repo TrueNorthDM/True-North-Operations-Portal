@@ -185,7 +185,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const today = localDate(new Date(nowMs), viewer.zone)
   const range = periodRange(ui.period, ui.anchor, data.anchors)
   const all = ui.who === 'all' && viewer.who !== null
-  /** "Add time" here, or "Request a time correction": in My, only for those who add to their own hours. */
+  /** "Add time" here, or "Request to add time": in My, only for those who add to their own hours. */
   const addHere = all ? leader : data.canAddOwn
   const rows = data.rows
   const shown = ui.attnOnly ? rows.filter(r => r.attention) : rows
@@ -480,7 +480,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           </button>
         ) : (
           <button type="button" onClick={() => openRequest()} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>
-            <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request a time correction
+            <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request to add time
           </button>
         )}
         <button type="button" onClick={() => { setSubmit(null); setModal({ kind: 'submit' }) }} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>

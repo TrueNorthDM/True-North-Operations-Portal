@@ -29,10 +29,10 @@ type TimeOff = { id: number; person_id: string; jobcode_id: number; start_date: 
 
 /** The one-line subtitle per level (exact copy; a Team Leader's names their teams). */
 export function approvalsSubtitle(level: 'super' | 'admin' | 'lead', teamNames: readonly string[]): string {
-  if (level === 'super') return 'Time corrections, time off and timesheets waiting for a decision. Only Super Admins decide time off and timesheets.'
-  if (level === 'admin') return 'Time corrections from everyone, waiting for a decision. Super Admins decide time off.'
+  if (level === 'super') return 'Requests to add time, time off and timesheets waiting for a decision. Only Super Admins decide time off and timesheets.'
+  if (level === 'admin') return 'Requests to add time from everyone, waiting for a decision. Super Admins decide time off.'
   const teams = teamNames.length <= 1 ? `the ${teamNames[0] ?? 'your'} team` : `the ${teamNames.slice(0, -1).join(', ')} and ${teamNames[teamNames.length - 1]} teams`
-  return `Time corrections from ${teams}, waiting for your decision.`
+  return `Requests to add time from ${teams}, waiting for your decision.`
 }
 
 export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData> {
@@ -42,7 +42,7 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
   const decidesTimeOff = v.can('ck-timeoff')
   const [corrections, timeOff] = await Promise.all([
     allRows<Correction>((a, b) => c.from('tc_correction_requests').select('*')
-      .or(`state.eq.pending,decided_at.gte.${since}`).order('requested_at').range(a, b), 'Time corrections could not be read'),
+      .or(`state.eq.pending,decided_at.gte.${since}`).order('requested_at').range(a, b), 'Requests to add time could not be read'),
     decidesTimeOff
       ? allRows<TimeOff>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note')
         .or(`state.eq.pending,decided_at.gte.${since}`).in('state', ['pending', 'approved', 'denied']).order('requested_at').range(a, b), 'Time off could not be read')
@@ -138,7 +138,7 @@ export async function countWaiting(v: Viewer): Promise<number> {
   const c = db()
   const [dir, settings] = await Promise.all([loadDirectory(), loadRouteSettings()])
   const [corr, subs, fixed, requests] = await Promise.all([
-    allRows<{ person_id: string }>((a, b) => c.from('tc_correction_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Time corrections could not be read'),
+    allRows<{ person_id: string }>((a, b) => c.from('tc_correction_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Requests to add time could not be read'),
     allRows<{ person_id: string; state: TimesheetState; tc_periods: { start_date: string } | null }>((a, b) => c.from('tc_submissions').select('person_id, state, tc_periods(start_date)').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
     allRows<{ person_id: string }>((a, b) => c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('state', 'waiting').order('id').range(a, b), 'Invoices could not be read'),
     waitingRequests(v, dir, settings),

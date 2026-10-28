@@ -162,7 +162,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       .order('entry_date').order('started_at', { nullsFirst: false }).order('id').range(a, b), 'Entries could not be read'),
     allRows<{ id: number; person_id: string; entry_date: string; started_at: string; ended_at: string; jobcode_id: number; fields: Record<string, string>; notes: string | null; reason: string; state: string; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }>(
       (a, b) => withPeople(c.from('tc_correction_requests').select('*').gte('entry_date', q.from).lte('entry_date', q.to).in('state', ['pending', 'denied']))
-        .order('id').range(a, b), 'Time corrections could not be read'),
+        .order('id').range(a, b), 'Requests to add time could not be read'),
     allRows<{ id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null }>(
       (a, b) => withPeople(c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason')
         .lte('start_date', q.to).gte('end_date', q.from).in('state', ['pending', 'denied'])).order('id').range(a, b), 'Time off could not be read'),
@@ -208,8 +208,8 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       // A 2026 project's Billable is the project's own, as on its entries.
       billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : k.billable ? f[k.billable] ?? '' : '', code: k.code ? f[k.code] ?? '' : '',
       notes: r.notes ?? r.reason, kind: 'correction', imported: false,
-      pills: [state === 'pending' ? PILL.warn('Correction: Pending', 'Requested time. It counts only after it is approved.')
-        : PILL.bad('Correction: Denied', 'Requested time. It counts only after it is approved.')],
+      pills: [state === 'pending' ? PILL.warn('Added time: Pending', 'Requested time. It counts only after it is approved.')
+        : PILL.bad('Added time: Denied', 'Requested time. It counts only after it is approved.')],
       autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
       canEdit: false, shortenOnly: false, canDelete: false, canContinue: false, continuesPrevious: false,
       attention: attentionReason({ kind: 'correction', pending: state === 'pending', viewerDecides: decides }),

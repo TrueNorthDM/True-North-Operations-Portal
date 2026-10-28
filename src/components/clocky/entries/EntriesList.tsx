@@ -216,7 +216,7 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
                 <div className="flex flex-col items-center gap-2">
                   <div className="text-[13px] text-muted">Hours come from your clock. Missing time?</div>
                   <button type="button" onClick={onRequest} className={BTN_PAGE_WHITE}>
-                    <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request a time correction
+                    <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request to add time
                   </button>
                 </div>
               )}
