@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import {
-  addTime, deleteEntry, editEntry, getCorrectionHistory, getEntries, getEntryHistory, getSubmitSummary, requestCorrection, saveWeekGrid, submitPeriod,
+  addTime, deleteEntry, editEntry, getChoicesFor, getCorrectionHistory, getEntries, getEntryHistory, getSubmitSummary, requestCorrection, saveWeekGrid, submitPeriod,
 } from '@/app/(app)/clocky-hours/entries-actions'
 import { decideCorrection, decideTimeOff } from '@/app/(app)/clocky-hours/approvals/actions'
 import { clockIn, switchTo } from '@/app/(app)/clocky-hours/clock-actions'
@@ -18,7 +18,7 @@ import type { Catalog, EntriesApi } from './api'
 import { TimeEntries } from './TimeEntries'
 
 const API: EntriesApi = {
-  getEntries, getEntryHistory, getCorrectionHistory, getSubmitSummary, addTime, editEntry, deleteEntry, saveWeekGrid, requestCorrection, submitPeriod,
+  getEntries, getEntryHistory, getCorrectionHistory, getChoicesFor, getSubmitSummary, addTime, editEntry, deleteEntry, saveWeekGrid, requestCorrection, submitPeriod,
   decideCorrection, decideTimeOff, clockIn, switchTo,
 }
 

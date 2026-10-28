@@ -465,6 +465,8 @@ export function makeApi(store: Store): EntriesApi {
   return {
     getEntries: q => ok({ data: entriesData(store, q) }),
     getEntryHistory: ({ id }) => { const h = historyOf(store, id); return h ? ok({ data: h }) : no('That entry is not there any more.') },
+    // The prototype keeps one set of combinations: everyone's are those.
+    getChoicesFor: () => ok({ data: { combinations: COMBINATIONS, recents: [] } }),
     getCorrectionHistory: ({ id }) => {
       const x = store.recs.find(r => r.id === id && r.kind === 'req')
       if (!x) return no('That request is not there any more.')

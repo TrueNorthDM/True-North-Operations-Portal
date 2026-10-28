@@ -46,7 +46,7 @@ export function ErrorBanner({ text }: { text: string }) {
 
 // ── 1A Off the clock ────────────────────────────────────────────────────────
 
-export function OffView({ data, phone, more, busy, draft, switching, formInitial, formKey, hideNotes, onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
+export function OffView({ data, phone, more, busy, draft, switching, formInitial, formKey, hideNotes, combosLabel = 'My combinations', onToggleMore, onResume, onStart, onSave, onManage, onNew, onBrowse, onPickProject, onField, onNotes, onGo, onSaveDraft, onClockIn, onSaveAs, onFormPick }: {
   /** The clock panel's data, or Add time's catalog with `today` set to the entry's day. */
   data: Pick<ClockPanelData, 'jobs' | 'today' | 'switchDate' | 'fields' | 'defaults' | 'combinations' | 'recents' | 'resume'>
   phone: Phone
@@ -61,6 +61,8 @@ export function OffView({ data, phone, more, busy, draft, switching, formInitial
   formKey?: string
   /** A correction request: the form asks no Notes. */
   hideNotes?: boolean
+  /** Someone else's week (the week grid's Add row): "Wendy Cacka's combinations". */
+  combosLabel?: string
   more: boolean
   busy: boolean
   /** The project, fields and notes being picked right here, before clocking in. */
@@ -141,14 +143,15 @@ export function OffView({ data, phone, more, busy, draft, switching, formInitial
       {/* Always here, even with none yet: it is where a combination is made and managed. */}
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center justify-between px-0.5 pb-1.5">
-          <SectionLabel>My combinations</SectionLabel>
+          <SectionLabel>{combosLabel}</SectionLabel>
           <span className="flex items-center gap-3.5">
             {onNew && !todays.some(j => j.structure === 2) && <button type="button" onClick={onNew} disabled={busy} className={`${LINK_BTN} disabled:opacity-60`}>New combination</button>}
             {onManage && data.combinations.length > 0 && <button type="button" onClick={onManage} className={LINK_BTN}>Manage</button>}
           </span>
         </div>
         {data.combinations.length === 0 && (
-          <div className="px-0.5 pb-1 text-[12.5px] text-muted leading-[1.5]">Choose below, then Save as combination: next time you clock in with one tap. Combinations made on the old TSheets jobs work for days before the switch date.</div>
+          // Someone else's (a heading of their own): they save theirs from their own clock.
+          <div className="px-0.5 pb-1 text-[12.5px] text-muted leading-[1.5]">{combosLabel !== 'My combinations' ? 'None saved yet.' : 'Choose below, then Save as combination: next time you clock in with one tap. Combinations made on the old TSheets jobs work for days before the switch date.'}</div>
         )}
         {combos.map(c => {
             const r = choiceRow(c, true)

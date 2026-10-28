@@ -72,6 +72,46 @@ export function choiceOf(
   }
 }
 
+/**
+ * A person's saved combinations and recent choices (the newest 5, without the
+ * saved ones), offered as of `day`: what the clock panel, Add time and the
+ * week grid's Add row list for them.
+ */
+export function choicesOf(catalog: Catalog, combos: readonly ComboRow[], recent: readonly EntryRow[], running: EntryRow | null, day: string): { combinations: ClockChoice[]; recents: ClockChoice[]; finished: EntryRow[] } {
+  const selectable = (id: number | null) => id != null && offeredOn(catalog.jobs.get(id), day, catalog.switchDate)
+  const combinations = combos.filter(x => selectable(x.jobcode_id)).map(x => choiceOf({ ...x, fields: x.fields ?? {} }, catalog))
+  const finished = recent.filter(e => e.kind !== 'absence' && selectable(e.jobcode_id) && e.ended_at !== null)
+    .sort((a, b) => (b.ended_at ?? b.entry_date).localeCompare(a.ended_at ?? a.entry_date))
+  const recents: ClockChoice[] = []
+  const seen: { jobcode_id: number | null; fields: Record<string, string> }[] = []
+  for (const e of [...(running ? [running] : []), ...finished]) {
+    const f = (e.fields ?? {}) as Record<string, string>
+    const k = { jobcode_id: e.jobcode_id, fields: f }
+    if (seen.some(s => sameChoice(s, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1))))) continue
+    seen.push(k)
+    if (combos.some(x => sameChoice(x, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1)))) || !selectable(e.jobcode_id)) continue
+    recents.push(choiceOf({ jobcode_id: e.jobcode_id!, fields: f, notes: e.notes }, catalog))
+    if (recents.length >= 5) break
+  }
+  return { combinations, recents, finished }
+}
+
+/** Someone else's choices (the week grid of a person the viewer adds for), read as their own panel reads them. */
+export async function loadChoicesFor(personId: string, zone: string, now: Date): Promise<{ combinations: ClockChoice[]; recents: ClockChoice[] }> {
+  const c = db()
+  const [catalog, settings] = await Promise.all([loadCatalog(), loadClockySettings()])
+  const today = localDate(now, zone)
+  const week = weekBounds(today, settings.weekStart)
+  const [recent, combos, running] = await Promise.all([
+    allRows<EntryRow>((a, b) => c.from('tc_entries').select('*').eq('person_id', personId)
+      .gte('entry_date', addDays(week.start, -60)).order('entry_date', { ascending: false }).order('id', { ascending: false }).range(a, b), 'Their entries could not be read'),
+    loadCombos(c, personId),
+    runningOf(c, personId),
+  ])
+  const { combinations, recents } = choicesOf(catalog, combos, recent, running, clockDay(now, zone))
+  return { combinations, recents }
+}
+
 /** "Goes to Rock Kai, your Team Leader. Admins and Super Admins can also approve it." (3K-1) */
 export async function correctionGoesTo(personId: string): Promise<string> {
   const dir = await loadDirectory()
@@ -202,22 +242,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     })
 
   // Combinations, recents and the resume card: the jobs of the day a clock started now is recorded on.
-  const startsDay = clockDay(now, zone)
-  const selectable = (id: number | null) => id != null && offeredOn(catalog.jobs.get(id), startsDay, catalog.switchDate)
-  const combinations = combos.filter(x => selectable(x.jobcode_id)).map(x => choiceOf({ ...x, fields: x.fields ?? {} }, catalog))
-  const finished = recent.filter(e => e.kind !== 'absence' && selectable(e.jobcode_id) && e.ended_at !== null)
-    .sort((a, b) => (b.ended_at ?? b.entry_date).localeCompare(a.ended_at ?? a.entry_date))
-  const recents: ClockChoice[] = []
-  const seen: { jobcode_id: number | null; fields: Record<string, string> }[] = []
-  for (const e of [...(running ? [running] : []), ...finished]) {
-    const f = (e.fields ?? {}) as Record<string, string>
-    const k = { jobcode_id: e.jobcode_id, fields: f }
-    if (seen.some(s => sameChoice(s, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1))))) continue
-    seen.push(k)
-    if (combos.some(x => sameChoice(x, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1)))) || !selectable(e.jobcode_id)) continue
-    recents.push(choiceOf({ jobcode_id: e.jobcode_id!, fields: f, notes: e.notes }, catalog))
-    if (recents.length >= 5) break
-  }
+  const { combinations, recents, finished } = choicesOf(catalog, combos, recent, running, clockDay(now, zone))
   const last = finished[0]
   const resume = last
     ? (() => {

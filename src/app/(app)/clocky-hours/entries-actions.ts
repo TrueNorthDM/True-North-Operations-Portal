@@ -33,7 +33,7 @@ import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
 import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
-import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
+import { correctionGoesTo, loadChoicesFor } from '@/lib/timeclock/clocky-panel'
 import { announceCorrectionRequested, announceInvoiceMade, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
@@ -49,7 +49,7 @@ import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
 import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoices-data'
 import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/lib/timeclock/scope'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
-import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
+import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
@@ -113,6 +113,25 @@ export async function getEntryHistory(input: { id: number }): Promise<Result<{ d
   } catch (e) {
     console.error('[clocky entries] history:', (e as Error).message)
     return fail('The history could not be read. Try again in a moment.')
+  }
+}
+
+/**
+ * The saved combinations and recent choices of a person the viewer adds for:
+ * the week grid's Add row on their week lists theirs, not the viewer's (owner,
+ * 28 October 2026).
+ */
+export async function getChoicesFor(input: { personId: string }): Promise<Result<{ data: Pick<ClockPanelData, 'combinations' | 'recents'> }>> {
+  const v = await reader()
+  if (isFail(v)) return v
+  try {
+    const dir = await loadDirectory()
+    const personId = String(input.personId ?? '')
+    if (!dir.people.has(personId) || !canAddFor(v, dir.target(personId))) return fail(NOT_YOURS)
+    return { ok: true, data: await loadChoicesFor(personId, dir.zoneOf(personId), new Date()) }
+  } catch (e) {
+    console.error('[clocky entries] choices:', (e as Error).message)
+    return fail('Their combinations could not be read. Try again in a moment.')
   }
 }
 

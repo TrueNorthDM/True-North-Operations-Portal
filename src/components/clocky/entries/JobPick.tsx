@@ -32,7 +32,7 @@ export interface PickState {
 
 export type PickPatch = Partial<PickState> & { jobPath?: string }
 
-export function JobPick({ catalog, day, busy, s, set, hideNotes = false }: {
+export function JobPick({ catalog, day, busy, s, set, hideNotes = false, combosLabel }: {
   catalog: Catalog
   /** The day the entry is on: what is offered is what that day can record. */
   day: string
@@ -41,6 +41,8 @@ export function JobPick({ catalog, day, busy, s, set, hideNotes = false }: {
   set: (patch: PickPatch) => void
   /** A correction request: its "What happened" stands for the Notes. */
   hideNotes?: boolean
+  /** The heading over the combinations listed, when they are not the viewer's. */
+  combosLabel?: string
 }) {
   // The clock panel's data as of that day.
   const dayData = { ...catalog, today: day, resume: null }
@@ -76,7 +78,7 @@ export function JobPick({ catalog, day, busy, s, set, hideNotes = false }: {
     )
   }
   return (
-    <OffView data={dayData} phone={false} more={!!s.more} busy={busy} draft={null} hideNotes={hideNotes}
+    <OffView data={dayData} phone={false} more={!!s.more} busy={busy} draft={null} hideNotes={hideNotes} combosLabel={combosLabel}
       switching={{ picked: s.combo || null, jobcodeId: null, activity: '', action: 'pick' }}
       formKey={String(s.formKey ?? 0)} formInitial={{ jobId: s.jobcodeId, activity: s.values.activity, notes: s.notes }}
       onFormPick={d => (d ? fromDraft(d) : set({ jobcodeId: null, combo: '' }))}

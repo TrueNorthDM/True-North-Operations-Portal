@@ -21,13 +21,16 @@ const COLS = 'minmax(250px,1fr) repeat(7,86px) 90px'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const md = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`
 
-export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen, setAddRowOpen, onAddRow, onType, onSave }: {
+export function WeekGrid({ who, days, today, model, editable, combos, onOpenAdd, addRowOpen, setAddRowOpen, onAddRow, onType, onSave }: {
   who: string
   days: string[]
   today: string
   model: GridModel
   editable: boolean
+  /** A TSheets week's Add row: the person's saved combinations. */
   combos: readonly ClockChoice[]
+  /** A week on the 2026 structure: Add row opens the picker of Add time (GridRowPick) instead. */
+  onOpenAdd?: () => void
   addRowOpen: boolean
   setAddRowOpen: (open: boolean) => void
   onAddRow: (s: GridSource) => void
@@ -47,10 +50,10 @@ export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen
         {editable ? (
           <>
             <div className="relative" ref={menu}>
-              <button type="button" onClick={() => setAddRowOpen(!addRowOpen)} aria-expanded={addRowOpen} className={BTN_SMALL}>
+              <button type="button" onClick={() => (onOpenAdd ? onOpenAdd() : setAddRowOpen(!addRowOpen))} aria-expanded={onOpenAdd ? undefined : addRowOpen} className={BTN_SMALL}>
                 <Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={3} />Add row
               </button>
-              {addRowOpen && (
+              {addRowOpen && !onOpenAdd && (
                 <div className={`${MENU} top-10 left-0 w-max min-w-[314px] max-w-[min(480px,calc(100vw-32px))] p-1.5 gap-px`}>
                   <div className={`${LABEL} text-muted px-2.5 pt-1.5 pb-1`}>Add a combination</div>
                   {options.map(c => (

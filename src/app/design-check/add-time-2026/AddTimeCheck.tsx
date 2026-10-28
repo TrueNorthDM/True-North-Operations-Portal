@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EntryForm } from '@/components/clocky/entries/EntryForm'
 import { blankForm, blankRequest, type FormState, type RequestState } from '@/components/clocky/entries/form'
 import { CorrectionRequest } from '@/components/clocky/entries/CorrectionRequest'
+import { GridRowPick } from '@/components/clocky/entries/GridRowPick'
 import type { Catalog } from '@/components/clocky/entries/api'
 import { FRAMES, JOBS } from '@/app/design-check/clocky-clock/sample'
 
@@ -24,16 +25,20 @@ export function AddTimeCheck() {
   const [which, setWhich] = useState('empty')
   const [form, setFormState] = useState<FormState>(START.empty)
   const [rq, setRq] = useState<RequestState>(() => blankRequest({ date: d.today }))
-  const open = (k: string) => { setWhich(k); if (k === 'request') setRq(blankRequest({ date: d.today })); else setFormState(START[k]()) }
+  const open = (k: string) => { setWhich(k); if (k === 'request') setRq(blankRequest({ date: d.today })); else if (START[k]) setFormState(START[k]()) }
   return (
     <div className="min-h-screen bg-[#f1efe8] px-8 py-7">
       <div className="fixed bottom-4 right-4 z-[100] flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 w-fit shadow-[0_6px_18px_rgba(1,35,88,.18)]" role="group" aria-label="Start from">
-        {([['empty', 'Empty'], ['filled', 'Filled in'], ['other', 'Activity Other'], ['request', 'Request a correction']] as const).map(([k, label]) => (
+        {([['empty', 'Empty'], ['filled', 'Filled in'], ['other', 'Activity Other'], ['request', 'Request to add time'], ['row', 'Week grid: Add a row']] as const).map(([k, label]) => (
           <button key={k} type="button" aria-pressed={which === k} onClick={() => open(k)}
             className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] ${which === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
         ))}
       </div>
-      {which === 'request' ? (
+      {which === 'row' ? (
+        // Someone else's week: their combinations and recents (here, the sample's).
+        <GridRowPick key={which} catalog={CATALOG} choices={{ combinations: d.combinations, recents: d.recents }} day={d.today}
+          whose="Wendy Cacka's week, Oct 25 to Oct 31." combosLabel="Wendy Cacka's combinations" taken={() => false} onClose={() => open('row')} onAdd={() => open('row')} />
+      ) : which === 'request' ? (
         <CorrectionRequest rq={rq} setRq={p => setRq(r => ({ ...r, ...p }))} catalog={CATALOG} today={d.today} personId={me.personId} zone={me.zone}
           rows={[]} nowMs={NOW} busy={false} onClose={() => open('request')} onSend={() => {}} />
       ) : <EntryForm key={which} form={form} setForm={p => setFormState(f => ({ ...f, ...p }))} catalog={CATALOG} people={[]} pickPerson={false} leader

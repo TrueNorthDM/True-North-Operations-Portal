@@ -33,6 +33,7 @@ import { DayTimeline, droppedOverlap, type Drag, type Ghost } from './DayTimelin
 import { CorrectionReview, DeleteDialog, GridReasonDialog, SubmitDialog, TimeOffCard } from './Dialogs'
 import { EntriesList, useOutside } from './EntriesList'
 import { EntryForm } from './EntryForm'
+import { GridRowPick, type GridChoices } from './GridRowPick'
 import { blankForm, blankRequest, fieldsOf, formFromRow, formJob, formSpan, overlapAmong, type FormState, type RequestState } from './form'
 import { fieldsForJob } from '@/components/clocky/clock/clock-model'
 import { HistoryDrawer } from './HistoryDrawer'
@@ -45,6 +46,7 @@ import { SummaryAside } from './SummaryAside'
 import { BTN_PAGE_NAVY, BTN_PAGE_WHITE, BTN_SMALL, ICON_BTN, Icon, ICON, MENU, Toast, type ToastState } from './ui'
 import { WeekGrid } from './WeekGrid'
 import { addDays } from '@/lib/timeclock/periods'
+import { structureOn } from '@/lib/timeclock/entry-rules'
 
 export type ModalState =
   | { kind: 'edit'; form: FormState }
@@ -56,6 +58,7 @@ export type ModalState =
   | { kind: 'review'; key: string; deny: boolean }
   | { kind: 'off'; key: string; deny: boolean }
   | { kind: 'grid-reason' }
+  | { kind: 'grid-row' }
 
 export interface EntriesUi {
   period: PeriodKind
@@ -342,6 +345,24 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   }
   for (const s of ui.gExtra) if (!sources.some(x => x.key === s.key)) sources.push(s)
   const canGrid = addsFor(gridWho)
+  // Add row lists the combinations and recents of the person whose week it is (owner, 28 October 2026).
+  const [theirChoices, setTheirChoices] = useState<(GridChoices & { personId: string }) | null>(null)
+  const needTheirs = ui.tab === 'grid' && canGrid && gridWho !== viewer.personId && theirChoices?.personId !== gridWho
+  useEffect(() => {
+    if (!needTheirs) return
+    let off = false
+    const done = (c: GridChoices) => { if (!off) setTheirChoices({ ...c, personId: gridWho }) }
+    api.getChoicesFor({ personId: gridWho })
+      .then(r => done(r.ok ? r.data : { combinations: [], recents: [], error: r.error }))
+      .catch(e => done({ combinations: [], recents: [], error: failText(e) }))
+    return () => { off = true }
+  }, [needTheirs, gridWho, api])
+  const gridChoices: GridChoices | null = gridWho === viewer.personId
+    ? { combinations: catalog.combinations, recents: catalog.recents }
+    : theirChoices?.personId === gridWho ? theirChoices : null
+  // The day Add row offers jobs for: today in this week, else the week's last day (its first, for a week ahead).
+  const pickDay = today < gridDays[0] ? gridDays[0] : today > gridDays[6] ? gridDays[6] : today
+  const gridPicks2026 = structureOn(pickDay, catalog.switchDate) === 2
   const grid = buildGrid({
     days: gridDays, sources, edits: ui.gEdits, editable: canGrid,
     entries: gridRows.map(r => ({ rowKey: gridRowKey(r.jobcodeId, r.activity), date: r.date, seconds: r.seconds, clocked: r.kind !== 'manual' || r.imported, locked: r.locked })),
@@ -461,6 +482,14 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         onApprove={() => void decideTimeOff(r, 'approve')} onDeny={note => void decideTimeOff(r, 'deny', note)} />
     }
     if (m.kind === 'grid-reason') return <GridReasonDialog busy={busy} onClose={() => setModal(null)} onSave={reason => void saveGrid(reason)} />
+    if (m.kind === 'grid-row') {
+      const week = `${dayLabel(gridDays[0])} to ${dayLabel(gridDays[6])}.`
+      return <GridRowPick catalog={catalog} choices={gridChoices} day={pickDay}
+        whose={gridWho === viewer.personId ? `Your week, ${week}` : `${gridName}'s week, ${week}`}
+        combosLabel={gridWho === viewer.personId ? undefined : `${gridName}'s combinations`}
+        taken={k => grid.rows.some(r => r.key === k)} onClose={() => setModal(null)}
+        onAdd={src => setUi(u => ({ ...u, gExtra: [...u.gExtra, src], modal: null }))} />
+    }
     return null
   })()
 
@@ -593,7 +622,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               onDelete={r => setModal({ kind: 'delete', key: r.key })} onOpen={openRow} onAdd={() => openAdd()} onRequest={() => openRequest()} />
           )}
           {ui.tab === 'grid' && (
-            <WeekGrid who={gridName} days={gridDays} today={today} model={grid} editable={canGrid} combos={catalog.combinations}
+            <WeekGrid who={gridName} days={gridDays} today={today} model={grid} editable={canGrid} combos={gridChoices?.combinations ?? []}
+              onOpenAdd={gridPicks2026 ? () => setModal({ kind: 'grid-row' }) : undefined}
               addRowOpen={ui.addRowOpen} setAddRowOpen={open => setUi(u => ({ ...u, addRowOpen: open }))}
               onAddRow={s => setUi(u => ({ ...u, gExtra: [...u.gExtra, s], addRowOpen: false }))}
               onType={(k, text) => setUi(u => ({ ...u, gEdits: { ...u.gEdits, [k]: text } }))}

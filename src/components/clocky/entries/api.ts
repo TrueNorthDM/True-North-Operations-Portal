@@ -31,6 +31,8 @@ export interface EntriesApi {
   getEntryHistory(i: { id: number }): Promise<Result<{ data: HistoryData }>>
   /** A pending or denied time correction request's history (its row's History). */
   getCorrectionHistory(i: { id: number }): Promise<Result<{ data: HistoryData }>>
+  /** The saved combinations and recent choices of a person the viewer adds for (the week grid of their week). */
+  getChoicesFor(i: { personId: string }): Promise<Result<{ data: Pick<ClockPanelData, 'combinations' | 'recents'> }>>
   getSubmitSummary(i?: { start?: string }): Promise<Result<{ data: SubmitSummary }>>
   addTime(i: EntryInputBody & { personId: string }): Promise<Result<{ entryId: number; toast: string }>>
   editEntry(i: EntryInputBody & { id: number }): Promise<Result<{ entryId: number; changes: number; toast: string }>>
