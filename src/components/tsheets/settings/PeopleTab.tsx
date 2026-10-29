@@ -41,7 +41,7 @@ import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { Select } from '@/components/ui/Select'
 import { savePaysAndAllowance } from '@/app/(app)/directory/[id]/pay-actions'
 import type { PaysAs } from '@/lib/timeclock/routing'
-import { initialsOf, formatDate } from '@/lib/directory/people-types'
+import { initialsOf, formatDate, typePill, PILL_CLASS } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
@@ -65,6 +65,8 @@ export interface PersonWithAssignments {
   managerName: string | null
   managerTeam: string | null
   hireDate: string | null
+  /** 'contractor', 'us' (a US employee) or null when not set (the Directory's Type). */
+  employmentType?: string | null
   costRate: number | null
   beRate: number | null
   monthlySalary: number | null
@@ -171,6 +173,7 @@ function tableColumns(withCadence: boolean, withPay: boolean) {
     { key: 'team', label: 'Team', ...flexTrack(1, 64) },
     { key: 'reports', label: 'Report to', ...flexTrack(1.4, 96) },
     { key: 'joined', label: 'Joined on', ...flexTrack(withCadence ? 1 : 1.1, 80) },
+    { key: 'type', label: 'Type', ...fixedTrack(130) },
     ...(withCadence ? [{ key: 'timesheet', label: 'Timesheet', ...fixedTrack(210) }] : []),
     ...(withPay ? [{ key: 'paysAs', label: 'Pays as', ...fixedTrack(170) }] : []),
     { key: 'clientRate', label: 'Rate / client', ...rate(150) },
@@ -187,6 +190,9 @@ const alKey = (a: { hours: number; period: 'week' | 'month' } | null) => (a ? `$
 const alOf = (k: string): { hours: number; period: 'week' | 'month' } | null => (k === 'none' ? null : { hours: Number(k.slice(0, -1)), period: k.endsWith('w') ? 'week' : 'month' })
 const alText = (k: string) => (k === 'none' ? 'None' : `${k.slice(0, -1)}h ${k.endsWith('w') ? 'a week' : 'a month'}`)
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
+
+/** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
+const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType != null && p.employmentType !== 'contractor'
 
 export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given }: Props) {
   const router = useRouter()
@@ -269,6 +275,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teams.map(t => ({ value: t, label: t })) },
       { id: 'reports', label: 'Report to', type: 'text', get: p => p.managerName },
       { id: 'joined', label: 'Joined on', type: 'date', get: p => p.hireDate },
+      { id: 'type', label: 'Type', type: 'enum', get: p => typePill(p.employmentType ?? null)?.label ?? null, options: [{ value: 'Contractor', label: 'Contractor' }, { value: 'US Employee', label: 'US Employee' }] },
       { id: 'clientRate', label: 'Rate / client', type: 'number', get: clientRateOf },
       { id: 'costRate', label: 'Rate / cost', type: 'number', get: p => p.costRate },
       { id: 'beRate', label: 'Rate / break-even', type: 'number', get: p => p.beRate },
@@ -538,6 +545,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             {show.has('team') && <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />}
             {show.has('reports') && <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />}
             {show.has('joined') && <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />}
+            {show.has('type') && <SortHeader label="Type" active={sort?.id === 'type'} dir={sort?.id === 'type' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'type'))} />}
             {cadence && show.has('timesheet') && (
               <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">
                 Timesheet<NewTag size={8.5} />
@@ -596,6 +604,14 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                   {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
                 </span>}
 
+                {/* Type: Contractor or US Employee, as on the person's page */}
+                {show.has('type') && <span>{(() => {
+                  const t = typePill(p.employmentType ?? null)
+                  return t
+                    ? <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[t.kind]}`}>{t.label}</span>
+                    : <span className="text-slate-300">-</span>
+                })()}</span>}
+
                 {/* Timesheet: the pill, or in Edit the choice (changed rows amber) */}
                 {cadence && show.has('timesheet') && (
                   <span className="flex flex-col gap-1 items-start">
@@ -631,13 +647,14 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {show.has('clientRate') && rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
 
                 {/* Rate / cost (violet focus) */}
-                {show.has('costRate') && rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
+                {/* A US employee is paid through Rippling: no Rate / cost or Month / salary (owner, 29 October 2026) */}
+                {show.has('costRate') && (isEmployee(p) ? <span aria-hidden="true" /> : rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0'))}
 
                 {/* Rate / break-even (amber focus) */}
                 {show.has('beRate') && rateInput(beVal, v => setDraft(p.id, 'be', v), '#a8660a')}
 
                 {/* Month / salary (green focus) */}
-                {show.has('salary') && rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
+                {show.has('salary') && (isEmployee(p) ? <span aria-hidden="true" /> : rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d'))}
 
                 {/* Allowance and Over (Clocky part 2) */}
                 {pay && show.has('allowance') && (() => {
