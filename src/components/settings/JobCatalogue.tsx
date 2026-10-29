@@ -57,6 +57,21 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
   const [tab, setTab] = useState(startTab)
   const [toast, setToast] = useState<ToastState | null>(null)
   const say = (r: Done) => { setToast(r.ok ? { text: r.toast } : { text: r.error, error: true }); setTimeout(() => setToast(null), 4200); if (r.ok && linked) router.refresh() }
+  // One switch for the three tabs (owner, 28 October 2026): the structure people pick today opens.
+  const has2026 = !!data.rows2026?.length
+  const [which, setWhich] = useState<1 | 2>(has2026 && data.frozen ? 2 : 1)
+  const label = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  const when = data.switchDate ? label(new Date(`${data.switchDate}T12:00:00Z`)) : null
+  const lastDay = data.switchDate ? label(new Date(Date.parse(`${data.switchDate}T12:00:00Z`) - 86_400_000)) : null
+  const frozen = which === 1 && !!data.frozen
+  const line = which === 2
+    ? tab === 'jobs' ? (when ? `Client › Division › Project. Offered from ${when}; entries before it keep the TSheets jobs.` : 'Client › Division › Project. Offered once a switch date is set.')
+      : tab === 'fields' ? 'Client, Division and Project are the job itself (Jobs). The one field is the Activity; Billable comes from the project.'
+        : 'The clients of the 2026 structure, from Jobs. Add, rename or switch one off there.'
+    : frozen ? (tab === 'jobs' ? `Frozen since ${when}: a job can be switched off, not renamed or moved, so the history keeps its names.`
+      : tab === 'fields' ? `Frozen since ${when}: an option can be hidden, not renamed, so the history keeps its words.`
+        : `The clients of the reports, each linked to its TSheets job folder.`)
+      : lastDay ? `Offered through ${lastDay}.` : 'What people pick today.'
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -68,49 +83,29 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
         </div>
         {!canEdit && <span className="text-[12px] text-[#5b6b82] bg-[#f1f3f6] rounded-full px-[11px] py-[5px] leading-[normal]">Read only at the Admin level. Super Admins edit the catalogue.</span>}
       </div>
-      {tab === 'jobs' && <JobsPart data={data} canEdit={canEdit} api={api} startId={startId} say={say} onFields={() => setTab('fields')} />}
-      {tab === 'fields' && <Fields data={data} canEdit={canEdit} api={api} startField={startField} say={say} />}
-      {tab === 'clients' && <Clients data={data} />}
+      {has2026 && (
+        <div className="flex items-center gap-2.5 flex-wrap -mt-1">
+          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Which structure">
+            {([[2, '2026 structure'], [1, 'TSheets']] as const).map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={which === k} onClick={() => setWhich(k)}
+                className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${which === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+            ))}
+          </div>
+          <span className="text-[12px] text-muted leading-[1.5]">{line}</span>
+        </div>
+      )}
+      {tab === 'jobs' && (which === 2
+        ? <Catalogue2026 rows={data.rows2026 ?? []} activities={data.activities2026 ?? []} canEdit={canEdit} api={api} onFields={() => setTab('fields')}
+            run={async p => { const r = await settle(p); say(r); return r }} />
+        : <Jobs rows={data.rows} structure={1} data={data} canEdit={canEdit} frozenTree={frozen} api={api} startId={startId} say={say} />)}
+      {tab === 'fields' && <Fields key={which} data={data} structure={has2026 ? which : null} canEdit={canEdit} api={api} startField={startField} say={say} />}
+      {tab === 'clients' && (which === 2 ? <Clients2026 rows={data.rows2026 ?? []} /> : <Clients data={data} />)}
       <Toast toast={toast} />
     </div>
   )
 }
 
 // ── 11A Jobs ────────────────────────────────────────────────────────────────
-
-/** The two trees: the 2026 structure and the TSheets jobs (frozen from the switch date). */
-function JobsPart({ data, canEdit, api, startId, say, onFields }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void; onFields: () => void }) {
-  const has2026 = !!data.rows2026?.length
-  const [which, setWhich] = useState<1 | 2>(has2026 && data.frozen ? 2 : 1)
-  const rows = which === 2 ? data.rows2026 ?? [] : data.rows
-  const frozenTree = which === 1 && !!data.frozen
-  const label = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-  const when = data.switchDate ? label(new Date(`${data.switchDate}T12:00:00Z`)) : null
-  const lastDay = data.switchDate ? label(new Date(Date.parse(`${data.switchDate}T12:00:00Z`) - 86_400_000)) : null
-  return (
-    <div className="flex flex-col gap-3">
-      {has2026 && (
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Which structure">
-            {([[2, '2026 structure'], [1, 'TSheets jobs']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={which === k} onClick={() => setWhich(k)}
-                className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${which === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
-            ))}
-          </div>
-          <span className="text-[12px] text-muted leading-[1.5]">
-            {which === 2
-              ? (when ? `Client › Division › Project. Offered from ${when}; entries before it keep the TSheets jobs.` : 'Client › Division › Project. Offered once a switch date is set.')
-              : frozenTree ? `Frozen since ${when}: a job can be switched off, not renamed or moved, so the history keeps its names.` : lastDay ? `Offered through ${lastDay}.` : 'What people pick today.'}
-          </span>
-        </div>
-      )}
-      {which === 2
-        ? <Catalogue2026 rows={rows} activities={data.activities2026 ?? []} canEdit={canEdit} api={api} onFields={onFields}
-            run={async p => { const r = await settle(p); say(r); return r }} />
-        : <Jobs key={which} rows={rows} structure={which} data={data} canEdit={canEdit} frozenTree={frozenTree} api={api} startId={startId} say={say} />}
-    </div>
-  )
-}
 
 type Draft = { name: string; parent: string; active: boolean; billable: boolean; company: string; project: string; use: string }
 const draftOf = (r: CatalogueRow): Draft => ({ name: r.name, parent: r.parentId == null ? NO_FOLDER : String(r.parentId), active: r.active, billable: r.billable, company: r.company, project: r.project, use: r.use })
@@ -244,13 +239,15 @@ function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }:
 
 // ── 11B Fields and options ──────────────────────────────────────────────────
 
-function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startField?: string; say: (r: Done) => void }) {
+function Fields({ data, structure, canEdit, api, startField, say }: { data: CatalogueData; structure: 1 | 2 | null; canEdit: boolean; api: CatalogueApi; startField?: string; say: (r: Done) => void }) {
+  // The fields of the structure picked (all of them before there is a 2026 structure).
+  const fields = data.fields.filter(x => structure == null || x.structure === structure)
   // By id: the TSheets Activity and the 2026 Activity share the key.
-  const [key, setKey] = useState((data.fields.find(x => x.key === startField) ?? data.fields[0])?.id ?? '')
+  const [key, setKey] = useState((fields.find(x => x.key === startField) ?? fields[0])?.id ?? '')
   const [renaming, setRenaming] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [fresh, setFresh] = useState('')
-  const f = data.fields.find(x => x.id === key)
+  const f = fields.find(x => x.id === key)
   if (!f) return null
   const mono = f.key === 'code'
   const commit = async (id: number, old: string) => {
@@ -261,7 +258,7 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-4 items-start">
       <div className="flex flex-col gap-2">
-        {data.fields.map(x => (
+        {fields.map(x => (
           <button key={x.id} type="button" aria-pressed={x.id === key} onClick={() => { setKey(x.id); setRenaming(null) }}
             className={`text-left flex flex-col gap-[3px] border rounded-[12px] px-3.5 py-3 cursor-pointer leading-[normal] min-w-0 ${x.id === key ? 'border-tn-teal bg-tn-teal-soft' : 'border-[var(--panel-border)] bg-white'}`}>
             <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{x.label}</span>
@@ -316,6 +313,32 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
 }
 
 // ── Clients ─────────────────────────────────────────────────────────────────
+
+/** The 2026 clients, as Jobs keeps them: how many divisions and projects each has, and whether it is on. */
+function Clients2026({ rows }: { rows: CatalogueRow[] }) {
+  const clients = rows.filter(r => r.level === 'client').sort((a, b) => a.name.localeCompare(b.name))
+  const under = (id: number) => rows.filter(r => r.parentId === id)
+  const COLS = 'grid-cols-[minmax(0,1fr)_110px_110px_120px]'
+  return (
+    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+      <div className={`grid ${COLS} bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}>
+        <div className="px-4 py-2.5">Client</div><div className="px-4 py-2.5 text-right">Divisions</div><div className="px-4 py-2.5 text-right">Projects</div><div className="px-4 py-2.5">Active</div>
+      </div>
+      {clients.map(c => {
+        const divisions = under(c.id).filter(r => r.level === 'division')
+        const projects = [...under(c.id), ...divisions.flatMap(d => under(d.id))].filter(r => r.level === 'project').length
+        return (
+          <div key={c.id} className={`grid ${COLS} items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]`}>
+            <div className="px-4 py-[11px] text-tn-ink font-bold font-(family-name:--font-display)">{c.name}</div>
+            <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{divisions.length || '-'}</div>
+            <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{projects}</div>
+            <div className="px-4 py-[11px]"><span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] ${c.active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function Clients({ data }: { data: CatalogueData }) {
   return (

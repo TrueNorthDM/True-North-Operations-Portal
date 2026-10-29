@@ -134,7 +134,7 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
     switchDate: catalog.switchDate,
     frozen: structureOn(today, catalog.switchDate) === 2,
     fields: catalog.fields.map(f => ({
-      key: f.key, structure: f.structure, id: f.id, label: f.structure === 2 ? `${f.label} (2026 structure)` : f.label,
+      key: f.key, structure: f.structure, id: f.id, label: f.label,
       hint: f.structure === 2 ? 'The kind of work, in families. Client, Division and Project are the job.' : HINT[f.key],
       options: opts.filter(o => String(o.field_id) === f.id)
         .map(o => ({ id: o.id, label: o.label, shown: o.active, used: used.get(`${f.id}:${o.label}`) ?? 0 })),

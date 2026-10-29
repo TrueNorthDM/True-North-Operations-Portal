@@ -64,11 +64,14 @@ export function catalogueFrame(): CatalogueData {
     activities2026: ACTIVITIES.map(a => ({ family: a.family, name: a.name, covers: a.covers, notesRequired: activityNeedsNotes(a.name) })),
     switchDate: '2026-11-01',
     frozen: false,
-    fields: FIELDS.map(([key, label, hint, options], fi) => ({
-      key, structure: 1, id: String(fi + 1), label, hint,
+    fields: [...FIELDS.map(([key, label, hint, options], fi) => ({
+      key, structure: 1 as const, id: String(fi + 1), label, hint,
       // The prototype's "Used in" numbers.
       options: options.map((o, i) => ({ id: ++optId, label: o, shown: o !== 'MME-ADMIN', used: key === 'billable' ? (o === 'Yes' ? 4120 : 2210) : Math.max(0, 640 - i * 47 - o.length * 3) })),
     })),
+    // The 2026 Activity, the one field of the 2026 structure.
+    { key: 'activity' as const, structure: 2 as const, id: '3106', label: 'Activity', hint: 'The kind of work, in families. Client, Division and Project are the job.',
+      options: ACTIVITIES.map(a => ({ id: ++optId, label: a.name, shown: true, used: 0 })) }],
     clients: [['True North', '1 - True North'], ['i7 Marketing', '2 - i7 Marketing'], ['Adventist.org', 'A.org Job'], ['Adventist Messengers / Hope for Africa', 'Adventist Messengers/HFA'], ['DDI', 'DDI'], ['GNA', 'GNA'], ['Rwanda', 'Rwanda-Incidental']]
       .map(([name, folder]) => ({ name, folder, active: true })),
   }
