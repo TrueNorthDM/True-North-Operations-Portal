@@ -19,11 +19,13 @@ import { TimeEntriesLive } from '@/components/clocky/entries/TimeEntriesLive'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getClockPanel } from './clock-actions'
 import { getEntries } from './entries-actions'
+import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Time entries' }
 
 export default async function TimeEntriesPage({ searchParams }: { searchParams: Promise<{ entry?: string; person?: string; submit?: string }> }) {
+  await requireNorthTimeOpen()
   await requireSurface('clocky-hours')
   const params = await searchParams
   const asked = Number(params.entry)

@@ -17,6 +17,7 @@ import { END_AFTER_START, REASON_REQUIRED, reasonOf } from '@/lib/timeclock/entr
 import { canClockOutFor } from '@/lib/timeclock/scope'
 import { announceClockedOutFor } from '@/lib/timeclock/clocky-notify'
 import type { Fail, Result, WhosWorkingData } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NO_ACCESS = "Who's working is not open to your access."
 const fail = (error: string): Fail => ({ ok: false, error })
@@ -62,6 +63,8 @@ export async function getWhosWorkingCount(): Promise<Result<{ count: number }>> 
  */
 export async function clockOutFor(input: { personId: string; end?: string; reason: string }): Promise<Result<{ toast: string }>> {
   if (await getViewAs()) return fail('View Stage is only a preview. Close it to clock anyone out.')
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail('Sign in again to save.')
   if (!access.can('ck-clock-out-for')) return fail('Only a Super Admin can clock someone out.')

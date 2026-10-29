@@ -7,11 +7,13 @@ import { requireSurface } from '@/lib/access/resolve'
 import { ApprovalsLive } from '@/components/clocky/approvals/ApprovalsLive'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getQueue } from './actions'
+import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals' }
 
 export default async function ApprovalsPage() {
+  await requireNorthTimeOpen()
   await requireSurface('clocky-approvals')
   const r = await getQueue()
   if (!r.ok) {

@@ -317,10 +317,24 @@ export interface NavContext {
   canTool: (toolKey: string) => boolean
   /** The facts this person has (lib/access/nav-facts.ts); a row needing one they lack is left out. Absent: every fact holds (design checks). */
   facts?: ReadonlySet<NavFact>
+  /** Rows and hubs left out whatever the access (NORTH_TIME_CLOSED_ROWS while North Time is closed). */
+  hidden?: ReadonlySet<string>
 }
+
+/**
+ * The person-facing North Time rows and hubs, left out of the rail for everyone
+ * but a Super Admin while North Time is closed (migration 132). Reports, Which
+ * job?, Clock safety, TSheets transition and Import stay: they read, or keep
+ * the TSheets import going.
+ */
+export const NORTH_TIME_CLOSED_ROWS: ReadonlySet<string> = new Set([
+  'clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices',
+  'requests', 'requests-time-off', 'requests-reimbursements', 'requests-extra-hours', 'requests-approvals',
+])
 
 
 function rowVisible(i: PanelItem, ctx: NavContext): boolean {
+  if (ctx.hidden?.has(i.key)) return false
   if (i.needs && ctx.facts && !ctx.facts.has(i.needs)) return false
   if (i.alsoSurface && !ctx.can(i.alsoSurface)) return false
   if (i.anySurface) return i.anySurface.some(k => ctx.can(k))
@@ -348,6 +362,7 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
       continue
     }
     if (e.surface && !ctx.can(e.surface)) continue
+    if (ctx.hidden?.has(e.key)) continue
     const groups = e.groups
       .map(g => ({ label: g.label, items: g.items.filter(i => rowVisible(i, ctx)).map(toItem) }))
       .filter(g => g.items.length > 0)

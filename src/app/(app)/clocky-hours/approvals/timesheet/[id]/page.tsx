@@ -8,11 +8,13 @@ import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { loadReview } from '@/lib/timeclock/timesheet-review'
 import { TimesheetReviewLive } from '@/components/clocky/approvals/TimesheetReviewLive'
+import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals' }
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  await requireNorthTimeOpen()
   const { id } = await params
   await requireSurface('clocky-approvals')
   if (!/^\d+$/.test(id)) notFound()

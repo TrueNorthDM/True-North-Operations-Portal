@@ -59,6 +59,7 @@ import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { currentStep, invoiceApprover, type TimesheetState } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
+import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, ownTimeOffShown, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
 
 const APPROVALS = '/clocky-hours/approvals'
@@ -81,8 +82,14 @@ const beforeDot = (s: string) => (s.includes(' · ') ? s.slice(0, s.indexOf(' ·
 const andList = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
 const firstName = (n: string) => n.trim().split(/\s+/)[0] ?? n
 
+/** The North Time items behind Needs you's rows, off while North Time is closed. */
+const NORTH_TIME_KEYS: ReadonlySet<string> = new Set(['clocky-hours', 'clocky-approvals', 'clocky-invoices', 'ck-timeoff', 'rq-decide', 'rq-time-off', 'rq-reimbursements', 'rq-extra-hours'])
+
 export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData> {
-  const access = await loadAccess()
+  const real = await loadAccess()
+  // North Time closed (migration 132): none of its rows, for anyone. Its keys read as not granted here.
+  const ntOpen = await northTimeOpen()
+  const access: typeof real = ntOpen ? real : { ...real, can: (k: string) => !NORTH_TIME_KEYS.has(k) && real.can(k) }
   // A read that failed is not a login linked to nobody: the first fails each kind that
   // needs the person, the second skips them and says so once (audit, 25 October 2026).
   let viewerFailed = false
@@ -92,7 +99,7 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     viewerFor(access).catch(e => { console.error('[home] needs you, viewer:', (e as Error).message); viewerFailed = true; return null }),
     loadInvoiceSettings().catch(e => { console.error('[home] needs you, invoice settings:', (e as Error).message); return null }),
   ])
-  const pays = settings ? paysWhat(access, settings) : { invoices: false, documents: false }
+  const pays = settings && ntOpen ? paysWhat(access, settings) : { invoices: false, documents: false }
   const unlinked = !v && !viewerFailed
   const zone = v?.zone ?? WORK_ZONE
   const today = localDate(now, zone)

@@ -34,6 +34,7 @@ import { isFinance, loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import type { Fail, Result } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const fail = (error: string): Fail => ({ ok: false, error })
@@ -46,6 +47,8 @@ const refresh = () => { revalidatePath('/requests', 'layout'); revalidatePath('/
 
 async function actor(key: string): Promise<Viewer | Fail> {
   if (await getViewAs()) return fail('View Stage is only a preview. Close it to send a request.')
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail('Sign in again to save.')
   if (!access.can(key)) return fail('Requests is not open to your access.')

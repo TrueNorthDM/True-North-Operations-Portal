@@ -9,7 +9,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { allowedTo } from '@/lib/access/resolve'
+import { allowedTo, isSuperAdmin } from '@/lib/access/resolve'
 import { getRealPerson } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkDates, type Wave } from '@/lib/timeclock/waves'
@@ -67,4 +67,22 @@ export async function moveToWave(input: { personId: string; wave: Wave | null })
   await logChange('north_time_wave_person', wave === null ? `${p.full_name}: back to the wave of their level` : `${p.full_name}: moved to wave ${wave}`)
   refresh()
   return { ok: true, toast: wave === null ? `${p.full_name} follows their level again.` : `${p.full_name} is in wave ${wave} now.` }
+}
+
+/**
+ * North Time open or closed (owner, 29 October 2026, migration 132): only a
+ * Super Admin, really signed in. While closed nobody records hours in North
+ * Time and its scheduled jobs do nothing (north-time-lock.ts).
+ */
+export async function setNorthTimeOpen(input: { open: boolean }): Promise<Done> {
+  if (!(await isSuperAdmin())) return no('Only a Super Admin opens or closes North Time.')
+  if (typeof input?.open !== 'boolean') return no(NOT_SAVED)
+  const open = input.open
+  const { error } = await createAdminClient().from('app_settings').update({ north_time_open: open }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] north time open:', error.message); return no(NOT_SAVED) }
+  await logChange('north_time_open', open ? 'opened' : 'closed')
+  revalidatePath('/', 'layout')
+  revalidatePath('/admin/settings')
+  revalidatePath('/clocky-hours')
+  return { ok: true, toast: open ? 'North Time is open: people can record their hours.' : 'North Time is closed: nobody records hours in it.' }
 }

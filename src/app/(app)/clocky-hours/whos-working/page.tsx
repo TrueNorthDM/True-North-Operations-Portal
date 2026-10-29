@@ -11,11 +11,13 @@ import { getCurrentPerson } from '@/lib/auth/session'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { WhosWorkingPage } from '@/components/clocky/working/WhosWorkingPage'
 import { getWhosWorking } from './actions'
+import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: "Who's working" }
 
 export default async function Page() {
+  await requireNorthTimeOpen()
   const access = await requireSurface('clocky-hours')
   if (!access.can('ck-whos-working')) redirect(await previewHref('/clocky-hours'))
   const [res, me] = await Promise.all([getWhosWorking(), getCurrentPerson()])

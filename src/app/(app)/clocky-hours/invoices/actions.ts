@@ -21,6 +21,7 @@ import { periodLabel } from '@/lib/timeclock/periods'
 import { invoiceViewer, loadInvoiceDetail } from '@/lib/timeclock/invoices-view'
 import type { InvoiceDocView } from '@/lib/timeclock/invoice-doc'
 import type { Fail, Result } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const fail = (error: string): Fail => ({ ok: false, error })
@@ -41,6 +42,8 @@ export async function getInvoiceDoc(input: { id: number }): Promise<Result<{ doc
 
 export async function markInvoicePaid(input: { id: number; paidOn: string; ref?: string; note?: string }): Promise<Result<{ toast: string }>> {
   if (await getViewAs()) return fail('View Stage is only a preview. Close it to mark an invoice paid.')
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail('Sign in again to save.')
   if (!access.can('clocky-invoices')) return fail('Invoices is not open to your access.')

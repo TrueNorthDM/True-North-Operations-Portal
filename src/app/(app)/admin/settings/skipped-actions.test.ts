@@ -13,6 +13,9 @@ vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 vi.mock('@/lib/access/resolve', () => ({ allowedTo: async (k: string) => granted.has(k) }))
 vi.mock('@/lib/auth/session', () => ({ getRealPerson: async () => ({ id: 'boss', full_name: 'Ben Admin' }) }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => fake.db }))
+// North Time open here; the lock's own test covers it closed (north-time-lock.test.ts).
+const lock = { open: true }
+vi.mock('@/lib/timeclock/north-time-lock', () => ({ closedRefusal: async (f: (e: string) => unknown) => (lock.open ? null : f('North Time is not open yet.')) }))
 // The limit itself is allowance-limit.ts's (allowance.test.ts); here, only what the decision asks of it.
 vi.mock('@/lib/timeclock/allowance-limit', () => ({
   limitRefusal: async (personId: string, change: never, _now: Date, name: string | null) => { limitCalls.push({ personId, change, name }); return refusal },
@@ -37,6 +40,7 @@ const logged = () => fake.tables.settings_change_log ?? []
 
 beforeEach(() => {
   granted = new Set(['cs-rollout-decide'])
+  lock.open = true
   refusal = null
   limitCalls.length = 0
   fake = fakeDb({
@@ -66,6 +70,12 @@ describe('who may decide', () => {
   it('needs the right to decide, and writes nothing without it', async () => {
     granted = new Set(['cs-rollout'])
     expect(await decideSkipped({ ids: [101], choice: 'count' })).toEqual({ ok: false, error: 'Only Super Admins and Admins decide these entries.' })
+    expect(fake.writes).toEqual([])
+  })
+
+  it('refuses while North Time is closed, and writes nothing', async () => {
+    lock.open = false
+    expect(await decideSkipped({ ids: [101], choice: 'count' })).toEqual({ ok: false, error: 'North Time is not open yet.' })
     expect(fake.writes).toEqual([])
   })
 

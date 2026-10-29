@@ -386,6 +386,7 @@ export type Database = {
           monday_api_token: string | null
           monday_hide_stale_boards: boolean
           monday_webhook_secret: string | null
+          north_time_open: boolean
           rippling_api_token: string | null
           rippling_checked_at: string | null
           rippling_connected_as: string | null
@@ -409,6 +410,7 @@ export type Database = {
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          north_time_open?: boolean
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
           rippling_connected_as?: string | null
@@ -432,6 +434,7 @@ export type Database = {
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          north_time_open?: boolean
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
           rippling_connected_as?: string | null

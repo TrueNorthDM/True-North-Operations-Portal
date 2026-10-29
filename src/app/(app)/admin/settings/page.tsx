@@ -47,8 +47,9 @@ import { loadCatalogueData } from '@/lib/timeclock/job-catalogue'
 import { loadCatalog } from '@/lib/timeclock/clocky-context'
 import { JobCatalogue } from '@/components/settings/JobCatalogue'
 import { addFolder, addJob, addOption, linkFolders, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
-import { IntegrationsSettings, InvoiceSettings, RemindersSettings, RolloutSettings } from '@/components/settings/ClockySettings'
-import { saveRolloutDates, moveToWave } from './rollout-actions'
+import { IntegrationsSettings, InvoiceSettings, NorthTimeOpenSwitch, RemindersSettings, RolloutSettings } from '@/components/settings/ClockySettings'
+import { saveRolloutDates, moveToWave, setNorthTimeOpen } from './rollout-actions'
+import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
 import { removeGoogle, removeRipplingToken, retryIntegrationJob, saveGoogle, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
@@ -222,6 +223,7 @@ export default async function SettingsPage() {
   ])
   // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C).
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
+  const ntOpen = await northTimeOpen()
   const [integrations, invoiceSettings, reminders, jobCatalogue, rollout] = await Promise.all([
     can.integrations ? loadIntegrations(zone) : null,
     can.invoices ? loadInvoiceSettingsData() : null,
@@ -468,6 +470,7 @@ export default async function SettingsPage() {
       content: (
         <div>
           <SectionHead title="North Time rollout" desc="Who starts on North Time when. Wave 1 is everyone at Team Leader level or above, plus anyone added by hand; wave 2 is everyone else. Until a wave has a date, nothing changes for its people." />
+          <div className="mb-[18px]"><NorthTimeOpenSwitch open={ntOpen} canChange={access.isSuperAdmin} set={setNorthTimeOpen} /></div>
           <RolloutSettings data={rollout} canEdit={access.can('cs-rollout-edit')} api={{ saveRolloutDates, moveToWave }} skippedHref="/admin/settings/tsheets-after-switch" />
         </div>
       ),

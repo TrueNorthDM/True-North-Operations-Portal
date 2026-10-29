@@ -40,6 +40,7 @@ import { dayLabel, monthYear } from '@/lib/timeclock/format'
 import { lockedMessage, periodLabel } from '@/lib/timeclock/periods'
 import { canApproveCorrection, canDecideTimeOff, canReopen } from '@/lib/timeclock/scope'
 import type { ApprovalsData, Fail, Result } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to decide.'
@@ -58,6 +59,8 @@ const first = (name: string) => name.split(/\s+/)[0] ?? name
 
 async function actor(key: string): Promise<Viewer | Fail> {
   if (await getViewAs()) return fail(PREVIEW)
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail(SIGN_IN)
   if (!access.can(key)) return fail(NO_ACCESS)
@@ -486,6 +489,8 @@ async function loadSent(id: number): Promise<{ id: number; personId: string; sta
 /** A signed-in decider (no access key: the routing says whose decision it is). */
 async function decider(): Promise<Viewer | Fail> {
   if (await getViewAs()) return fail(PREVIEW)
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail(SIGN_IN)
   if (!access.can('clocky-approvals')) return fail(NO_ACCESS)

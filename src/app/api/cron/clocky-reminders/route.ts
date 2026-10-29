@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server'
 import { isCronRequest } from '@/lib/auth/cron-auth'
+import { CLOSED_SKIP, northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { runClockyReminders } from '@/lib/timeclock/reminders-run'
 
 export const runtime = 'nodejs'
@@ -16,6 +17,8 @@ export async function GET(request: Request) {
   if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  // North Time closed (migration 132): its scheduled jobs do nothing.
+  if (!(await northTimeOpen())) return NextResponse.json(CLOSED_SKIP)
   try {
     return NextResponse.json({ ok: true, ...(await runClockyReminders()) })
   } catch (e) {

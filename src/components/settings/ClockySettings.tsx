@@ -352,6 +352,62 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
 
 // ── North Time rollout ──────────────────────────────────────────────────────
 
+/**
+ * North Time open (owner, 29 October 2026, migration 132): one switch, a Super
+ * Admin's only, with a confirmation in the page. While closed nobody records
+ * hours in North Time and its scheduled jobs do nothing.
+ */
+export function NorthTimeOpenSwitch({ open, canChange, set }: { open: boolean; canChange: boolean; set: (i: { open: boolean }) => Promise<Done> }) {
+  const router = useRouter()
+  const [toast, say] = useToast()
+  const [busy, setBusy] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const confirm = async () => {
+    setBusy(true)
+    try {
+      const r = await set({ open: !open })
+      say(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) { setAsking(false); router.refresh() }
+    } catch (e) {
+      say({ text: failText(e), error: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
+      <div className="flex items-start gap-3">
+        <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">North Time {open ? 'is open' : 'is closed'}</span>
+          <span className="text-[12.5px] text-foreground leading-[1.55]">
+            {open
+              ? 'People record their hours in North Time from their start date (the waves below).'
+              : 'Nobody records hours in North Time, Super Admins included: no clock, no Add time, no requests or approvals, and its scheduled jobs do nothing. The TSheets import keeps taking every entry, and the reports and settings work as usual.'}
+          </span>
+        </span>
+        <button type="button" role="switch" aria-checked={open} aria-label="North Time open" disabled={!canChange || busy || asking} onClick={() => setAsking(true)}
+          className="flex-none w-9 h-5 border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: open ? '#1E7D7F' : '#cbd2da' }}>
+          <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: open ? 18 : 2 }} />
+        </button>
+      </div>
+      {!canChange && <span className="text-[12px] text-muted">Only a Super Admin opens or closes North Time.</span>}
+      {asking && (
+        <div role="alert" className="text-[13px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[12px] px-4 py-3 leading-[1.5] flex flex-col gap-3">
+          <span>{open
+            ? 'Close North Time? Nobody will be able to record or decide hours in it until it is opened again.'
+            : 'Open North Time? From each person\'s start date they record their hours here, and its scheduled jobs (reminders, invoices on the 1st, the clock\'s safety net) start running.'}</span>
+          <div className="flex gap-2 justify-end flex-wrap">
+            <button type="button" disabled={busy} onClick={() => setAsking(false)} className={BTN_W}>Cancel</button>
+            <button type="button" disabled={busy} onClick={() => void confirm()} className={BTN_N}>{open ? 'Close North Time' : 'Open North Time'}</button>
+          </div>
+        </div>
+      )}
+      <Toast toast={toast} />
+    </div>
+  )
+}
+
+
 export interface RolloutApi {
   saveRolloutDates(i: { wave1: string; wave2: string }): Promise<Done>
   moveToWave(i: { personId: string; wave: 1 | 2 | null }): Promise<Done>

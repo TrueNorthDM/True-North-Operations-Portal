@@ -19,6 +19,7 @@ import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { loadInvoiceSettings, seesMoney } from '@/lib/timeclock/pay-terms'
 import { loadPayments } from '@/lib/timeclock/payments-view'
+import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,11 +45,13 @@ export default async function PersonRoute({
   const { tab } = await searchParams
   // The Work tab's Timesheet section (Clocky, 16 October 2026): read only with
   // the Work tab, changed with Edit work by whoever may change the periods.
-  const sheet = data.work ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
+  // While North Time is closed (migration 132) the Timesheet section and Payments are a Super Admin's only.
+  const ntShown = access.isSuperAdmin || await northTimeOpen()
+  const sheet = data.work && ntShown ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
   // Approvals (no money) and Pay and hours (money: the person, Super Admins, Admins, Finance) on the Work tab.
   const pay = data.work ? await loadPersonPay(id, access) : null
   // Payments (Clocky part 2, 10P): money, so the person, Super Admins, Admins and Finance; never Team Leaders.
-  data.rights.payments = seesMoney(access, id, await loadInvoiceSettings())
+  data.rights.payments = ntShown && seesMoney(access, id, await loadInvoiceSettings())
   const shown = resolvePageTab(tab, data.rights)
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
   const payments = shown === 'payments'

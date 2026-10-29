@@ -50,6 +50,7 @@ import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoic
 import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/lib/timeclock/scope'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
@@ -76,6 +77,8 @@ const refresh = () => { revalidatePath('/clocky-hours'); revalidatePath('/hours'
 
 async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
   if (await getViewAs()) return fail(PREVIEW)
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail(SIGN_IN)
   if (!access.can(key)) return fail(NO_ACCESS)

@@ -38,6 +38,7 @@ import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionSt
 import { lockedMessage } from '@/lib/timeclock/periods'
 import { limitRefusal, type ClockStop } from '@/lib/timeclock/allowance-limit'
 import type { ClockChoice, ClockPanelData, Fail, Result } from '@/lib/timeclock/clocky-types'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to use the clock.'
@@ -61,6 +62,8 @@ const refresh = () => { revalidatePath('/clocky-hours'); revalidatePath('/hours'
 /** The person really signed in, allowed `key`, or the sentence why not. */
 async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
   if (await getViewAs()) return fail(PREVIEW)
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return fail(SIGN_IN)
   if (!access.can(key)) return fail(NO_ACCESS)

@@ -30,6 +30,7 @@ import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, 
 import { catalogueRows } from './job-catalogue'
 import { startDateOf } from './waves-data'
 import { clockGate } from './waves'
+import { northTimeOpen } from './north-time-lock'
 
 export interface ComboRow { id: number; name: string; jobcode_id: number; fields: Record<string, string>; notes: string | null; position: number }
 
@@ -146,7 +147,8 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const keys = catalog.keys
 
   let running = await runningOf(c, me)
-  if (running && opts.act && await stopOwnIfDue(c, running, now)) running = null
+  // Stopping a clock is a write: never while North Time is closed (a TSheets clock mirrored by the import is not ours to stop).
+  if (running && opts.act && await northTimeOpen() && await stopOwnIfDue(c, running, now)) running = null
 
   const week = weekBounds(today, settings.weekStart)
   const since = addDays(today, -365)

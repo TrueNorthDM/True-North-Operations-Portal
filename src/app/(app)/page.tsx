@@ -33,6 +33,7 @@ import { NeedsYouCard } from '@/components/home/NeedsYouCard'
 import { loadNeedsYou } from '@/lib/home/needs-you'
 import { dayCounts, unreadNeedsYou, type NeedsYouData } from '@/lib/home/needs-you-model'
 import { summaryLine } from '@/lib/home/day-banner'
+import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -43,7 +44,8 @@ export default async function HomePage() {
   const viewer = await agendaViewer(access).catch(() => null)
   const zone = viewer?.zone ?? 'America/New_York'
   const first = me?.full_name?.trim().split(/\s+/)[0] ?? null
-  const hasClock = access.can('clocky-hours')
+  // No clock card nor pay period while North Time is closed (migration 132).
+  const hasClock = access.can('clocky-hours') && await northTimeOpen()
   const seesI7 = access.canTool('i7-budget')
   const seesPublishing = access.level === 'super_admin' || access.level === 'admin' || access.level === 'team_leader'
   perf.done({ budget: seesI7 })

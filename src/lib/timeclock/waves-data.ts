@@ -13,6 +13,7 @@ import { IS_STAGING } from '@/lib/environment'
 import { loadSubjects } from '@/lib/access/store'
 import { LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
 import { NO_DATES, archiveEnabled, personWave, type Wave, type WaveDates } from './waves'
+import { northTimeOpen } from './north-time-lock'
 
 /** The two dates. A missing table is "not set"; any other failed read throws (an unread date is not "no date"). */
 export async function loadWaveDates(c: Db): Promise<WaveDates> {
@@ -72,6 +73,8 @@ export async function loadRolloutPeople(c: Db, dates?: WaveDates): Promise<Rollo
  * without reading anyone (the import calls it on every run).
  */
 export async function loadStartDates(c: Db): Promise<Map<string, string>> {
+  // While North Time is closed nobody has started: the import keeps every TSheets entry and no account is archived.
+  if (!(await northTimeOpen())) return new Map()
   const dates = await loadWaveDates(c)
   if (!dates[1] && !dates[2]) return new Map()
   const people = await loadRolloutPeople(c, dates)

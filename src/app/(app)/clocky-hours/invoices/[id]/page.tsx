@@ -7,11 +7,13 @@ import { requireSurface } from '@/lib/access/resolve'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { invoiceViewer, loadInvoiceDetail } from '@/lib/timeclock/invoices-view'
 import { InvoiceDetailLive } from '@/components/clocky/invoices/InvoicesLive'
+import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Invoices' }
 
 export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ submitted?: string }> }) {
+  await requireNorthTimeOpen()
   const { id } = await params
   const { submitted } = await searchParams
   const access = await requireSurface('clocky-invoices')

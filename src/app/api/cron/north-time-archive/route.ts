@@ -15,6 +15,7 @@
 
 import { NextResponse } from 'next/server'
 import { isCronRequest } from '@/lib/auth/cron-auth'
+import { CLOSED_SKIP, northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { IS_STAGING } from '@/lib/environment'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
@@ -33,6 +34,8 @@ export async function GET(request: Request) {
   if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  // North Time closed (migration 132): its scheduled jobs do nothing.
+  if (!(await northTimeOpen())) return NextResponse.json(CLOSED_SKIP)
   const live = archiveEnabled(process.env.TSHEETS_ARCHIVE_USERS, IS_STAGING, process.env.TSHEETS_ARCHIVE_ON_STAGING)
   const c = createAdminClient()
   const now = new Date()

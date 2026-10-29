@@ -24,6 +24,7 @@ import { announceReimbursementReportRequested, announceReimbursementRequested } 
 import { localDate } from '@/lib/timeclock/format'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import { loadRoutes } from '@/lib/timeclock/pay-terms'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,8 @@ interface Item { file: File; ext: string; spentOn: string; category: string; amo
 
 export async function POST(request: Request) {
   if (await getViewAs()) return no('View Stage is only a preview. Close it to send a request.', 403)
+  const closed = await closedRefusal(e => no(e, 409))
+  if (closed) return closed
   const access = await writerAccess()
   if (!access) return no('Sign in again to save.', 401)
   if (!access.can('rq-reimbursements')) return no('Requests is not open to your access.', 403)

@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { isCronRequest } from '@/lib/auth/cron-auth'
+import { CLOSED_SKIP, northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { publicOrigin } from '@/lib/auth/public-origin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runClockSafety } from '@/lib/timeclock/clocky-safety-run'
@@ -21,6 +22,8 @@ export async function GET(request: Request) {
   if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  // North Time closed (migration 132): its scheduled jobs do nothing.
+  if (!(await northTimeOpen())) return NextResponse.json(CLOSED_SKIP)
   try {
     const report = await runClockSafety(createAdminClient(), { origin: publicOrigin(request.url) })
     if (report.errors.length) console.error('[clocky-safety]', report.errors.slice(0, 5).join(' | '))

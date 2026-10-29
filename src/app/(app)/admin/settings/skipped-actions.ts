@@ -31,6 +31,7 @@ import {
   allowanceSeconds, checkRequest, countedRow, DECISION_OF, decidedText, IN_ENTRIES, judge, logLine, summary,
   type DecideInput, type Facts, type RowResult,
 } from '@/lib/timeclock/skipped-decisions'
+import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
 export type Decided =
   | { ok: true; toast: string; results: RowResult[] }
@@ -49,6 +50,8 @@ type Me = { id: string; full_name: string }
 /** Count or discard the entries with these TSheets ids: one entry or several selected, the same rules for each. */
 export async function decideSkipped(input: DecideInput): Promise<Decided> {
   if (!(await allowedTo('cs-rollout-decide'))) return no(ONLY)
+  const closed = await closedRefusal(no)
+  if (closed) return closed
   const req = checkRequest(input)
   if (!req.ok) return no(req.error)
   const me = await getRealPerson()
