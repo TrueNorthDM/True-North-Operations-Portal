@@ -67,8 +67,8 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
     // 029 and selecting a missing column makes PostgREST drop the WHOLE query,
     // which used to render People & rates as "No people linked yet".
     (async () => {
-      const WITH_HIRE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, i7_projects'
-      const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects'
+      const WITH_HIRE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, i7_projects, employment_type'
+      const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects, employment_type'
       // Everybody active, not only the ones with a TSheets account. The tab
       // says "everyone who logs time on i7", and the query used to say
       // "everyone with a TSheets account". They agreed until the first
@@ -197,6 +197,7 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
       managerName: managerId ? nameById.get(managerId) ?? null : null,
       managerTeam: managerId ? teamsByPerson.get(managerId)?.[0] ?? null : null,
       hireDate: (p as { hire_date?: string | null }).hire_date ?? null,
+      employmentType: (p as { employment_type?: string | null }).employment_type ?? null,
       costRate: internalRate != null ? Number(internalRate) : null,
       beRate: pay?.beRate ?? null,
       monthlySalary: monthlySalary != null ? Number(monthlySalary) : null,

@@ -17,7 +17,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
-import { initialsOf, formatDate } from '@/lib/directory/people-types'
+import { initialsOf, formatDate, typePill, PILL_CLASS } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
@@ -37,6 +37,8 @@ export interface PersonWithAssignments {
   managerName: string | null
   managerTeam: string | null
   hireDate: string | null
+  /** 'contractor', 'us' (a US employee) or null when not set (the Directory's Type). */
+  employmentType?: string | null
   costRate: number | null
   beRate: number | null
   monthlySalary: number | null
@@ -88,7 +90,10 @@ function monthName(iso: string): string {
   return `${MONTH_LONG[m - 1]} ${y}`
 }
 
-const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'
+const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_130px_224px_224px_224px_224px] gap-3.5 items-center'
+
+/** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
+const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType != null && p.employmentType !== 'contractor'
 
 export function PeopleTab({ people, allClients }: Props) {
   const router = useRouter()
@@ -138,6 +143,7 @@ export function PeopleTab({ people, allClients }: Props) {
       { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teams.map(t => ({ value: t, label: t })) },
       { id: 'reports', label: 'Report to', type: 'text', get: p => p.managerName },
       { id: 'joined', label: 'Joined on', type: 'date', get: p => p.hireDate },
+      { id: 'type', label: 'Type', type: 'enum', get: p => typePill(p.employmentType ?? null)?.label ?? null, options: [{ value: 'Contractor', label: 'Contractor' }, { value: 'US Employee', label: 'US Employee' }] },
       { id: 'clientRate', label: 'Rate / client', type: 'number', get: clientRateOf },
       { id: 'costRate', label: 'Rate / cost', type: 'number', get: p => p.costRate },
       { id: 'beRate', label: 'Rate / break-even', type: 'number', get: p => p.beRate },
@@ -304,6 +310,7 @@ export function PeopleTab({ people, allClients }: Props) {
             <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />
             <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />
             <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
+            <SortHeader label="Type" active={sort?.id === 'type'} dir={sort?.id === 'type' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'type'))} />
             <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
             <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
             <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />
@@ -349,17 +356,26 @@ export function PeopleTab({ people, allClients }: Props) {
                   {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
                 </span>
 
+                {/* Type: Contractor or US Employee, as on the person's page */}
+                <span>{(() => {
+                  const t = typePill(p.employmentType ?? null)
+                  return t
+                    ? <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[t.kind]}`}>{t.label}</span>
+                    : <span className="text-slate-300">-</span>
+                })()}</span>
+
                 {/* Rate / client (teal focus) */}
                 {rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
 
                 {/* Rate / cost (violet focus) */}
-                {rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
+                {/* A US employee is paid through Rippling: no Rate / cost or Month / salary (owner, 29 October 2026) */}
+                {isEmployee(p) ? <span aria-hidden="true" /> : rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
 
                 {/* Rate / break-even (amber focus) */}
                 {rateInput(beVal, v => setDraft(p.id, 'be', v), '#a8660a')}
 
                 {/* Month / salary (green focus) */}
-                {rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
+                {isEmployee(p) ? <span aria-hidden="true" /> : rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
               </div>
             )
           })}
