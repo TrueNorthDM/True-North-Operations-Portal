@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/structure-2026, puts the 2026 job structure (clients,
+ * POST /api/cron/structure-2026-seed, puts the 2026 job structure (clients,
  * divisions, projects and the 26 activities, with their "When to use" lines)
  * into the portal's job tables (structure-2026-seed.ts). Only from the server
  * (Claude runs it once per database, after migration 125); safe to run again:
