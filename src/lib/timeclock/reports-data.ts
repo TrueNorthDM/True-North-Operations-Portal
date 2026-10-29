@@ -34,8 +34,13 @@ export interface ReportPage {
   options: { teams: { value: string; label: string }[]; people: { value: string; label: string }[]; clients: { value: string; label: string }[] }
 }
 
-/** The client colours of the design (README_PART2, "Client colors"); spaces do not count. */
+/**
+ * The client colours of the design (README_PART2, "Client colors"); spaces do
+ * not count. A 2026 client takes the colour of the TSheets folder that reports
+ * under it (Job catalogue > Clients), and comes first.
+ */
 const CLIENT_COLOR: Record<string, string> = {
+  'True North Internal': '#012358', 'i7 Marketing': '#1E7D7F', 'COE Group': '#F2C40A',
   '1 - True North': '#012358', '2 - i7 Marketing': '#1E7D7F', 'Adventist Messengers/HFA': '#F2C40A', GNA: '#1E9E6A', 'A.org Job': '#6D5EF5', DDI: '#F0A35E',
 }
 const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
@@ -67,8 +72,8 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
   const clientOf = (jobId: number | null) => {
     const j = jobId != null ? catalog.jobs.get(jobId) : undefined
     if (!j) return 'No job'
-    // A 2026 project's client is the first step of its path (COE Group › Africa › ...).
-    if (j.structure === 2) return j.path.split(' › ')[0]
+    // The 2026 client: a 2026 project's own, a TSheets job's through its top folder (one name across the switch).
+    if (j.client2026) return j.client2026
     return j.folderId != null ? catalog.jobs.get(j.folderId)?.name ?? j.name : j.name
   }
   // A 2026 project's Billable is the project's own; a TSheets entry's, its "4 Billable" field.

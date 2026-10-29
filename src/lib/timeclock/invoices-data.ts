@@ -21,7 +21,7 @@ import type { PaysAs } from './routing'
 /** The client a job bills: its top folder ("2 - i7 Marketing"), or the job itself at the top. */
 export const clientFolder = (path: string): string => (path ? path.split(' › ')[0] : 'Other')
 
-/** Worked hours in a period by client, biggest first (time off left out). */
+/** Worked hours in a period by client, biggest first (time off left out): the 2026 client where the job has one. */
 export async function hoursByClient(personId: string, start: string, end: string, now = new Date()): Promise<{ client: string; seconds: number }[]> {
   const [catalog, rows] = await Promise.all([
     loadCatalog(),
@@ -31,7 +31,8 @@ export async function hoursByClient(personId: string, start: string, end: string
   ])
   const by = new Map<string, number>()
   for (const r of rows) {
-    const c = clientFolder(catalog.jobs.get(r.jobcode_id ?? -1)?.path ?? '')
+    const j = catalog.jobs.get(r.jobcode_id ?? -1)
+    const c = j?.client2026 ?? clientFolder(j?.path ?? '')
     by.set(c, (by.get(c) ?? 0) + entrySeconds(r, now))
   }
   return [...by.entries()].map(([client, seconds]) => ({ client, seconds })).sort((a, b) => b.seconds - a.seconds)

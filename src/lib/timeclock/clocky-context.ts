@@ -210,6 +210,13 @@ export interface Job {
   structure: Structure
   /** The 2026 structure's level; null for the TSheets jobs. */
   level: 'client' | 'division' | 'project' | null
+  /**
+   * The 2026 client its hours report under (owner, 28 October 2026): a 2026
+   * job's own, a TSheets job's through its top folder (Job catalogue >
+   * Clients). Null for a TSheets folder with none: it keeps its old name.
+   */
+  client2026: string | null
+  client2026Id: number | null
 }
 
 export interface FieldDef {
@@ -238,8 +245,8 @@ export const keysOfJob = (catalog: Pick<Catalog, 'keys' | 'keys2026'>, job: { st
 export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> {
   const c = db()
   const [rows, keys, settingsRes, field2026Res] = await Promise.all([
-    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean; billable: boolean; when_to_use: string | null; default_company: string | null; default_project: string | null; sort_order: number | null; folder: boolean; edited_in_portal_at: string | null; structure: number; level: string | null }>(
-      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active, billable, when_to_use, default_company, default_project, sort_order, folder, edited_in_portal_at, structure, level').order('id').range(a, b), 'Job codes could not be read'),
+    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean; billable: boolean; when_to_use: string | null; default_company: string | null; default_project: string | null; sort_order: number | null; folder: boolean; edited_in_portal_at: string | null; structure: number; level: string | null; client_2026_id: number | null }>(
+      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active, billable, when_to_use, default_company, default_project, sort_order, folder, edited_in_portal_at, structure, level, client_2026_id').order('id').range(a, b), 'Job codes could not be read'),
     loadEntryFieldKeys(c),
     c.from('tc_settings').select('structure_switch_date').eq('singleton_id', 1).maybeSingle(),
     c.from('tc_fields').select('id, name').eq('structure', 2).eq('active', true).order('id').limit(1).maybeSingle(),
@@ -292,6 +299,9 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
       editedInPortal: !!r.edited_in_portal_at,
       structure: v2 ? 2 : 1,
       level: v2 && (r.level === 'client' || r.level === 'division' || r.level === 'project') ? r.level : null,
+      // A 2026 job's own client; a TSheets job's, through its top folder (migration 131), else none.
+      client2026: v2 ? root.name : root.client_2026_id != null ? byId.get(root.client_2026_id)?.name ?? null : null,
+      client2026Id: v2 ? root.id : root.client_2026_id,
     })
   }
 

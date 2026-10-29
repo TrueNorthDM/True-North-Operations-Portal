@@ -62,6 +62,11 @@ export function catalogueFrame(): CatalogueData {
     rows: rows(),
     rows2026: rows2026(),
     activities2026: ACTIVITIES.map(a => ({ family: a.family, name: a.name, covers: a.covers, notesRequired: activityNeedsNotes(a.name) })),
+    // The owner's links of 28 October 2026; A.org Job, DDI and GNA left unlinked.
+    folders1: rows().filter(r => r.depth === 0).map(r => {
+      const to = ({ '1 - True North': 'True North Internal', '2 - i7 Marketing': 'i7 Marketing', 'Adventist Messengers/HFA': 'COE Group' } as Record<string, string>)[r.name]
+      return { id: r.id, name: r.name, clientId: rows2026().find(c => c.level === 'client' && c.name === to)?.id ?? null }
+    }),
     switchDate: '2026-11-01',
     frozen: false,
     fields: [...FIELDS.map(([key, label, hint, options], fi) => ({

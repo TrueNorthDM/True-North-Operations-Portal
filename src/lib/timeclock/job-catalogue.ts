@@ -61,6 +61,8 @@ export interface CatalogueData {
   rows2026?: CatalogueRow[]
   /** The 2026 Activities, listed under the projects as on "Which job?". */
   activities2026?: ActivityRow[]
+  /** The TSheets top folders, with the 2026 client each reports under (migration 131). */
+  folders1?: { id: number; name: string; clientId: number | null }[]
   /** The day the 2026 structure starts, or null. */
   switchDate?: string | null
   /** From the switch date the TSheets tree is frozen: switched off, never renamed or moved (the history keeps its names). */
@@ -131,6 +133,9 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
     rows: catalogueRows(catalog),
     rows2026: catalogueRows(catalog, 2),
     activities2026: activityRows(catalog),
+    // The folders the TSheets tree shows, and any already linked.
+    folders1: [...catalog.jobs.values()].filter(j => j.structure === 1 && j.parentId == null && j.kind === 'regular' && (j.active || j.editedInPortal || j.client2026Id != null))
+      .sort((a, b) => a.name.localeCompare(b.name)).map(j => ({ id: j.id, name: j.name, clientId: j.client2026Id })),
     switchDate: catalog.switchDate,
     frozen: structureOn(today, catalog.switchDate) === 2,
     fields: catalog.fields.map(f => ({

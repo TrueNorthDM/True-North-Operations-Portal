@@ -19,7 +19,7 @@ import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
-import { FieldLabel, Icon, LabeledSelect, Toast, type ToastState } from '@/components/clocky/entries/ui'
+import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Catalogue2026, SMALL_BTN, Switch } from './JobCatalogue2026'
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
@@ -33,6 +33,7 @@ export interface CatalogueApi {
   setOptionShown: (i: { optionId: number; shown: boolean }) => Promise<Done>
   renameOption: (i: { optionId: number; label: string }) => Promise<Done>
   addOption: (i: { fieldId: number; label: string }) => Promise<Done>
+  linkFolders: (i: { clientId: number; folderIds: number[] }) => Promise<Done>
 }
 
 // The options table: narrower number columns on a phone, so a code (i7-WEBDVT) stays on one line.
@@ -99,7 +100,9 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
             run={async p => { const r = await settle(p); say(r); return r }} />
         : <Jobs rows={data.rows} structure={1} data={data} canEdit={canEdit} frozenTree={frozen} api={api} startId={startId} say={say} />)}
       {tab === 'fields' && <Fields key={which} data={data} structure={has2026 ? which : null} canEdit={canEdit} api={api} startField={startField} say={say} />}
-      {tab === 'clients' && (which === 2 ? <Clients2026 rows={data.rows2026 ?? []} /> : <Clients data={data} />)}
+      {tab === 'clients' && (which === 2
+        ? <Clients2026 rows={data.rows2026 ?? []} folders={data.folders1 ?? []} canEdit={canEdit} run={async p => { const r = await settle(p); say(r); return r }} link={api.linkFolders} />
+        : <Clients data={data} />)}
       <Toast toast={toast} />
     </div>
   )
@@ -314,29 +317,115 @@ function Fields({ data, structure, canEdit, api, startField, say }: { data: Cata
 
 // ── Clients ─────────────────────────────────────────────────────────────────
 
-/** The 2026 clients, as Jobs keeps them: how many divisions and projects each has, and whether it is on. */
-function Clients2026({ rows }: { rows: CatalogueRow[] }) {
+type Folder1 = { id: number; name: string; clientId: number | null }
+
+/**
+ * The 2026 clients, as Jobs keeps them: the TSheets folders whose hours report
+ * under each (so Reports, invoices and Hours by client show one name across
+ * the switch date), how many divisions and projects it has, and whether it is on.
+ */
+function Clients2026({ rows, folders, canEdit, run, link }: {
+  rows: CatalogueRow[]
+  folders: Folder1[]
+  canEdit: boolean
+  run: (p: Promise<Done>) => Promise<Done>
+  link: CatalogueApi['linkFolders']
+}) {
+  const [open, setOpen] = useState<number | null>(null)
   const clients = rows.filter(r => r.level === 'client').sort((a, b) => a.name.localeCompare(b.name))
   const under = (id: number) => rows.filter(r => r.parentId === id)
-  const COLS = 'grid-cols-[minmax(0,1fr)_110px_110px_120px]'
+  const COLS = 'grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_96px_96px_100px]'
+  const loose = folders.filter(x => x.clientId == null)
+  const editing = clients.find(c => c.id === open) ?? null
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
-      <div className={`grid ${COLS} bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}>
-        <div className="px-4 py-2.5">Client</div><div className="px-4 py-2.5 text-right">Divisions</div><div className="px-4 py-2.5 text-right">Projects</div><div className="px-4 py-2.5">Active</div>
-      </div>
-      {clients.map(c => {
-        const divisions = under(c.id).filter(r => r.level === 'division')
-        const projects = [...under(c.id), ...divisions.flatMap(d => under(d.id))].filter(r => r.level === 'project').length
-        return (
-          <div key={c.id} className={`grid ${COLS} items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]`}>
-            <div className="px-4 py-[11px] text-tn-ink font-bold font-(family-name:--font-display)">{c.name}</div>
-            <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{divisions.length || '-'}</div>
-            <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{projects}</div>
-            <div className="px-4 py-[11px]"><span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] ${c.active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
+    <div className="flex flex-col gap-3">
+      <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-x-auto">
+        <div className="min-w-[760px]">
+          <div className={`grid ${COLS} bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}>
+            <div className="px-4 py-2.5">Client</div><div className="px-4 py-2.5">Old TSheets folders</div><div className="px-4 py-2.5 text-right">Divisions</div><div className="px-4 py-2.5 text-right">Projects</div><div className="px-4 py-2.5">Active</div>
           </div>
-        )
-      })}
+          {clients.map(c => {
+            const divisions = under(c.id).filter(r => r.level === 'division')
+            const projects = [...under(c.id), ...divisions.flatMap(d => under(d.id))].filter(r => r.level === 'project').length
+            const mine = folders.filter(x => x.clientId === c.id)
+            return (
+              <div key={c.id} className={`grid ${COLS} items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]`}>
+                <div className="px-4 py-[11px] text-tn-ink font-bold font-(family-name:--font-display)">{c.name}</div>
+                <div className="px-4 py-[8px] flex items-center gap-1.5 flex-wrap">
+                  {mine.map(x => <span key={x.id} className="text-[11.5px] font-semibold rounded-full px-[9px] py-[3px] bg-subtle text-foreground whitespace-nowrap">{x.name}</span>)}
+                  {!mine.length && <span className="text-[12px] text-muted">None</span>}
+                  {canEdit && (
+                    <button type="button" onClick={() => setOpen(c.id)} aria-label={`Link TSheets folders to ${c.name}`} title="Link TSheets folders"
+                      className="inline-flex items-center justify-center w-7 h-7 border-0 rounded-[8px] bg-transparent text-muted cursor-pointer hover:bg-subtle hover:text-tn-ink">
+                      <Icon d={ICON.edit} size={14} width={2.2} />
+                    </button>
+                  )}
+                </div>
+                <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{divisions.length || '-'}</div>
+                <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{projects}</div>
+                <div className="px-4 py-[11px]"><span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] ${c.active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="text-[12px] text-muted leading-[1.5]">
+        Hours from a linked TSheets folder show under its 2026 client in North Time Reports, on invoices and in Hours by client, so a client reads as one across the switch date.
+        {loose.length > 0 && ` Not linked, so they keep their old name: ${loose.map(x => x.name).join(', ')}.`}
+      </div>
+      {editing && <LinkWindow key={editing.id} client={editing} clients={clients} folders={folders} run={run} link={link} onClose={() => setOpen(null)} />}
     </div>
+  )
+}
+
+/** Which TSheets top folders report under one 2026 client: a folder belongs to one client at most. */
+function LinkWindow({ client, clients, folders, run, link, onClose }: {
+  client: CatalogueRow
+  clients: CatalogueRow[]
+  folders: Folder1[]
+  run: (p: Promise<Done>) => Promise<Done>
+  link: CatalogueApi['linkFolders']
+  onClose: () => void
+}) {
+  const [picked, setPicked] = useState<Set<number>>(() => new Set(folders.filter(x => x.clientId === client.id).map(x => x.id)))
+  const [busy, setBusy] = useState(false)
+  const nameOf = (id: number | null) => clients.find(c => c.id === id)?.name ?? ''
+  const toggle = (id: number) => setPicked(p => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const save = async () => {
+    setBusy(true)
+    const r = await run(link({ clientId: client.id, folderIds: [...picked] }))
+    setBusy(false)
+    if (r.ok) onClose()
+  }
+  return (
+    <Modal label={`TSheets folders of ${client.name}`} width={480} onClose={onClose}>
+      <div className="flex items-start justify-between gap-2.5">
+        <div>
+          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>TSheets folders of {client.name}</h2>
+          <p className="m-0 text-[13px] text-foreground mt-[5px] leading-normal">Hours from the folders ticked show under {client.name} in Reports, on invoices and in Hours by client.</p>
+        </div>
+        <CloseButton onClick={onClose} />
+      </div>
+      <div className="flex flex-col border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
+        {folders.map(x => {
+          const other = x.clientId != null && x.clientId !== client.id ? nameOf(x.clientId) : ''
+          const on = picked.has(x.id)
+          return (
+            <label key={x.id} className="flex items-center gap-3 px-3.5 py-2.5 border-b last:border-b-0 border-[var(--row-rule)] cursor-pointer hover:bg-[#f8f7f3] leading-[normal]">
+              <input type="checkbox" checked={on} onChange={() => toggle(x.id)} className="w-4 h-4 accent-[#1E7D7F] flex-none" />
+              <span className="flex-1 min-w-0 font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{x.name}</span>
+              {other && <span className="text-[11.5px] text-muted whitespace-nowrap">{on ? `moves from ${other}` : `now ${other}`}</span>}
+            </label>
+          )
+        })}
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className={`${BTN_MODAL_NAVY} disabled:opacity-45 disabled:cursor-not-allowed`}>
+          <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Save
+        </button>
+      </div>
+    </Modal>
   )
 }
 

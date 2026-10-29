@@ -3566,6 +3566,7 @@ export type Database = {
         Row: {
           active: boolean
           billable: boolean
+          client_2026_id: number | null
           created_at: string
           default_company: string | null
           default_project: string | null
@@ -3585,6 +3586,7 @@ export type Database = {
         Insert: {
           active?: boolean
           billable?: boolean
+          client_2026_id?: number | null
           created_at?: string
           default_company?: string | null
           default_project?: string | null
@@ -3604,6 +3606,7 @@ export type Database = {
         Update: {
           active?: boolean
           billable?: boolean
+          client_2026_id?: number | null
           created_at?: string
           default_company?: string | null
           default_project?: string | null

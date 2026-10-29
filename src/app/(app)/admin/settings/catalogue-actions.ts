@@ -16,6 +16,8 @@
  *   setOptionShown hide or show an option (never deleted)
  *   renameOption   the option and the old entries with it
  *   addOption      a new option at the end of a field
+ *   linkFolders    the TSheets top folders whose hours report under a 2026
+ *                  client (migration 131)
  *
  * The 2026 structure (Client › Division › Project) lives in the same table as
  * structure 2. From the switch date the TSheets tree is frozen: a job or an
@@ -251,4 +253,30 @@ export async function addOption(input: { fieldId: number; label: string }): Prom
   await log(`Added the option "${label}"`)
   refresh()
   return { ok: true, toast: `Added "${label}". It shows in the pickers now.` }
+}
+
+/**
+ * The TSheets top folders that report under a 2026 client (Clients > 2026
+ * structure, owner 28 October 2026): the ones given are linked to it, the
+ * others it had are let go. A folder belongs to one client at most, so
+ * linking it here moves it from any other.
+ */
+export async function linkFolders(input: { clientId: number; folderIds: number[] }): Promise<Done> {
+  const g = await guard(); if (g) return g
+  const c = createAdminClient()
+  const ids = [...new Set((input.folderIds ?? []).map(Number))]
+  const { data: client } = await c.from('tc_jobcodes').select('id, name, structure, level').eq('id', Number(input.clientId)).maybeSingle()
+  if (!client || client.structure !== 2 || client.level !== 'client') return no('Pick one of the 2026 clients.')
+  if (ids.length) {
+    const { data: tops } = await c.from('tc_jobcodes').select('id').in('id', ids).eq('structure', 1).is('parent_id', null)
+    if ((tops ?? []).length !== ids.length) return no('Only TSheets top folders can be linked.')
+    const { error } = await c.from('tc_jobcodes').update({ client_2026_id: client.id }).in('id', ids)
+    if (error) { console.error('[catalogue]', error.message); return no(NOT_SAVED) }
+  }
+  const off = c.from('tc_jobcodes').update({ client_2026_id: null }).eq('client_2026_id', client.id)
+  const { error } = ids.length ? await off.not('id', 'in', `(${ids.join(',')})`) : await off
+  if (error) { console.error('[catalogue]', error.message); return no(NOT_SAVED) }
+  await log(`Linked ${ids.length} TSheets folder${ids.length === 1 ? '' : 's'} to the 2026 client "${client.name}"`)
+  refresh()
+  return { ok: true, toast: ids.length ? `Hours from ${ids.length === 1 ? 'that folder' : 'those folders'} now report under ${client.name}.` : `No TSheets folder reports under ${client.name} now.` }
 }

@@ -46,7 +46,7 @@ import { loadIntegrations, loadInvoiceSettingsData, loadReminders } from '@/lib/
 import { loadCatalogueData } from '@/lib/timeclock/job-catalogue'
 import { loadCatalog } from '@/lib/timeclock/clocky-context'
 import { JobCatalogue } from '@/components/settings/JobCatalogue'
-import { addFolder, addJob, addOption, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
+import { addFolder, addJob, addOption, linkFolders, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
 import { IntegrationsSettings, InvoiceSettings, RemindersSettings, RolloutSettings } from '@/components/settings/ClockySettings'
 import { saveRolloutDates, moveToWave } from './rollout-actions'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
@@ -415,7 +415,7 @@ export default async function SettingsPage() {
       content: (
         <div>
           <SectionHead title="Job catalogue" desc="The jobs people pick in North Time, their fields and the clients. The portal keeps them now; QuickBooks Time no longer changes what is edited here. A change shows in the clock panel right away." />
-          <JobCatalogue data={jobCatalogue} canEdit={access.can('cs-jobs-edit')} api={{ saveJob, addFolder, addJob, reorderJobs, setOptionShown, renameOption, addOption }} />
+          <JobCatalogue data={jobCatalogue} canEdit={access.can('cs-jobs-edit')} api={{ saveJob, addFolder, addJob, reorderJobs, setOptionShown, renameOption, addOption, linkFolders }} />
         </div>
       ),
     },

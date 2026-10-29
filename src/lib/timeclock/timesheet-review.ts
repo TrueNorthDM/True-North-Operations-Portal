@@ -29,11 +29,14 @@ import type { EntryView } from './clocky-types'
 export type ReviewTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
 export type StepState = 'done' | 'now' | 'bad' | 'later'
 
-/** Client colours (README_PART2 "Design tokens"); any other client is grey. */
+/** Client colours (README_PART2 "Design tokens"); any other client is grey. A 2026 client takes its TSheets folder's. */
 export const CLIENT_COLOR: Record<string, string> = {
+  'True North Internal': '#012358', 'i7 Marketing': '#1E7D7F', 'COE Group': '#F2C40A',
   '1 - True North': '#012358', '2 - i7 Marketing': '#1E7D7F', 'Adventist Messengers/HFA': '#F2C40A', GNA: '#1E9E6A', 'A.org Job': '#6D5EF5', DDI: '#F0A35E',
 }
 const clientColor = (c: string) => CLIENT_COLOR[c] ?? '#a3aebb'
+/** The client an entry bills, as its invoice lines name it: the 2026 client where its job has one (invoices-data.ts). */
+const billedClient = (e: Pick<ReviewView, 'client2026' | 'path'>) => e.client2026 ?? clientFolder(e.path)
 const hm = (sec: number) => formatDuration(sec)
 const hmShort = (sec: number) => hm(sec).replace(' 00m', '')
 const noYear = (s: string) => s.replace(/, \d{4}/, '')
@@ -105,7 +108,7 @@ export interface TimesheetReview {
 }
 
 /** The entry fields the page reads (a subset of Time entries' EntryView). */
-export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable' | 'path' | 'short' | 'start' | 'end' | 'activity' | 'company' | 'project' | 'code' | 'notes' | 'autoOut'>
+export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable' | 'path' | 'client2026' | 'short' | 'start' | 'end' | 'activity' | 'company' | 'project' | 'code' | 'notes' | 'autoOut'>
 
 /** Everything the page is built from: read by gatherReview, or made up by a design check. */
 export interface ReviewSource {
@@ -290,7 +293,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   // By client.
   const cl = new Map<string, { s: number; b: number }>()
   for (const e of work) {
-    const k = clientFolder(e.path)
+    const k = billedClient(e)
     const x = cl.get(k) ?? { s: 0, b: 0 }
     x.s += e.seconds
     if (e.billable === 'yes') x.b += e.seconds
@@ -320,7 +323,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     }
     days.push({ iso: date, day: dayLabel(date), total: hm(list.reduce((n, e) => n + e.seconds, 0)), rows })
   }
-  const entryClients = [...cl.keys()].map(client => ({ client, color: clientColor(client), count: work.filter(e => clientFolder(e.path) === client).length }))
+  const entryClients = [...cl.keys()].map(client => ({ client, color: clientColor(client), count: work.filter(e => billedClient(e) === client).length }))
 
   // The step, the state and what this viewer may do.
   const one = oneStep(route, settings)
@@ -449,7 +452,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
 }
 
 function entryRow(e: ReviewView, zone: string): ReviewEntry {
-  const client = clientFolder(e.path)
+  const client = billedClient(e)
   return {
     time: e.start ? `${timeLabel(e.start, zone)} to ${e.end ? timeLabel(e.end, zone) : 'now'}` : 'Duration only',
     dur: formatDuration(e.seconds), job: e.path, act: e.activity || '–', cp: [e.company, e.project].filter(Boolean).join(' · ') || '–',

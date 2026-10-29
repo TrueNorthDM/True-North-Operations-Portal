@@ -28,10 +28,10 @@ import { teamColour } from '@/lib/directory/team-colour'
 
 export type ReqTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal' | 'navy'
 
-/** The clients and projects a request can name: the catalogue's top folders. */
+/** The clients and projects a request can name: the catalogue's top folders, as their 2026 client where they have one. */
 export async function loadClients(): Promise<string[]> {
   const catalog = await loadCatalog()
-  return [...new Set([...catalog.jobs.values()].filter(j => j.active && j.kind === 'regular').map(j => clientFolder(j.path)))].sort((a, b) => a.localeCompare(b))
+  return [...new Set([...catalog.jobs.values()].filter(j => j.active && j.kind === 'regular').map(j => j.client2026 ?? clientFolder(j.path)))].sort((a, b) => a.localeCompare(b))
 }
 
 // ── Reimbursements (9B) ─────────────────────────────────────────────────────

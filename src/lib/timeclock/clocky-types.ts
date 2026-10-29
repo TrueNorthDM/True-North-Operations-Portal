@@ -236,6 +236,8 @@ export interface EntryView {
   path: string
   short: string
   client: string
+  /** The 2026 client its job reports under (Job catalogue > Clients), null for a TSheets folder with none. */
+  client2026?: string | null
   isI7: boolean
   /** The job's structure (1 TSheets, 2 the 2026 one), for the form's fields when the job is no longer offered. */
   structure?: Structure

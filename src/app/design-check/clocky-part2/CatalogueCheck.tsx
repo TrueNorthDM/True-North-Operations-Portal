@@ -26,7 +26,7 @@ export function CatalogueCheck({ frame, data, startId, guide }: { frame: string;
               <p className="text-[13.5px] text-muted mt-1.5 leading-relaxed">The jobs people pick in North Time, their fields and the clients. The portal keeps them now; QuickBooks Time no longer changes what is edited here. A change shows in the clock panel right away.</p>
             </div>
             <JobCatalogue data={data!} canEdit linked={false} startId={startId} startField="code" startTab={frame === '11B' ? 'fields' : frame === '11Cl' ? 'clients' : 'jobs'}
-              api={{ saveJob: ok, addFolder: ok, addJob: ok, reorderJobs: async () => ({ ok: true, toast: 'Order saved. The clock panel lists jobs in this order.' }), setOptionShown: ok, renameOption: ok, addOption: ok }} />
+              api={{ saveJob: ok, addFolder: ok, addJob: ok, reorderJobs: async () => ({ ok: true, toast: 'Order saved. The clock panel lists jobs in this order.' }), setOptionShown: ok, renameOption: ok, addOption: ok, linkFolders: ok }} />
           </div>
         ),
       }]} />

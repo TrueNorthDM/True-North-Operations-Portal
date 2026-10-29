@@ -106,9 +106,10 @@ export function totalsOf(rows: readonly EntryView[], nowMs: number): Totals {
 
 /** The bar colour of a client in "Hours by client" (and the timeline's blocks). */
 export function clientColor(client: string): string {
-  if (client === 'True North') return '#2b4f86'
+  // A 2026 client takes the colour of the TSheets folder that reports under it.
+  if (client === 'True North' || client === 'True North Internal') return '#2b4f86'
   if (client === 'i7 Marketing') return '#1E7D7F'
-  if (client === 'HFA') return '#d9a400'
+  if (client === 'HFA' || client === 'COE Group') return '#d9a400'
   return '#5b6b82'
 }
 

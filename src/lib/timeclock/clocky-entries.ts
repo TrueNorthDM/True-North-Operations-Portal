@@ -112,7 +112,8 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     jobcodeId: e.jobcode_id,
     path: job?.path ?? '',
     short: job?.short ?? '',
-    client: clientOf(job?.path ?? ''),
+    client: job?.client2026 ?? clientOf(job?.path ?? ''),
+    client2026: job?.client2026 ?? null,
     isI7: !!job?.isI7,
     structure: job?.structure ?? 1,
     fields,
@@ -202,7 +203,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       date: r.entry_date, start: r.started_at, end: r.ended_at, running: false,
       timeText: timeText(r.started_at, r.ended_at, false, zone),
       seconds: recordedSeconds(r.started_at, r.ended_at),
-      jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: clientOf(job?.path ?? ''), isI7: !!job?.isI7,
+      jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: job?.client2026 ?? clientOf(job?.path ?? ''), client2026: job?.client2026 ?? null, isI7: !!job?.isI7,
       structure: job?.structure ?? 1, fields: f,
       company: k.company ? f[k.company] ?? '' : '', project: k.project ? f[k.project] ?? '' : '', activity: k.activity ? f[k.activity] ?? '' : '',
       // A 2026 project's Billable is the project's own, as on its entries.
