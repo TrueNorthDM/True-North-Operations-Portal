@@ -19,7 +19,7 @@ export const ACTIVITY_2026_FIELD = 'Activity'
  * (Time-Tracking Structure, section 4). One plain line each, 400 characters at most.
  */
 const WHEN: Record<string, string> = {
-  'i7 Marketing': 'Work billed to i7. Pick the brand\'s division, then its i7 code.',
+  'i7 Marketing': 'Work billed to i7. Pick the division of the brand, then its i7 code.',
   'COE Group': 'Work for GNA, DDI, COE and COEI, and the clients COEI bills (Grants Pass, NAD) and its events.',
   'True North Internal': 'True North\'s own overhead: never invoiced to a client.',
   'Wagner Meters': 'Wagner Meters work: WM, WMFL, WMFP or WMW, each with its marketing, web development or admin code.',
