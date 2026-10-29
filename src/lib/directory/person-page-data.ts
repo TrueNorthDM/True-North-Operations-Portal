@@ -123,6 +123,8 @@ export interface PersonPageData {
     beRate: number | null
     salary: number | null
     canEdit: boolean
+    /** The client rate is changed by whoever keeps the clients (cs-clients), as in Rates & Costs. */
+    canEditClient: boolean
   }
 }
 
@@ -282,7 +284,8 @@ export async function loadPersonPage(
   if (p.status === 'inactive' && viewer.can('d-rates')) {
     const [comp, clientsRes] = await Promise.all([
       loadPersonCompensation(personId),
-      db.from('tr_clients').select('id, name').is('parent_id', null),
+      // In name order, as Rates & Costs reads them: "2 - i7 Marketing" comes before "i7 Marketing 2026" (audit, 29 October 2026).
+      db.from('tr_clients').select('id, name').is('parent_id', null).order('name'),
     ])
     // The i7 client, found as Rates & Costs finds it.
     const i7 = ((clientsRes.data ?? []) as { id: number; name: string }[]).find(c => /i7/i.test(c.name))?.id ?? null
@@ -293,6 +296,7 @@ export async function loadPersonPage(
       clientRate: a?.hourly_rate != null ? Number(a.hourly_rate) : null,
       costRate: comp?.internalRate ?? null, beRate: comp?.beRate ?? null, salary: comp?.monthlySalary ?? null,
       canEdit: true,
+      canEditClient: viewer.can('cs-clients'),
     }
   }
 

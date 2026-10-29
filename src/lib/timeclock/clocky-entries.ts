@@ -13,6 +13,7 @@ import { allRows, db, keysOfJob, loadCadenceChanges, loadCatalog, loadClockySett
 import { loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './format'
+import { clientFolder } from './invoices-data'
 import { formatDuration, recordedSeconds } from './rounding'
 import { attentionReason, missingFields, offeredOn, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
@@ -392,8 +393,9 @@ export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, 
   const overlapping = overlapsAmong(entries.filter(e => e.started_at).map(e => ({ id: e.id, personId: e.person_id, start: e.started_at, end: e.ended_at })), now)
   const views = entries.map(e => entryView(e, x, overlapping.has(e.id)))
   const work = views.filter(r => r.kind !== 'absence')
+  // By the client the invoice bills (invoices-data.ts hoursByClient), so the window's lines are the invoice's (audit, 29 October 2026).
   const byClient = new Map<string, number>()
-  for (const r of work) byClient.set(r.client, (byClient.get(r.client) ?? 0) + r.seconds)
+  for (const r of work) { const k = r.client2026 ?? clientFolder(r.path); byClient.set(k, (byClient.get(k) ?? 0) + r.seconds) }
   const noTime: string[] = []
   for (let d = period.start; d <= period.end && d <= today; d = addDays(d, 1)) {
     const w = new Date(`${d}T00:00:00Z`).getUTCDay()

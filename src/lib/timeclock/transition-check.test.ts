@@ -154,6 +154,14 @@ describe('the reminder (Remind)', () => {
     })
   })
 
+  it('lists the oldest 15 and says how many more', () => {
+    const rows = Array.from({ length: 17 }, (_, i) => readEntry(entry({ date: `2026-11-${String(i + 2).padStart(2, '0')}`, jobcodeId: null }), ctx))
+    const { title, body } = reminderText(rows)
+    expect(title).toBe('17 of your TSheets entries need fixing in QuickBooks Time')
+    expect(body.match(/pick the job again/g)).toHaveLength(15)
+    expect(body).toContain('Mon, Nov 16, 1h 00m, no job: pick the job again: the portal does not know this one. And 2 more. Fix them in QuickBooks Time')
+  })
+
   it('says one entry in the singular', () => {
     expect(reminderText([readEntry(entry({ jobcodeId: null }), ctx)])).toEqual({
       title: 'One of your TSheets entries needs fixing in QuickBooks Time',

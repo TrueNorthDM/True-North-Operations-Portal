@@ -32,6 +32,8 @@ export interface FormState {
   dur: string
   /** The chosen combination's id, as text ('' for none). */
   combo: string
+  /** The notes the last combination or recent picked brought (JobPick), so the next pick replaces them, not typed ones. */
+  comboNotes?: string
   jobcodeId: number | null
   /** The entry's own job path, kept as an option when it is no longer offered. */
   jobPath: string

@@ -28,7 +28,7 @@ import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, keysOfJob, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
-import { offeredOn, structureOn } from '@/lib/timeclock/entry-rules'
+import { activityNeedsNotes, offeredOn, structureOn } from '@/lib/timeclock/entry-rules'
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
@@ -518,6 +518,9 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
       const f = cleanFields(row.fields, catalog, job, (source?.fields ?? {}) as Record<string, string>)
       if ('error' in f) return fail(f.error)
       const key = keyOf(job.id, f.fields)
+      // "Other" and "Meeting: Other" ask for Notes, and a grid cell has none (audit, 29 October 2026).
+      const actKey = keysOfJob(catalog, job).activity
+      const needsNotes = activityNeedsNotes(actKey ? f.fields[actKey] ?? '' : '')
       for (const [day, typed] of Object.entries(row.cells ?? {})) {
         if (!days.includes(day)) continue
         const raw = parseDuration(String(typed ?? ''))
@@ -532,6 +535,7 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
         const lock = lockOn([day], subs, null)
         if (lock || mine.some(e => lockOn([day], subs, e.state))) return fail(lockedMessage(lock ?? { start: day, end: day }))
         if (seconds > 0 && !offeredOn(job, day, catalog.switchDate)) return fail(PICK_JOB)
+        if (seconds > 0 && needsNotes) return fail(`${actKey ? f.fields[actKey] : 'This Activity'} asks for Notes, which the grid has no place for. Add that time with Add time.`)
         changes.push({ day, key, seconds, jobcodeId: job.id, fields: f.fields, replace: mine })
       }
     }

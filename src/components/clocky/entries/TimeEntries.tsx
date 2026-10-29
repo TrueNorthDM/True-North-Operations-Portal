@@ -155,7 +155,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   }
   const reload = () => { void load(uiRef.current); onChanged?.() }
   const go = (patch: Partial<EntriesUi>) => {
-    const next = { ...ui, ...patch }
+    // Another person's hours: the grid's unsaved cells and added rows were the last person's, so they go (audit, 29 October 2026).
+    const otherPerson = (patch.member !== undefined && patch.member !== ui.member) || (patch.who !== undefined && patch.who !== ui.who)
+    const next = { ...ui, ...patch, ...(otherPerson ? { gEdits: {}, gExtra: [] } : {}) }
     setUi(next)
     if (keyOf(queryOf(next, data.anchors)) !== keyOf(queryOf(ui, data.anchors))) void load(next)
   }
@@ -430,8 +432,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           onRequestInstead={() => {
             const r = rowByKey(`e${m.form.id}`)
             const end = r?.end ? localMinutes(r.end, r.zone) : 15 * 60
-            // Requests cover this week only (the server's rule): an older entry asks for today.
-            openRequest({ date: m.form.date >= addDays(today, -6) ? m.form.date : today, start: r?.end ? end : 15 * 60, end: r?.end ? Math.min(end + 60, 23 * 60 + 45) : 16 * 60, jobcodeId: m.form.jobcodeId, values: m.form.values })
+            // Requests cover this week only (the server's rule): an older entry asks for today,
+            // and keeps its job only when today records the same structure (a TSheets job is not a 2026 one).
+            const date = m.form.date >= addDays(today, -6) ? m.form.date : today
+            const sameJob = structureOn(date, catalog.switchDate) === structureOn(m.form.date, catalog.switchDate)
+            openRequest({ date, start: r?.end ? end : 15 * 60, end: r?.end ? Math.min(end + 60, 23 * 60 + 45) : 16 * 60, ...(sameJob ? { jobcodeId: m.form.jobcodeId, values: m.form.values } : {}) })
           }} />
       )
     }
@@ -623,7 +628,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           )}
           {ui.tab === 'grid' && (
             <WeekGrid who={gridName} days={gridDays} today={today} model={grid} editable={canGrid} combos={gridChoices?.combinations ?? []}
-              onOpenAdd={gridPicks2026 ? () => setModal({ kind: 'grid-row' }) : undefined}
+              onOpenAdd={gridPicks2026 ? () => {
+                // A failed read of their combinations is tried again when Add row opens.
+                if (theirChoices?.error) setTheirChoices(null)
+                setModal({ kind: 'grid-row' })
+              } : undefined}
               addRowOpen={ui.addRowOpen} setAddRowOpen={open => setUi(u => ({ ...u, addRowOpen: open }))}
               onAddRow={s => setUi(u => ({ ...u, gExtra: [...u.gExtra, s], addRowOpen: false }))}
               onType={(k, text) => setUi(u => ({ ...u, gEdits: { ...u.gEdits, [k]: text } }))}

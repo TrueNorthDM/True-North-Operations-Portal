@@ -180,11 +180,25 @@ function RowWindow({ win, rows, startClient, canEdit, api, run, onClose }: {
   const [name, setName] = useState(row?.name ?? '')
   const [use, setUse] = useState(row?.use ?? '')
   const [active, setActive] = useState(row?.active ?? true)
+  /**
+   * Where a new project goes in a client, and the Billable a new row starts
+   * with: the client's one division, the client itself when it has none, or
+   * nothing yet when there are several (audit, 29 October 2026: a client
+   * picked by the filter used to start every new row as billable).
+   */
+  const placeIn = (cid: number | null): { parentId: number | null; billable: boolean } => {
+    const c = byId(cid)
+    if (!c) return { parentId: null, billable: true }
+    const ds = rows.filter(r => r.parentId === c.id && r.level === 'division')
+    const p = ds.length === 1 ? ds[0] : ds.length ? null : c
+    return { parentId: p?.id ?? null, billable: level === 'division' ? c.billable : (p ?? c).billable }
+  }
+  const start = row ? null : placeIn(startClient)
   const [clientId, setClientId] = useState<number | null>(row ? clientOf(row)?.id ?? null : startClient)
   // A project's place: a division, or its client when the client has no divisions.
-  const [parentId, setParentId] = useState<number | null>(row?.parentId ?? null)
+  const [parentId, setParentId] = useState<number | null>(row?.parentId ?? (level === 'project' ? start?.parentId ?? null : null))
   const parentNow = level === 'division' ? byId(clientId) : level === 'project' ? byId(parentId) : null
-  const [billable, setBillable] = useState(row?.billable ?? true)
+  const [billable, setBillable] = useState(row?.billable ?? (level === 'client' ? true : start?.billable ?? true))
   const [busy, setBusy] = useState(false)
 
   const divisions = clientId == null ? [] : rows.filter(r => r.parentId === clientId && r.level === 'division').sort((a, b) => alpha(a.name, b.name))
@@ -223,12 +237,10 @@ function RowWindow({ win, rows, startClient, canEdit, api, run, onClose }: {
             onChange={v => {
               const id = Number(v)
               setClientId(id)
-              // The client's billable is where a new division or project starts.
-              if (!row) setBillable(byId(id)?.billable ?? true)
-              if (level === 'project') {
-                const ds = rows.filter(r => r.parentId === id && r.level === 'division')
-                setParentId(ds.length === 1 ? ds[0].id : ds.length ? null : id)
-              }
+              // A new row starts with the Billable of where it goes (the division, else the client).
+              const p = placeIn(id)
+              if (!row) setBillable(p.billable)
+              if (level === 'project') setParentId(p.parentId)
             }} />)}
       {level === 'project' && clientId != null && (divisions.length
         ? <LabeledSelect label="Division" value={parentId == null || parentId === clientId ? '' : String(parentId)} placeholder="Pick the division" disabled={!canEdit}

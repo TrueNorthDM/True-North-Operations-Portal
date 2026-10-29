@@ -8,6 +8,7 @@
  * View Stage preview. The same entries are told once a day.
  */
 
+import { createHash } from 'node:crypto'
 import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { localDate } from '@/lib/timeclock/format'
@@ -33,12 +34,16 @@ export async function remindTransition(input: { personId: string; from?: string 
     const dir = await loadDirectory()
     const { title, body } = reminderText(rows)
     // Once a day for the same entries: a second press the same day is not a second bell row.
-    const key = `${localDate(new Date(), dir.zoneOf(personId))}:${rows.map(r => r.id).sort((a, b) => a - b).join(',')}`
+    // Hashed, so a long list of entries still makes a short key.
+    const ids = rows.map(r => r.id).sort((a, b) => a - b).join(',')
+    const key = `${localDate(new Date(), dir.zoneOf(personId))}:${createHash('sha256').update(ids).digest('hex').slice(0, 24)}`
     const res = await notifyClockyTsheetsFix({ personId, title, body, key })
     if (res.error || res.skipped || Object.keys(res.failed ?? {}).length) return no('The reminder was not sent. Try again in a moment.')
     const name = dir.nameOf(personId)
     // The bell reaches people with a portal login and an invitation (lib/notifications/audience.ts).
     if (!res.drafts) return no(`${name} has no portal login yet, so the bell cannot reach them. Tell them another way.`)
+    // Planned but not written: the person turned these off, or was told of the same entries today (audit, 29 October 2026).
+    if (!res.rows) return no(`${name} was not told: they turned these reminders off, or were already reminded of these entries today.`)
     return { ok: true, toast: `Reminder sent to ${name}: ${rows.length} ${rows.length === 1 ? 'entry' : 'entries'} to fix in QuickBooks Time.` }
   } catch (e) {
     console.error('[clocky transition] remind:', (e as Error).message)

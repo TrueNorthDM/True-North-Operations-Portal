@@ -48,7 +48,7 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
   }
   // Like Rates & Costs: a value is saved only when it changed to a number above zero.
   const changed = (k: Key) => {
-    if (!draft || draft[k].trim() === '') return null
+    if (!draft || draft[k].trim() === '' || (k === 'client' && !rates.canEditClient)) return null
     const n = Number(draft[k])
     return Number.isFinite(n) && n > 0 && n !== valueOf(rates, k) ? n : null
   }
@@ -85,7 +85,7 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
             <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3.5 items-center py-2.5 border-b border-[var(--row-rule)] last:border-b-0">
               <dt className="text-muted text-[13.5px]">{r.label}</dt>
               <dd className="m-0 text-right text-[13.5px] font-semibold text-foreground tabular-nums lining-nums">
-                {draft
+                {draft && (r.key !== 'client' || rates.canEditClient)
                   ? <input type="number" min="0" step="0.01" inputMode="decimal" value={draft[r.key]} aria-label={r.label}
                       onChange={e => setDraft(d => (d ? { ...d, [r.key]: e.target.value } : d))} className={`${fieldCls} w-[140px] text-right py-[7px]`} />
                   : v != null ? `${money(v)}${r.unit}` : <span className="text-muted font-normal">-</span>}

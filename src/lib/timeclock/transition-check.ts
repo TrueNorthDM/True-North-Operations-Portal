@@ -230,6 +230,9 @@ export function buildTransition(entries: readonly CheckEntry[], ctx: CheckContex
 
 // ── The reminder (Remind, owner 28 October 2026) ────────────────────────────
 
+/** How many entries a reminder lists before "And N more". */
+export const REMINDER_LINES = 15
+
 /** What the person changes in QuickBooks Time for each problem. */
 export function fixOf(p: ProblemKind, r: Pick<TransitionRow, 'portal'>): string {
   switch (p) {
@@ -251,5 +254,8 @@ export function reminderText(rows: readonly TransitionRow[]): { title: string; b
   const title = n === 1 ? 'One of your TSheets entries needs fixing in QuickBooks Time' : `${n} of your TSheets entries need fixing in QuickBooks Time`
   const lines = [...bad].sort((a, b) => a.date.localeCompare(b.date))
     .map(r => `${dayLabel(r.date)}, ${formatDuration(r.seconds)}, ${r.tsheets.job ?? 'no job'}: ${r.problems.map(p => fixOf(p, r)).join('; ')}.`)
-  return { title, body: `${lines.join(' ')} Fix ${n === 1 ? 'it' : 'them'} in QuickBooks Time; the portal reads the change on its next import.` }
+  // A bell row stays readable: the oldest REMINDER_LINES, then how many more.
+  const shown = lines.slice(0, REMINDER_LINES)
+  const more = lines.length - shown.length
+  return { title, body: `${shown.join(' ')}${more ? ` And ${more} more.` : ''} Fix ${n === 1 ? 'it' : 'them'} in QuickBooks Time; the portal reads the change on its next import.` }
 }

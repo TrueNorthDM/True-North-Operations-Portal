@@ -88,15 +88,21 @@ export async function saveJob(input: { id: number; name: string; parentId: numbe
   let parentId = row.parent_id
   if (!row.folder && input.parentId !== row.parent_id) {
     if (input.parentId != null) {
-      const { data: p } = await c.from('tc_jobcodes').select('id, parent_id, folder, structure').eq('id', input.parentId).maybeSingle()
+      const { data: p } = await c.from('tc_jobcodes').select('id, parent_id, folder, structure, level').eq('id', input.parentId).maybeSingle()
       // A TSheets job goes in a top folder; a 2026 project in a division (or a client with no divisions).
       if (!p || p.id === row.id || (v2 ? p.structure !== 2 || !p.folder : p.parent_id != null || p.structure === 2)) {
         return no(v2 ? 'Pick one of the divisions or clients.' : 'Pick one of the folders, or the top level.')
+      }
+      if (v2 && p.level === 'client') {
+        const { count } = await c.from('tc_jobcodes').select('id', { count: 'exact', head: true }).eq('parent_id', p.id).eq('level', 'division')
+        if (count) return no('That client has divisions: put the project in one of them.')
       }
     } else if (v2) return no('A project goes in a division or a client.')
     parentId = input.parentId
   }
   const { error } = await c.from('tc_jobcodes').update({
+    // A TSheets folder moved inside another is no longer a top folder: its 2026 client link goes (migration 131).
+    ...(!v2 && parentId != null ? { client_2026_id: null } : {}),
     name, parent_id: parentId, active: !!input.active, billable: !!input.billable,
     default_company: String(input.company ?? '').trim() || null, default_project: String(input.project ?? '').trim() || null,
     when_to_use: use || null, edited_in_portal_at: now(),
@@ -268,8 +274,8 @@ export async function linkFolders(input: { clientId: number; folderIds: number[]
   const { data: client } = await c.from('tc_jobcodes').select('id, name, structure, level').eq('id', Number(input.clientId)).maybeSingle()
   if (!client || client.structure !== 2 || client.level !== 'client') return no('Pick one of the 2026 clients.')
   if (ids.length) {
-    const { data: tops } = await c.from('tc_jobcodes').select('id').in('id', ids).eq('structure', 1).is('parent_id', null)
-    if ((tops ?? []).length !== ids.length) return no('Only TSheets top folders can be linked.')
+    const { data: tops } = await c.from('tc_jobcodes').select('id').in('id', ids).eq('structure', 1).is('parent_id', null).eq('kind', 'regular')
+    if ((tops ?? []).length !== ids.length) return no('Only TSheets top folders of work can be linked (time off cannot).')
     const { error } = await c.from('tc_jobcodes').update({ client_2026_id: client.id }).in('id', ids)
     if (error) { console.error('[catalogue]', error.message); return no(NOT_SAVED) }
   }

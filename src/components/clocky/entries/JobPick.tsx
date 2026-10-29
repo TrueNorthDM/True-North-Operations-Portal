@@ -22,6 +22,8 @@ export interface PickState {
   notes: string
   /** The row picked ('c<id>', 'r<i>'), '' for none. */
   combo: string
+  /** The notes that row brought: a later pick replaces them, but never notes the person typed. */
+  comboNotes?: string
   /** The form's remount key: a row or Browse refills it. */
   formKey?: number
   /** My combinations showing all. */
@@ -58,7 +60,9 @@ export function JobPick({ catalog, day, busy, s, set, hideNotes = false, combosL
   /** A combination or a recent row. */
   const fromChoice = (c: ClockChoice, key: string) => {
     const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
-    set({ combo: key, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, notes: s.notes || c.notes, formKey: nextKey })
+    // Notes the person typed stay; notes an earlier pick brought are that pick's, so they go with it (audit, 29 October 2026).
+    const typed = !!s.notes && s.notes !== (s.comboNotes ?? '')
+    set({ combo: key, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, notes: typed ? s.notes : c.notes, comboNotes: c.notes, formKey: nextKey })
   }
 
   if (s.browsing) {

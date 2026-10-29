@@ -62,7 +62,7 @@ export default async function PersonCheck({ searchParams }: { searchParams: Prom
       teams: [{ id: 't-w', name: 'Writers' }, { id: 't-t', name: 'Translation' }, { id: 't-s', name: 'SEO' }],
     } : null,
     // An invented person who left, as an Admin with Rates & Costs sees them.
-    rates: left && as === 'admin' ? { personId: '00000000-0000-4000-8000-000000000001', tsheetsUserId: null, i7ClientId: 1, clientRate: 95, costRate: 59.12, beRate: null, salary: null, canEdit: true } : null,
+    rates: left && as === 'admin' ? { personId: '00000000-0000-4000-8000-000000000001', tsheetsUserId: null, i7ClientId: 1, clientRate: 95, costRate: 59.12, beRate: null, salary: null, canEdit: true, canEditClient: true } : null,
   }
   return (
     <div className="min-h-screen bg-background p-6 sm:p-8 space-y-4">

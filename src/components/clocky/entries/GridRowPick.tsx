@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { fieldsForJob } from '@/components/clocky/clock/clock-model'
+import { activityNeedsNotes } from '@/lib/timeclock/entry-rules'
 import type { Catalog } from './api'
 import { EMPTY_VALUES, fieldsOf } from './form'
 import { JobPick, type PickState } from './JobPick'
@@ -41,9 +42,11 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
   const fresh = (c: { jobcodeId: number; activity: string }) => !taken(gridRowKey(c.jobcodeId, c.activity))
   // Said as soon as the pick matches a row, with Add row off until the Activity (or job) changes.
   const dup = !!job && !!activity && taken(gridRowKey(job.id, activity))
+  // A grid row has no Notes, and "Other" and "Meeting: Other" ask for them (audit, 29 October 2026).
+  const needsNotes = !!activity && activityNeedsNotes(activity)
 
   const add = () => {
-    if (!job || !activity || dup) return
+    if (!job || !activity || dup || needsNotes) return
     const key = gridRowKey(job.id, activity)
     onAdd({ key, jobcodeId: job.id, path: job.path, activity, fields: fieldsOf(s.values, fieldsForJob(catalog.fields, job), job.isI7) })
   }
@@ -67,10 +70,11 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
             set={p => setS(x => ({ ...x, ...p }))} />
         </>
       )}
-      <SaveError text={dup ? 'That job and Activity is already a row this week. Pick another Activity to add a second row of this project.' : null} />
+      <SaveError text={dup ? 'That job and Activity is already a row this week. Pick another Activity to add a second row of this project.'
+        : needsNotes ? `${activity} asks for Notes, which the grid has no place for. Add that time with Add time.` : null} />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
-        <button type="button" disabled={!job || !activity || dup} onClick={add}
+        <button type="button" disabled={!job || !activity || dup || needsNotes} onClick={add}
           className={`${BTN_MODAL_NAVY} disabled:opacity-45 disabled:cursor-not-allowed`}>
           <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add row
         </button>
