@@ -4,7 +4,8 @@
 import { WHEN } from '../clocky-clock/sample'
 import { groupsOf, type CatalogueData, type CatalogueRow, type GuideGroup } from '@/lib/timeclock/job-catalogue'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
-import { STRUCTURE } from '@/lib/timeclock/structure-2026'
+import { ACTIVITIES, STRUCTURE } from '@/lib/timeclock/structure-2026'
+import { activityNeedsNotes } from '@/lib/timeclock/entry-rules'
 
 const TREE0: { f?: string; j?: string; kids?: string[] }[] = [
   { f: '1 - True North', kids: ['Administrative', 'Content', 'Management', 'Marketing', 'Meetings', 'Project Management', 'SEO', 'Web Dev'] },
@@ -60,6 +61,7 @@ export function catalogueFrame(): CatalogueData {
   return {
     rows: rows(),
     rows2026: rows2026(),
+    activities2026: ACTIVITIES.map(a => ({ family: a.family, name: a.name, covers: a.covers, notesRequired: activityNeedsNotes(a.name) })),
     switchDate: '2026-11-01',
     frozen: false,
     fields: FIELDS.map(([key, label, hint, options], fi) => ({

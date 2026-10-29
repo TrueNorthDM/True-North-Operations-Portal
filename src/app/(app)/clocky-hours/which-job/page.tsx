@@ -5,12 +5,11 @@
 
 import { requireSurface } from '@/lib/access/resolve'
 import { loadCatalog } from '@/lib/timeclock/clocky-context'
-import { guideGroups } from '@/lib/timeclock/job-catalogue'
-import { activityNeedsNotes, fieldsOfStructure, structureOn } from '@/lib/timeclock/entry-rules'
+import { activityRows, guideGroups } from '@/lib/timeclock/job-catalogue'
+import { structureOn } from '@/lib/timeclock/entry-rules'
 import { localDate } from '@/lib/timeclock/format'
-import { ACTIVITIES } from '@/lib/timeclock/structure-2026'
 import { WhichJobView } from '@/components/clocky/WhichJobView'
-import { WhichJob2026View, type ActivityRow, type ProjectRow } from '@/components/clocky/WhichJob2026View'
+import { WhichJob2026View, type ProjectRow } from '@/components/clocky/WhichJob2026View'
 import { placeOf } from '@/components/clocky/clock/clock-model'
 
 export const dynamic = 'force-dynamic'
@@ -26,12 +25,7 @@ export default async function WhichJobRoute() {
     const projects: ProjectRow[] = [...catalog.jobs.values()]
       .filter(j => j.structure === 2 && j.selectable)
       .map(j => ({ ...placeOf(j.path), use: j.whenToUse ?? '', billable: j.billable }))
-    const field = fieldsOfStructure(catalog.fields, 2).find(f => f.key === 'activity')
-    const covers = new Map(ACTIVITIES.map(a => [a.name.toLowerCase(), a.covers]))
-    const activities: ActivityRow[] = (field?.options ?? []).map(name => ({
-      name, family: field?.families?.[name] ?? '', covers: covers.get(name.toLowerCase()) ?? '', notesRequired: activityNeedsNotes(name),
-    }))
-    return <WhichJob2026View projects={projects} activities={activities} />
+    return <WhichJob2026View projects={projects} activities={activityRows(catalog)} />
   }
   return <WhichJobView groups={guideGroups(catalog)} codes={catalog.fields.find(f => f.key === 'code')?.options ?? []} />
 }

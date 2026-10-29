@@ -3,8 +3,11 @@
 /**
  * Company settings > Job catalogue (Clocky part 2, Job Catalogue.dc.html):
  *
- *   11A  Jobs                the tree (drag to put jobs in order) and the job
- *                            open for editing, with how it reads in the clock
+ *   11A  Jobs                the 2026 structure as "Which job?" lists it, with
+ *                            a window to add or edit a client, division or
+ *                            project (JobCatalogue2026.tsx); the TSheets tree
+ *                            (drag to put jobs in order) and the job open for
+ *                            editing, with how it reads in the clock
  *   11B  Fields and options  rename, hide, add; never delete
  *        Clients             the clients and the job folder each one is
  *
@@ -17,14 +20,15 @@ import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { FieldLabel, Icon, LabeledSelect, Toast, type ToastState } from '@/components/clocky/entries/ui'
+import { Catalogue2026, SMALL_BTN, Switch } from './JobCatalogue2026'
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 /** A call that never answered (the connection dropped) reads as a refusal, so busy resets and the toast says so. */
 const settle = (p: Promise<Done>): Promise<Done> => p.catch((e: unknown) => ({ ok: false, error: failText(e) }))
 export interface CatalogueApi {
   saveJob: (i: { id: number; name: string; parentId: number | null; active: boolean; billable: boolean; company: string; project: string; use: string }) => Promise<Done>
-  addFolder: (i?: { structure?: 1 | 2; parentId?: number | null }) => Promise<Done>
-  addJob: (i: { parentId: number | null }) => Promise<Done>
+  addFolder: (i?: { structure?: 1 | 2; parentId?: number | null; name?: string; billable?: boolean; use?: string }) => Promise<Done>
+  addJob: (i: { parentId: number | null; name?: string; billable?: boolean; use?: string }) => Promise<Done>
   reorderJobs: (i: { parentId: number | null; ids: number[] }) => Promise<Done>
   setOptionShown: (i: { optionId: number; shown: boolean }) => Promise<Done>
   renameOption: (i: { optionId: number; label: string }) => Promise<Done>
@@ -35,23 +39,10 @@ export interface CatalogueApi {
 const OPT_COLS = 'grid-cols-[minmax(0,1fr)_92px_54px_68px] md:grid-cols-[minmax(0,1fr)_120px_110px_90px]'
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle'
-const SMALL_BTN = 'inline-flex items-center gap-1.5 border border-slate-200 rounded-[9px] px-[11px] py-1.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] leading-[normal] cursor-pointer hover:border-tn-teal disabled:opacity-50'
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const NO_FOLDER = 'top'
 
 const billPill = (on: boolean) => ({ text: on ? 'Billable' : 'Not billable', cls: on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]' })
-
-function Switch({ on, label, disabled, onChange }: { on: boolean; label: string; disabled?: boolean; onChange: () => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} disabled={disabled} onClick={onChange}
-      className="flex items-center gap-2.5 border border-[var(--panel-border)] rounded-[11px] px-3 py-2.5 bg-white cursor-pointer text-left leading-[normal] whitespace-nowrap disabled:cursor-default">
-      <span className="w-[34px] h-[19px] rounded-full relative flex-none" style={{ background: on ? '#1E7D7F' : '#cbd2da' }}>
-        <span className="absolute top-0.5 w-[15px] h-[15px] rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: on ? 17 : 2 }} />
-      </span>
-      <span className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink">{label}</span>
-    </button>
-  )
-}
 
 export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, startField, linked = true }: {
   data: CatalogueData
@@ -77,7 +68,7 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
         </div>
         {!canEdit && <span className="text-[12px] text-[#5b6b82] bg-[#f1f3f6] rounded-full px-[11px] py-[5px] leading-[normal]">Read only at the Admin level. Super Admins edit the catalogue.</span>}
       </div>
-      {tab === 'jobs' && <JobsPart data={data} canEdit={canEdit} api={api} startId={startId} say={say} />}
+      {tab === 'jobs' && <JobsPart data={data} canEdit={canEdit} api={api} startId={startId} say={say} onFields={() => setTab('fields')} />}
       {tab === 'fields' && <Fields data={data} canEdit={canEdit} api={api} startField={startField} say={say} />}
       {tab === 'clients' && <Clients data={data} />}
       <Toast toast={toast} />
@@ -88,7 +79,7 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
 // ── 11A Jobs ────────────────────────────────────────────────────────────────
 
 /** The two trees: the 2026 structure and the TSheets jobs (frozen from the switch date). */
-function JobsPart({ data, canEdit, api, startId, say }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void }) {
+function JobsPart({ data, canEdit, api, startId, say, onFields }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void; onFields: () => void }) {
   const has2026 = !!data.rows2026?.length
   const [which, setWhich] = useState<1 | 2>(has2026 && data.frozen ? 2 : 1)
   const rows = which === 2 ? data.rows2026 ?? [] : data.rows
@@ -113,7 +104,10 @@ function JobsPart({ data, canEdit, api, startId, say }: { data: CatalogueData; c
           </span>
         </div>
       )}
-      <Jobs key={which} rows={rows} structure={which} data={data} canEdit={canEdit} frozenTree={frozenTree} api={api} startId={startId} say={say} />
+      {which === 2
+        ? <Catalogue2026 rows={rows} activities={data.activities2026 ?? []} canEdit={canEdit} api={api} onFields={onFields}
+            run={async p => { const r = await settle(p); say(r); return r }} />
+        : <Jobs key={which} rows={rows} structure={which} data={data} canEdit={canEdit} frozenTree={frozenTree} api={api} startId={startId} say={say} />}
     </div>
   )
 }

@@ -10,9 +10,10 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { structureOn, type FieldName, type Structure } from './entry-rules'
+import { activityNeedsNotes, fieldsOfStructure, structureOn, type FieldName, type Structure } from './entry-rules'
 import { localDate } from './format'
 import { allRows, loadCatalog, type Catalog, type Job } from './clocky-context'
+import { ACTIVITIES } from './structure-2026'
 
 export interface CatalogueRow {
   id: number
@@ -41,11 +42,25 @@ export interface CatalogueField {
   options: { id: number; label: string; shown: boolean; used: number }[]
 }
 
+/** A 2026 Activity, as "Which job?" and the catalogue list it: shared by every project. */
+export interface ActivityRow { family: string; name: string; covers: string; notesRequired: boolean }
+
+/** The 2026 Activities from the Activity field's options, with their family and what each covers. */
+export function activityRows(catalog: Pick<Catalog, 'fields'>): ActivityRow[] {
+  const field = fieldsOfStructure(catalog.fields, 2).find(f => f.key === 'activity')
+  const covers = new Map(ACTIVITIES.map(a => [a.name.toLowerCase(), a.covers]))
+  return (field?.options ?? []).map(name => ({
+    name, family: field?.families?.[name] ?? '', covers: covers.get(name.toLowerCase()) ?? '', notesRequired: activityNeedsNotes(name),
+  }))
+}
+
 export interface CatalogueData {
   /** The TSheets job tree. */
   rows: CatalogueRow[]
   /** The 2026 structure: clients, divisions, projects. */
   rows2026?: CatalogueRow[]
+  /** The 2026 Activities, listed under the projects as on "Which job?". */
+  activities2026?: ActivityRow[]
   /** The day the 2026 structure starts, or null. */
   switchDate?: string | null
   /** From the switch date the TSheets tree is frozen: switched off, never renamed or moved (the history keeps its names). */
@@ -115,6 +130,7 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
   return {
     rows: catalogueRows(catalog),
     rows2026: catalogueRows(catalog, 2),
+    activities2026: activityRows(catalog),
     switchDate: catalog.switchDate,
     frozen: structureOn(today, catalog.switchDate) === 2,
     fields: catalog.fields.map(f => ({

@@ -8,8 +8,10 @@
  *
  *   saveJob        name, folder, active, billable by default, default Company
  *                  and Project, "When to use"
- *   addFolder      a new folder at the end of the list
- *   addJob         a new job in the folder picked (or at the top level)
+ *   addFolder      a new folder at the end of the list; in the 2026 structure
+ *                  a client or a division, named in its window first
+ *   addJob         a new job in the folder picked (or at the top level); a
+ *                  2026 project, named in its window first
  *   reorderJobs    the order of a folder's jobs, or of the top level
  *   setOptionShown hide or show an option (never deleted)
  *   renameOption   the option and the old entries with it
@@ -103,6 +105,23 @@ export async function saveJob(input: { id: number; name: string; parentId: numbe
   return { ok: true, toast: 'Saved. The clock panel shows the new line right away.' }
 }
 
+/**
+ * What a "New client / division / project" window sends (owner, 28 October
+ * 2026: the buttons open a window, nothing is saved before Add). Without a
+ * name, the old placeholder (a TSheets folder or job, named afterwards).
+ */
+type NewRow = { name?: string; billable?: boolean; use?: string }
+function newRowOf(input: NewRow, placeholder: string): { name: string; use: string | null } | Done {
+  if (input.name === undefined) return { name: placeholder, use: null }
+  const name = String(input.name ?? '').trim()
+  if (!name) return no('Give it a name.')
+  if (name.length > 120) return no('The name is too long.')
+  const use = String(input.use ?? '').trim()
+  if (use.length > 400) return no('Keep "When to use" to one plain line.')
+  return { name, use: use || null }
+}
+const isDone = (x: unknown): x is Done => typeof x === 'object' && x !== null && 'ok' in x
+
 async function nextOrder(parentId: number | null): Promise<number> {
   const q = createAdminClient().from('tc_jobcodes').select('sort_order').eq('kind', 'regular').not('sort_order', 'is', null).order('sort_order', { ascending: false }).limit(1)
   const { data } = parentId == null ? await q.is('parent_id', null) : await q.eq('parent_id', parentId)
@@ -113,7 +132,7 @@ async function nextOrder(parentId: number | null): Promise<number> {
  * A new folder. In the 2026 structure: a client at the top, or a division in
  * the client given. A new TSheets folder only before the switch date.
  */
-export async function addFolder(input: { structure?: 1 | 2; parentId?: number | null } = {}): Promise<Done> {
+export async function addFolder(input: { structure?: 1 | 2; parentId?: number | null } & NewRow = {}): Promise<Done> {
   const g = await guard(); if (g) return g
   const c = createAdminClient()
   if (input.structure === 2) {
@@ -124,14 +143,17 @@ export async function addFolder(input: { structure?: 1 | 2; parentId?: number | 
       billable = p.billable
     }
     const level = input.parentId != null ? 'division' : 'client'
+    const n = newRowOf(input, level === 'client' ? 'New client' : 'New division')
+    if (isDone(n)) return n
+    if (input.billable !== undefined) billable = !!input.billable
     const { data, error } = await c.from('tc_jobcodes').insert({
-      name: level === 'client' ? 'New client' : 'New division', kind: 'regular', folder: true, active: true, billable, structure: 2, level,
+      name: n.name, when_to_use: n.use, kind: 'regular', folder: true, active: true, billable, structure: 2, level,
       parent_id: input.parentId ?? null, sort_order: await nextOrder(input.parentId ?? null), edited_in_portal_at: now(),
     }).select('id').single()
-    if (error) { console.error('[catalogue]', error.message); return no(/tc_jobcodes_v2_place/.test(error.message) ? `There is already a "${level === 'client' ? 'New client' : 'New division'}" here: rename it first.` : NOT_SAVED) }
-    await log(`Added a ${level} to the 2026 structure`)
+    if (error) { console.error('[catalogue]', error.message); return no(/tc_jobcodes_v2_place/.test(error.message) ? `There is already a ${level} called "${n.name}" here.` : NOT_SAVED) }
+    await log(`Added the ${level} "${n.name}" to the 2026 structure`)
     refresh()
-    return { ok: true, toast: level === 'client' ? 'Client added. Name it, then add its divisions or projects.' : 'Division added. Name it, then add its projects.', id: data.id }
+    return { ok: true, toast: level === 'client' ? `Client "${n.name}" added. Add its divisions or projects.` : `Division "${n.name}" added. Add its projects.`, id: data.id }
   }
   try { if (await frozen()) return no(FROZEN) } catch (e) { console.error('[catalogue]', e); return no(NOT_SAVED) }
   const { data, error } = await c.from('tc_jobcodes').insert({
@@ -143,7 +165,7 @@ export async function addFolder(input: { structure?: 1 | 2; parentId?: number | 
   return { ok: true, toast: 'Folder added. Name it, then add its jobs.', id: data.id }
 }
 
-export async function addJob(input: { parentId: number | null }): Promise<Done> {
+export async function addJob(input: { parentId: number | null } & NewRow): Promise<Done> {
   const g = await guard(); if (g) return g
   const c = createAdminClient()
   let billable = false
@@ -155,14 +177,17 @@ export async function addJob(input: { parentId: number | null }): Promise<Done> 
     billable = p.billable
   }
   if (!v2) { try { if (await frozen()) return no(FROZEN) } catch (e) { console.error('[catalogue]', e); return no(NOT_SAVED) } }
+  const n = newRowOf(input, v2 ? 'New project' : 'New job')
+  if (isDone(n)) return n
+  if (input.billable !== undefined) billable = !!input.billable
   const { data, error } = await c.from('tc_jobcodes').insert({
-    name: v2 ? 'New project' : 'New job', kind: 'regular', parent_id: input.parentId, active: true, billable, sort_order: await nextOrder(input.parentId), edited_in_portal_at: now(),
+    name: n.name, when_to_use: n.use, kind: 'regular', parent_id: input.parentId, active: true, billable, sort_order: await nextOrder(input.parentId), edited_in_portal_at: now(),
     ...(v2 ? { structure: 2, level: 'project' } : {}),
   }).select('id').single()
-  if (error) { console.error('[catalogue]', error.message); return no(/tc_jobcodes_v2_place/.test(error.message) ? 'There is already a "New project" here: rename it first.' : NOT_SAVED) }
-  await log(v2 ? 'Added a project to the 2026 structure' : 'Added a job')
+  if (error) { console.error('[catalogue]', error.message); return no(/tc_jobcodes_v2_place/.test(error.message) ? `There is already a project called "${n.name}" here.` : NOT_SAVED) }
+  await log(v2 ? `Added the project "${n.name}" to the 2026 structure` : 'Added a job')
   refresh()
-  return { ok: true, toast: v2 ? 'Project added. Name it and say when to use it.' : 'Job added. Name it and say when to use it.', id: data.id }
+  return { ok: true, toast: v2 ? `Project "${n.name}" added. It can be picked right away.` : 'Job added. Name it and say when to use it.', id: data.id }
 }
 
 /** The new order of one folder's jobs, or of the top level: every id, in order. */
