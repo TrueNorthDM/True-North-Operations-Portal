@@ -109,6 +109,26 @@ async function inBatches<T>(write: Write, method: 'POST' | 'PUT', path: string, 
   return ids
 }
 
+/**
+ * Whether the token's QuickBooks Time user may create and archive jobs and
+ * custom fields (an admin, or manage_jobcodes for the jobs). Read only: it asks
+ * who the token belongs to and changes nothing.
+ */
+export async function writeAccess(token: string): Promise<{ ok: boolean; line: string }> {
+  try {
+    const res = await fetch(`${BASE}/current_user`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal: AbortSignal.timeout(30_000) })
+    const json = await res.json().catch(() => null) as { results?: { users?: Record<string, { first_name?: string; last_name?: string; permissions?: Record<string, boolean> }> } } | null
+    const user = json?.results?.users ? Object.values(json.results.users)[0] : undefined
+    if (!res.ok || !user) return { ok: false, line: `Write access: unknown (QuickBooks Time answered HTTP ${res.status}).` }
+    const p = user.permissions ?? {}
+    const who = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || 'the token\'s user'
+    const ok = !!p.admin
+    return { ok, line: `Write access: ${ok ? 'yes' : 'NO'}, the token belongs to ${who} (admin: ${p.admin ? 'yes' : 'no'}, manage jobs: ${p.manage_jobcodes ? 'yes' : 'no'}).${ok ? '' : ' Custom fields need an admin: use an admin\'s token.'}` }
+  } catch (e) {
+    return { ok: false, line: `Write access: unknown (${e instanceof Error ? e.message : String(e)}).` }
+  }
+}
+
 export interface RebuildResult { live: boolean; lines: string[] }
 
 /**

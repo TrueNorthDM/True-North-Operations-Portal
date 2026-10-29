@@ -10,7 +10,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { teamColour } from '@/lib/directory/team-colour'
-import { allRows, db, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
+import { allRows, db, entryClient2026, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
 import { localDate } from './format'
 import { isFinance, loadPayTerms, loadRouteSettings, loadRoutes } from './pay-terms'
 import { loadApprovedExtra } from './allowance-data'
@@ -69,11 +69,12 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
     (a, b) => c.from('tc_entries').select('person_id, jobcode_id, entry_date, duration_seconds, fields, kind, ended_at')
       .in('person_id', ids).neq('kind', 'absence').not('ended_at', 'is', null).gte('entry_date', lo).lte('entry_date', period.to).order('id').range(a, b),
     'The hours could not be read') : []
-  const clientOf = (jobId: number | null) => {
+  const clientOf = (jobId: number | null, fields: Record<string, string> | null) => {
     const j = jobId != null ? catalog.jobs.get(jobId) : undefined
     if (!j) return 'No job'
-    // The 2026 client: a 2026 project's own, a TSheets job's through its top folder (one name across the switch).
-    if (j.client2026) return j.client2026
+    // The 2026 client: a 2026 project's own, a TSheets entry's through its top folder (one name across the switch).
+    const client = entryClient2026(j, fields, keys)
+    if (client) return client
     return j.folderId != null ? catalog.jobs.get(j.folderId)?.name ?? j.name : j.name
   }
   // A 2026 project's Billable is the project's own; a TSheets entry's, its "4 Billable" field.
@@ -82,7 +83,7 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
     return j?.structure === 2 ? j.billable : !!keys.billable && (e.fields?.[keys.billable] ?? '').toLowerCase() === 'yes'
   }
   const rows: ReportRow[] = entries.map(e => ({
-    personId: e.person_id, client: squash(clientOf(e.jobcode_id)), billable: billableOf(e),
+    personId: e.person_id, client: squash(clientOf(e.jobcode_id, e.fields)), billable: billableOf(e),
     seconds: Number(e.duration_seconds) || 0, date: e.entry_date,
   }))
 

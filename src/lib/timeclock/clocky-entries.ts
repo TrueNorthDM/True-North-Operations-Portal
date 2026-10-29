@@ -9,7 +9,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, keysOfJob, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Viewer } from './clocky-context'
+import { allRows, db, entryClient2026, keysOfJob, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Viewer } from './clocky-context'
 import { loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './format'
@@ -113,8 +113,8 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     jobcodeId: e.jobcode_id,
     path: job?.path ?? '',
     short: job?.short ?? '',
-    client: job?.client2026 ?? clientOf(job?.path ?? ''),
-    client2026: job?.client2026 ?? null,
+    client: entryClient2026(job, fields, k) ?? clientOf(job?.path ?? ''),
+    client2026: entryClient2026(job, fields, k),
     isI7: !!job?.isI7,
     structure: job?.structure ?? 1,
     fields,
@@ -204,7 +204,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       date: r.entry_date, start: r.started_at, end: r.ended_at, running: false,
       timeText: timeText(r.started_at, r.ended_at, false, zone),
       seconds: recordedSeconds(r.started_at, r.ended_at),
-      jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: job?.client2026 ?? clientOf(job?.path ?? ''), client2026: job?.client2026 ?? null, isI7: !!job?.isI7,
+      jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: entryClient2026(job, f, k) ?? clientOf(job?.path ?? ''), client2026: entryClient2026(job, f, k), isI7: !!job?.isI7,
       structure: job?.structure ?? 1, fields: f,
       company: k.company ? f[k.company] ?? '' : '', project: k.project ? f[k.project] ?? '' : '', activity: k.activity ? f[k.activity] ?? '' : '',
       // A 2026 project's Billable is the project's own, as on its entries.

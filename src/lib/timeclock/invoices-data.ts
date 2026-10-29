@@ -10,7 +10,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { allRows, loadCatalog } from './clocky-context'
+import { allRows, entryClient2026, loadCatalog } from './clocky-context'
 import { entrySeconds } from './clocky-panel'
 import type { EntryRow } from './clocky-store'
 import { buildInvoiceLines, dueOn, missingRate, type ReimbursementForInvoice } from './invoice-lines'
@@ -25,14 +25,14 @@ export const clientFolder = (path: string): string => (path ? path.split(' › '
 export async function hoursByClient(personId: string, start: string, end: string, now = new Date()): Promise<{ client: string; seconds: number }[]> {
   const [catalog, rows] = await Promise.all([
     loadCatalog(),
-    allRows<Pick<EntryRow, 'jobcode_id' | 'started_at' | 'ended_at' | 'duration_seconds' | 'kind'>>((a, b) =>
-      createAdminClient().from('tc_entries').select('jobcode_id, started_at, ended_at, duration_seconds, kind').eq('person_id', personId)
+    allRows<Pick<EntryRow, 'jobcode_id' | 'started_at' | 'ended_at' | 'duration_seconds' | 'kind' | 'fields'>>((a, b) =>
+      createAdminClient().from('tc_entries').select('jobcode_id, started_at, ended_at, duration_seconds, kind, fields').eq('person_id', personId)
         .gte('entry_date', start).lte('entry_date', end).neq('kind', 'absence').order('id').range(a, b), 'Hours could not be read'),
   ])
   const by = new Map<string, number>()
   for (const r of rows) {
     const j = catalog.jobs.get(r.jobcode_id ?? -1)
-    const c = j?.client2026 ?? clientFolder(j?.path ?? '')
+    const c = entryClient2026(j, r.fields as Record<string, string> | null, catalog.keys) ?? clientFolder(j?.path ?? '')
     by.set(c, (by.get(c) ?? 0) + entrySeconds(r, now))
   }
   return [...by.entries()].map(([client, seconds]) => ({ client, seconds })).sort((a, b) => b.seconds - a.seconds)

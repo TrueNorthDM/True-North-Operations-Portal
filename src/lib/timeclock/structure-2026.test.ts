@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ACTIVITIES, ACTIVITY_FAMILIES, OLD_ACTIVITIES, OLD_PROJECTS, OLD_TASKS, STRUCTURE, allProjects, i7DivisionOf, oldI7Code, placeText,
-  translateActivity, translateProject, type Place,
+  oldEntryClient, translateActivity, translateProject, type Place,
 } from './structure-2026'
 
 const projects = allProjects()
@@ -54,5 +54,33 @@ describe('the translation table', () => {
     expect(i7DivisionOf('i7-ADMIN')).toBe('i7 Marketing')
     expect(i7DivisionOf('1 None')).toBeNull()
     expect(oldI7Code('BE-MKTG').to).toEqual({ client: 'i7 Marketing', division: 'Bessemeter', project: 'BE-MKTG' })
+  })
+})
+
+describe('the client of an old entry (owner, 29 October 2026)', () => {
+  it('keeps the folder\'s client outside "1 - True North"', () => {
+    expect(oldEntryClient('i7 Marketing', 'AAAF', 'True North')).toBe('i7 Marketing')
+    expect(oldEntryClient('COE Group', 'In-House', 'True North')).toBe('COE Group')
+    expect(oldEntryClient(null, 'AAAF', 'COE')).toBeNull()
+  })
+  it('reads the Project first under "1 - True North", whatever the Company says', () => {
+    expect(oldEntryClient('True North Internal', 'AAAF', 'True North')).toBe('COE Group')
+    expect(oldEntryClient('True North Internal', 'Africa', 'True North')).toBe('COE Group')
+    expect(oldEntryClient('True North Internal', 'GP church', null)).toBe('COE Group')
+  })
+  it('falls back to the Company for In-House or no project', () => {
+    expect(oldEntryClient('True North Internal', 'In-House', 'True North')).toBe('True North Internal')
+    expect(oldEntryClient('True North Internal', 'In-House', 'COE')).toBe('COE Group')
+    expect(oldEntryClient('True North Internal', '', 'GNA/COEI')).toBe('COE Group')
+    expect(oldEntryClient('True North Internal', 'not listed--ask Dave', 'DDI')).toBe('COE Group')
+    expect(oldEntryClient('True North Internal', null, null)).toBe('True North Internal')
+  })
+  it('settles the values that were waiting for a decision', () => {
+    for (const t of OLD_ACTIVITIES) expect(t.sure, t.old).not.toBe('check')
+    for (const t of OLD_TASKS) expect(t.sure, t.old).not.toBe('check')
+    const fund = translateActivity('Fundraising')
+    expect(fund?.to).toBe('Marketing: Strategy & Campaigns')
+    expect(fund?.place && exists(fund.place)).toBe(true)
+    expect(ACTIVITIES.some(a => a.name === fund?.to)).toBe(true)
   })
 })

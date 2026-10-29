@@ -16,10 +16,11 @@ describe('translation table coverage', () => {
     const r = coverage([u('1 - i7 Code', 'WMFL-MKTG'), u('1 - i7 Code', 'XYZ-MKTG'), u('1 - i7 Code', '1 None')])
     expect(r.missing.map(l => l.value)).toEqual(['XYZ-MKTG'])
   })
-  it('lists what is still to confirm, biggest first, and skips values never used', () => {
-    const r = coverage([u('3 Activity', 'Training', 524), u('3 Activity', 'Fundraising', 632), u('2 Project', 'Ghost', 0)])
-    expect(r.toConfirm.map(l => l.value)).toEqual(['Fundraising', 'Training'])
+  it('counts the values decided on Oct 29 as covered, and skips values never used', () => {
+    const r = coverage([u('3 Activity', 'Training', 524), u('3 Activity', 'Fundraising', 632), u('Job', '1 - True North', 21000), u('Tasks', 'Translation: Review/Edit', 999), u('2 Project', 'Ghost', 0)])
+    expect(r.toConfirm).toEqual([])
     expect(r.missing).toEqual([])
+    expect(r.covered).toBe(4)
   })
   it('says so when nothing is missing', () => {
     expect(coverageText(coverage([u('2 Project', 'AAAF')]), '2026-01-01')).toContain('Nothing is missing')

@@ -124,7 +124,11 @@ export function i7DivisionOf(code: string): string | null {
  * Rock should confirm. 'none': no new home; it stays its own row in history.
  */
 export type Sureness = 'same' | 'closest' | 'check' | 'none'
-export interface Translation { old: string; to: Place | string | null; sure: Sureness; why?: string }
+export interface Translation {
+  old: string; to: Place | string | null; sure: Sureness; why?: string
+  /** An old Activity value that also says where the work sits (Fundraising is now a division). */
+  place?: Place
+}
 
 const at = (client: string, division: string | null = null, project: string | null = null): Place => ({ client, division, project })
 
@@ -155,7 +159,7 @@ export const OLD_COMPANIES: Translation[] = [
 
 /** TSheets top-level jobs (clients). */
 export const OLD_JOBS: Translation[] = [
-  { old: '1 - True North', to: null, sure: 'check', why: 'Used for True North and for COE work: the client came from the "1 Company" field, so this job alone says nothing.' },
+  { old: '1 - True North', to: null, sure: 'same', why: 'A folder of departments, not a client (about 21,000 hours in 2026, most of them COE work). The client comes from "2 Project" (AAAF, Africa, ASI, NAD, GP: COE Group), and only for In-House or no project from "1 Company" (Arnaldo, Oct 29: 2,469 hours of AAAF carry Company "True North").' },
   { old: '2 - i7 Marketing', to: at(I7_CLIENT), sure: 'same', why: 'The division comes from the i7 code.' },
   { old: 'Adventist Messengers/HFA', to: at(COE_CLIENT, 'Africa', 'HopeFor.Africa'), sure: 'same', why: 'Confirmed by Arnaldo on Oct 27: the Africa work.' },
   { old: 'DDI', to: at(COE_CLIENT), sure: 'same' },
@@ -194,10 +198,10 @@ export const OLD_ACTIVITIES: Translation[] = [
   { old: 'Meeting: Other (indicate in Notes)', to: 'Meeting: Other', sure: 'same' },
   { old: 'General admin', to: 'Admin', sure: 'same' },
   { old: 'Industry Monitoring', to: 'Professional Development', sure: 'same', why: "David's document: Professional Development covers industry monitoring." },
-  { old: 'Training', to: 'Professional Development', sure: 'check', why: 'If "Training" meant receiving training it is Professional Development; if it meant training others it is Presenting & Training.' },
-  { old: 'Fundraising', to: null, sure: 'check', why: 'Fundraising is now a division, not an activity; the kind of work (Relationships, Writing, Design...) is not known from the old entry.' },
-  { old: 'Research/Development', to: 'Other', sure: 'check', why: 'No close match; no hours in 2026.' },
-  { old: 'SME', to: 'Other', sure: 'check', why: 'Subject matter expert work; 1 hour in 2026.' },
+  { old: 'Training', to: 'Professional Development', sure: 'closest', why: 'Most of the 2026 hours are newcomers being trained (the Africa translators, the Rwanda SEO team, new writers); an old entry does not say who trained whom (Arnaldo, Oct 29).' },
+  { old: 'Fundraising', to: 'Marketing: Strategy & Campaigns', place: at(COE_CLIENT, 'Fundraising', 'Fundraising General'), sure: 'closest', why: 'Fundraising is now a division. The 2026 hours are almost all Kevin\'s ads, funnels, email and donation forms for COE, whatever the Company field says (Arnaldo, Oct 29).' },
+  { old: 'Research/Development', to: 'Other', sure: 'closest', why: 'No close match; 5 hours, all in 2022 and 2023 (Arnaldo, Oct 29).' },
+  { old: 'SME', to: 'Other', sure: 'closest', why: 'Subject matter expert work; 1 hour in 2026 (Arnaldo, Oct 29).' },
   { old: 'Other (indicate in Notes)', to: 'Other', sure: 'same' },
 ]
 
@@ -208,7 +212,7 @@ export const OLD_TASKS: Translation[] = [
   { old: 'Content: Writing', to: 'Content: Writing', sure: 'same' },
   { old: 'Content: Review/Edit', to: 'Content: Editing', sure: 'same' },
   { old: 'Content: Revision', to: 'Content: Editing', sure: 'same' },
-  { old: 'Translation: Review/Edit', to: 'Content: Translation', sure: 'check', why: 'Reviewing a translation: Translation (with the language in Notes) or Editing? Rock to confirm.' },
+  { old: 'Translation: Review/Edit', to: 'Content: Translation', sure: 'same', why: 'All 2026 hours are the Africa translators\', and 97% of those entries already say Activity "Translation" (Arnaldo, Oct 29).' },
   { old: 'Graphics', to: 'Design/Graphics', sure: 'same' },
   { old: 'Web Dev', to: 'Web Dev & Systems', sure: 'same' },
   { old: 'SEO Research', to: 'SEO: Research', sure: 'same' },
@@ -238,3 +242,18 @@ export const translateProject = lookup(OLD_PROJECTS)
 export const translateCompany = lookup(OLD_COMPANIES)
 export const translateActivity = lookup(OLD_ACTIVITIES)
 export const translateTask = lookup(OLD_TASKS)
+
+/**
+ * The 2026 client of a TSheets entry (owner, 29 October 2026). Its job's top
+ * folder decides (Job catalogue > Clients), except the folder linked to True
+ * North Internal, "1 - True North": a folder of departments that holds COE work
+ * too. There the "2 Project" value decides (AAAF, Africa, ASI, NAD and GP are
+ * COE Group), and only for In-House or no project the "1 Company" value.
+ */
+export function oldEntryClient(folderClient: string | null, project: string | null | undefined, company: string | null | undefined): string | null {
+  if (folderClient !== TN_CLIENT) return folderClient
+  const byProject = translateProject(project)?.to
+  if (byProject && typeof byProject === 'object') return byProject.client
+  const byCompany = translateCompany(company)?.to
+  return byCompany && typeof byCompany === 'object' ? byCompany.client : folderClient
+}

@@ -26,6 +26,7 @@ import { loadEntryFieldKeys } from './manual-fields'
 import { jobPath, shortJob } from './format'
 import type { FieldKeys, FieldName, Structure } from './entry-rules'
 import { isLeader, type ScopeTarget, type ScopeViewer } from './scope'
+import { oldEntryClient } from './structure-2026'
 import type { AnchorChange, Cadence, CadenceChange, CadenceRules } from './periods'
 
 type Client = Db
@@ -217,6 +218,18 @@ export interface Job {
    */
   client2026: string | null
   client2026Id: number | null
+}
+
+/**
+ * The 2026 client one entry reports under: a 2026 job's own; a TSheets entry's
+ * through its top folder, where "1 - True North" reads the entry's Project and
+ * Company (oldEntryClient). Null for a TSheets folder with no 2026 client.
+ */
+export function entryClient2026(job: Pick<Job, 'structure' | 'client2026'> | undefined, fields: Record<string, string> | null | undefined, keys: Pick<FieldKeys, 'project' | 'company'>): string | null {
+  if (!job) return null
+  if (job.structure === 2) return job.client2026
+  const f = fields ?? {}
+  return oldEntryClient(job.client2026, keys.project ? f[keys.project] : null, keys.company ? f[keys.company] : null)
 }
 
 export interface FieldDef {
