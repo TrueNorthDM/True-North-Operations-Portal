@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  archiveEnabled, automaticWave, beforeStart, checkDates, clockGate, dueForArchive, hasStarted, isDay, notYetMessage,
+  automaticWave, beforeStart, checkDates, clockGate, hasStarted, isDay, notYetMessage,
   personWave, splitByStart, startDayLabel,
 } from './waves'
 
@@ -101,27 +101,3 @@ describe('splitByStart', () => {
   })
 })
 
-describe('the TSheets archive', () => {
-  it('archives on or after the start date, once', () => {
-    const list = [
-      { personId: 'ana', tsheetsUserId: 10, startsOn: '2026-11-08', today: '2026-11-08' },
-      { personId: 'ana', tsheetsUserId: 11, startsOn: '2026-11-08', today: '2026-11-08' },
-      { personId: 'bo', tsheetsUserId: 20, startsOn: '2026-11-22', today: '2026-11-08' },
-      { personId: 'cy', tsheetsUserId: 30, startsOn: null, today: '2026-11-08' },
-    ]
-    expect(dueForArchive(list, new Set([11])).map(c => c.tsheetsUserId)).toEqual([10])
-  })
-
-  it('writes to TSheets only when the flag is exactly "on"', () => {
-    expect(archiveEnabled('on')).toBe(true)
-    expect(archiveEnabled(undefined)).toBe(false)
-    expect(archiveEnabled('true')).toBe(false)
-    expect(archiveEnabled('ON')).toBe(false)
-  })
-
-  it('never on the staging copy unless it is asked for there too', () => {
-    expect(archiveEnabled('on', true)).toBe(false)
-    expect(archiveEnabled('on', true, 'on')).toBe(true)
-    expect(archiveEnabled(undefined, true, 'on')).toBe(false)
-  })
-})

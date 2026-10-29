@@ -9,10 +9,9 @@
 
 import type { Db } from '@/lib/supabase/types'
 import { missingTable } from '@/lib/supabase/errors'
-import { IS_STAGING } from '@/lib/environment'
 import { loadSubjects } from '@/lib/access/store'
 import { LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
-import { NO_DATES, archiveEnabled, personWave, type Wave, type WaveDates } from './waves'
+import { NO_DATES, personWave, type Wave, type WaveDates } from './waves'
 import { northTimeOpen } from './north-time-lock'
 
 /** The two dates. A missing table is "not set"; any other failed read throws (an unread date is not "no date"). */
@@ -73,7 +72,7 @@ export async function loadRolloutPeople(c: Db, dates?: WaveDates): Promise<Rollo
  * without reading anyone (the import calls it on every run).
  */
 export async function loadStartDates(c: Db): Promise<Map<string, string>> {
-  // While North Time is closed nobody has started: the import keeps every TSheets entry and no account is archived.
+  // While North Time is closed nobody has started: the import keeps every TSheets entry.
   if (!(await northTimeOpen())) return new Map()
   const dates = await loadWaveDates(c)
   if (!dates[1] && !dates[2]) return new Map()
@@ -88,8 +87,6 @@ export interface RolloutData {
   people: RolloutPerson[]
   /** TSheets entries set aside and not decided yet. */
   setAside: number
-  /** TSHEETS_ARCHIVE_USERS=on: the archive cron writes to TSheets; otherwise it only logs what it would do. */
-  archiveOn: boolean
   /** Whether migration 129 has run (the tables exist). */
   ready: boolean
 }
@@ -103,7 +100,7 @@ export async function loadRolloutData(c: Db): Promise<RolloutData> {
     ready ? c.from('tc_import_skipped').select('external_id', { count: 'exact', head: true }).is('decided_at', null) : null,
   ])
   if (aside?.error && !missingTable(aside.error)) throw new Error(`The entries set aside could not be counted: ${aside.error.message}`)
-  return { dates, people, setAside: aside?.count ?? 0, archiveOn: archiveEnabled(process.env.TSHEETS_ARCHIVE_USERS, IS_STAGING, process.env.TSHEETS_ARCHIVE_ON_STAGING), ready }
+  return { dates, people, setAside: aside?.count ?? 0, ready }
 }
 
 // ── Clocked in TSheets after switching ──────────────────────────────────────

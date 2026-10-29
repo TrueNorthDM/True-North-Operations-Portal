@@ -458,12 +458,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
           ))}
         </div>
         <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 leading-[1.55]">
-          From a person&apos;s start date, North Time&apos;s clock starts for them, and the TSheets import stops taking their entries dated on or after it: those are set aside for someone to decide, never dropped. Before it, Clock in tells them the day they start and to keep clocking in TSheets. Adding time by hand and approvals are not affected.
-        </div>
-        <div className="text-[12.5px] text-foreground leading-[1.55]">
-          TSheets accounts: {data.archiveOn
-            ? <b className="text-tn-ink">each person&apos;s TSheets account is archived on their start date.</b>
-            : <>archiving is <b className="text-tn-ink">off</b> (TSHEETS_ARCHIVE_USERS). The daily job only writes to the server log what it would archive.</>}
+          From a person&apos;s start date, North Time&apos;s clock starts for them, and the TSheets import stops taking their entries dated on or after it: those are set aside for someone to decide, never dropped. Before it, Clock in tells them the day they start and to keep clocking in TSheets. Adding time by hand and approvals are not affected. TSheets itself is never changed: their account stays as it is.
         </div>
         {canEdit && (
           <div className="flex justify-end">

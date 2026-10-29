@@ -15,7 +15,6 @@
  *   - the North Time clock starts for them (before it, Clock in says the day);
  *   - the TSheets import stops taking their entries dated on or after it and
  *     sets them aside in tc_import_skipped for someone to decide;
- *   - their TSheets account is archived (only with TSHEETS_ARCHIVE_USERS=on).
  *
  * Pure: the settings page, the clock, the import and the archive cron all
  * decide with these functions, so they can never disagree.
@@ -125,21 +124,3 @@ export function splitByStart<T extends { person_id: string; entry_date: string }
   }
   return { keep, skip }
 }
-
-// ── The TSheets archive ─────────────────────────────────────────────────────
-
-export interface ArchiveCandidate { personId: string; tsheetsUserId: number; startsOn: string | null; today: string }
-
-/** The accounts to archive now: the person has started and the account was not archived yet. */
-export function dueForArchive<C extends ArchiveCandidate>(list: readonly C[], archived: ReadonlySet<number>): C[] {
-  return list.filter(c => hasStarted(c.startsOn, c.today) && !archived.has(c.tsheetsUserId))
-}
-
-/**
- * Whether the archive writes to TSheets: only when TSHEETS_ARCHIVE_USERS is
- * exactly "on". The staging copy reads the same TSheets account as
- * production, so there it also needs TSHEETS_ARCHIVE_ON_STAGING=on; without
- * both, the job only logs what it would do.
- */
-export const archiveEnabled = (flag: string | undefined, staging = false, stagingFlag?: string): boolean =>
-  flag === 'on' && (!staging || stagingFlag === 'on')
