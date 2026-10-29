@@ -426,7 +426,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         teamOptions={teamOptions}
         teamCards={access.can('d-teams') ? teamCards : []}
         rights={rights}
-        ratesPeople={budget?.people ?? []}
+        // Active people only: someone who left is in People, Inactive, with their rates on their own page (owner, 28 October 2026).
+        ratesPeople={(budget?.people ?? []).filter(p => !p.inactive)}
         ratesClients={(budget?.clients ?? []).map(c => ({ id: c.id, name: c.name }))}
         accessLog={accessLog}
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)

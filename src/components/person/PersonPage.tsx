@@ -25,6 +25,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { HrForm, PersonalForm, WorkForm } from './PersonForms'
 import { PillBadge, Section, TeamsList } from './PersonParts'
+import { PersonRates } from './PersonRates'
 import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 
@@ -346,6 +347,7 @@ function WorkView({ data }: { data: PersonPageData }) {
               </div>
             </Section>
           )}
+          {data.rates && <PersonRates name={data.name} rates={data.rates} />}
         </div>
       </div>
       <Section title="Employment history">
