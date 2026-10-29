@@ -66,7 +66,7 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
   const lastDay = data.switchDate ? label(new Date(Date.parse(`${data.switchDate}T12:00:00Z`) - 86_400_000)) : null
   const frozen = which === 1 && !!data.frozen
   const line = which === 2
-    ? tab === 'jobs' ? (when ? `Client › Division › Project. Offered from ${when}; entries before it keep the TSheets jobs.` : 'Client › Division › Project. Offered once a switch date is set.')
+    ? tab === 'jobs' ? (when ? `Client › Division › Project. North Time offers it from ${when}; TSheets keeps its old jobs until it is switched off, and the portal translates them.` : 'Client › Division › Project. Offered once a switch date is set.')
       : tab === 'fields' ? 'Client, Division and Project are the job itself (Jobs). The one field is the Activity; Billable comes from the project.'
         : 'The clients of the 2026 structure, from Jobs. Add, rename or switch one off there.'
     : frozen ? (tab === 'jobs' ? `Frozen since ${when}: a job can be switched off, not renamed or moved, so the history keeps its names.`
@@ -370,7 +370,7 @@ function Clients2026({ rows, folders, canEdit, run, link }: {
         </div>
       </div>
       <div className="text-[12px] text-muted leading-[1.5]">
-        Hours from a linked TSheets folder show under its 2026 client in North Time Reports, on invoices and in Hours by client, so a client reads as one across the switch date.
+        Hours from a linked TSheets folder show under its 2026 client in North Time Reports, on invoices and in Hours by client, so a client reads as one while TSheets and North Time run side by side (entries in &ldquo;1 - True North&rdquo; go by their Project, then their Company).
         {loose.length > 0 && ` Not linked, so they keep their old name: ${loose.map(x => x.name).join(', ')}.`}
       </div>
       {editing && <LinkWindow key={editing.id} client={editing} clients={clients} folders={folders} run={run} link={link} onClose={() => setOpen(null)} />}

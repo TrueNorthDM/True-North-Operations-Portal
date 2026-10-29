@@ -9,7 +9,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, entryClient2026, keysOfJob, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Viewer } from './clocky-context'
+import { allRows, db, entryClient2026, keysOfJob, translatedPlace, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Job, type Viewer } from './clocky-context'
 import { loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './format'
@@ -18,6 +18,7 @@ import { formatDuration, recordedSeconds } from './rounding'
 import { attentionReason, missingFields, offeredOn, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
 import { holidaysBetween, offDays } from './time-off'
+import { reportActivity } from './structure-2026'
 import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
 import { canAddFor, canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
@@ -65,6 +66,22 @@ function timeText(start: string | null, end: string | null, running: boolean, zo
 }
 
 interface Ctx { v: Viewer; dir: Directory; catalog: Catalog; now: Date; subs: Map<string, SubmittedPeriod[]> }
+
+/**
+ * How the lists show a TSheets entry in the 2026 structure (owner, 29 October
+ * 2026: TSheets keeps its old list and the portal translates it): its place,
+ * and its Activity in the 2026 names from the switch date's month. A 2026
+ * entry shows as it is.
+ */
+function shownOf(catalog: Catalog, job: Job | undefined, fields: Record<string, string>, day: string): Pick<EntryView, 'place' | 'activityShown'> {
+  if (!job || job.structure === 2) return { place: null, activityShown: job ? fields[catalog.keys2026.activity ?? ''] ?? '' : '' }
+  const t = translatedPlace(catalog, job, fields)
+  const k = catalog.keys
+  return {
+    place: t?.client ? { client: t.client, division: t.division ?? '', project: t.project ?? '' } : null,
+    activityShown: reportActivity(k.activity ? fields[k.activity] : '', catalog.tasksKey ? fields[catalog.tasksKey] : '', day, catalog.switchDate),
+  }
+}
 
 /** One entry as Time entries shows it. */
 export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
@@ -115,6 +132,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     short: job?.short ?? '',
     client: entryClient2026(job, fields, k) ?? clientOf(job?.path ?? ''),
     client2026: entryClient2026(job, fields, k),
+    ...shownOf(catalog, job, fields, e.entry_date),
     isI7: !!job?.isI7,
     structure: job?.structure ?? 1,
     fields,
@@ -205,6 +223,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       timeText: timeText(r.started_at, r.ended_at, false, zone),
       seconds: recordedSeconds(r.started_at, r.ended_at),
       jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: entryClient2026(job, f, k) ?? clientOf(job?.path ?? ''), client2026: entryClient2026(job, f, k), isI7: !!job?.isI7,
+      ...shownOf(catalog, job, f, r.entry_date),
       structure: job?.structure ?? 1, fields: f,
       company: k.company ? f[k.company] ?? '' : '', project: k.project ? f[k.project] ?? '' : '', activity: k.activity ? f[k.activity] ?? '' : '',
       // A 2026 project's Billable is the project's own, as on its entries.

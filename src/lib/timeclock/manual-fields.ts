@@ -28,6 +28,8 @@ export interface EntryFieldKeys {
   project: string | null    // 2 Project
   company: string | null    // 1 Company
   billable: string | null   // 4 Billable
+  /** Tasks: never asked, read only to name an old entry's Activity when "3 Activity" is empty. */
+  tasks?: string | null
 }
 
 export async function loadEntryFieldKeys(supabase: Client): Promise<EntryFieldKeys> {
@@ -51,6 +53,7 @@ export async function loadEntryFieldKeys(supabase: Client): Promise<EntryFieldKe
     project: byExternal(PROJECT_CF),
     company: byName(COMPANY_FIELD_NAME),
     billable: byName(BILLABLE_FIELD_NAME),
+    tasks: byName('Tasks'),
   }
 }
 

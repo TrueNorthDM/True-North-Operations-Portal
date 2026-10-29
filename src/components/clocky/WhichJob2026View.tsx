@@ -21,7 +21,7 @@ export const Bill = ({ on }: { on: boolean }) => (
   <span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{on ? 'Billable' : 'Not billable'}</span>
 )
 
-export function WhichJob2026View({ projects, activities }: { projects: ProjectRow[]; activities: ActivityRow[] }) {
+export function WhichJob2026View({ projects, activities, switcher }: { projects: ProjectRow[]; activities: ActivityRow[]; switcher?: ReactNode }) {
   const [q, setQ] = useState('')
   const [client, setClient] = useState('all')
   const n = q.trim().toLowerCase()
@@ -36,6 +36,7 @@ export function WhichJob2026View({ projects, activities }: { projects: ProjectRo
         <Breadcrumb parents={['/clocky-hours']} now="Which job?" />
         <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Which job?</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Every client, division and project, with when to use it. Billable is set by the project. The same lines show when you clock in.</p>
+        {switcher}
       </div>
 
       <div className="flex flex-wrap gap-2.5 items-center">

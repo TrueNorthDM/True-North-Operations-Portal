@@ -26,7 +26,7 @@ import { loadEntryFieldKeys } from './manual-fields'
 import { jobPath, shortJob } from './format'
 import type { FieldKeys, FieldName, Structure } from './entry-rules'
 import { isLeader, type ScopeTarget, type ScopeViewer } from './scope'
-import { oldEntryClient } from './structure-2026'
+import { oldEntryClient, reportActivity, translateOldEntry, type OldEntryPlace } from './structure-2026'
 import type { AnchorChange, Cadence, CadenceChange, CadenceRules } from './periods'
 
 type Client = Db
@@ -218,6 +218,8 @@ export interface Job {
    */
   client2026: string | null
   client2026Id: number | null
+  /** Its top folder's name (the job's own for a top folder); a TSheets entry is translated by it. */
+  topName: string
 }
 
 /**
@@ -225,11 +227,34 @@ export interface Job {
  * through its top folder, where "1 - True North" reads the entry's Project and
  * Company (oldEntryClient). Null for a TSheets folder with no 2026 client.
  */
-export function entryClient2026(job: Pick<Job, 'structure' | 'client2026'> | undefined, fields: Record<string, string> | null | undefined, keys: Pick<FieldKeys, 'project' | 'company'>): string | null {
+export function entryClient2026(job: Pick<Job, 'structure' | 'client2026'> | undefined, fields: Record<string, string> | null | undefined, keys: Pick<FieldKeys, 'project' | 'company' | 'activity'>): string | null {
   if (!job) return null
   if (job.structure === 2) return job.client2026
   const f = fields ?? {}
-  return oldEntryClient(job.client2026, keys.project ? f[keys.project] : null, keys.company ? f[keys.company] : null)
+  return oldEntryClient(job.client2026, keys.project ? f[keys.project] : null, keys.company ? f[keys.company] : null, keys.activity ? f[keys.activity] : null)
+}
+
+/** A TSheets entry in the 2026 structure (translateOldEntry); a 2026 entry as it is. */
+export function translatedPlace(catalog: Pick<Catalog, 'keys' | 'tasksKey'>, job: Pick<Job, 'structure' | 'client2026' | 'topName' | 'name' | 'path'> | undefined, fields: Record<string, string> | null | undefined): OldEntryPlace | null {
+  if (!job || job.structure === 2) return null
+  const f = fields ?? {}
+  const v = (k: string | null | undefined) => (k ? f[k] ?? null : null)
+  const k = catalog.keys
+  return translateOldEntry({
+    folderClient: job.client2026, folderName: job.topName, jobName: job.name,
+    project: v(k.project), company: v(k.company), activity: v(k.activity), task: v(catalog.tasksKey), code: v(k.code),
+  })
+}
+
+/**
+ * The Activity a list shows for an entry: a 2026 job's own; a TSheets entry's
+ * in the 2026 names from the switch date's month (reportActivity), else as
+ * recorded.
+ */
+export function shownActivity(catalog: Pick<Catalog, 'keys' | 'keys2026' | 'tasksKey' | 'switchDate'>, job: { structure?: Structure } | undefined, fields: Record<string, string> | null | undefined, day: string): string {
+  const f = fields ?? {}
+  if (job?.structure === 2) return catalog.keys2026.activity ? f[catalog.keys2026.activity] ?? '' : ''
+  return reportActivity(catalog.keys.activity ? f[catalog.keys.activity] : '', catalog.tasksKey ? f[catalog.tasksKey] : '', day, catalog.switchDate)
 }
 
 export interface FieldDef {
@@ -248,6 +273,8 @@ export interface Catalog {
   fields: FieldDef[]
   /** The day the 2026 structure starts (tc_settings), or null while it is not set. */
   switchDate: string | null
+  /** The TSheets "Tasks" field's key, read only to translate old entries. */
+  tasksKey: string | null
   pathOf: (id: number | null | undefined) => string
 }
 
@@ -315,6 +342,7 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
       // A 2026 job's own client; a TSheets job's, through its top folder (migration 131), else none.
       client2026: v2 ? root.name : root.client_2026_id != null ? byId.get(root.client_2026_id)?.name ?? null : null,
       client2026Id: v2 ? root.id : root.client_2026_id,
+      topName: root.name,
     })
   }
 
@@ -354,7 +382,7 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
     })
   }
 
-  return { jobs, keys, keys2026, fields, switchDate, pathOf: id => (id != null ? jobs.get(id)?.path ?? '' : '') }
+  return { jobs, keys, keys2026, fields, switchDate, tasksKey: keys.tasks ?? null, pathOf: id => (id != null ? jobs.get(id)?.path ?? '' : '') }
 })
 
 // ── The company's rules ─────────────────────────────────────────────────────

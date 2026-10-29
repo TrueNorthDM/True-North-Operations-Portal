@@ -238,6 +238,10 @@ export interface EntryView {
   client: string
   /** The 2026 client its job reports under (Job catalogue > Clients), null for a TSheets folder with none. */
   client2026?: string | null
+  /** A TSheets entry translated into the 2026 structure (Client, Division, Project); null when the table says nothing, or a 2026 job. */
+  place?: { client: string; division: string; project: string } | null
+  /** The Activity the lists show: a TSheets entry's in the 2026 names from the switch date's month (reportActivity), else as recorded. */
+  activityShown?: string
   isI7: boolean
   /** The job's structure (1 TSheets, 2 the 2026 one), for the form's fields when the job is no longer offered. */
   structure?: Structure

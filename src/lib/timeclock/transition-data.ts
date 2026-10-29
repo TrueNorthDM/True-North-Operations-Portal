@@ -38,7 +38,7 @@ export async function loadTransition(q: TransitionQuery): Promise<TransitionData
 
   const jobs = new Map<number, CheckJob>()
   for (const j of catalog.jobs.values()) {
-    jobs.set(j.id, { id: j.id, name: j.name, path: j.path, parentId: j.parentId, kind: j.kind, billable: j.billable, isFolder: j.isFolder, structure: j.structure, level: j.level })
+    jobs.set(j.id, { id: j.id, name: j.name, path: j.path, parentId: j.parentId, kind: j.kind, billable: j.billable, isFolder: j.isFolder, structure: j.structure, level: j.level, client2026: j.client2026, topName: j.topName })
   }
   const entries: CheckEntry[] = rows.map(r => ({
     id: r.id, externalId: r.external_id, personId: r.person_id, date: r.entry_date, seconds: r.duration_seconds ?? 0,
@@ -51,6 +51,7 @@ export async function loadTransition(q: TransitionQuery): Promise<TransitionData
     jobs,
     fieldLabels: new Map(fields.map(f => [String(f.id), f.name])),
     activityFieldId,
+    oldKeys: { ...catalog.keys, tasks: catalog.tasksKey },
     nameOf: id => dir.nameOf(id),
   }, { from, to, personId, onlyProblems })
 

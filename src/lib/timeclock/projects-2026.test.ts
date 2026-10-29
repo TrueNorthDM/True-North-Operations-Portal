@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fakeDb } from '@/lib/directory/__fakes__/db'
-import { projects2026For } from './projects'
+import { oldSideFor, projects2026For } from './projects'
 
 const tc_jobcodes = [
   { id: 1, parent_id: null, name: 'COE Group', level: 'client', structure: 2 },
@@ -25,5 +25,30 @@ describe('Project hours from the switch date (owner, 26 October 2026)', () => {
   })
   it('a failed read stops the report', async () => {
     await expect(projects2026For(fakeDb({ tc_jobcodes }, { fail: ['tc_jobcodes'] }).db, ['AAAF'])).rejects.toThrow(/could not read/)
+  })
+})
+
+describe('the TSheets side of Project hours (owner, 29 October 2026)', () => {
+  const jobs = [
+    ...tc_jobcodes,
+    { id: 20, parent_id: null, name: 'Adventist Messengers/HFA', level: null, structure: 1 },
+    { id: 21, parent_id: 20, name: 'Translation', level: null, structure: 1 },
+    { id: 22, parent_id: null, name: '1 - True North', level: null, structure: 1 },
+  ]
+  const tc_field_options = [
+    { field_id: 9, label: 'AAAF' }, { field_id: 9, label: 'Africa' }, { field_id: 9, label: 'Rwanda' },
+    { field_id: 9, label: 'GP church' }, { field_id: 9, label: 'In-House' }, { field_id: 4, label: 'Rwanda' },
+  ]
+  it('reads every "2 Project" value the table places inside a row, and the HFA jobs under Africa', async () => {
+    const { values, jobIds } = await oldSideFor(fakeDb({ tc_jobcodes: jobs, tc_field_options }).db, 9, ['AAAF', 'Africa', 'GP Church', 'In-House'])
+    expect(values.get('AAAF')).toEqual(['AAAF'])
+    expect(values.get('Africa')).toEqual(['Africa', 'Rwanda'])
+    expect(values.get('GP Church')).toEqual(['GP Church', 'GP church'])
+    expect(values.get('In-House')).toEqual(['In-House'])
+    expect(jobIds.get('Africa')).toEqual([20, 21])
+    expect(jobIds.get('AAAF')).toEqual([])
+  })
+  it('a failed read stops the report', async () => {
+    await expect(oldSideFor(fakeDb({ tc_jobcodes: jobs, tc_field_options }, { fail: ['tc_field_options'] }).db, 9, ['AAAF'])).rejects.toThrow(/could not read/)
   })
 })

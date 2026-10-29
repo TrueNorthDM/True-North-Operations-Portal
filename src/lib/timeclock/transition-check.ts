@@ -3,7 +3,14 @@
  * Time run side by side, every TSheets entry dated on or after the switch date
  * (tc_settings.structure_switch_date), as TSheets recorded it beside how the
  * portal reads it in the 2026 structure (Client › Division › Project, the 2026
- * Activity, Billable from the project), with what does not fit.
+ * Activity, Billable), with what does not fit.
+ *
+ * TSheets keeps its old jobs and fields until it is switched off (owner, 29
+ * October 2026), so an old job is not a problem: the entry is translated
+ * (translateOldEntry). Problems are the real gaps: what the person can fix in
+ * QuickBooks Time (Activity, i7 Code, Notes) and what only an admin can (a job
+ * the portal does not know, a folder with no 2026 client, a value the
+ * translation table does not know).
  *
  * Pure: no database, safe on the client and in tests. The loader is
  * transition-data.ts.
@@ -12,6 +19,7 @@
 import { activityNeedsNotes } from './entry-rules'
 import { dayLabel } from './format'
 import { formatDuration } from './rounding'
+import { I7_CLIENT, translateOldEntry } from './structure-2026'
 
 // ── What goes in ────────────────────────────────────────────────────────────
 
@@ -26,7 +34,13 @@ export interface CheckJob {
   isFolder: boolean
   structure: 1 | 2
   level: 'client' | 'division' | 'project' | null
+  /** A TSheets job: the 2026 client its top folder is linked to, and that folder's name. */
+  client2026?: string | null
+  topName?: string
 }
+
+/** tc_fields ids of the old TSheets fields an entry is translated from. */
+export interface OldKeys { project: string | null; company: string | null; activity: string | null; billable: string | null; code: string | null; tasks: string | null }
 
 /** One imported entry (tc_entries with source 'tsheets'). */
 export interface CheckEntry {
@@ -47,32 +61,41 @@ export interface CheckContext {
   fieldLabels: ReadonlyMap<string, string>
   /** The 2026 Activity field's id, null while it does not exist. */
   activityFieldId: string | null
+  /** The old fields' ids (a TSheets entry is read through them). */
+  oldKeys?: OldKeys
   nameOf: (personId: string) => string
 }
 
 // ── What comes out ──────────────────────────────────────────────────────────
 
-export type ProblemKind = 'no-job' | 'old-job' | 'folder' | 'no-activity' | 'no-notes'
+export type ProblemKind = 'no-job' | 'no-client' | 'folder' | 'no-activity' | 'activity-unknown' | 'no-code' | 'no-notes'
 
 export const PROBLEM_LABEL: Record<ProblemKind, string> = {
   'no-job': 'Job unknown',
-  'old-job': 'Old TSheets job after the switch',
+  'no-client': 'No 2026 client',
   folder: 'A folder, not a project',
   'no-activity': 'Activity missing',
+  'activity-unknown': 'Activity not in the table',
+  'no-code': 'i7 Code missing',
   'no-notes': 'Notes missing',
 }
 
 /** The sentence under each problem, for the row's tooltip and the legend. */
 export const PROBLEM_HINT: Record<ProblemKind, string> = {
-  'no-job': 'The import found no job for this entry: its TSheets job is not in the catalogue.',
-  'old-job': 'The job belongs to the TSheets tree that ended on the switch date, not to the 2026 structure.',
+  'no-job': 'The import found no job for this entry: its TSheets job is not in the catalogue. For an admin.',
+  'no-client': 'The TSheets folder is not linked to a 2026 client (Company settings > Job catalogue > Clients), and the entry\'s Project and Company do not say one. For an admin.',
   folder: 'The entry sits on a client or a division of the 2026 structure, not on one of its projects.',
-  'no-activity': 'A 2026 project, but the 2026 Activity field is empty.',
+  'no-activity': 'The Activity is empty (and so is Tasks).',
+  'activity-unknown': 'The Activity has a value the translation table does not know yet. For an admin.',
+  'no-code': 'An i7 job without a valid i7 Code, so the i7 division and project are unknown.',
   'no-notes': 'The Activity is "Other" or "Meeting: Other", which asks for Notes, and there are none.',
 }
 
 /** The order problems are listed in, and counted in. */
-export const PROBLEM_ORDER: ProblemKind[] = ['no-job', 'old-job', 'folder', 'no-activity', 'no-notes']
+export const PROBLEM_ORDER: ProblemKind[] = ['no-job', 'no-client', 'folder', 'no-activity', 'activity-unknown', 'no-code', 'no-notes']
+
+/** What the person can fix in QuickBooks Time; the rest is for an admin, and Remind never sends it. */
+export const PERSON_FIXES: ReadonlySet<ProblemKind> = new Set(['no-activity', 'no-code', 'no-notes'])
 
 export interface TransitionRow {
   id: number
@@ -130,7 +153,8 @@ export function readEntry(e: CheckEntry, ctx: CheckContext): TransitionRow {
     .filter(([, v]) => v != null && String(v).trim() !== '')
     .map(([id, v]) => ({ id, label: ctx.fieldLabels.get(id) ?? `Field ${id}`, value: String(v) }))
     .sort((a, b) => a.label.localeCompare(b.label, 'en', { numeric: true }))
-  const activity = ctx.activityFieldId ? (e.fields?.[ctx.activityFieldId] ?? '').trim() || null : null
+  const val = (k: string | null | undefined) => (k ? (e.fields?.[k] ?? '').trim() || null : null)
+  let activity = val(ctx.activityFieldId)
   const notes = (e.notes ?? '').trim() || null
   const timeOff = !!job && job.kind !== 'regular'
 
@@ -138,16 +162,31 @@ export function readEntry(e: CheckEntry, ctx: CheckContext): TransitionRow {
   let place = { client: null as string | null, division: null as string | null, project: null as string | null }
   let billable: boolean | null = null
   if (!job) problems.push('no-job')
-  else if (!timeOff) {
-    if (job.structure !== 2) problems.push('old-job')
+  else if (!timeOff && job.structure === 2) {
+    place = placeOf(job, ctx.jobs)
+    if (job.level !== 'project' || job.isFolder) problems.push('folder')
     else {
-      place = placeOf(job, ctx.jobs)
-      if (job.level !== 'project' || job.isFolder) problems.push('folder')
-      else {
-        billable = job.billable
-        if (!activity) problems.push('no-activity')
-      }
+      billable = job.billable
+      if (!activity) problems.push('no-activity')
     }
+  } else if (!timeOff) {
+    // A TSheets job: TSheets keeps its old list, so the entry is translated.
+    const k = ctx.oldKeys
+    const oldActivity = val(k?.activity)
+    const task = val(k?.tasks)
+    const code = val(k?.code)
+    const t = translateOldEntry({
+      folderClient: job.client2026 ?? null, folderName: job.topName ?? null, jobName: job.name,
+      project: val(k?.project), company: val(k?.company), activity: oldActivity, task, code,
+    })
+    place = { client: t.client, division: t.division, project: t.project }
+    activity = t.activity ?? oldActivity
+    const b = (val(k?.billable) ?? '').toLowerCase()
+    billable = b === 'yes' ? true : b === 'no' ? false : null
+    if (!t.client) problems.push('no-client')
+    if (!oldActivity && !task) problems.push('no-activity')
+    else if (!t.activity) problems.push('activity-unknown')
+    if (t.client === I7_CLIENT && !t.project) problems.push('no-code')
   }
   if (!timeOff && activityNeedsNotes(activity) && !notes) problems.push('no-notes')
 
@@ -233,27 +272,30 @@ export function buildTransition(entries: readonly CheckEntry[], ctx: CheckContex
 /** How many entries a reminder lists before "And N more". */
 export const REMINDER_LINES = 15
 
-/** What the person changes in QuickBooks Time for each problem. */
+/** What the person changes in QuickBooks Time for each problem they can fix (PERSON_FIXES), in TSheets' words. */
 export function fixOf(p: ProblemKind, r: Pick<TransitionRow, 'portal'>): string {
   switch (p) {
-    case 'no-job': return 'pick the job again: the portal does not know this one'
-    case 'old-job': return 'pick the 2026 project in place of the old TSheets job'
-    case 'folder': return 'pick a project inside it, not the client or division'
-    case 'no-activity': return 'fill in the Activity'
+    case 'no-activity': return 'pick the "3 Activity"'
+    case 'no-code': return 'pick the "1 - i7 Code"'
     case 'no-notes': return `add Notes (${r.portal.activity ?? 'this Activity'} asks for them)`
+    default: return ''
   }
 }
 
+/** The problems on a row the person can fix themselves. */
+export const personProblems = (r: Pick<TransitionRow, 'problems'>): ProblemKind[] => r.problems.filter(p => PERSON_FIXES.has(p))
+
 /**
  * The bell row a person gets from Remind: how many of their TSheets entries
- * to fix, then each one (day, hours, job) with what to change, and where.
+ * to fix, then each one (day, hours, job) with what to change, and where. Only
+ * what they can fix in QuickBooks Time: the admin's gaps are never sent.
  */
 export function reminderText(rows: readonly TransitionRow[]): { title: string; body: string } {
-  const bad = rows.filter(r => r.problems.length)
+  const bad = rows.filter(r => personProblems(r).length)
   const n = bad.length
   const title = n === 1 ? 'One of your TSheets entries needs fixing in QuickBooks Time' : `${n} of your TSheets entries need fixing in QuickBooks Time`
   const lines = [...bad].sort((a, b) => a.date.localeCompare(b.date))
-    .map(r => `${dayLabel(r.date)}, ${formatDuration(r.seconds)}, ${r.tsheets.job ?? 'no job'}: ${r.problems.map(p => fixOf(p, r)).join('; ')}.`)
+    .map(r => `${dayLabel(r.date)}, ${formatDuration(r.seconds)}, ${r.tsheets.job ?? 'no job'}: ${personProblems(r).map(p => fixOf(p, r)).join('; ')}.`)
   // A bell row stays readable: the oldest REMINDER_LINES, then how many more.
   const shown = lines.slice(0, REMINDER_LINES)
   const more = lines.length - shown.length

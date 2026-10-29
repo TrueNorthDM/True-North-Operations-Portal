@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ACTIVITIES, ACTIVITY_FAMILIES, OLD_ACTIVITIES, OLD_PROJECTS, OLD_TASKS, STRUCTURE, allProjects, i7DivisionOf, oldI7Code, placeText,
-  oldEntryClient, translateActivity, translateProject, type Place,
+  oldEntryClient, reportActivity, translateActivity, translateOldEntry, translateProject, translatesActivityOn, type Place,
 } from './structure-2026'
 
 const projects = allProjects()
@@ -74,6 +74,7 @@ describe('the client of an old entry (owner, 29 October 2026)', () => {
     expect(oldEntryClient('True North Internal', '', 'GNA/COEI')).toBe('COE Group')
     expect(oldEntryClient('True North Internal', 'not listed--ask Dave', 'DDI')).toBe('COE Group')
     expect(oldEntryClient('True North Internal', null, null)).toBe('True North Internal')
+    expect(oldEntryClient('True North Internal', 'In-House', 'True North', 'Fundraising')).toBe('COE Group')
   })
   it('settles the values that were waiting for a decision', () => {
     for (const t of OLD_ACTIVITIES) expect(t.sure, t.old).not.toBe('check')
@@ -82,5 +83,53 @@ describe('the client of an old entry (owner, 29 October 2026)', () => {
     expect(fund?.to).toBe('Marketing: Strategy & Campaigns')
     expect(fund?.place && exists(fund.place)).toBe(true)
     expect(ACTIVITIES.some(a => a.name === fund?.to)).toBe(true)
+  })
+})
+
+describe('a whole TSheets entry, translated (owner, 29 October 2026)', () => {
+  const tn = { folderClient: 'True North Internal', folderName: '1 - True North' }
+  it('reads an i7 job by its code, and says so when the code is not one', () => {
+    expect(translateOldEntry({ folderClient: 'i7 Marketing', folderName: '2 -  i7 Marketing', code: 'WMFL-MKTG', activity: 'WebDev' }))
+      .toEqual({ client: 'i7 Marketing', division: 'Wagner Meters', project: 'WMFL-MKTG', activity: 'Web Dev & Systems', sure: 'same' })
+    expect(translateOldEntry({ folderClient: 'i7 Marketing', folderName: '2 - i7 Marketing', code: '1 None', activity: 'WebDev' }))
+      .toMatchObject({ client: 'i7 Marketing', division: null, project: null, sure: 'none' })
+  })
+  it('places the HFA folder under Africa › HopeFor.Africa', () => {
+    expect(translateOldEntry({ folderClient: 'COE Group', folderName: 'Adventist Messengers/HFA', activity: 'Translation' }))
+      .toEqual({ client: 'COE Group', division: 'Africa', project: 'HopeFor.Africa', activity: 'Content: Translation', sure: 'same' })
+  })
+  it('reads "1 - True North" by its Project, then its Company', () => {
+    expect(translateOldEntry({ ...tn, project: 'AAAF', company: 'True North', activity: 'Content: Writing' }))
+      .toMatchObject({ client: 'COE Group', division: 'Seeker Outreach', project: 'AAAF', activity: 'Content: Writing', sure: 'same' })
+    expect(translateOldEntry({ ...tn, project: 'In-House', company: 'COE', activity: 'General admin' }))
+      .toMatchObject({ client: 'COE Group', division: null, project: null, activity: 'Admin', sure: 'closest' })
+    expect(translateOldEntry({ ...tn, project: 'In-House', company: 'True North', activity: 'Management' }))
+      .toMatchObject({ client: 'True North Internal', division: null, project: null, activity: 'Leadership/Management' })
+    expect(translateOldEntry({ ...tn, project: 'Africa', company: 'COE' })).toMatchObject({ client: 'COE Group', division: 'Africa', project: null })
+  })
+  it('places Fundraising in its division, whatever the Company says', () => {
+    expect(translateOldEntry({ ...tn, project: 'In-House', company: 'True North', activity: 'Fundraising' }))
+      .toMatchObject({ client: 'COE Group', division: 'Fundraising', project: 'Fundraising General', activity: 'Marketing: Strategy & Campaigns', sure: 'closest' })
+  })
+  it('falls back to Tasks for the Activity', () => {
+    expect(translateOldEntry({ ...tn, project: 'AAAF', task: 'Translation: Review/Edit' }).activity).toBe('Content: Translation')
+    expect(translateOldEntry({ ...tn, project: 'AAAF', activity: 'SEO Research', task: 'Graphics' }).activity).toBe('SEO: Research')
+  })
+  it('says nothing it does not know', () => {
+    expect(translateOldEntry({ folderClient: null, folderName: 'Mystery', activity: 'WebDev' })).toMatchObject({ client: null, division: null, project: null, sure: 'none' })
+    expect(translateOldEntry({ ...tn, project: 'In-House', company: 'COE', activity: 'Basket weaving' })).toMatchObject({ client: 'COE Group', activity: null, sure: 'none' })
+  })
+})
+
+describe('report Activity names by date', () => {
+  it('names a TSheets Activity in the 2026 list from the switch date\'s month, never with no date', () => {
+    expect(translatesActivityOn('2026-11-01', '2026-11-08')).toBe(true)
+    expect(translatesActivityOn('2026-10-31', '2026-11-08')).toBe(false)
+    expect(translatesActivityOn('2026-11-30', null)).toBe(false)
+    expect(reportActivity('WebDev', '', '2026-11-02', '2026-11-08')).toBe('Web Dev & Systems')
+    expect(reportActivity('WebDev', '', '2026-10-02', '2026-11-08')).toBe('WebDev')
+    expect(reportActivity('', 'Graphics', '2026-11-02', '2026-11-08')).toBe('Design/Graphics')
+    expect(reportActivity('Basket weaving', '', '2026-11-02', '2026-11-08')).toBe('Basket weaving')
+    expect(reportActivity(null, null, '2026-11-02', '2026-11-08')).toBe('')
   })
 })

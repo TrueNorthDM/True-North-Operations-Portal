@@ -8,7 +8,7 @@
  * Not a "use server" file: app/(app)/clocky-hours/approvals/actions.ts serves it.
  */
 
-import { allRows, db, keysOfJob, loadCatalog, loadDirectory, type Viewer } from './clocky-context'
+import { allRows, db, loadCatalog, loadDirectory, shownActivity, type Viewer } from './clocky-context'
 import { overlapFor } from './clocky-store'
 import { approveOverlapLine } from './entry-rules'
 import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
@@ -63,8 +63,7 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
     if (!canApproveCorrection(v, target)) continue
     const zone = dir.zoneOf(r.person_id)
     const job = catalog.jobs.get(r.jobcode_id)
-    const ak = keysOfJob(catalog, job).activity
-    const activity = ak ? r.fields?.[ak] ?? '' : ''
+    const activity = shownActivity(catalog, job, r.fields ?? {}, r.entry_date)
     const abbr = zone !== v.zone ? ` ${zoneAbbr(zone, new Date(r.started_at))}` : ''
     let overlap: string | null = null
     if (r.state === 'pending') {

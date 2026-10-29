@@ -9,8 +9,12 @@
  * The filters change the address and the server reads again (TransitionLive).
  * The design check hands in its own `go`, which answers from sample data.
  *
- * Remind (owner, 28 October 2026): one button per person with a problem,
- * which tells them in the bell what to fix in QuickBooks Time (actions.ts).
+ * TSheets keeps its old jobs and fields (owner, 29 October 2026): the right
+ * side is the entry translated into the 2026 structure.
+ *
+ * Remind (owner, 28 October 2026): one button per person with something they
+ * can fix in QuickBooks Time (Activity, i7 Code, Notes), which tells them in
+ * the bell what to change (actions.ts). An admin's gaps are never sent.
  */
 
 import { useState, useTransition } from 'react'
@@ -24,7 +28,7 @@ import { remindTransition } from '@/app/(app)/clocky-hours/transition/actions'
 import { BTN_SMALL, FieldLabel, Icon, ICON, LabeledSelect } from '@/components/clocky/entries/ui'
 import { dateLabel, dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
-import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, type TransitionRow } from '@/lib/timeclock/transition-check'
+import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, personProblems, type TransitionRow } from '@/lib/timeclock/transition-check'
 import type { TransitionData, TransitionQuery } from '@/lib/timeclock/transition-data'
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
@@ -67,7 +71,7 @@ function RemindStrip({ rows, remind }: { rows: readonly TransitionRow[]; remind:
   const [said, setSaid] = useState<Record<string, { ok: boolean; text: string }>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const people = new Map<string, { name: string; n: number }>()
-  for (const r of rows) if (r.problems.length) {
+  for (const r of rows) if (personProblems(r).length) {
     const p = people.get(r.personId) ?? { name: r.person, n: 0 }
     people.set(r.personId, { ...p, n: p.n + 1 })
   }
@@ -280,7 +284,7 @@ export function TransitionReport({ data, go, remind }: { data: TransitionData; g
             </div>
           </div>
           <p className="m-0 text-[12px] text-muted">
-            Billable comes from the 2026 project. The Activity is the 2026 Activity field{data.activityField ? ` ("${data.activityField}")` : ''}; the old TSheets fields show on the left as they were recorded. Time off is listed but not checked.
+            TSheets keeps its old jobs and fields: the right side is the entry translated into the 2026 structure (the client from its folder, the division and project from its Project or i7 Code, the Activity from its old Activity or Tasks). Billable is the entry&apos;s own &quot;4 Billable&quot;; on a 2026 project, the project&apos;s. Time off is listed but not checked.
           </p>
         </section>
       )}

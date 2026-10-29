@@ -215,7 +215,7 @@ const TREE: Node[] = [
     { key: 'clocky-reports', label: 'Reports', kind: 'page', v: [1, 1, 1], note: 'Everyone for Super Admins and Admins; a Team Leader their teams, hours only; a User their own (Reports.dc.html).' },
     { key: 'ck-which-job', label: 'Which job?: every job and when to use it', kind: 'page', always: true },
     { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
-    { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, as the portal reads them', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side. Reading only.' },
+    { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, translated into the 2026 structure', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side. Reading only.' },
   ] },
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
   // Super Admins decide (time off with ck-timeoff, the rest with rq-decide).

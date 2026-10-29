@@ -171,7 +171,7 @@ export const RAIL: readonly RailEntry[] = [
           // Clocky part 2 (Job Catalogue.dc.html 11D): for everyone.
           { key: 'clocky-which-job', label: 'Which job?', href: '/clocky-hours/which-job', icon: 'manual', surface: 'ck-which-job' },
           { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety', alsoSurface: 'clocky-hours' },
-          // The 2026 structure's switch (27 October 2026): TSheets entries from the switch date.
+          // The 2026 structure's switch (27 October 2026): TSheets entries from the switch date, translated (TSheets keeps its old list).
           { key: 'clocky-transition', label: 'TSheets transition', href: '/clocky-hours/transition', icon: 'client-reports', surface: 'ck-transition', alsoSurface: 'clocky-hours' },
           // A section of Company settings (Admin > Configuration).
           { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', anySurface: ['ck-import', 'ck-rules', 'ck-recon'], alsoSurface: 'clocky-hours' },

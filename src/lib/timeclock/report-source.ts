@@ -14,6 +14,7 @@
 import type { Db } from '@/lib/supabase/types'
 import { I7_PARENT_JOBCODE_ID, I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
 import type { I7Entry } from '@/lib/tsheets/types'
+import { reportActivity } from './structure-2026'
 
 type Client = Db
 
@@ -98,18 +99,25 @@ export async function jobcodeSubtree(
 /**
  * The 2026 structure's i7 projects: project job code -> its i7 code (the
  * project IS the code, under the division that is the report's block), and the
- * 2026 Activity field. Empty before the 2026 structure exists. Entries before
- * the switch date keep reading the "1 - i7 Code" field; entries from it read
- * the project, so the report is the same on both sides (owner, 26 October 2026).
+ * 2026 Activity field. Empty before the 2026 structure exists. A TSheets entry
+ * reads the "1 - i7 Code" field and a North Time entry the project, so the
+ * report is the same on both sides (owner, 26 October 2026). TSheets keeps its
+ * old list until it is switched off (owner, 29 October 2026): from the switch
+ * date's month a TSheets entry's Activity reads in the 2026 names
+ * (reportActivity), with the switch date and the Tasks field read here.
  */
-export async function i7Projects2026(supabase: Client): Promise<{ codeOf: Map<number, string>; activity: string | null }> {
-  const [jobs, field] = await Promise.all([
+export async function i7Projects2026(supabase: Client): Promise<{ codeOf: Map<number, string>; activity: string | null; switchDate: string | null; tasks: string | null }> {
+  const [jobs, field, settings, tasks] = await Promise.all([
     supabase.from('tc_jobcodes').select('id, parent_id, name, level').eq('structure', 2),
     supabase.from('tc_fields').select('id').eq('structure', 2).order('id').limit(1).maybeSingle(),
+    supabase.from('tc_settings').select('structure_switch_date').eq('singleton_id', 1).maybeSingle(),
+    supabase.from('tc_fields').select('id, name').eq('structure', 1),
   ])
   // Unread is not "none": the month's i7 hours on 2026 projects would vanish from the report.
   if (jobs.error) throw new Error(`The 2026 i7 projects could not be read: ${jobs.error.message}`)
   if (field.error) throw new Error(`The 2026 Activity field could not be read: ${field.error.message}`)
+  if (settings.error) throw new Error(`The structure switch date could not be read: ${settings.error.message}`)
+  if (tasks.error) throw new Error(`The Tasks field could not be read: ${tasks.error.message}`)
   const rows = (jobs.data ?? []) as { id: number; parent_id: number | null; name: string; level: string | null }[]
   const byId = new Map(rows.map(r => [r.id, r]))
   const clientOf = (r: { parent_id: number | null; id: number }): number => {
@@ -120,7 +128,11 @@ export async function i7Projects2026(supabase: Client): Promise<{ codeOf: Map<nu
   const root = rows.find(r => r.parent_id == null && r.name.trim().toLowerCase() === 'i7 marketing')
   const codeOf = new Map<number, string>()
   if (root) for (const r of rows) if (r.level === 'project' && clientOf(r) === root.id) codeOf.set(r.id, r.name.trim())
-  return { codeOf, activity: field.data ? String((field.data as { id: number }).id) : null }
+  return {
+    codeOf, activity: field.data ? String((field.data as { id: number }).id) : null,
+    switchDate: (settings.data as { structure_switch_date: string | null } | null)?.structure_switch_date ?? null,
+    tasks: (id => (id == null ? null : String(id)))(((tasks.data ?? []) as { id: number; name: string }[]).find(f => (f.name ?? '').trim().toLowerCase() === 'tasks')?.id),
+  }
 }
 
 /** The i7 entries of a date range, in the shape buildI7Report already expects. */
@@ -173,7 +185,9 @@ export async function loadI7EntriesHere(
         duration: r.duration_seconds,
         date: r.entry_date,
         i7Code: code2026 ?? (keys.code ? f[keys.code] : '') ?? '',
-        activity: (code2026 != null ? (p2026.activity ? f[p2026.activity] : '') : (keys.activity ? f[keys.activity] : '')) ?? '',
+        activity: (code2026 != null
+          ? (p2026.activity ? f[p2026.activity] : '')
+          : reportActivity(keys.activity ? f[keys.activity] : '', p2026.tasks ? f[p2026.tasks] : '', r.entry_date, p2026.switchDate)) ?? '',
       })
     }
     if (rows.length < PAGE) break

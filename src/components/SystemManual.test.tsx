@@ -49,7 +49,7 @@ describe('SystemManual, Home and North Time (27 October 2026)', () => {
     const t = container.querySelector('#transition')!
     expect(t).toHaveTextContent('Sunday, Nov 8')
     expect(t).toHaveTextContent('Sunday, Nov 22')
-    expect(t).toHaveTextContent('Old entries keep their TSheets job and fields for good')
+    expect(t).toHaveTextContent('TSheets entries keep their job and fields for good')
   })
 
   it('no longer says the rail carries no counts, nor that Reports is coming soon', () => {

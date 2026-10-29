@@ -22,11 +22,13 @@ const JOBS: CheckJob[] = [
   j(8, 'WM-MKTG', 7, 'project', 'i7 Marketing › Wagner Meters › WM-MKTG'),
   j(9, 'True North Internal', null, 'client', 'True North Internal', { billable: false }),
   j(10, 'TN Operations', 9, 'project', 'True North Internal › TN Operations', { billable: false }),
-  j(20, '2 - i7 Marketing', null, null, '2 - i7 Marketing', { structure: 1, isFolder: true }),
-  j(21, 'Content', 20, null, '2 - i7 Marketing › Content', { structure: 1 }),
+  j(20, '2 - i7 Marketing', null, null, '2 - i7 Marketing', { structure: 1, isFolder: true, client2026: 'i7 Marketing', topName: '2 - i7 Marketing' }),
+  j(21, 'Content', 20, null, '2 - i7 Marketing › Content', { structure: 1, client2026: 'i7 Marketing', topName: '2 - i7 Marketing' }),
+  j(23, '1 - True North', null, null, '1 - True North', { structure: 1, isFolder: true, client2026: 'True North Internal', topName: '1 - True North' }),
+  j(24, 'SEO', 23, null, '1 - True North › SEO', { structure: 1, client2026: 'True North Internal', topName: '1 - True North' }),
   j(22, 'Vacation', null, null, 'Vacation', { structure: 1, kind: 'pto', isFolder: false }),
 ]
-const LABELS = new Map([['11', '1 Company'], ['12', '2 Project'], ['13', '3 Activity'], ['15', '5 i7 Code'], ['40', 'Activity']])
+const LABELS = new Map([['11', '1 Company'], ['12', '2 Project'], ['13', '3 Activity'], ['14', '4 Billable'], ['15', '1 - i7 Code'], ['16', 'Tasks'], ['40', 'Activity']])
 const NAMES: Record<string, string> = { p1: 'Wendy Cacka', p2: 'Justus Tsofa', p3: 'Clarise Nixon', p4: 'Cheyenne Wilson', p5: 'Samuel Manzi' }
 
 let id = 0
@@ -44,6 +46,8 @@ const ENTRIES: CheckEntry[] = [
   e('p1', '2026-11-05', 1, 10, { '40': 'Meeting: Other' }, 'All-hands planning'),
   e('p4', '2026-11-06', 8, 22, {}),
   e('p5', '2026-11-06', 5, 5, { '40': 'Marketing: Email' }, 'Donor email'),
+  e('p4', '2026-11-04', 3, 24, { '11': 'COE', '12': 'AAAF', '13': 'SEO Research', '14': 'yes' }, 'Keyword map'),
+  e('p3', '2026-11-05', 1.5, 24, { '11': 'True North', '12': 'In-House', '14': 'no' }),
   // Before the switch: never listed.
   e('p1', '2026-10-30', 6, 21, { '11': 'i7', '13': 'Web Dev' }),
 ]
@@ -57,6 +61,7 @@ export function sampleTransition(q: TransitionQuery, frame: 'data' | 'empty' | '
     jobs: new Map(JOBS.map(x => [x.id, x])),
     fieldLabels: LABELS,
     activityFieldId: '40',
+    oldKeys: { company: '11', project: '12', activity: '13', billable: '14', code: '15', tasks: '16' },
     nameOf: p => NAMES[p] ?? 'Someone',
   }, { from, to, personId, onlyProblems: !!q.problems })
   return { switchDate: SWITCH, from, to, personId, onlyProblems: !!q.problems, activityField: 'Activity', ...view }

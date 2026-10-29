@@ -7,7 +7,7 @@
  * Codes by brand.
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Icon } from '@/components/clocky/entries/ui'
 import type { GuideGroup } from '@/lib/timeclock/job-catalogue'
@@ -20,7 +20,7 @@ const BRANDS: [string, (c: string) => boolean][] = [
   ['Other codes', c => !/^(i7|BE|WM)-/.test(c)],
 ]
 
-export function WhichJobView({ groups, codes }: { groups: GuideGroup[]; codes: string[] }) {
+export function WhichJobView({ groups, codes, switcher }: { groups: GuideGroup[]; codes: string[]; switcher?: ReactNode }) {
   const [q, setQ] = useState('')
   const [bill, setBill] = useState<'all' | 'yes' | 'no'>('all')
   const needle = q.trim().toLowerCase()
@@ -36,6 +36,7 @@ export function WhichJobView({ groups, codes }: { groups: GuideGroup[]; codes: s
         <Breadcrumb parents={['/clocky-hours']} now="Which job?" />
         <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Which job?</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Every job, when to use it, and whether it is billable by default. The same lines show under each job when you clock in.</p>
+        {switcher}
       </div>
       <div className="flex gap-2.5 items-center flex-wrap">
         <div className="relative w-[300px] max-w-full">

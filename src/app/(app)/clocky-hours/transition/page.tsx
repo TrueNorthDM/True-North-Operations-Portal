@@ -1,7 +1,9 @@
 // North Time > TSheets transition (27 October 2026): while TSheets and North
-// Time run side by side, every TSheets entry dated on or after the switch date
-// to the 2026 job structure, as TSheets recorded it and as the portal reads
-// it, problems first. Super Admins and Admins (ck-transition). At a level
+// Time run side by side, every TSheets entry dated on or after the switch date,
+// as TSheets recorded it and as the portal reads
+// it, problems first. TSheets keeps its old jobs and fields (owner, 29 October
+// 2026), so the portal side is each entry translated into the 2026 structure.
+// Super Admins and Admins (ck-transition). At a level
 // without it the page is not in North Time's menu, and its address opens the
 // person's own Time entries. Reading only: nothing here changes an entry.
 //

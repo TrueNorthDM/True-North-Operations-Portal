@@ -3,10 +3,12 @@
  * Activities", with the owner's changes of 26 and 27 October 2026), and the
  * translation table from the TSheets structure it replaces.
  *
- * Every entry from the switch date answers: Client, Division, Project,
- * Activity, Billable (from the project) and Notes. Entries before the switch
- * keep the old job and fields for good; the translation table below only puts
- * report rows from both sides next to each other. It never rewrites an entry.
+ * North Time asks every entry from the switch date: Client, Division,
+ * Project, Activity, Billable (from the project) and Notes. TSheets keeps its
+ * old jobs and fields until it is switched off (owner, 29 October 2026: it is
+ * never rebuilt), so its entries, before and after the switch date, are read
+ * through the translation table below (translateOldEntry). The table never
+ * rewrites an entry.
  *
  * Pure data and lookups: no database, safe on the client.
  */
@@ -205,7 +207,7 @@ export const OLD_ACTIVITIES: Translation[] = [
   { old: 'Other (indicate in Notes)', to: 'Other', sure: 'same' },
 ]
 
-/** TSheets field "Tasks" (ends on the switch date), to the 26 activities. */
+/** TSheets field "Tasks" (North Time has no Tasks; TSheets keeps it), to the 26 activities. */
 export const OLD_TASKS: Translation[] = [
   { old: 'Brief Development', to: 'Content: Strategy & Briefs', sure: 'same' },
   { old: 'Content Process', to: 'Content: Strategy & Briefs', sure: 'closest' },
@@ -250,10 +252,96 @@ export const translateTask = lookup(OLD_TASKS)
  * too. There the "2 Project" value decides (AAAF, Africa, ASI, NAD and GP are
  * COE Group), and only for In-House or no project the "1 Company" value.
  */
-export function oldEntryClient(folderClient: string | null, project: string | null | undefined, company: string | null | undefined): string | null {
+export function oldEntryClient(folderClient: string | null, project: string | null | undefined, company: string | null | undefined, activity?: string | null): string | null {
   if (folderClient !== TN_CLIENT) return folderClient
   const byProject = translateProject(project)?.to
   if (byProject && typeof byProject === 'object') return byProject.client
+  // An Activity that says where the work sits wins over the Company (Fundraising is COE's, whatever the Company field says).
+  const byActivity = translateActivity(activity)?.place
+  if (byActivity) return byActivity.client
   const byCompany = translateCompany(company)?.to
   return byCompany && typeof byCompany === 'object' ? byCompany.client : folderClient
+}
+
+// ── A whole TSheets entry, translated ───────────────────────────────────────
+
+/** What a TSheets entry says, by its old job and fields. */
+export interface OldEntry {
+  /** The 2026 client its top folder is linked to (Job catalogue > Clients), or null. */
+  folderClient: string | null
+  /** Its top folder's name ("1 - True North", "2 - i7 Marketing", "Adventist Messengers/HFA"...). */
+  folderName: string | null
+  /** The job itself (a department under "1 - True North", a GP branch...). */
+  jobName?: string | null
+  project?: string | null
+  company?: string | null
+  activity?: string | null
+  task?: string | null
+  code?: string | null
+}
+
+/** A TSheets entry in the 2026 structure, as far as the table can say; `sure` is the weakest line used. */
+export interface OldEntryPlace { client: string | null; division: string | null; project: string | null; activity: string | null; sure: Sureness }
+
+const RANK: Record<Sureness, number> = { none: 0, check: 1, closest: 2, same: 3 }
+const weakest = (list: Sureness[]): Sureness => list.reduce((a, b) => (RANK[b] < RANK[a] ? b : a), 'same' as Sureness)
+const placeOfLine = (t: Translation | null): Place | null => (t?.to && typeof t.to === 'object' ? t.to : null)
+
+/**
+ * A TSheets entry read in the 2026 structure (owner, 29 October 2026: TSheets
+ * keeps its old list until it is switched off, and every entry is translated):
+ *   - an i7 job: i7 Marketing › the code's division › the code;
+ *   - a folder whose table line has a place (Adventist Messengers/HFA: COE
+ *     Group › Africa › HopeFor.Africa);
+ *   - otherwise the client of oldEntryClient, with the division and project of
+ *     its "2 Project" value when that sits under the same client, or else of
+ *     an Activity that says where the work sits (Fundraising);
+ *   - the Activity from "3 Activity", else from "Tasks".
+ * Billable stays the entry's own "4 Billable". Pure.
+ */
+export function translateOldEntry(e: OldEntry): OldEntryPlace {
+  const sure: Sureness[] = []
+  const act = translateActivity(e.activity)
+  const task = act ? null : translateTask(e.task)
+  const actLine = act ?? task
+  const activity = actLine && typeof actLine.to === 'string' ? actLine.to : null
+  sure.push(activity ? actLine!.sure : 'none')
+
+  const done = (pl: Place | null, client: string | null): OldEntryPlace => ({
+    client: pl?.client ?? client, division: pl?.division ?? null, project: pl?.project ?? null, activity, sure: weakest(sure),
+  })
+
+  if (e.folderClient === I7_CLIENT) {
+    const code = e.code?.trim() ? oldI7Code(e.code) : null
+    sure.push(code?.sure ?? 'none')
+    return done(placeOfLine(code), I7_CLIENT)
+  }
+  const folder = placeOfLine(OLD_JOBS.find(t => norm(t.old) === norm(e.folderName ?? '')) ?? null)
+  if (folder && e.folderClient === folder.client) { sure.push('same'); return done(folder, folder.client) }
+
+  const client = oldEntryClient(e.folderClient, e.project, e.company, e.activity)
+  if (!client) { sure.push('none'); return done(null, null) }
+  const proj = translateProject(e.project)
+  const byProject = placeOfLine(proj)
+  if (byProject && byProject.client === client) { sure.push(proj!.sure); return done(byProject, client) }
+  const byActivity = act?.place && (act.place.client === client || e.folderClient === TN_CLIENT) ? act.place : null
+  if (byActivity) return done(byActivity, byActivity.client)
+  sure.push('closest')
+  return done(null, client)
+}
+
+/**
+ * Whether the reports name a TSheets entry's Activity in the 2026 list: from
+ * the first day of the switch date's month (so the whole month reads in one
+ * set of names); before it, and while no date is set, as it was recorded.
+ */
+export const translatesActivityOn = (day: string, switchDate: string | null | undefined): boolean =>
+  !!switchDate && day >= `${switchDate.slice(0, 7)}-01`
+
+/** The Activity a report shows for a TSheets entry on this day (translatesActivityOn). */
+export function reportActivity(old: string | null | undefined, task: string | null | undefined, day: string, switchDate: string | null | undefined): string {
+  const raw = (old ?? '').trim()
+  if (!translatesActivityOn(day, switchDate)) return raw
+  const t = translateActivity(raw) ?? (raw ? null : translateTask(task))
+  return t && typeof t.to === 'string' ? t.to : raw
 }

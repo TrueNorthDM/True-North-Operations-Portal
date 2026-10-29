@@ -57,7 +57,8 @@ function Cell({ k, r, all, nowMs, onEdit }: { k: ColumnKey; r: EntryView; all: b
   }
   if (k === 'job') return <div className={`${CELL} text-tn-ink font-semibold`} title={r.path}>{r.path}</div>
   if (k === 'client' || k === 'division' || k === 'place') {
-    const p = placeOf(r.path)
+    // A TSheets entry shows translated into the 2026 structure; with nothing to translate, its old job.
+    const p = r.place ?? placeOf(r.path)
     const v = k === 'client' ? p.client : k === 'division' ? p.division : p.project
     return <div className={`${CELL} ${k === 'place' ? 'text-tn-ink font-semibold' : 'text-foreground'}`} title={v || undefined}>{v || DASH}</div>
   }
@@ -67,7 +68,7 @@ function Cell({ k, r, all, nowMs, onEdit }: { k: ColumnKey; r: EntryView; all: b
   if (k === 'code') return <div className={`${CELL} text-foreground`}>{r.code || DASH}</div>
   if (k === 'notes') return <div className={`${CELL} text-muted`} title={r.notes || undefined}>{r.notes || DASH}</div>
   // Activity: "+ Add Activity" where it can be fixed, "Missing" where it cannot.
-  if (r.activity) return <div className={`${CELL} text-foreground`} title={r.activity}>{r.activity}</div>
+  if (r.activity) return <div className={`${CELL} text-foreground`} title={r.activity}>{r.activityShown || r.activity}</div>
   if (r.canEdit) {
     return (
       <div className={CELL}>

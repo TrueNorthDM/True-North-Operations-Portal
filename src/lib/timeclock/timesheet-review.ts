@@ -108,7 +108,7 @@ export interface TimesheetReview {
 }
 
 /** The entry fields the page reads (a subset of Time entries' EntryView). */
-export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable' | 'path' | 'client2026' | 'short' | 'start' | 'end' | 'activity' | 'company' | 'project' | 'code' | 'notes' | 'autoOut'>
+export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable' | 'path' | 'client2026' | 'short' | 'start' | 'end' | 'activity' | 'activityShown' | 'company' | 'project' | 'code' | 'notes' | 'autoOut'>
 
 /** Everything the page is built from: read by gatherReview, or made up by a design check. */
 export interface ReviewSource {
@@ -455,8 +455,8 @@ function entryRow(e: ReviewView, zone: string): ReviewEntry {
   const client = billedClient(e)
   return {
     time: e.start ? `${timeLabel(e.start, zone)} to ${e.end ? timeLabel(e.end, zone) : 'now'}` : 'Duration only',
-    dur: formatDuration(e.seconds), job: e.path, act: e.activity || '–', cp: [e.company, e.project].filter(Boolean).join(' · ') || '–',
-    code: e.code || '–', meta: [e.activity, e.company, e.project, e.code].filter(Boolean).join(' · '),
+    dur: formatDuration(e.seconds), job: e.path, act: e.activityShown || e.activity || '–', cp: [e.company, e.project].filter(Boolean).join(' · ') || '–',
+    code: e.code || '–', meta: [e.activityShown || e.activity, e.company, e.project, e.code].filter(Boolean).join(' · '),
     billable: e.billable === 'yes', note: e.notes, color: clientColor(client), client,
     flag: e.autoOut ? (e.autoOut.confirmed ? { text: 'Stopped by North Time, end time confirmed', tone: 'neu' } : { text: 'Stopped by North Time, end time not confirmed', tone: 'warn' }) : null,
   }

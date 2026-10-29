@@ -2,9 +2,9 @@
 
 /**
  * Remind on North Time > TSheets transition (owner, 28 October 2026): tells
- * one person, in the bell, which of their TSheets entries in the period the
- * portal cannot read in the 2026 structure and what to change on each, to fix
- * in QuickBooks Time. Super Admins and Admins (ck-transition), never from a
+ * one person, in the bell, which of their TSheets entries in the period lack
+ * something only they can add in QuickBooks Time (the Activity, the i7 Code,
+ * Notes) and what to change on each. Super Admins and Admins (ck-transition), never from a
  * View Stage preview. The same entries are told once a day.
  */
 
@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto'
 import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { localDate } from '@/lib/timeclock/format'
-import { reminderText } from '@/lib/timeclock/transition-check'
+import { personProblems, reminderText } from '@/lib/timeclock/transition-check'
 import { loadTransition } from '@/lib/timeclock/transition-data'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { notifyClockyTsheetsFix } from '@/lib/notifications/run'
@@ -29,8 +29,9 @@ export async function remindTransition(input: { personId: string; from?: string 
     const personId = String(input.personId ?? '')
     const data = await loadTransition({ from: input.from, to: input.to, person: personId, problems: true })
     if (!data.switchDate || data.personId !== personId) return no('That person has no TSheets entries in this period.')
-    const rows = data.rows.filter(r => r.personId === personId && r.problems.length)
-    if (!rows.length) return no('Nothing to fix for that person in this period.')
+    // Only what the person can fix in QuickBooks Time; a job, folder or table gap is for an admin.
+    const rows = data.rows.filter(r => r.personId === personId && personProblems(r).length)
+    if (!rows.length) return no('Nothing for that person to fix in this period: what is left is for an admin (a job, a folder link or the translation table).')
     const dir = await loadDirectory()
     const { title, body } = reminderText(rows)
     // Once a day for the same entries: a second press the same day is not a second bell row.

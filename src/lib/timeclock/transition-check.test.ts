@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildTransition, periodOf, readEntry, reminderText, sortRows, summarize, type CheckContext, type CheckEntry, type CheckJob } from './transition-check'
+import { buildTransition, periodOf, personProblems, readEntry, reminderText, sortRows, summarize, type CheckContext, type CheckEntry, type CheckJob } from './transition-check'
 
 // The transition report (27 October 2026): TSheets entries from the switch
-// date, as recorded and as the portal reads them in the 2026 structure.
+// date, as recorded and as the portal reads them in the 2026 structure. TSheets
+// keeps its old jobs and fields (owner, 29 October 2026): they are translated.
 
 const job = (j: Partial<CheckJob> & Pick<CheckJob, 'id' | 'name'>): CheckJob => ({
   path: j.name, parentId: null, kind: 'regular', billable: false, isFolder: false, structure: 2, level: 'project', ...j,
@@ -13,14 +14,18 @@ const JOBS: CheckJob[] = [
   job({ id: 3, name: 'HopeFor.Africa', parentId: 2, billable: true, path: 'COE Group › Africa › HopeFor.Africa' }),
   job({ id: 4, name: 'True North Internal', level: 'client', isFolder: true }),
   job({ id: 5, name: 'TN General', parentId: 4, path: 'True North Internal › TN General' }),
-  job({ id: 10, name: 'Content', parentId: 11, structure: 1, level: null, billable: true, path: '2 - i7 Marketing › Content' }),
-  job({ id: 11, name: '2 - i7 Marketing', structure: 1, level: null, isFolder: true }),
+  job({ id: 10, name: 'Content', parentId: 11, structure: 1, level: null, billable: true, path: '2 - i7 Marketing › Content', client2026: 'i7 Marketing', topName: '2 - i7 Marketing' }),
+  job({ id: 11, name: '2 - i7 Marketing', structure: 1, level: null, isFolder: true, client2026: 'i7 Marketing', topName: '2 - i7 Marketing' }),
+  job({ id: 13, name: 'SEO', parentId: 12, structure: 1, level: null, path: '1 - True North › SEO', client2026: 'True North Internal', topName: '1 - True North' }),
+  job({ id: 15, name: 'Translation', parentId: 14, structure: 1, level: null, path: 'Adventist Messengers/HFA › Translation', client2026: 'COE Group', topName: 'Adventist Messengers/HFA' }),
+  job({ id: 17, name: 'Odd job', parentId: 16, structure: 1, level: null, path: 'Mystery › Odd job', client2026: null, topName: 'Mystery' }),
   job({ id: 20, name: 'Vacation', kind: 'pto', structure: 1, level: null }),
 ]
 const ctx: CheckContext = {
   jobs: new Map(JOBS.map(j => [j.id, j])),
-  fieldLabels: new Map([['7', '1 Company'], ['8', '3 Activity'], ['50', 'Activity']]),
+  fieldLabels: new Map([['7', '1 Company'], ['8', '3 Activity'], ['9', '2 Project'], ['6', '1 - i7 Code'], ['4', '4 Billable'], ['5', 'Tasks'], ['50', 'Activity']]),
   activityFieldId: '50',
+  oldKeys: { company: '7', activity: '8', project: '9', code: '6', billable: '4', tasks: '5' },
   nameOf: id => ({ p1: 'Wendy Cacka', p2: 'Justus Tsofa' } as Record<string, string>)[id] ?? 'Someone',
 }
 let n = 0
@@ -53,11 +58,32 @@ describe('reading one TSheets entry', () => {
     expect(readEntry(entry({ jobcodeId: 999 }), ctx).problems).toEqual(['no-job'])
   })
 
-  it('flags an old TSheets job used after the switch, and reads nothing of the 2026 structure from it', () => {
-    const r = readEntry(entry({ jobcodeId: 10, fields: { '8': 'Writing' } }), ctx)
-    expect(r.problems).toEqual(['old-job'])
-    expect(r.portal).toMatchObject({ client: null, division: null, project: null, activity: null, billable: null })
-    expect(r.tsheets.fields).toEqual([{ label: '3 Activity', value: 'Writing' }])
+  it('translates an old TSheets job: the client by its Project, the Activity, Billable as recorded', () => {
+    const r = readEntry(entry({ jobcodeId: 13, fields: { '9': 'AAAF', '7': 'True North', '8': 'SEO Research', '4': 'yes' } }), ctx)
+    expect(r.portal).toEqual({ timeOff: false, client: 'COE Group', division: 'Seeker Outreach', project: 'AAAF', activity: 'SEO: Research', billable: true })
+    expect(r.problems).toEqual([])
+    expect(r.tsheets.fields).toContainEqual({ label: '3 Activity', value: 'SEO Research' })
+  })
+
+  it('translates an i7 job by its code, and flags one without a code', () => {
+    const r = readEntry(entry({ jobcodeId: 10, fields: { '6': 'WM-MKTG', '8': 'WebDev', '4': 'no' } }), ctx)
+    expect(r.portal).toMatchObject({ client: 'i7 Marketing', division: 'Wagner Meters', project: 'WM-MKTG', activity: 'Web Dev & Systems', billable: false })
+    expect(r.problems).toEqual([])
+    expect(readEntry(entry({ jobcodeId: 10, fields: { '8': 'WebDev' } }), ctx).problems).toEqual(['no-code'])
+    expect(readEntry(entry({ jobcodeId: 10, fields: { '6': '1 None', '8': 'WebDev' } }), ctx).problems).toEqual(['no-code'])
+  })
+
+  it('reads the HFA folder as Africa › HopeFor.Africa, and the Activity from Tasks when Activity is empty', () => {
+    const r = readEntry(entry({ jobcodeId: 15, fields: { '5': 'Translation: Review/Edit' } }), ctx)
+    expect(r.portal).toMatchObject({ client: 'COE Group', division: 'Africa', project: 'HopeFor.Africa', activity: 'Content: Translation' })
+    expect(r.problems).toEqual([])
+  })
+
+  it('flags the gaps: no 2026 client, an Activity the table does not know, none at all, Notes', () => {
+    expect(readEntry(entry({ jobcodeId: 17, fields: { '8': 'WebDev' } }), ctx).problems).toEqual(['no-client'])
+    expect(readEntry(entry({ jobcodeId: 13, fields: { '9': 'In-House', '7': 'COE', '8': 'Basket weaving' } }), ctx).problems).toEqual(['activity-unknown'])
+    expect(readEntry(entry({ jobcodeId: 13, fields: { '9': 'In-House', '7': 'COE' } }), ctx).problems).toEqual(['no-activity'])
+    expect(readEntry(entry({ jobcodeId: 13, fields: { '9': 'In-House', '7': 'COE', '8': 'Other (indicate in Notes)' } }), ctx).problems).toEqual(['no-notes'])
   })
 
   it('flags a client or a division instead of a project', () => {
@@ -123,7 +149,7 @@ describe('the list', () => {
     const v = buildTransition(entries, ctx, { from: '2026-11-01', to: null, personId: null, onlyProblems: true })
     expect(v.rows.map(r => r.id)).toEqual([103, 102])
     expect(v.summary).toMatchObject({ entries: 3, seconds: 3600 + 1800 + 7200, problems: 2 })
-    expect(v.summary.byKind).toMatchObject({ 'no-job': 1, 'no-notes': 1, 'old-job': 0 })
+    expect(v.summary.byKind).toMatchObject({ 'no-job': 1, 'no-notes': 1, 'no-client': 0 })
   })
 
   it('filters by person and the end of the period, and offers the people of the period', () => {
@@ -140,32 +166,41 @@ describe('the list', () => {
 })
 
 describe('the reminder (Remind)', () => {
-  it('lists each entry to fix with what to change, oldest first, and leaves the fine ones out', () => {
+  const noActivity = (date: string) => readEntry(entry({ date, jobcodeId: 13, fields: { '9': 'In-House', '7': 'COE' } }), ctx)
+
+  it('lists what the person can fix, with what to change, oldest first, and leaves out the fine ones and the admin\'s gaps', () => {
     const rows = [
       readEntry(entry({ date: '2026-11-03', jobcodeId: 5, fields: { '50': 'Meeting: Other' }, seconds: 1800 }), ctx),
-      readEntry(entry({ date: '2026-11-02', jobcodeId: 2 }), ctx),
+      readEntry(entry({ date: '2026-11-02', jobcodeId: 10, fields: { '8': 'WebDev' } }), ctx),
+      readEntry(entry({ date: '2026-11-02', jobcodeId: 17, fields: { '8': 'WebDev' } }), ctx),
+      readEntry(entry({ date: '2026-11-02', jobcodeId: null }), ctx),
       readEntry(entry({ date: '2026-11-02', notes: 'Clip' }), ctx),
     ]
     expect(reminderText(rows)).toEqual({
       title: '2 of your TSheets entries need fixing in QuickBooks Time',
-      body: 'Mon, Nov 2, 1h 00m, COE Group › Africa: pick a project inside it, not the client or division. '
+      body: 'Mon, Nov 2, 1h 00m, 2 - i7 Marketing › Content: pick the "1 - i7 Code". '
         + 'Tue, Nov 3, 0h 30m, True North Internal › TN General: add Notes (Meeting: Other asks for them). '
         + 'Fix them in QuickBooks Time; the portal reads the change on its next import.',
     })
   })
 
+  it('keeps an admin\'s gap out of what the person is told', () => {
+    expect(personProblems(readEntry(entry({ jobcodeId: null }), ctx))).toEqual([])
+    expect(personProblems(readEntry(entry({ jobcodeId: 17, fields: { '8': 'Basket weaving' } }), ctx))).toEqual([])
+  })
+
   it('lists the oldest 15 and says how many more', () => {
-    const rows = Array.from({ length: 17 }, (_, i) => readEntry(entry({ date: `2026-11-${String(i + 2).padStart(2, '0')}`, jobcodeId: null }), ctx))
+    const rows = Array.from({ length: 17 }, (_, i) => noActivity(`2026-11-${String(i + 2).padStart(2, '0')}`))
     const { title, body } = reminderText(rows)
     expect(title).toBe('17 of your TSheets entries need fixing in QuickBooks Time')
-    expect(body.match(/pick the job again/g)).toHaveLength(15)
-    expect(body).toContain('Mon, Nov 16, 1h 00m, no job: pick the job again: the portal does not know this one. And 2 more. Fix them in QuickBooks Time')
+    expect(body.match(/pick the "3 Activity"/g)).toHaveLength(15)
+    expect(body).toContain('Mon, Nov 16, 1h 00m, 1 - True North › SEO: pick the "3 Activity". And 2 more. Fix them in QuickBooks Time')
   })
 
   it('says one entry in the singular', () => {
-    expect(reminderText([readEntry(entry({ jobcodeId: null }), ctx)])).toEqual({
+    expect(reminderText([noActivity('2026-11-02')])).toEqual({
       title: 'One of your TSheets entries needs fixing in QuickBooks Time',
-      body: 'Mon, Nov 2, 1h 00m, no job: pick the job again: the portal does not know this one. Fix it in QuickBooks Time; the portal reads the change on its next import.',
+      body: 'Mon, Nov 2, 1h 00m, 1 - True North › SEO: pick the "3 Activity". Fix it in QuickBooks Time; the portal reads the change on its next import.',
     })
   })
 })
