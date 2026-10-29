@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildTransition, periodOf, readEntry, sortRows, summarize, type CheckContext, type CheckEntry, type CheckJob } from './transition-check'
+import { buildTransition, periodOf, readEntry, reminderText, sortRows, summarize, type CheckContext, type CheckEntry, type CheckJob } from './transition-check'
 
 // The transition report (27 October 2026): TSheets entries from the switch
 // date, as recorded and as the portal reads them in the 2026 structure.
@@ -136,5 +136,28 @@ describe('the list', () => {
     const rows = entries.map(e => readEntry(e, ctx))
     expect(sortRows(rows)[0].problems.length).toBeGreaterThan(0)
     expect(summarize([]).entries).toBe(0)
+  })
+})
+
+describe('the reminder (Remind)', () => {
+  it('lists each entry to fix with what to change, oldest first, and leaves the fine ones out', () => {
+    const rows = [
+      readEntry(entry({ date: '2026-11-03', jobcodeId: 5, fields: { '50': 'Meeting: Other' }, seconds: 1800 }), ctx),
+      readEntry(entry({ date: '2026-11-02', jobcodeId: 2 }), ctx),
+      readEntry(entry({ date: '2026-11-02', notes: 'Clip' }), ctx),
+    ]
+    expect(reminderText(rows)).toEqual({
+      title: '2 of your TSheets entries need fixing in QuickBooks Time',
+      body: 'Mon, Nov 2, 1h 00m, COE Group › Africa: pick a project inside it, not the client or division. '
+        + 'Tue, Nov 3, 0h 30m, True North Internal › TN General: add Notes (Meeting: Other asks for them). '
+        + 'Fix them in QuickBooks Time; the portal reads the change on its next import.',
+    })
+  })
+
+  it('says one entry in the singular', () => {
+    expect(reminderText([readEntry(entry({ jobcodeId: null }), ctx)])).toEqual({
+      title: 'One of your TSheets entries needs fixing in QuickBooks Time',
+      body: 'Mon, Nov 2, 1h 00m, no job: pick the job again: the portal does not know this one. Fix it in QuickBooks Time; the portal reads the change on its next import.',
+    })
   })
 })

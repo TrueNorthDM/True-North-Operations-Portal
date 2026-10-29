@@ -504,6 +504,13 @@ export function clockyCorrectionDecidedDrafts(ctx: Ctx, x: { requestId: number; 
   })
 }
 
+/** Remind on TSheets transition: to the person whose TSheets entries need fixing. Once a day for the same entries. */
+export function clockyTsheetsFixDrafts(ctx: Ctx, x: { personId: string; title: string; body: string; key: string }): Draft[] {
+  return draftFor(ctx, 'clocky-tsheets-fix', ctx.aud.byId.get(x.personId), {
+    title: x.title, body: x.body, href: '/clocky-hours', dedupeKey: x.key,
+  })
+}
+
 /** Time off asked for: to the Super Admins who decide it, never the person. */
 export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }): Draft[] {
   // The Super Admins decide; the Team Leader the person reports to is told too (Requests.dc.html 7A).

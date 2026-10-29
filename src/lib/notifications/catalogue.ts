@@ -229,6 +229,15 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open time entries', href: '/clocky-hours' },
   },
   {
+    // Remind on North Time > TSheets transition (owner, 28 October 2026).
+    key: 'clocky-tsheets-fix', src: 'North Time · TSheets', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'TSheets entries to fix', stat: 'TSheets entries to fix', statOne: 'TSheets entry to fix',
+    example: { title: '2 of your TSheets entries need fixing in QuickBooks Time', body: 'Tue, Oct 27, 1h 00m, True North Internal › TN Operations: add Notes (Meeting: Other asks for them). Fix them in QuickBooks Time; the portal reads the change on its next import.' },
+    title: 'Your TSheets entries need fixing',
+    description: 'An Admin or Super Admin pressed Remind on TSheets transition: the QuickBooks Time entries the portal cannot read in the 2026 structure, each with what to change. In the bell only.',
+    who: 'You', audience: { kind: 'everyone' },
+  },
+  {
     key: 'clocky-timeoff-requested', src: 'North Time · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Time off', stat: 'time off requests', statOne: 'time off request',
     example: { title: 'Olivia Hale asked for time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },

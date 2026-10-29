@@ -10,6 +10,8 @@
  */
 
 import { activityNeedsNotes } from './entry-rules'
+import { dayLabel } from './format'
+import { formatDuration } from './rounding'
 
 // ── What goes in ────────────────────────────────────────────────────────────
 
@@ -224,4 +226,30 @@ export function buildTransition(entries: readonly CheckEntry[], ctx: CheckContex
   const summary = summarize(read)
   const rows = sortRows(f.onlyProblems ? read.filter(r => r.problems.length) : read)
   return { rows, summary, people }
+}
+
+// ── The reminder (Remind, owner 28 October 2026) ────────────────────────────
+
+/** What the person changes in QuickBooks Time for each problem. */
+export function fixOf(p: ProblemKind, r: Pick<TransitionRow, 'portal'>): string {
+  switch (p) {
+    case 'no-job': return 'pick the job again: the portal does not know this one'
+    case 'old-job': return 'pick the 2026 project in place of the old TSheets job'
+    case 'folder': return 'pick a project inside it, not the client or division'
+    case 'no-activity': return 'fill in the Activity'
+    case 'no-notes': return `add Notes (${r.portal.activity ?? 'this Activity'} asks for them)`
+  }
+}
+
+/**
+ * The bell row a person gets from Remind: how many of their TSheets entries
+ * to fix, then each one (day, hours, job) with what to change, and where.
+ */
+export function reminderText(rows: readonly TransitionRow[]): { title: string; body: string } {
+  const bad = rows.filter(r => r.problems.length)
+  const n = bad.length
+  const title = n === 1 ? 'One of your TSheets entries needs fixing in QuickBooks Time' : `${n} of your TSheets entries need fixing in QuickBooks Time`
+  const lines = [...bad].sort((a, b) => a.date.localeCompare(b.date))
+    .map(r => `${dayLabel(r.date)}, ${formatDuration(r.seconds)}, ${r.tsheets.job ?? 'no job'}: ${r.problems.map(p => fixOf(p, r)).join('; ')}.`)
+  return { title, body: `${lines.join(' ')} Fix ${n === 1 ? 'it' : 'them'} in QuickBooks Time; the portal reads the change on its next import.` }
 }

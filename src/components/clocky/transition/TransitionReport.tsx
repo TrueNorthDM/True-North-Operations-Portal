@@ -8,6 +8,9 @@
  *
  * The filters change the address and the server reads again (TransitionLive).
  * The design check hands in its own `go`, which answers from sample data.
+ *
+ * Remind (owner, 28 October 2026): one button per person with a problem,
+ * which tells them in the bell what to fix in QuickBooks Time (actions.ts).
  */
 
 import { useState, useTransition } from 'react'
@@ -15,7 +18,10 @@ import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Segmented } from '@/components/ui/Segmented'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { FieldLabel, LabeledSelect } from '@/components/clocky/entries/ui'
+import { BTN_ICON } from '@/lib/ui/buttons'
+import { failText } from '@/lib/ui/action-error'
+import { remindTransition } from '@/app/(app)/clocky-hours/transition/actions'
+import { BTN_SMALL, FieldLabel, Icon, ICON, LabeledSelect } from '@/components/clocky/entries/ui'
 import { dateLabel, dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, type TransitionRow } from '@/lib/timeclock/transition-check'
@@ -48,7 +54,53 @@ export function TransitionLive({ data }: { data: TransitionData }) {
     const s = transitionSearch(q)
     startTransition(() => router.replace(withViewAs(`/clocky-hours/transition${s ? `?${s}` : ''}`), { scroll: false }))
   }
-  return <TransitionReport data={data} go={go} />
+  const remind: Remind = personId => data.switchDate
+    ? remindTransition({ personId, from: data.from, to: data.to }).catch(e => ({ ok: false as const, error: failText(e) }))
+    : Promise.resolve({ ok: false as const, error: 'No switch date is set yet.' })
+  return <TransitionReport data={data} go={go} remind={remind} />
+}
+
+type Remind = (personId: string) => Promise<{ ok: true; toast: string } | { ok: false; error: string }>
+
+/** One line per person with a problem in what is listed, each with Remind; what it answered stays beside it. */
+function RemindStrip({ rows, remind }: { rows: readonly TransitionRow[]; remind: Remind }) {
+  const [said, setSaid] = useState<Record<string, { ok: boolean; text: string }>>({})
+  const [busy, setBusy] = useState<string | null>(null)
+  const people = new Map<string, { name: string; n: number }>()
+  for (const r of rows) if (r.problems.length) {
+    const p = people.get(r.personId) ?? { name: r.person, n: 0 }
+    people.set(r.personId, { ...p, n: p.n + 1 })
+  }
+  if (!people.size) return null
+  const send = async (id: string) => {
+    setBusy(id)
+    const r = await remind(id)
+    setBusy(null)
+    setSaid(s => ({ ...s, [id]: r.ok ? { ok: true, text: r.toast } : { ok: false, text: r.error } }))
+  }
+  return (
+    <div className={`${CARD} px-4 py-3 flex flex-col gap-2.5`}>
+      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <span className={LABEL}>Ask them to fix it</span>
+        <span className="text-[12.5px] text-muted">Remind tells the person in the bell which entries to fix in QuickBooks Time, and what to change on each.</span>
+      </div>
+      <div className="flex flex-col">
+        {[...people.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, p]) => {
+          const s = said[id]
+          return (
+            <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 border-t border-[var(--row-rule)] first:border-t-0">
+              <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink min-w-[150px]">{p.name}</span>
+              <span className="text-[12.5px] text-muted tabular-nums lining-nums min-w-[90px]">{p.n} {p.n === 1 ? 'entry' : 'entries'}</span>
+              <button type="button" disabled={busy === id} onClick={() => void send(id)} className={`${BTN_SMALL} py-1.5 disabled:opacity-50`}>
+                <Icon d={ICON.send} size={13} color={BTN_ICON.white} width={2.4} />{s?.ok ? 'Remind again' : 'Remind'}
+              </button>
+              {s && <span role={s.ok ? 'status' : 'alert'} className={`text-[12.5px] font-semibold ${s.ok ? 'text-[var(--ok-fg)]' : 'text-[#c8323d]'}`}>{s.text}</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function Header({ sub }: { sub: string }) {
@@ -118,7 +170,7 @@ function Row({ r }: { r: TransitionRow }) {
   )
 }
 
-export function TransitionReport({ data, go }: { data: TransitionData; go: (q: TransitionQuery) => void }) {
+export function TransitionReport({ data, go, remind }: { data: TransitionData; go: (q: TransitionQuery) => void; remind?: Remind }) {
   // The From and To boxes follow the server's period (set while rendering, not in an effect).
   const period = data.switchDate ? { from: data.from, to: data.to ?? '' } : { from: '', to: '' }
   const [range, setRange] = useState(period)
@@ -200,6 +252,8 @@ export function TransitionReport({ data, go }: { data: TransitionData; go: (q: T
           ))}
         </div>
       )}
+
+      {remind && <RemindStrip rows={data.rows} remind={remind} />}
 
       {data.rows.length === 0 ? (
         <div className={`${CARD} px-5 py-14 flex flex-col items-center gap-2.5 text-center`}>

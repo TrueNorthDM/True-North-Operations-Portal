@@ -29,7 +29,7 @@ import { deliver, type Draft, type DeliverResult, type Row } from './deliver'
 import {
   accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
-  clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
+  clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts, clockyTsheetsFixDrafts,
   clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
   clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts,
   clockyReimbursementRequestedDrafts, clockyReimbursementDecidedDrafts, clockyRmbReadyDrafts, clockyRmbPaidDrafts, clockyExtraRequestedDrafts, clockyExtraDecidedDrafts,
@@ -160,6 +160,9 @@ export const notifyClockyCorrectionRequested = (x: { requestId: number; personId
 
 export const notifyClockyCorrectionDecided = (x: { requestId: number; personId: string; text: string }) =>
   simple('clocky-correction-decided', ctx => clockyCorrectionDecidedDrafts(ctx, x))
+
+export const notifyClockyTsheetsFix = (x: { personId: string; title: string; body: string; key: string }) =>
+  simple('clocky-tsheets-fix', ctx => clockyTsheetsFixDrafts(ctx, x))
 
 export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }) =>
   simple('clocky-timeoff-requested', ctx => clockyTimeOffRequestedDrafts(ctx, x))

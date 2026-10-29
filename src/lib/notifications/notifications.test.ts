@@ -28,7 +28,7 @@ describe('the catalogue', () => {
       'access-rules-changed', 'agenda-birthday', 'clocky-allowance', 'clocky-allowance-over', 'clocky-clocked-out-for', 'clocky-correction-decided',
       'clocky-correction-requested', 'clocky-extra-decided', 'clocky-extra-requested', 'clocky-invoice-approved', 'clocky-invoice-made', 'clocky-invoice-paid',
       'clocky-late', 'clocky-reimbursement-decided', 'clocky-reimbursement-requested', 'clocky-reminder', 'clocky-rmb-paid', 'clocky-rmb-ready', 'clocky-still-working',
-      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-refused', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted', 'clocky-type-change',
+      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-refused', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted', 'clocky-tsheets-fix', 'clocky-type-change',
       'integration-failed', 'level-changed', 'step-released',
     ])
   })
