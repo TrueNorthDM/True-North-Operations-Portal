@@ -35,16 +35,16 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
   onAdd: (s: GridSource) => void
 }) {
   const [s, setS] = useState<PickState & { jobPath: string }>({ jobcodeId: null, jobPath: '', values: { ...EMPTY_VALUES }, notes: '', combo: '' })
-  const [error, setError] = useState<string | null>(null)
   const job = catalog.jobs.find(j => j.id === s.jobcodeId)
   const activity = s.values.activity
   // What is already a row is not offered again (as the short list of a TSheets week).
   const fresh = (c: { jobcodeId: number; activity: string }) => !taken(gridRowKey(c.jobcodeId, c.activity))
+  // Said as soon as the pick matches a row, with Add row off until the Activity (or job) changes.
+  const dup = !!job && !!activity && taken(gridRowKey(job.id, activity))
 
   const add = () => {
-    if (!job || !activity) return
+    if (!job || !activity || dup) return
     const key = gridRowKey(job.id, activity)
-    if (taken(key)) return setError('That job and Activity is already a row this week.')
     onAdd({ key, jobcodeId: job.id, path: job.path, activity, fields: fieldsOf(s.values, fieldsForJob(catalog.fields, job), job.isI7) })
   }
 
@@ -64,13 +64,13 @@ export function GridRowPick({ catalog, choices, day, whose, combosLabel, taken, 
           {choices.error && <SaveError text={choices.error} />}
           <JobPick catalog={{ ...catalog, combinations: choices.combinations.filter(fresh), recents: choices.recents.filter(fresh) }} day={day} busy={false} hideNotes combosLabel={combosLabel} s={s}
             combosEmpty={choices.combinations.length ? 'Every saved combination is already a row this week.' : 'None saved yet.'}
-            set={p => { setS(x => ({ ...x, ...p })); setError(null) }} />
+            set={p => setS(x => ({ ...x, ...p }))} />
         </>
       )}
-      <SaveError text={error} />
+      <SaveError text={dup ? 'That job and Activity is already a row this week. Pick another Activity to add a second row of this project.' : null} />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
-        <button type="button" disabled={!job || !activity} onClick={add}
+        <button type="button" disabled={!job || !activity || dup} onClick={add}
           className={`${BTN_MODAL_NAVY} disabled:opacity-45 disabled:cursor-not-allowed`}>
           <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add row
         </button>
