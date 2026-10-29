@@ -18,7 +18,7 @@ function clarise(): PersonPageData {
   const t = tenureSince(hire, new Date('2026-10-15T12:00:00Z'))
   const teams = [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'member' as const, primary: true }]
   return {
-    id: idOf('Clarise Nixon'), name: 'Clarise Nixon', title: 'Social Media Specialist', avatarUrl: null, color: '#DC2626', active: true, rights,
+    id: idOf('Clarise Nixon'), name: 'Clarise Nixon', title: 'Social Media Specialist', avatarUrl: null, color: '#DC2626', active: true, rights, rates: null,
     cover: { teams, hireDate: hire, tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: nextMilestone(t) }, location: null, localTime: null, email: null, whatsapp: null },
     personal: null,
     work: {

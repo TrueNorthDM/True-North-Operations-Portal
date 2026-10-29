@@ -19,6 +19,7 @@ import { formatTenure, milestoneOf, tenureSince, type Milestone, type Tenure } f
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import { pageRights, personHref, relationTo, type PageRights } from './page-rights'
+import { loadPersonCompensation } from '@/lib/hr/compensation'
 
 type Client = Db
 
@@ -108,6 +109,21 @@ export interface PersonPageData {
   reports: null | { id: string; name: string; title: string | null; color: string; via: TeamTie; teamName: string | null; href: string | null }[]
   /** For the Work editor only. */
   options: null | { people: { value: string; label: string }[]; teams: { id: string; name: string }[] }
+  /**
+   * Someone no longer active, for whoever keeps Rates & Costs (d-rates): the
+   * four rates Rates & Costs shows, kept here since it lists active people
+   * only (owner, 28 October 2026). Null otherwise.
+   */
+  rates: null | {
+    personId: string
+    tsheetsUserId: number | null
+    i7ClientId: number | null
+    clientRate: number | null
+    costRate: number | null
+    beRate: number | null
+    salary: number | null
+    canEdit: boolean
+  }
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
@@ -261,6 +277,25 @@ export async function loadPersonPage(
     }
   }
 
+  // The rates of someone who left: read with the privileged client (migration 054 closed them to the signed-in role).
+  let rates: PersonPageData['rates'] = null
+  if (p.status === 'inactive' && viewer.can('d-rates')) {
+    const [comp, clientsRes] = await Promise.all([
+      loadPersonCompensation(personId),
+      db.from('tr_clients').select('id, name').is('parent_id', null),
+    ])
+    // The i7 client, found as Rates & Costs finds it.
+    const i7 = ((clientsRes.data ?? []) as { id: number; name: string }[]).find(c => /i7/i.test(c.name))?.id ?? null
+    const { data: a } = i7 == null ? { data: null } : await db.from('tr_assignments').select('hourly_rate')
+      .eq('person_id', personId).eq('client_id', i7).is('effective_to', null).eq('active', true).maybeSingle()
+    rates = {
+      personId, tsheetsUserId: p.tsheets_user_id != null ? Number(p.tsheets_user_id) : null, i7ClientId: i7,
+      clientRate: a?.hourly_rate != null ? Number(a.hourly_rate) : null,
+      costRate: comp?.internalRate ?? null, beRate: comp?.beRate ?? null, salary: comp?.monthlySalary ?? null,
+      canEdit: true,
+    }
+  }
+
   const phone = personal?.phone ? formatPhone(personal.phone) : null
   return {
     id: personId, name: p.full_name, title: str(p.title), avatarUrl: str(p.avatar_url), color,
@@ -273,6 +308,6 @@ export async function loadPersonPage(
       email: !rights.own && rights.work ? str(p.email_goodnews) : null,
       whatsapp: !rights.own && phone?.valid ? phone.digits : null,
     },
-    personal, work, hr, reports, options,
+    personal, work, hr, reports, options, rates,
   }
 }

@@ -1,6 +1,6 @@
 // Design check: a person's page (8 October 2026), the real component with an
 // invented person. ?as=admin | self | me (a Super Admin on their own page) | lead,
-// ?tab=personal | work | hr | reports.
+// ?tab=personal | work | hr | reports, ?left=1 someone no longer active (their Rates).
 // Nothing saves (the actions refuse: nobody is signed in). Development only.
 
 import { notFound } from 'next/navigation'
@@ -18,9 +18,9 @@ const TEAMS = [
   { teamId: 't-t', teamName: 'Translation', color: '#7a5cc8', position: 'member' as const, primary: false },
 ]
 
-export default async function PersonCheck({ searchParams }: { searchParams: Promise<{ as?: string; tab?: string }> }) {
+export default async function PersonCheck({ searchParams }: { searchParams: Promise<{ as?: string; tab?: string; left?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { as = 'admin', tab } = await searchParams
+  const { as = 'admin', tab, left } = await searchParams
   const rights = as === 'self' || as === 'me'
     ? pageRights(canAs(as === 'me' ? 'super_admin' : 'user'), 'own')!
     : as === 'lead' ? pageRights(canAs('team_leader'), 'led')! : pageRights(canAs('admin'), 'other')!
@@ -61,6 +61,8 @@ export default async function PersonCheck({ searchParams }: { searchParams: Prom
       people: [{ value: 'm1', label: 'Jordan Ellis' }, { value: 'm2', label: 'Casey Park' }],
       teams: [{ id: 't-w', name: 'Writers' }, { id: 't-t', name: 'Translation' }, { id: 't-s', name: 'SEO' }],
     } : null,
+    // An invented person who left, as an Admin with Rates & Costs sees them.
+    rates: left && as === 'admin' ? { personId: '00000000-0000-4000-8000-000000000001', tsheetsUserId: null, i7ClientId: 1, clientRate: 95, costRate: 59.12, beRate: null, salary: null, canEdit: true } : null,
   }
   return (
     <div className="min-h-screen bg-background p-6 sm:p-8 space-y-4">

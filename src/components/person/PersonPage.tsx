@@ -25,6 +25,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { HrForm, PersonalForm, WorkForm, type CadenceActions } from './PersonForms'
 import { PillBadge, Section, TeamsList } from './PersonParts'
+import { PersonRates } from './PersonRates'
 import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
 import { ApprovalsSection, PayHoursSection, type ApprovalsView, type PayView, type SavePay } from './PayApprovalsSections'
 import { TypeChangeBanner, TypeChangeButton, type TypeChangeApi, type TypeChangeView } from './TypeChange'
@@ -413,6 +414,7 @@ function WorkView({ data, timesheet, pay }: {
               </div>
             </Section>
           )}
+          {data.rates && <PersonRates name={data.name} rates={data.rates} />}
         </div>
       </div>
       <Section title="Employment history">

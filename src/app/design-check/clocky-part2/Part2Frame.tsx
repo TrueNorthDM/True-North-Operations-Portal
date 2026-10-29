@@ -33,7 +33,7 @@ function cheyenne(): PersonPageData {
   const t = tenureSince(hire, new Date('2026-11-10T12:00:00Z'))
   const teams = [{ teamId: 't-wr', teamName: 'Writers', color: '#86C06A', position: 'member' as const, primary: true }]
   return {
-    id: '00000000-0000-4000-8000-0000000000c1', name: 'Cheyenne Wilson', title: 'Writer', avatarUrl: null, color: '#86C06A', active: true, rights,
+    id: '00000000-0000-4000-8000-0000000000c1', name: 'Cheyenne Wilson', title: 'Writer', avatarUrl: null, color: '#86C06A', active: true, rights, rates: null,
     cover: { teams, hireDate: hire, tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: nextMilestone(t) }, location: 'Los Angeles, California, USA', localTime: null, email: null, whatsapp: null },
     personal: null,
     work: {

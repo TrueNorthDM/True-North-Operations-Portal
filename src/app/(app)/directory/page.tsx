@@ -70,8 +70,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       : null
     // The columns this person hides (owner, 25 October 2026), read here so the first paint has them.
     const hiddenColumns = await loadHiddenColumns(createAdminClient(), (await getCurrentPerson())?.id)
+    // Active people only: someone who left is in People, Inactive, with their rates on their own page (owner, 28 October 2026).
     return (
-      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} hiddenColumns={hiddenColumns} />
+      <RatesCostsPage people={budget.people.filter(p => !p.inactive)} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} hiddenColumns={hiddenColumns} />
     )
   }
   // Directory is reachable by everyone; the configured directory level decides
