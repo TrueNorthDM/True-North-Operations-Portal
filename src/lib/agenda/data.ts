@@ -24,8 +24,12 @@ import { addDays } from '@/lib/timeclock/periods'
 import { countryOf, nationalHolidays } from './holidays'
 import { linkIn, type AgendaItem, type AgendaWho } from './model'
 import { editOf, mayManageEvent, type EventRights, type EventRow } from './events'
+import { mayManage, seesEvent, type EventType, type SeenRow } from './event-rules'
+import type { DrawerEdit } from './model'
+import type { AccessLevel } from '@/lib/access/catalogue'
+import { DC, localOf } from './time'
 
-export interface AgendaViewer { id: string; zone: string; superAdmin: boolean; admin: boolean; teamIds: readonly string[] }
+export interface AgendaViewer { id: string; zone: string; superAdmin: boolean; admin: boolean; teamIds: readonly string[]; level?: AccessLevel }
 
 const yearsOf = (from: string, to: string) => { const out: number[] = []; for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) out.push(y); return out }
 const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
@@ -53,7 +57,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     loadCatalog(),
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, calendar_state').eq('state', 'approved').lte('start_date', to).gte('end_date', from).limit(2000),
     // A day either side: a timed event can fall on another day in the viewer's zone.
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by')
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
     // Where people live, for the national holidays.
     c.from('people').select('id, address, location').limit(5000),
@@ -81,11 +85,22 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   }
 
   // Events and milestones made in the portal.
+  // Who was invited to the drawer's events (owner, 30 October 2026): they see them, and an edit starts from them.
+  const newIds = (evRes.data ?? []).filter(e => e.audience).map(e => e.id)
+  const guestRows = newIds.length ? ((await c.from('agenda_event_guests').select('event_id, person_id, email, via').in('event_id', newIds)).data ?? []) : []
+  const guestsOf = new Map<number, { person_id: string | null; email: string; via: string }[]>()
+  for (const g of guestRows) (guestsOf.get(g.event_id) ?? guestsOf.set(g.event_id, []).get(g.event_id)!).push(g)
+  const viewer = { id: v.id, level: v.level ?? (v.superAdmin ? 'super_admin' : v.admin ? 'admin' : 'user') as AccessLevel, teamIds: v.teamIds, led: rights?.led ?? new Set<string>() }
+
   for (const e of evRes.data ?? []) {
     const audience = e.audience_team_ids ?? []
-    const sees = !audience.length || v.superAdmin || v.admin || e.created_by === v.id || audience.some(t => v.teamIds.includes(t))
+    const isNew = !!e.audience
+    const gs = guestsOf.get(e.id) ?? []
+    const sees = isNew
+      ? seesEvent(e as SeenRow, viewer, new Set(gs.map(g => g.person_id).filter((x): x is string => !!x)))
+      : !audience.length || v.superAdmin || v.admin || e.created_by === v.id || audience.some(t => v.teamIds.includes(t))
     if (!sees) continue
-    const team = e.team_id ? dir.teams.get(e.team_id) : undefined
+    const team = e.team_id ? dir.teams.get(e.team_id) : isNew && e.audience === 'teams' && audience.length === 1 ? dir.teams.get(audience[0]) : undefined
     let a = e.start_date, b = e.end_date, s: number | undefined, en: number | undefined
     if (e.starts_at && e.ends_at) {
       a = localDate(e.starts_at, v.zone); b = a
@@ -94,11 +109,15 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     }
     if (b < from || a > to) continue
     items.push({
-      id: `ev:${e.id}`, k: e.kind === 'milestone' ? 'ms' : 'event', a, b, s, e: en, title: e.title, place: e.place, link: linkIn(e.place),
-      teams: audience.length ? audience.map(t => dir.teams.get(t)?.name).filter(Boolean).join(', ') : 'Everyone',
+      id: `ev:${e.id}`, k: e.kind === 'milestone' ? 'ms' : 'event', a, b, s, e: en, title: e.title,
+      place: isNew && e.how === 'online' ? 'Google Meet' : e.place, link: e.meet_link || linkIn(e.place),
+      teams: isNew && e.audience === 'guests' ? `${gs.length} guest${gs.length === 1 ? '' : 's'}` : audience.length ? audience.map(t => dir.teams.get(t)?.name).filter(Boolean).join(', ') : 'Everyone',
+      ...(isNew && e.type ? { evType: e.type as EventType } : {}),
       team: team ? { id: team.id, name: team.name, color: teamColour(team.color, team.name) } : null,
       by: e.created_by ? dir.nameOf(e.created_by) : null, desc: e.description, client: e.client, onGoogle: e.calendar_state === 'done', audience,
-      ...(rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
+      ...(isNew
+        ? (mayManage(e as SeenRow, viewer) ? { drawerEdit: drawerEditOf(e, gs.filter(g => g.via === 'guest')) } : {})
+        : rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
     })
   }
 
@@ -116,9 +135,25 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   return items
 }
 
+type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null }
+
+/** The drawer's form from a stored event, in Washington time. */
+export function drawerEditOf(e: DrawerRowIn, guests: { person_id: string | null; email: string }[]): DrawerEdit {
+  const s = e.starts_at ? localOf(Date.parse(e.starts_at), DC) : null
+  const en = e.ends_at ? localOf(Date.parse(e.ends_at), DC) : null
+  return {
+    id: e.id, type: (e.type ?? 'meeting') as EventType, title: e.title,
+    when: s ? 'time' : e.end_date > e.start_date ? 'range' : 'day',
+    date: s?.date ?? e.start_date, end: e.end_date, from: s?.minutes ?? 600, to: en ? (en.date === s?.date ? en.minutes : 1440) : 660,
+    how: e.how === 'in_person' ? 'in_person' : 'online', place: e.place ?? '',
+    audience: (e.audience ?? 'guests') as DrawerEdit['audience'], teams: e.audience_team_ids ?? [],
+    guests: guests.map(g => ({ personId: g.person_id, email: g.email })), client: e.client ?? '', description: e.description ?? '', accountId: e.sent_from_account_id,
+  }
+}
+
 /** The person looking, for the loader; null when the login is not linked to anyone. */
 export async function agendaViewer(access: Pick<Access, 'personId' | 'level'>): Promise<AgendaViewer | null> {
   if (!access.personId) return null
   const dir = await loadDirectory()
-  return { id: access.personId, zone: dir.zoneOf(access.personId), superAdmin: access.level === 'super_admin', admin: access.level === 'admin', teamIds: dir.people.get(access.personId)?.teamIds ?? [] }
+  return { id: access.personId, zone: dir.zoneOf(access.personId), superAdmin: access.level === 'super_admin', admin: access.level === 'admin', teamIds: dir.people.get(access.personId)?.teamIds ?? [], level: access.level as AccessLevel }
 }

@@ -14,6 +14,14 @@
 
 import { addDays } from '@/lib/timeclock/periods'
 import type { EventEdit } from './events'
+import type { EventType } from './event-rules'
+
+/** The drawer, filled from a stored event (Edit opens it with these). */
+export interface DrawerEdit {
+  id: number; type: EventType; when: 'time' | 'day' | 'range'; title: string; date: string; end: string; from: number; to: number
+  how: 'online' | 'in_person'; place: string; audience: 'guests' | 'teams' | 'all'; teams: string[]
+  guests: { personId: string | null; email: string }[]; client: string; description: string; accountId: number | null
+}
 
 export type AgendaKind = 'pto' | 'bday' | 'anni' | 'event' | 'ms' | 'hol'
 export type AgendaView = 'month' | 'week' | 'list'
@@ -53,6 +61,9 @@ export interface AgendaItem {
   country?: string | null
   /** An event the viewer may edit and delete (lib/agenda/events.ts): the form 8E opens with. */
   edit?: EventEdit
+  /** An event made in the New event drawer: its type, and the drawer's form when the viewer may change it. */
+  evType?: EventType
+  drawerEdit?: DrawerEdit
 }
 
 export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {
@@ -170,10 +181,33 @@ export const countryName = (cc: string): string => { try { return new Intl.Displ
 /** `flag`: a holiday shows its country's flag where the others show their icon; `yrs`: a work
  * anniversary shows the HR tenure badge (TenureBadge) with its years (owner, 2026-10-23). */
 export interface Look { bg: string; fg: string; d: string; c: string; flag: string; yrs?: number }
+/** The New event drawer's types (owner, 30 October 2026): an icon each; the colour says who it is for. */
+const TYPE_ICON: Record<EventType, string> = {
+  meeting: 'M3 6h12v12H3zM15 10l6-4v12l-6-4',
+  training: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 2 9 2 12 0v-5',
+  deadline: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2 2M5 3L2 6M19 3l3 3',
+  milestone: 'M4 22V4M4 4h13l-2 4 2 4H4',
+  company: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+  celebration: 'M5.8 11.3L2 22l10.7-3.8M11 13c1.9 1.9 2.8 4.2 2 5s-3.1-.1-5-2-2.8-4.2-2-5 3.1.1 5 2zM15 2h.01M22 8h.01M22 20h.01M4 3h.01',
+}
+const TYPE_LOOK: Record<EventType, { bg: string; fg: string; c: string }> = {
+  meeting: { bg: '#e8edf6', fg: '#012358', c: '#012358' },
+  training: { bg: '#efe9fb', fg: '#5b3fb0', c: '#5b3fb0' },
+  deadline: { bg: '#fdecea', fg: '#b2412f', c: '#b2412f' },
+  milestone: { bg: '#e6f6ee', fg: '#0d7a4f', c: '#1E9E6A' },
+  company: { bg: '#012358', fg: '#ffffff', c: '#012358' },
+  celebration: { bg: '#fdf3c4', fg: '#7a5c00', c: '#c99a00' },
+}
+
 export function look(x: AgendaItem): Look {
   if (x.k === 'pto') { const c = x.who?.color ?? '#9CA3AF'; return { bg: tint(c, '40'), fg: '#012358', d: '', c, flag: '' } }
   if (x.k === 'bday') return { bg: '#fdf3c4', fg: '#7a5c00', d: AG_ICON.gift, c: '#F2C40A', flag: '' }
   if (x.k === 'anni') return { bg: '#eaf4f4', fg: '#1E7D7F', d: AG_ICON.star, c: '#1E7D7F', flag: '', yrs: x.yrs }
+  if (x.evType && x.evType !== 'milestone') {
+    const d = TYPE_ICON[x.evType]
+    if (x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d, c: x.team.color, flag: '' }
+    return { ...TYPE_LOOK[x.evType], d, flag: '' }
+  }
   if (x.k === 'event' && x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d: AG_ICON.people, c: x.team.color, flag: '' }
   if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: AG_ICON.cal, c: '#012358', flag: '' }
   if (x.k === 'ms') return { bg: '#e6f6ee', fg: '#0d7a4f', d: AG_ICON.flag, c: '#1E9E6A', flag: '' }

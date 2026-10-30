@@ -28,6 +28,7 @@ export interface AgendaSettingsApi {
   saveWorkingHours(i: { hours: WorkingHours }): Promise<Done>
   connectTeamCalendar(i: { email: string }): Promise<Done>
   disconnectTeamCalendar(): Promise<Done>
+  setAllLevels(i: { levels: string[] }): Promise<Done>
 }
 
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[18px] p-5 flex flex-col gap-3.5'
@@ -69,6 +70,7 @@ export function AgendaSettings({ data, api }: { data: AgendaSettingsData; api: A
   return (
     <div className="flex flex-col gap-[18px]">
       <TeamCalendarCard data={data} busy={busy} run={run} api={api} />
+      {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
       <AccountsCard data={data} busy={busy} run={run} api={api} />
       <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />
       <HolidaysCard country={data.country} />
@@ -115,6 +117,35 @@ function TeamCalendarCard({ data, busy, run, api }: { data: AgendaSettingsData; 
         <div className={`${BEIGE} flex flex-wrap items-center gap-3`}>
           {t ? <><AccountWho a={t} line="Set up by a Super Admin" /><span className={PILL_OK}>Connected</span></>
             : <span className={SUB}>Not connected yet. A Super Admin connects it.</span>}
+        </div>
+      )}
+    </section>
+  )
+}
+
+const LEVELS: [string, string][] = [['super_admin', 'Super Admin'], ['admin', 'Admin'], ['team_leader', 'Team Leader'], ['user', 'Member']]
+
+function AllLevelsCard({ levels, busy, run, api }: { levels: string[]; busy: boolean; run: Run; api: AgendaSettingsApi }) {
+  const [on, setOn] = useState<string[]>(levels)
+  const changed = [...on].sort().join() !== [...levels].sort().join()
+  return (
+    <section className={CARD} aria-label="Who can invite True North">
+      <div>
+        <div className={TITLE}>Who can invite True North</div>
+        <p className={`${SUB} m-0 mt-1`}>In the New event drawer, &quot;True North&quot; invites everyone in the company. Choose who has it.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {LEVELS.map(([k, l]) => (
+          <label key={k} className={`inline-flex items-center gap-2 border rounded-[10px] px-3 py-2 text-[13.5px] font-bold text-tn-ink ${k === 'super_admin' ? 'opacity-70' : 'cursor-pointer'} ${on.includes(k) ? 'border-tn-teal bg-[#f2f8f7]' : 'border-[var(--panel-border)]'}`}>
+            <input type="checkbox" checked={on.includes(k)} disabled={k === 'super_admin' || busy}
+              onChange={() => setOn(x => (x.includes(k) ? x.filter(y => y !== k) : [...x, k]))} />{l}
+          </label>
+        ))}
+      </div>
+      {changed && (
+        <div className="flex justify-end gap-2">
+          <button type="button" className={BTN_W} disabled={busy} onClick={() => setOn(levels)}>Undo changes</button>
+          <button type="button" className={BTN_N} disabled={busy} onClick={() => void run(api.setAllLevels({ levels: on }))}>Save</button>
         </div>
       )}
     </section>

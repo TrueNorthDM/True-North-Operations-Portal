@@ -323,8 +323,50 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_event_guests: {
+        Row: {
+          email: string
+          event_id: number
+          id: number
+          person_id: string | null
+          response: string
+          via: string
+        }
+        Insert: {
+          email: string
+          event_id: number
+          id?: number
+          person_id?: string | null
+          response?: string
+          via?: string
+        }
+        Update: {
+          email?: string
+          event_id?: number
+          id?: number
+          person_id?: string | null
+          response?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_events: {
         Row: {
+          audience: string | null
+          how: string | null
+          meet_link: string | null
+          sample_key: string | null
+          sent_from_account_id: number | null
+          source: string
+          type: string | null
           add_to_google: boolean
           audience_team_ids: string[] | null
           calendar_state: string | null
@@ -345,6 +387,13 @@ export type Database = {
           title: string
         }
         Insert: {
+          audience?: string | null
+          how?: string | null
+          meet_link?: string | null
+          sample_key?: string | null
+          sent_from_account_id?: number | null
+          source?: string
+          type?: string | null
           add_to_google?: boolean
           audience_team_ids?: string[] | null
           calendar_state?: string | null
@@ -365,6 +414,13 @@ export type Database = {
           title: string
         }
         Update: {
+          audience?: string | null
+          how?: string | null
+          meet_link?: string | null
+          sample_key?: string | null
+          sent_from_account_id?: number | null
+          source?: string
+          type?: string | null
           add_to_google?: boolean
           audience_team_ids?: string[] | null
           calendar_state?: string | null
@@ -432,6 +488,7 @@ export type Database = {
           monday_api_token: string | null
           monday_hide_stale_boards: boolean
           monday_webhook_secret: string | null
+          agenda_all_levels: string[]
           agenda_google_open: boolean
           north_time_open: boolean
           rippling_api_token: string | null
@@ -455,6 +512,7 @@ export type Database = {
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          agenda_all_levels?: string[]
           agenda_google_open?: boolean
           north_time_open?: boolean
           rippling_api_token?: string | null
@@ -478,6 +536,7 @@ export type Database = {
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          agenda_all_levels?: string[]
           agenda_google_open?: boolean
           north_time_open?: boolean
           rippling_api_token?: string | null

@@ -13,6 +13,9 @@ import { addDays } from '@/lib/timeclock/periods'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import { AgendaView } from '@/components/agenda/AgendaView'
 import { createAgendaEvent, deleteAgendaEvent, updateAgendaEvent } from './actions'
+import { createDrawerEvent, deleteDrawerEvent, findTimeData, updateDrawerEvent } from './drawer-actions'
+import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
+import { loadDrawerSetup } from '@/lib/agenda/drawer-data'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Agenda' }
@@ -40,13 +43,16 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
   const teams = [...dir.teams.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     .map(t => ({ id: t.id, name: t.name, color: teamColour(t.color, t.name) }))
   const mode = company ? 'company' as const : access.can('ag-team') && led.size ? 'team' as const : null
+  // The new Agenda (migration 134): everyone gets the New event drawer.
+  const drawer = (await agendaGoogleOpen()) ? await loadDrawerSetup(access, await loadClients()) : null
 
   return (
     <AgendaView
       api={createAgendaEvent}
+      drawerApi={drawer ? { create: createDrawerEvent, update: updateDrawerEvent, remove: deleteDrawerEvent, findTime: findTimeData } : undefined}
       edit={{ update: updateAgendaEvent, remove: deleteAgendaEvent }}
       data={{
-        view, anchor, today, items, teams,
+        view, anchor, today, items, teams, drawer,
         me: { id: v.id, superAdmin: v.superAdmin, zone: v.zone },
         holidays: [...holidaysIn(lo, addDays(hi, 31)).keys()],
         create: mode && {

@@ -31,6 +31,9 @@ import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { EventEdit } from '@/lib/agenda/events'
 import { NewEventDialog, type NewEventSetup, type CreateEvent, type DeleteEvent, type UpdateEvent } from './NewEventDialog'
+import { EventDrawer, type DrawerApi } from './EventDrawer'
+import type { DrawerSetup } from '@/lib/agenda/drawer-data'
+import type { DrawerEdit } from '@/lib/agenda/model'
 
 export interface AgendaData {
   view: View
@@ -43,6 +46,8 @@ export interface AgendaData {
   holidays: string[]
   /** Who may create, and with what (null: nobody here may). */
   create: NewEventSetup | null
+  /** The new Agenda (migration 134 open): the New event drawer replaces the dialog. */
+  drawer?: DrawerSetup | null
   /** Design checks: a card or the new event dialog already open. */
   startCard?: string
   startNew?: boolean
@@ -63,7 +68,7 @@ const Anni = ({ yrs, size, compact = false }: { yrs: number; size: number; compa
   <TenureBadge milestone={{ kind: 'year', value: yrs, color: yearColor(yrs) }} size={size} compact={compact} />
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
 
-export function AgendaView({ data, api, edit, linked = true }: { data: AgendaData; api: CreateEvent; edit?: EventEditApi; linked?: boolean }) {
+export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data: AgendaData; api: CreateEvent; edit?: EventEditApi; drawerApi?: DrawerApi; linked?: boolean }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [view, setView] = useState<View>(data.view)
@@ -73,6 +78,8 @@ export function AgendaView({ data, api, edit, linked = true }: { data: AgendaDat
   const [card, setCard] = useState<string | null>(data.startCard ?? null)
   const [creating, setCreating] = useState(!!data.startNew)
   const [editing, setEditing] = useState<EventEdit | null>(() => (data.startEdit && data.items.find(x => x.id === data.startCard)?.edit) || null)
+  const [drawerEdit, setDrawerEdit] = useState<DrawerEdit | null>(null)
+  const drawer = drawerApi && data.drawer ? data.drawer : null
   const [toast, setToast] = useState<ToastState | null>(null)
   // A phone: the month in dots, and the day picked listed under it (no phone design in the handoff).
   const phone = usePhone()
@@ -110,9 +117,9 @@ export function AgendaView({ data, api, edit, linked = true }: { data: AgendaDat
           </div>
           <span className="font-(family-name:--font-display) font-extrabold text-[16px] leading-[normal] text-tn-ink min-w-[150px] whitespace-nowrap">{rangeTitle(view, anchor)}</span>
           {view === 'week' && <span className={WEEK_TAG}>Week {weekNumber(anchor)}</span>}
-          {data.create && (
+          {(drawer || data.create) && (
             <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b]">
-              <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{data.create.mode === 'team' ? 'New team event' : 'New event'}
+              <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{!drawer && data.create?.mode === 'team' ? 'New team event' : 'New event'}
             </button>
           )}
         </div>
@@ -153,13 +160,22 @@ export function AgendaView({ data, api, edit, linked = true }: { data: AgendaDat
 
       {open && !editing && (
         <ItemCard item={open} me={data.me} today={data.today} holidays={holidays} onClose={() => setCard(null)} startConfirm={!!data.startConfirm}
-          manage={edit && data.create && open.edit ? {
+          manage={drawer && drawerApi && open.drawerEdit ? {
+            onEdit: () => { setDrawerEdit(open.drawerEdit!); setCard(null) },
+            onDelete: () => drawerApi.remove({ id: open.drawerEdit!.id }),
+            onDeleted: t => { setCard(null); say({ text: t }); if (linked) router.refresh() },
+          } : edit && data.create && open.edit ? {
             onEdit: () => setEditing(open.edit!),
             onDelete: () => edit.remove({ id: open.edit!.id }),
             onDeleted: t => { setCard(null); say({ text: t }); if (linked) router.refresh() },
           } : undefined} />
       )}
-      {creating && data.create && (
+      {drawer && drawerApi && (creating || drawerEdit) && (
+        <EventDrawer key={drawerEdit?.id ?? 'new'} setup={drawer} editing={drawerEdit} today={data.today} api={drawerApi}
+          onClose={() => { setCreating(false); setDrawerEdit(null) }}
+          onDone={t => { setCreating(false); setDrawerEdit(null); say({ text: t }); if (linked) router.refresh() }} />
+      )}
+      {!drawer && creating && data.create && (
         <NewEventDialog setup={data.create} api={api} onClose={() => setCreating(false)}
           onDone={t => { setCreating(false); say({ text: t }); if (linked) router.refresh() }} />
       )}

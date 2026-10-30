@@ -92,6 +92,17 @@ export async function saveWorkingHours(input: { hours: unknown }): Promise<Done>
   return done('Working hours saved.')
 }
 
+/** Who may invite all of True North to an event: a Super Admin chooses the levels; Super Admins always may. */
+export async function setAllLevels(input: { levels: string[] }): Promise<Done> {
+  const m = await me(); if (isDone(m)) return m
+  if (!m.superAdmin) return no('Only a Super Admin chooses who invites all of True North.')
+  const known = ['super_admin', 'admin', 'team_leader', 'user']
+  const levels = ['super_admin', ...known.filter(l => l !== 'super_admin' && (input?.levels ?? []).includes(l))]
+  const { error } = await createAdminClient().from('app_settings').update({ agenda_all_levels: levels }).eq('singleton_id', 1)
+  if (error) { console.error('[agenda settings] all levels:', error.message); return no(NOT_SAVED) }
+  return done('Saved. Who can invite True North is updated.')
+}
+
 /** The team calendar (office@): a Super Admin connects and disconnects it. */
 export async function connectTeamCalendar(input: { email: string }): Promise<Done> {
   const m = await me(); if (isDone(m)) return m

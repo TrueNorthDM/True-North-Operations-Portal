@@ -28,6 +28,8 @@ export interface AgendaSettingsData {
   zone: { name: string; versus: string; isDc: boolean }
   /** The person's own country when it is not the US, for the Holidays card. */
   country: { code: string; name: string; flag: string } | null
+  /** Who may invite all of True North (a Super Admin chooses). */
+  allLevels: string[]
 }
 
 type AccountRow = { id: number; person_id: string | null; email: string; source: string; status: string; connected_at: string; connected_by: string | null }
@@ -35,11 +37,12 @@ const account = (r: AccountRow): AgendaAccount => ({ id: r.id, email: r.email, s
 
 export async function loadAgendaSettings(personId: string, superAdmin: boolean, now = Date.now()): Promise<AgendaSettingsData> {
   const c = createAdminClient()
-  const [dir, accRes, setRes, personRes] = await Promise.all([
+  const [dir, accRes, setRes, personRes, appRes] = await Promise.all([
     loadDirectory(),
     c.from('agenda_accounts').select('id, person_id, email, source, status, connected_at, connected_by').or(`person_id.eq.${personId},team_calendar.eq.true`).order('connected_at'),
     c.from('agenda_person_settings').select('working_hours, invite_account_id').eq('person_id', personId).maybeSingle(),
     c.from('people').select('email_true_north, address, location').eq('id', personId).maybeSingle(),
+    c.from('app_settings').select('agenda_all_levels').eq('singleton_id', 1).maybeSingle(),
   ])
   for (const r of [accRes, setRes, personRes]) if (r.error) throw new Error(`Agenda settings could not be read: ${r.error.message}`)
   const rows = (accRes.data ?? []) as AccountRow[]
@@ -58,5 +61,6 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     hours: setRes.data ? readHours(setRes.data.working_hours) : readHours(null),
     zone: { name: zoneLabel(zone), versus: dcVersus(zone, now), isDc: zone === DC },
     country: cc && cc !== 'US' ? { code: cc, name: countryName(cc), flag: flagOf(cc) } : null,
+    allLevels: (appRes.data?.agenda_all_levels as string[] | null) ?? ['super_admin', 'admin'],
   }
 }
