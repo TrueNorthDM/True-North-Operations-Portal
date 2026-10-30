@@ -15,20 +15,23 @@ import { readHours } from './working-hours'
 import { APPROVED_DOMAIN } from './accounts'
 
 const TEAM_CALENDAR = `office@${APPROVED_DOMAIN}`
-/** The owner's second account in the approved mockup. */
-const OWNER_SECOND = 'arnaldo@leveluponline.org'
+/** The owner's two accounts in the approved mockup (he has no work address in the Directory). */
+const OWNER_ACCOUNTS = ['arnaldo@truenorthdigitalmarketing.com', 'arnaldo@leveluponline.org']
 
 export interface SeedReport { accounts: number; withoutAccount: number; busy: number; settings: number }
 
 export async function seedAgendaSamples(c: SupabaseClient, today: string): Promise<SeedReport> {
   if (!IS_STAGING) throw new Error('Sample data is for staging only.')
   const dir = await loadDirectory()
-  const { data: people, error } = await c.from('people').select('id, email_true_north').eq('status', 'active').not('email_true_north', 'is', null).order('full_name')
+  const { data: people, error } = await c.from('people').select('id, full_name, email_true_north, email_goodnews').eq('status', 'active').order('full_name')
   if (error) throw new Error(`People could not be read: ${error.message}`)
-  const rows = (people ?? []) as { id: string; email_true_north: string }[]
-  const owner = rows.find(p => p.email_true_north.toLowerCase().startsWith('arnaldo@'))
+  // Each person's sample account: the work address, else the Good News one.
+  const rows = ((people ?? []) as { id: string; full_name: string; email_true_north: string | null; email_goodnews: string | null }[])
+    .map(p => ({ id: p.id, name: p.full_name, email: (p.email_true_north || p.email_goodnews || '').trim().toLowerCase() }))
+  const owner = rows.find(p => p.name.trim().toLowerCase() === 'arnaldo oliveira')
+  const people2 = rows.filter(p => p.email || p.id === owner?.id)
   // About three people without an account, to show the Connect state; never the owner.
-  const without = new Set(rows.filter(p => p.id !== owner?.id && seeded(`none:${p.id}`)() < 0.1).slice(0, 3).map(p => p.id))
+  const without = new Set(people2.filter(p => p.id !== owner?.id && seeded(`none:${p.id}`)() < 0.1).slice(0, 3).map(p => p.id))
 
   // The team calendar.
   const { data: team } = await c.from('agenda_accounts').select('id').eq('team_calendar', true).maybeSingle()
@@ -38,10 +41,7 @@ export async function seedAgendaSamples(c: SupabaseClient, today: string): Promi
   }
 
   // Accounts: the work address, and the owner's second one. Existing rows are kept.
-  const wanted = rows.filter(p => !without.has(p.id)).flatMap(p => [
-    { person_id: p.id, email: p.email_true_north.toLowerCase() },
-    ...(p.id === owner?.id ? [{ person_id: p.id, email: OWNER_SECOND }] : []),
-  ])
+  const wanted = people2.filter(p => !without.has(p.id)).flatMap(p => (p.id === owner?.id ? OWNER_ACCOUNTS : [p.email]).map(email => ({ person_id: p.id, email })))
   const { data: existing, error: exErr } = await c.from('agenda_accounts').select('id, person_id, email').not('person_id', 'is', null)
   if (exErr) throw new Error(`Accounts could not be read: ${exErr.message}`)
   const have = new Set((existing ?? []).map(a => (a.email as string).toLowerCase()))
@@ -54,7 +54,7 @@ export async function seedAgendaSamples(c: SupabaseClient, today: string): Promi
   // Working hours for whoever has none yet.
   const { data: set } = await c.from('agenda_person_settings').select('person_id')
   const hasSettings = new Set((set ?? []).map(s => s.person_id as string))
-  const settings = rows.filter(p => !hasSettings.has(p.id)).map(p => ({ person_id: p.id, working_hours: sampleHours(p.id) }))
+  const settings = people2.filter(p => !hasSettings.has(p.id)).map(p => ({ person_id: p.id, working_hours: sampleHours(p.id) }))
   if (settings.length) {
     const { error: e } = await c.from('agenda_person_settings').insert(settings)
     if (e) throw new Error(`Working hours could not be added: ${e.message}`)
