@@ -153,7 +153,7 @@ export interface ToConfirm {
   stopWhen: string
   /** "It ran 5h 00m without an answer since you clocked in at 8:00 AM, so it stopped at 1:00 PM. When did you really stop working?" */
   text: string
-  /** Time picker options, newest first (ISO, 15-minute steps): up to the stop, and after it with "I was still working until...". */
+  /** Time picker options, newest first (ISO, 15-minute steps): up to the stop; `laterOptions`, after it (still working). The panel shows both in one list. */
   options: string[]
   laterOptions: string[]
 }

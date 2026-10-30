@@ -14,6 +14,14 @@ import { loadRoutes } from './pay-terms'
 import { addDays } from './periods'
 import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pillOf, stepsOf, type OffCheck, type OffRequest, type OffStep, type OffTone } from './time-off'
 
+/**
+ * Time off nobody asks for here (Tina, 29 October 2026): company holidays are
+ * off for everyone, and the Rwanda-only kind is not used. TSheets keeps both
+ * jobs; the portal only leaves them out of Request time off.
+ */
+const NOT_ASKED = /^(holiday|rwanda\b.*)$/i
+export const askable = (label: string): boolean => !NOT_ASKED.test(label.trim())
+
 export interface TimeOffRow {
   id: number
   personId: string
@@ -104,7 +112,7 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
     canAll,
     me: { personId: v.personId, name: me?.name ?? 'You', team: teamOf(v.personId).name },
     today,
-    types: [...catalog.jobs.values()].filter(j => j.active && (j.kind === 'pto' || j.kind === 'unpaid')).map(j => ({ id: j.id, label: j.short || j.path, paid: j.kind === 'pto' })).sort((a, b) => a.label.localeCompare(b.label)),
+    types: [...catalog.jobs.values()].filter(j => j.active && (j.kind === 'pto' || j.kind === 'unpaid') && askable(j.short || j.path)).map(j => ({ id: j.id, label: j.short || j.path, paid: j.kind === 'pto' })).sort((a, b) => a.label.localeCompare(b.label)),
     mine: rows.filter(r => r.personId === v.personId),
     everyone: canAll ? rows : [],
     holidays: Object.fromEntries(holidays),

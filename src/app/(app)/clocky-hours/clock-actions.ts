@@ -428,7 +428,7 @@ export async function keepGoing(input?: { notificationId?: string }): Promise<Re
 /**
  * The real end after an automatic stop (1L). `end` is a time from the picker
  * (an instant on a quarter hour); "Keep 1:00 PM" sends the stop itself. Later
- * than the stop only with "I was still working until..." (`stillWorking`), up
+ * than the stop only as "still working" (`stillWorking`, a later time picked), up
  * to now, and then flagged for the approver.
  */
 export async function confirmEnd(input: { entryId: number; end: string; stillWorking?: boolean }): Promise<Result<{ recordedEnd: string; flagged: boolean; toast: string }>> {
@@ -446,7 +446,7 @@ export async function confirmEnd(input: { entryId: number; end: string; stillWor
     const end = roundIso(t)
     const stop = e.ended_at
     const later = Date.parse(end) > Date.parse(stop)
-    if (later && !input.stillWorking) return fail('It cannot be later than the stop unless you choose "I was still working until...".')
+    if (later && !input.stillWorking) return fail('A time later than the stop means you were still working: confirm it again.')
     if (later && Date.parse(end) > now.getTime()) return fail('It cannot be later than now.')
     if (Date.parse(end) <= Date.parse(e.started_at)) return fail(END_AFTER_START)
 

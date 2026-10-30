@@ -559,19 +559,23 @@ export function SwitchBar({ now, picked, busy, onCancel, onSwitch }: {
 
 // ── 1L The real end time after an automatic stop ────────────────────────────
 
-export function AutoView({ item, zone, later, end, busy, onLater, onEnd, onKeep, onConfirm }: {
+/** Whether a picked end is later than the automatic stop ("I was still working"). */
+export const isAfterStop = (end: string, stoppedAt: string): boolean => !!end && Date.parse(end) > Date.parse(stoppedAt)
+
+export function AutoView({ item, zone, end, busy, onEnd, onKeep, onConfirm }: {
   item: ToConfirm
   zone: string
-  later: boolean
   end: string
   busy: boolean
-  onLater: () => void
   onEnd: (iso: string) => void
   onKeep: () => void
   onConfirm: () => void
 }) {
   const stop = timeLabel(item.stoppedAt, zone)
-  const options = (later ? item.laterOptions : item.options).map(iso => ({ value: iso, label: timeLabel(iso, zone) }))
+  // One list, later times first (Tina, 29 October 2026: a separate "I was still working until..." list hid
+  // the earlier times and confused people). A time after the stop is flagged for the approver.
+  const options = [...item.laterOptions, ...item.options].map(iso => ({ value: iso, label: timeLabel(iso, zone) }))
+  const later = isAfterStop(end, item.stoppedAt)
   return (
     <>
       <div role="alert" className="border border-[#f3c6ca] bg-[#fdeeef] rounded-[14px] p-4 flex flex-col gap-3.5">
@@ -580,14 +584,7 @@ export function AutoView({ item, zone, later, end, busy, onLater, onEnd, onKeep,
           <div className="text-[13px] text-foreground leading-[1.5] mt-1.5">{item.text}</div>
         </div>
         <ClockField label="Real end time" value={end} options={options} onChange={onEnd} search />
-        <button type="button" role="checkbox" aria-checked={later} onClick={onLater}
-          className={`flex items-center gap-[9px] border-0 bg-transparent cursor-pointer p-0 text-[13px] text-tn-ink font-semibold text-left ${FOCUS}`}>
-          <span className={`w-[21px] h-[21px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 ${later ? 'border-tn-teal bg-tn-teal' : 'border-[#cbd2da] bg-white'}`}>
-            {later && <Icon d={ICON.check} size={12} stroke="#fff" sw={3} />}
-          </span>
-          I was still working until...
-        </button>
-        {later && <div className="text-[12px] text-[#8a6d1a] font-semibold -mt-1.5">{`A time after ${stop} is flagged for the approver.`}</div>}
+        {later && <div className="text-[12px] text-[#8a6d1a] font-semibold -mt-1.5">{`Later than ${stop}: you were still working. It is flagged for the approver.`}</div>}
         <div className="flex justify-end gap-2 flex-wrap">
           <button type="button" onClick={onKeep} disabled={busy} className={`${CK_BTN_WHITE} tabular-nums lining-nums disabled:opacity-60 ${FOCUS}`}>{`Keep ${stop}`}</button>
           <button type="button" onClick={onConfirm} disabled={busy || !end} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>

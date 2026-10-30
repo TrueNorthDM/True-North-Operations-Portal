@@ -17,7 +17,7 @@ import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
 import { choiceRow, choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, runningJobOf, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
-import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, SwitchBar, type NoteStatus } from './ClockViews'
+import { AutoView, isAfterStop, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, SwitchBar, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
@@ -43,14 +43,13 @@ export interface PanelUi {
   save: SaveDraft | null
   /** Closing the save window goes back to Manage. */
   back: boolean
-  /** 1L: "I was still working until..." and the time picked. */
-  later: boolean
+  /** 1L: the real end time picked (later than the stop means still working). */
   autoEnd: string | null
 }
 
 export const PANEL_UI: PanelUi = {
   view: 'base', ret: null, pick: null, query: '', browse: null, draft: null, gate: null, editKey: null, more: false,
-  modal: null, save: null, back: false, later: false, autoEnd: null,
+  modal: null, save: null, back: false, autoEnd: null,
 }
 
 export interface Toast { text: string; undo?: number; error?: boolean }
@@ -360,11 +359,11 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const pickedRow = ui.pick ? choiceRow(ui.pick.choice, ui.pick.key.startsWith('c')) : null
 
   // 1L
-  const autoEnd = auto ? ui.autoEnd ?? (ui.later ? auto.laterOptions[0] : auto.options[0]) ?? '' : ''
+  const autoEnd = auto ? ui.autoEnd ?? auto.options[0] ?? '' : ''
   const confirmEnd = (keep: boolean) => {
     if (!auto) return
     const end = keep ? auto.stoppedAt : autoEnd
-    const stillWorking = !keep && ui.later
+    const stillWorking = !keep && isAfterStop(autoEnd, auto.stoppedAt)
     void run(() => api.confirmEnd({ entryId: auto.entryId, end, stillWorking }), async r => {
       toast({ text: r.toast })
       set({ ...PANEL_UI })
@@ -462,8 +461,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         )}
 
         {mode === 'auto' && auto && (
-          <AutoView item={auto} zone={zone} later={ui.later} end={autoEnd} busy={busy}
-            onLater={() => set({ later: !ui.later, autoEnd: null })}
+          <AutoView item={auto} zone={zone} end={autoEnd} busy={busy}
             onEnd={iso => set({ autoEnd: iso })}
             onKeep={() => confirmEnd(true)}
             onConfirm={() => confirmEnd(false)} />
