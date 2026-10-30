@@ -148,7 +148,7 @@ export function FindTimePanel({ api, personIds, externals, names, me, date, from
           <div className="relative h-4 -mb-1 text-[10.5px] font-bold text-muted">
             {[6, 9, 12, 15, 18].map(h => <span key={h} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: pct(h * 60) }}>{h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}</span>)}
           </div>
-          <div className="min-w-0 text-[13px] font-bold text-tn-ink leading-[1.3]">Everyone free<small className="block text-[11px] font-semibold text-muted">{rows.length} people, {dur} min</small></div>
+          <div className="min-w-0 text-[13px] font-bold text-tn-ink leading-[1.3]">Everyone free<small className="block text-[11px] font-semibold text-muted">{rows.length} {rows.length === 1 ? 'person' : 'people'}, {dur} min</small></div>
           <div className="relative h-[26px] rounded-[7px] bg-[#f2f4f7] overflow-hidden">
             {answer.allFree.map(s => <div key={s} className="absolute top-[3px] bottom-[3px] bg-[#bfe5d6] rounded-[5px]" style={{ left: pct(s), width: wid(s, s + dur) }} />)}
             {sel}
