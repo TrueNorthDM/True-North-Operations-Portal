@@ -559,9 +559,11 @@ export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; person
   })
 }
 
-/** A reimbursement asked for: to the Super Admins who decide (rq-decide), never the person. */
-export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string }): Draft[] {
-  return ctx.aud.withTool('rq-decide').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
+/** A reimbursement asked for: to who decides it, the Super Admins (rq-decide) and Finance (owner, 29 October 2026), never the person. */
+export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string; finance?: readonly string[] }): Draft[] {
+  const to = new Map(ctx.aud.withTool('rq-decide').map(r => [r.personId, r]))
+  for (const id of x.finance ?? []) { const r = ctx.aud.byId.get(id); if (r) to.set(r.personId, r) }
+  return [...to.values()].filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
     title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
   }))
 }

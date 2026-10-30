@@ -5,8 +5,8 @@
  * off, the receipt for a reimbursement, the allowance for extra hours) and what
  * approving does by itself.
  *
- * Super Admins decide (time off with ck-timeoff, the rest with rq-decide);
- * never their own. Reimbursements are money: shown only to who sees that
+ * Super Admins decide (time off with ck-timeoff, the rest with rq-decide), and
+ * Finance decides reimbursements too (owner, 29 October 2026); never their own. Reimbursements are money: shown only to who sees that
  * person's money (pay-terms.ts seesMoney), and never to Team Leaders. The
  * Approvals count (clocky-approvals.ts countWaiting) asks the same questions
  * (waitingRequests below), so the number and the list cannot disagree.
@@ -19,7 +19,7 @@ import { allRows, db, loadCatalog, must } from './clocky-context'
 import { dateLabel, dayLabel, initials, localDate, monthYear, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
-import { loadPayTerms, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
+import { isFinance, loadPayTerms, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays } from './time-off'
 import { usd } from './invoice-doc'
@@ -101,9 +101,16 @@ export const moneyViewer = (v: Viewer) => ({ isAdmin: v.level === 'super_admin' 
 export const offWaiting = (r: { state: string; cancel_asked_at: string | null }): boolean =>
   r.state === 'pending' || (r.state === 'approved' && !!r.cancel_asked_at)
 
-/** The viewer decides this kind of request for this person: time off with ck-timeoff, the rest with rq-decide; never their own. */
-export const decidesRequest = (v: Viewer, kind: 'off' | 'rmb' | 'xh', personId: string): boolean =>
-  personId !== v.personId && v.can(kind === 'off' ? 'ck-timeoff' : 'rq-decide')
+/**
+ * The viewer decides this kind of request for this person: time off with
+ * ck-timeoff, extra hours with rq-decide, a reimbursement with rq-decide or as
+ * Finance (owner, 29 October 2026); never their own.
+ */
+export const decidesRequest = (v: Viewer, kind: 'off' | 'rmb' | 'xh', personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
+  personId !== v.personId && (kind === 'off' ? v.can('ck-timeoff') : v.can('rq-decide') || (kind === 'rmb' && isFinance(v, settings)))
+
+/** Who decides what this viewer cannot, for the read-only line. */
+const RO_PENDING = 'Read only. Super Admins decide time off and extra hours; Super Admins and Finance decide reimbursements.'
 
 /** A reimbursement is money: its row is for whoever sees that person's money, never a Team Leader. */
 export const showsRmb = (v: Viewer, personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
@@ -125,17 +132,17 @@ export async function waitingRequests(v: Viewer, dir: Directory, settings: Pick<
       ? allRows<{ person_id: string; state: string; cancel_asked_at: string | null }>((a, b) => c.from('tc_absence_requests').select('person_id, state, cancel_asked_at')
         .or('state.eq.pending,cancel_asked_at.not.is.null').order('id').range(a, b), 'Time off could not be read')
       : Promise.resolve([]),
-    v.can('rq-decide')
+    v.can('rq-decide') || isFinance(v, settings)
       ? allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read')
       : Promise.resolve([]),
     v.can('rq-decide')
       ? allRows<{ person_id: string }>((a, b) => c.from('extra_hours_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Extra hours could not be read')
       : Promise.resolve([]),
   ])
-  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings) && decidesRequest(v, 'rmb', r.person_id))
-  return offs.filter(r => offWaiting(r) && decidesRequest(v, 'off', r.person_id)).length
+  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings) && decidesRequest(v, 'rmb', r.person_id, settings))
+  return offs.filter(r => offWaiting(r) && decidesRequest(v, 'off', r.person_id, settings)).length
     + new Set(rmbRows.filter(r => r.report_id != null).map(r => r.report_id)).size + rmbRows.filter(r => r.report_id == null).length
-    + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, 'xh', r.person_id)).length
+    + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, 'xh', r.person_id, settings)).length
 }
 
 type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
@@ -194,7 +201,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       ]
       const clash = mates.flatMap(m => days.filter(d => d >= m.start_date && d <= m.end_date).map(d => ({ who: dir.nameOf(m.person_id), d })))
       const own = r.person_id === v.personId
-      const canDecide = pending && decidesRequest(v, 'off', r.person_id)
+      const canDecide = pending && decidesRequest(v, 'off', r.person_id, settings)
       const label = daysText(r.start_date, r.end_date)
       const doneOf = (): CardRow['done'] => {
         if (pending) return null
@@ -229,7 +236,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off Rippling and the team calendar where it went. Keep it, with a reason, and it stays.`
             : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day into their time entries.`,
           canDecide,
-          roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
+          roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
           approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Deny',
         },
       })
@@ -260,7 +267,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const own = r0.person_id === v.personId
       const waiting = list.filter(r => r.state === 'pending')
       const pending = waiting.length > 0
-      const canDecide = pending && decidesRequest(v, 'rmb', r0.person_id)
+      const canDecide = pending && decidesRequest(v, 'rmb', r0.person_id, settings)
       const doc = openDocs.find(d => d.person_id === r0.person_id)
       const values = list.map(r => ({ amount: Number(r.amount), currency: r.currency }))
       const total = totalsText(values)
@@ -291,7 +298,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: contractor
             ? `${who.name} is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.`
             : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
+          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
           approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Deny all' : 'Deny',
         },
       })
@@ -303,7 +310,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const amt = r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toFixed(2)} ${r.currency}`
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decidesRequest(v, 'rmb', r.person_id)
+      const canDecide = pending && decidesRequest(v, 'rmb', r.person_id, settings)
       const doc = openDocs.find(d => d.person_id === r.person_id)
       const isPdf = (r.receipt_name ?? '').toLowerCase().endsWith('.pdf')
       const size = r.receipt_size ? (r.receipt_size >= 1048576 ? `${(r.receipt_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.receipt_size / 1024))} KB`) : ''
@@ -330,7 +337,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: contractor
             ? `${who.name} is a contractor. Approving puts it on their next invoice by itself.`
             : `${who.name} is an employee. Approving puts it on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
+          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
           approveLabel: 'Approve', denyLabel: 'Deny',
         },
       })
@@ -348,7 +355,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       if (!showsXh(v, r.person_id, who.teamId)) continue
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decidesRequest(v, 'xh', r.person_id)
+      const canDecide = pending && decidesRequest(v, 'xh', r.person_id, settings)
       const hours = formatDuration(Number(r.hours) * 3600)
       const when = r.period === 'month' ? monthYear(r.period_start) : `the week of ${dayLabel(r.period_start)}`
       const t = terms.get(r.person_id)
@@ -369,7 +376,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: cap != null && t?.allowance?.period === r.period
             ? `Approved, their ${when} allowance becomes ${cap + Number(r.hours)}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
             : 'Approved, these hours are added to the allowance of that period. Hours past it are flagged again.',
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
+          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
           approveLabel: 'Approve', denyLabel: 'Deny',
         },
       })

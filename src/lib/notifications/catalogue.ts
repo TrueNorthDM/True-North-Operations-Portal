@@ -319,7 +319,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'Wendy Cacka asked for a reimbursement', body: 'Software, $45.00 (Figma Professional, Oct to Dec).' },
     title: 'Someone asked for a reimbursement',
     description: 'Money spent for work, with the receipt. Approve it on Approvals, or deny it with a reason. In the bell only.',
-    who: 'Super Admins', audience: { kind: 'tool', tool: 'rq-decide' },
+    // Finance decides reimbursements too (owner, 29 October 2026): the generator picks who, as for clocky-rmb-ready.
+    who: 'Super Admins and Finance', audience: { kind: 'everyone' },
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {

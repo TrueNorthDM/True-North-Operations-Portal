@@ -250,7 +250,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
   // Time off, reimbursements and extra hours, with their cards (7C, 9C, 10D).
   for (const r of requests) {
     const { owner, teamId, request, ...row } = r
-    push({ ...row, card: null, request }, owner, teamId, decidesRequest(v, row.type, row.personId))
+    push({ ...row, card: null, request }, owner, teamId, decidesRequest(v, row.type, row.personId, settings))
   }
 
   const open = rows.filter(r => !r.done)

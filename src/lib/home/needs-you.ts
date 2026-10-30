@@ -15,7 +15,7 @@
  *               carry an amount (the queue gives them "Hours only")
  *   Requests    time off, reimbursements and extra hours waiting for the
  *   to decide   viewer's decision (request-cards.ts, the rows Approvals lists);
- *               ck-timeoff and rq-decide
+ *               ck-timeoff and rq-decide; Finance for reimbursements
  *   Invoices    the fixed-pay invoices the 1st makes by itself and sends to
  *               the viewer (invoices-cron.ts), in the week before; informs only
  *   To pay      Super Admins, Admins and Finance (pay-terms.ts paysWhat): one line for the approved invoices
@@ -53,7 +53,7 @@ import { db, loadDirectory, viewerFor, type Directory, type Viewer } from '@/lib
 import { goesToLabel, teamLeadNames } from '@/lib/timeclock/clocky-requests'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel } from '@/lib/timeclock/format'
 import { moneyTotal, usd } from '@/lib/timeclock/invoice-doc'
-import { loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
+import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
@@ -119,7 +119,8 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
   // "Open Approvals to try again", as a link, only for who can open Approvals.
   const retry = (text: string, page: string, href: string, can: boolean): TabError => (can ? { text: `${text} Open ${page} to try again.`, href } : { text })
 
-  const decides = access.can('ck-timeoff') || access.can('rq-decide')
+  // Finance decides reimbursements too (owner, 29 October 2026); North Time closed, nobody decides.
+  const decides = access.can('ck-timeoff') || access.can('rq-decide') || (ntOpen && !!settings && isFinance(access, settings))
   const approvalsOpen = access.can('clocky-approvals')
   const viewerKinds = [approvalsOpen, decides, access.can('my-work'), access.can('rq-time-off'), access.can('rq-reimbursements'), access.can('rq-extra-hours'), access.can('clocky-hours'), access.can('clocky-invoices')]
   const [system, invites, approvals, decisions, invoices, payInv, payDocs, work, ...mine] = await Promise.all([

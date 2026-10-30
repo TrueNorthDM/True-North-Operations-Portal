@@ -25,7 +25,7 @@ import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
-import { loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
@@ -64,6 +64,21 @@ async function actor(key: string): Promise<Viewer | Fail> {
   const access = await writerAccess()
   if (!access) return fail(SIGN_IN)
   if (!access.can(key)) return fail(NO_ACCESS)
+  return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
+}
+
+/**
+ * Who decides a reimbursement (owner, 29 October 2026): Super Admins
+ * (rq-decide) and Finance (Company settings > Invoices). Never their own,
+ * checked in each action. Extra hours and time off stay with Super Admins.
+ */
+async function reimbursementDecider(): Promise<Viewer | Fail> {
+  if (await getViewAs()) return fail(PREVIEW)
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
+  const access = await writerAccess()
+  if (!access) return fail(SIGN_IN)
+  if (!access.can('rq-decide') && !isFinance(access, await loadInvoiceSettings())) return fail(NO_ACCESS)
   return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
 }
 
@@ -286,13 +301,13 @@ export async function retryTimeOffRippling(input: { id: number }): Promise<Resul
 // ── Reimbursements and extra hours (Requests.dc.html 9C, 10D) ───────────────
 
 /**
- * A reimbursement (9C), Super Admins (rq-decide), never their own. Approved:
+ * A reimbursement (9C), Super Admins (rq-decide) and Finance, never their own. Approved:
  * a contractor's waits for their next invoice, which takes it by itself; an
  * employee's goes on their open reimbursement document (a new one when none is
  * open), and Finance hears it is ready to pay. Denied: with the reason.
  */
 export async function decideReimbursement(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
-  const v = await actor('rq-decide')
+  const v = await reimbursementDecider()
   if (isFail(v)) return v
   try {
     const c = db()
@@ -367,13 +382,13 @@ async function settleRmbDocument(c: ReturnType<typeof db>, documentId: number, i
 
 /**
  * A request with several receipts (9C, migration 122), Super Admins
- * (rq-decide), never their own: every receipt still waiting gets a decision,
+ * (rq-decide) and Finance, never their own: every receipt still waiting gets a decision,
  * approved or denied with its reason. Approved ones go where a single one would
  * (the next invoice, or the employee's open document), each on its own line.
  * The person hears it once, with what was approved and why the rest was not.
  */
 export async function decideReimbursementReport(input: { reportId: number; decisions: { id: number; decision: 'approve' | 'deny'; note?: string }[] }): Promise<Result<{ toast: string }>> {
-  const v = await actor('rq-decide')
+  const v = await reimbursementDecider()
   if (isFail(v)) return v
   try {
     const c = db()

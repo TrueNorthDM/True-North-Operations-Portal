@@ -179,7 +179,7 @@ export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt
 export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
   simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
 
-export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; text: string }) =>
+export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; text: string; finance?: readonly string[] }) =>
   simple('clocky-reimbursement-requested', ctx => clockyReimbursementRequestedDrafts(ctx, x))
 
 export const notifyClockyReimbursementDecided = (x: { id: number; personId: string; text: string }) =>

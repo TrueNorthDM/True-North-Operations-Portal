@@ -218,7 +218,8 @@ const TREE: Node[] = [
     { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, translated into the 2026 structure', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side. Reading only.' },
   ] },
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
-  // Super Admins decide (time off with ck-timeoff, the rest with rq-decide).
+  // Super Admins decide (time off with ck-timeoff, the rest with rq-decide); Finance (Company
+  // settings > Invoices) also decides reimbursements, outside this list (owner, 29 October 2026).
   { key: 'm-requests', label: 'Requests', kind: 'module', ch: [
     { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it.' },
     { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays.', ch: [
