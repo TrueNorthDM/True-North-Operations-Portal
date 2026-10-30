@@ -74,8 +74,8 @@ describe('breadcrumbs', () => {
       if (e.kind === 'page') expect(e.item.label, e.item.href).toBe(NAV_LABEL[e.item.href as keyof typeof NAV_LABEL])
     }
     for (const i of items) {
-      // "Hours" under My Hours is the page's short name inside its own panel.
-      if (named.has(i.href) && i.key !== 'my-hours' && i.key !== 'clocky-hours') expect(i.label, i.href).toBe(named.get(i.href))
+      // "Hours" under My Hours and "Calendar" under Agenda are the pages' short names inside their own panels.
+      if (named.has(i.href) && i.key !== 'my-hours' && i.key !== 'clocky-hours' && i.key !== 'agenda') expect(i.label, i.href).toBe(named.get(i.href))
     }
   })
 })

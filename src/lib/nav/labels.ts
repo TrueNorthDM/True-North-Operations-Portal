@@ -22,6 +22,7 @@ export const NAV_LABEL = {
   '/clocky-hours': 'North Time',
   '/requests': 'Requests',
   '/agenda': 'Agenda',
+  '/agenda/settings': 'Settings',
   '/directory': 'Directory',
   '/organization': 'Organization',
   '/human-resources': 'Human Resources',

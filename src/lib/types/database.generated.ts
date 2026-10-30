@@ -260,6 +260,69 @@ export type Database = {
           },
         ]
       }
+      agenda_accounts: {
+        Row: {
+          connected_at: string
+          connected_by: string | null
+          email: string
+          id: number
+          last_read_at: string | null
+          person_id: string | null
+          source: string
+          status: string
+          team_calendar: boolean
+        }
+        Insert: {
+          connected_at?: string
+          connected_by?: string | null
+          email: string
+          id?: number
+          last_read_at?: string | null
+          person_id?: string | null
+          source?: string
+          status?: string
+          team_calendar?: boolean
+        }
+        Update: {
+          connected_at?: string
+          connected_by?: string | null
+          email?: string
+          id?: number
+          last_read_at?: string | null
+          person_id?: string | null
+          source?: string
+          status?: string
+          team_calendar?: boolean
+        }
+        Relationships: []
+      }
+      agenda_busy: {
+        Row: {
+          account_id: number
+          ends_at: string
+          id: number
+          read_at: string
+          source: string
+          starts_at: string
+        }
+        Insert: {
+          account_id: number
+          ends_at: string
+          id?: number
+          read_at?: string
+          source?: string
+          starts_at: string
+        }
+        Update: {
+          account_id?: number
+          ends_at?: string
+          id?: number
+          read_at?: string
+          source?: string
+          starts_at?: string
+        }
+        Relationships: []
+      }
       agenda_events: {
         Row: {
           add_to_google: boolean
@@ -335,6 +398,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      agenda_person_settings: {
+        Row: {
+          invite_account_id: number | null
+          person_id: string
+          updated_at: string
+          working_hours: Json
+        }
+        Insert: {
+          invite_account_id?: number | null
+          person_id: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Update: {
+          invite_account_id?: number | null
+          person_id?: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Relationships: []
       }
       app_settings: {
         Row: {

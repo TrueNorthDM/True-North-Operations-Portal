@@ -121,7 +121,24 @@ const toolRows = (group: ToolGroup): PanelItem[] => {
 export const RAIL: readonly RailEntry[] = [
   { kind: 'page', key: 'home', href: '/', icon: 'home' },
   // Clocky part 2 (Agenda.dc.html): one calendar for the company, for everyone.
-  { kind: 'page', key: 'agenda', href: '/agenda', icon: 'agenda', surface: 'agenda' },
+  // A hub since the new Agenda (owner, 30 October 2026): Calendar and Settings;
+  // while the new Agenda is closed Settings is hidden and the icon opens /agenda.
+  {
+    kind: 'hub',
+    key: 'agenda',
+    label: NAV_LABEL['/agenda'],
+    icon: 'agenda',
+    surface: 'agenda',
+    hint: 'Company events, time off, birthdays, anniversaries and milestones, with your Google Calendar.',
+    skipWhenSingle: true,
+    groups: [{
+      label: null,
+      items: [
+        { key: 'agenda', label: 'Calendar', href: '/agenda', icon: 'agenda', surface: 'agenda' },
+        { key: 'agenda-settings', label: 'Settings', href: '/agenda/settings', icon: 'settings', surface: 'agenda' },
+      ],
+    }],
+  },
   {
     kind: 'hub',
     key: 'my-work',
@@ -327,6 +344,9 @@ export interface NavContext {
  * job?, Clock safety, TSheets transition and Import stay: they read, or keep
  * the TSheets import going.
  */
+/** The new Agenda's rows, left out for everyone while it is closed (migration 134). */
+export const AGENDA_GOOGLE_CLOSED_ROWS: ReadonlySet<string> = new Set(['agenda-settings'])
+
 export const NORTH_TIME_CLOSED_ROWS: ReadonlySet<string> = new Set([
   'clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices',
   'requests', 'requests-time-off', 'requests-reimbursements', 'requests-extra-hours', 'requests-approvals',

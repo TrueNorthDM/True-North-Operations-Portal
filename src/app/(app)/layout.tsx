@@ -17,7 +17,8 @@ import { checkTwoStep } from '@/lib/auth/two-step'
 import { daysLeft } from '@/lib/auth/two-step-rule'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { loadAccess } from '@/lib/access/resolve'
-import { buildRail, NORTH_TIME_CLOSED_ROWS } from '@/lib/access/nav'
+import { AGENDA_GOOGLE_CLOSED_ROWS, buildRail, NORTH_TIME_CLOSED_ROWS } from '@/lib/access/nav'
+import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { loadNavFacts } from '@/lib/access/nav-facts'
 import { loadInbox } from '@/lib/notifications/inbox'
@@ -57,7 +58,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // is exactly what the page guards let through.
   // North Time closed (migration 132): no clock, and its person-facing rows only for a Super Admin.
   const ntOpen = await northTimeOpen()
-  const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access), hidden: ntOpen || access.isSuperAdmin ? undefined : NORTH_TIME_CLOSED_ROWS })
+  const agOpen = await agendaGoogleOpen()
+  const hidden = new Set([...(ntOpen || access.isSuperAdmin ? [] : NORTH_TIME_CLOSED_ROWS), ...(agOpen ? [] : AGENDA_GOOGLE_CLOSED_ROWS)])
+  const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access), hidden: hidden.size ? hidden : undefined })
   // Clocky in the top bar (design handoff of 16 October 2026): the clock for
   // everyone with Time entries, Who's working for Team Leaders and up. Started
   // here and not awaited: the bar streams them in, the page never waits.
