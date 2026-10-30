@@ -867,6 +867,7 @@ export type Database = {
           invoice_approvers: string[]
           next_number: number
           number_year: number | null
+          mileage_rate: number
           payment_days: number
           prefix: string
           rmb_next_number: number
@@ -886,6 +887,7 @@ export type Database = {
           invoice_approvers?: string[]
           next_number?: number
           number_year?: number | null
+          mileage_rate?: number
           payment_days?: number
           prefix?: string
           rmb_next_number?: number
@@ -905,6 +907,7 @@ export type Database = {
           invoice_approvers?: string[]
           next_number?: number
           number_year?: number | null
+          mileage_rate?: number
           payment_days?: number
           prefix?: string
           rmb_next_number?: number
@@ -2645,10 +2648,12 @@ export type Database = {
           document_id: number | null
           id: number
           invoice_id: number | null
+          miles: number | null
+          mileage_rate: number | null
           person_id: string
           purpose: string
           receipt_name: string | null
-          receipt_path: string
+          receipt_path: string | null
           receipt_size: number | null
           report_id: number | null
           spent_on: string
@@ -2667,10 +2672,12 @@ export type Database = {
           document_id?: number | null
           id?: number
           invoice_id?: number | null
+          miles?: number | null
+          mileage_rate?: number | null
           person_id: string
           purpose: string
           receipt_name?: string | null
-          receipt_path: string
+          receipt_path?: string | null
           receipt_size?: number | null
           report_id?: number | null
           spent_on: string
@@ -2689,10 +2696,12 @@ export type Database = {
           document_id?: number | null
           id?: number
           invoice_id?: number | null
+          miles?: number | null
+          mileage_rate?: number | null
           person_id?: string
           purpose?: string
           receipt_name?: string | null
-          receipt_path?: string
+          receipt_path?: string | null
           receipt_size?: number | null
           report_id?: number | null
           spent_on?: string

@@ -156,6 +156,8 @@ export async function loadRmbDoc(v: Viewer, documentId: number, zone: string, ke
   const person = dir.people.get(d.person_id)
   // A PDF receipt brings its own pages; one that cannot be read keeps one page, with the line saying where to open it.
   const receipts = await Promise.all((items ?? []).map(async i => {
+    // A Mileage line may have no receipt: it prints as a line, with no receipt page.
+    if (!i.receipt_path) return undefined
     const show = receiptShow(i.receipt_path)
     if (show !== 'pdf') return { id: i.id, file: i.receipt_name || 'receipt', show, pages: 1 }
     const bytes = await receiptBytes(i.receipt_path)

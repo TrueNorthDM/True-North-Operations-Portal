@@ -142,7 +142,7 @@ export async function retryIntegrationJob(input: { id: number }): Promise<Done> 
 
 // ── 13B Invoices ────────────────────────────────────────────────────────────
 
-export async function saveInvoiceSettings(input: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string }): Promise<Done> {
+export async function saveInvoiceSettings(input: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }): Promise<Done> {
   if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins change the invoice settings.')
   const prefix = String(input.prefix ?? '').trim().toUpperCase()
   const rmb = String(input.rmbPrefix ?? '').trim().toUpperCase()
@@ -152,6 +152,10 @@ export async function saveInvoiceSettings(input: { prefix: string; nextNumber: s
   if (!Number.isInteger(next) || next < 1 || next > 9999) return no('The next number goes from 1 to 9999.')
   const days = Number(String(input.paymentDays ?? '').trim())
   if (!Number.isInteger(days) || days < 0 || days > 120) return no('Payment terms go from 0 to 120 days.')
+  // Mileage (Tina's review, 29 October 2026): dollars a mile, like 0.76.
+  const rateRaw = String(input.mileageRate ?? '').trim().replace(/^\$/, '')
+  const rate = Number(rateRaw)
+  if (!/^\d+(\.\d{1,3})?$/.test(rateRaw) || !(rate > 0 && rate <= 5)) return no('The mileage rate is dollars a mile, like 0.76.')
   const email = String(input.email ?? '').trim()
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return no('The billing email is not an address.')
   const name = String(input.billingName ?? '').trim().slice(0, 200)
@@ -171,7 +175,7 @@ export async function saveInvoiceSettings(input: { prefix: string; nextNumber: s
   const { error } = await c.from('invoice_settings').update({
     prefix, next_number: next, rmb_prefix: rmb, billing_name: name,
     billing_address: [String(input.address ?? '').trim(), String(input.country ?? '').trim()].filter(Boolean).join('\n') || null,
-    billing_email: email || null, payment_days: days, updated_by: me?.id ?? null, updated_at: new Date().toISOString(),
+    billing_email: email || null, payment_days: days, mileage_rate: rate, updated_by: me?.id ?? null, updated_at: new Date().toISOString(),
   }).eq('singleton_id', 1)
   if (error) { console.error('[settings] invoices:', error.message); return no(NOT_SAVED) }
   refresh()

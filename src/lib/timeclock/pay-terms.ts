@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAudience } from '@/lib/notifications/audience'
 import type { PaysAs, RoutePerson, RouteSettings } from './routing'
 import { loadAllowanceUse } from './allowance-data'
+import { DEFAULT_MILEAGE_RATE } from './reimbursement-rules'
 
 export interface PayTerms {
   personId: string
@@ -42,6 +43,8 @@ export interface InvoiceSettings extends RouteSettings {
   billingEmail: string | null
   paymentDays: number
   finance: readonly string[]
+  /** Dollars a mile for a Mileage reimbursement (migration 133; Tina's spreadsheet used 0.76). */
+  mileageRate: number
 }
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v))
@@ -63,6 +66,7 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     defaultApprover: s?.default_approver ?? null,
     deputyDirector: s?.deputy_director ?? null,
     finance: s?.finance ?? [],
+    mileageRate: num((s as { mileage_rate?: unknown } | null)?.mileage_rate) ?? DEFAULT_MILEAGE_RATE,
   }
 }
 

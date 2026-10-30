@@ -56,6 +56,8 @@ export interface ReimbursementsPage {
   doc: { id: number; number: string } | null
   clients: string[]
   today: string
+  /** Dollars a mile for a Mileage line (Company settings > Invoices). */
+  mileageRate: number
 }
 
 type RRow = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; state: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string; report_id: number | null }
@@ -115,7 +117,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     const d = r.document_id != null ? doc.get(r.document_id) : undefined
     const mine = r.person_id === me
     let st: RmbRow['st'], info: string
-    if (r.state === 'pending') { st = { label: 'Waiting', tone: 'warn' }; info = 'Waiting for a Super Admin.' }
+    if (r.state === 'pending') { st = { label: 'Waiting', tone: 'warn' }; info = 'Waiting for a Super Admin or Finance.' }
     else if (r.state === 'denied') { st = { label: 'Denied', tone: 'bad' }; info = `Denied by ${dir.nameOf(r.decided_by)}${r.decision_note ? `: "${r.decision_note}"` : '.'}` }
     else if (r.state === 'paid') {
       st = { label: 'Paid', tone: 'ok' }
@@ -145,6 +147,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     everyone: seesAll ? build(arrangeReimbursements(loaded), true) : null,
     documents,
     doc: !route?.isContractor && open ? { id: open.id, number: open.number } : null, clients, today: localDate(now, zone),
+    mileageRate: settings.mileageRate,
   }
 }
 

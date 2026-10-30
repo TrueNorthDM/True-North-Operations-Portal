@@ -21,7 +21,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!access.can('rq-reimbursements') || !/^\d+$/.test(id)) return missing()
   const c = createAdminClient()
   const { data: r } = await c.from('reimbursements').select('person_id, receipt_path, receipt_name').eq('id', Number(id)).maybeSingle()
-  if (!r) return missing()
+  // A Mileage line may come without a receipt (Tina's review, 29 October 2026).
+  if (!r || !r.receipt_path) return missing()
   if (!access.can('rq-decide') && !seesMoney(access, r.person_id, await loadInvoiceSettings())) return missing()
   const { data, error } = await c.storage.from('receipts').download(r.receipt_path)
   if (error || !data) return new NextResponse('The receipt could not be opened. Try again in a moment.', { status: 500, headers: { 'Content-Type': 'text/plain' } })

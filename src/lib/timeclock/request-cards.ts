@@ -37,7 +37,8 @@ export interface ReportItem {
   value: Amount
   /** "2 - i7 Marketing, billable", when it has a client. */
   client: string | null
-  receipt: { id: number; file: string; sub: string }
+  /** Null: a Mileage line sent without a receipt (Tina's review, 29 October 2026). */
+  receipt: { id: number; file: string; sub: string } | null
   state: string
   note: string | null
 }
@@ -145,7 +146,7 @@ export async function waitingRequests(v: Viewer, dir: Directory, settings: Pick<
     + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, 'xh', r.person_id, settings)).length
 }
 
-type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
+type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
 type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
 type XhRow = { id: number; person_id: string; asked_by: string | null; hours: number; period: string; period_start: string; period_end: string; client: string | null; reason: string; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
 
@@ -155,7 +156,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   const [offs, rmbs, xhs, catalog] = await Promise.all([
     allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
       .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id').range(a, b), 'Time off could not be read'),
-    v.level === 'team_leader' ? Promise.resolve([] as Rmb[]) : allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_name, receipt_size, report_id')
+    v.level === 'team_leader' ? Promise.resolve([] as Rmb[]) : allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, report_id')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Reimbursements could not be read'),
     allRows<XhRow>((a, b) => c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Extra hours could not be read'),
@@ -254,7 +255,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
     ])
     const amountOf = (r: Rmb) => (r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${r.currency}`)
     const sizeOf = (n: number | null) => (n ? (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`) : '')
-    const receiptOf = (r: Rmb) => ({ id: r.id, file: r.receipt_name ?? 'receipt', sub: `${(r.receipt_name ?? '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'Photo'}${sizeOf(r.receipt_size) ? `, ${sizeOf(r.receipt_size)}` : ''}` })
+    const receiptOf = (r: Rmb) => (!r.receipt_path ? null : { id: r.id, file: r.receipt_name ?? 'receipt', sub: `${(r.receipt_name ?? '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'Photo'}${sizeOf(r.receipt_size) ? `, ${sizeOf(r.receipt_size)}` : ''}` })
 
     // A request with several receipts (migration 122): one row, each receipt decided on its own.
     const byReport = new Map<number, Rmb[]>()
@@ -326,7 +327,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         href: null,
         request: {
           kind: 'rmb', id: r.id, type: 'Reimbursement', title: `${r.category}, ${amt}`, width: 760, twoCols: true,
-          receipt: { id: r.id, file: r.receipt_name ?? 'receipt', sub: `${isPdf ? 'PDF' : 'Photo'}${size ? `, ${size}` : ''}` },
+          receipt: r.receipt_path ? { id: r.id, file: r.receipt_name ?? 'receipt', sub: `${isPdf ? 'PDF' : 'Photo'}${size ? `, ${size}` : ''}` } : null,
           facts: [
             { k: 'Date of the expense', v: `${dayLabel(r.spent_on)}, ${r.spent_on.slice(0, 4)}` },
             { k: 'Amount', v: `${amt} (${r.currency})` },

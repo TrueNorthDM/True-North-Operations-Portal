@@ -167,10 +167,15 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
   return (
     <div className="border border-[var(--panel-border)] rounded-[12px] px-2.5 py-2 flex flex-col gap-2">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <a href={withViewAs(`/requests/reimbursements/receipt/${it.receipt.id}`)} target="_blank" rel="noreferrer" title={`Open ${it.receipt.file}`} aria-label={`Open the receipt ${it.receipt.file}`}
-          className="w-11 h-11 flex-none rounded-[8px] bg-subtle border border-[var(--panel-border)] flex items-center justify-center text-muted hover:border-tn-teal">
-          <Icon d={RECEIPT} size={18} width={1.7} />
-        </a>
+        {it.receipt ? (
+          <a href={withViewAs(`/requests/reimbursements/receipt/${it.receipt.id}`)} target="_blank" rel="noreferrer" title={`Open ${it.receipt.file}`} aria-label={`Open the receipt ${it.receipt.file}`}
+            className="w-11 h-11 flex-none rounded-[8px] bg-subtle border border-[var(--panel-border)] flex items-center justify-center text-muted hover:border-tn-teal">
+            <Icon d={RECEIPT} size={18} width={1.7} />
+          </a>
+        ) : (
+          // A Mileage line may come without a receipt: the miles and the rate are in what it was for.
+          <span title="No receipt: mileage" className="w-11 h-11 flex-none rounded-[8px] bg-[#f8f7f3] border border-dashed border-[#cbd2da] flex items-center justify-center text-[10px] font-bold text-muted">mi</span>
+        )}
         <div className="flex-1 min-w-[150px] flex flex-col gap-0.5">
           <span className="text-[13px] font-semibold text-tn-ink leading-[1.35]">{it.purpose}</span>
           <span className="text-[12px] text-muted leading-[1.35]">{it.date} · {it.category}{it.client ? ` · ${it.client}` : ''}</span>

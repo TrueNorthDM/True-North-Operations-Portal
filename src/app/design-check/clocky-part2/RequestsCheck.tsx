@@ -20,6 +20,8 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
     { file: new File(['%PDF'], 'hotel-ibis.pdf', { type: 'application/pdf' }), fileLabel: 'PDF, 210 KB', date: 'Oct 15, 2026', category: 'Travel', amount: '378.60', what: 'Hotel, 3 nights' },
     { file: new File(['img'], 'uber-oct13.jpg', { type: 'image/jpeg' }), fileLabel: 'Photo, 640 KB', date: 'Oct 13, 2026', category: 'Travel', amount: '18.40', what: 'Uber to the client' },
     { file: new File(['img'], 'lunch.jpg', { type: 'image/jpeg' }), fileLabel: 'Photo, 1.1 MB', date: 'Oct 13, 2026', category: 'Meals with a client', amount: '64.00', what: 'Lunch with the i7 team' },
+    // Tina's review (29 October 2026): a Mileage line has miles and no receipt.
+    { file: null, fileLabel: '', date: 'Oct 12, 2026', category: 'Mileage', amount: '', miles: '84', what: 'Home to the airport and back' },
   ] : [])
   if (timeOff) {
     const ok = async () => ({ ok: true as const, toast: 'Sent. A Super Admin decides; you hear back in the bell.' })

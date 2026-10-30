@@ -10,6 +10,10 @@
  *   9A   New reimbursement: the receipt (required), the date, the category,
  *        the amount and currency, what it was for, the client and whether it
  *        is billable; what happens after, for a contractor or an employee
+ *
+ * Tina's review (29 October 2026): Mileage asks the miles (times the company's
+ * rate, no receipt needed), a meal while travelling is $25 at most, and the
+ * request's name is its event or trip (reimbursement-rules.ts).
  */
 
 import { Fragment, useRef, useState } from 'react'
@@ -25,6 +29,7 @@ import { usePhone } from '@/components/clocky/clock/hooks'
 import { PhoneSheet } from './PhoneSheet'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { RmbDocsList, type DocFilter, type MarkRmbPaid } from './RmbDocsList'
+import { CATEGORIES, MEAL_HINT, MEALS_TRAVEL, MILEAGE, mileageAmount, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
 
 export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
@@ -50,7 +55,7 @@ const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
 const CAMERA = 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'
 const UPLOAD = 'M12 16V4M7 9l5-5 5 5M5 20h14'
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] tabular-nums lining-nums'
-export const CATEGORIES = ['Internet', 'Software', 'Equipment', 'Travel', 'Meals with a client', 'Other']
+export { CATEGORIES }
 const CURRENCIES = ['USD', 'KES', 'RWF']
 
 export type SendReimbursement = (form: FormData) => Promise<{ ok: true } | { ok: false; error: string }>
@@ -211,25 +216,30 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
 }
 
 /** What a design check or a reopened form starts with: the first receipt's fields, and more receipts. */
-export interface Draft { file: File | null; fileLabel: string; date: string; category: string; amount: string; currency: string; what: string; client: string; billable: 'yes' | 'no'; name?: string; more?: Partial<Item>[] }
+export interface Draft { file: File | null; fileLabel: string; date: string; category: string; amount: string; miles?: string; currency: string; what: string; client: string; billable: 'yes' | 'no'; name?: string; more?: Partial<Item>[] }
 
 /** One receipt. `client` null: the request's client, set once at the top (owner, 2026-10-23). */
-interface Item { key: number; file: File | null; fileLabel: string; date: string; category: string; amount: string; currency: string; what: string; client: string | null; billable: 'yes' | 'no' }
+interface Item { key: number; file: File | null; fileLabel: string; date: string; category: string; amount: string; miles: string; currency: string; what: string; client: string | null; billable: 'yes' | 'no' }
 
 const today = () => { const d = new Date(); return `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` }
 const size = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
 const labelOf = (f: File, fromCamera = false) => `${f.type === 'application/pdf' ? 'PDF' : fromCamera ? 'Photo from the camera' : 'Photo'}, ${size(f.size)}`
 const amountOk = (a: string) => Number(a.replace(/,/g, '')) > 0
-const itemOk = (it: Item) => (!!it.file || !!it.fileLabel) && amountOk(it.amount) && !!it.what.trim()
+const amountOf = (a: string) => Number(a.replace(/,/g, ''))
+const isMileage = (it: Pick<Item, 'category'>) => it.category === MILEAGE
+/** A line is ready: its receipt (but Mileage), its miles or amount (a meal while travelling under the cap), what it was for. */
+const itemOk = (it: Item) => ((!!it.file || !!it.fileLabel) || !needsReceipt(it.category))
+  && (isMileage(it) ? milesOf(it.miles) != null : amountOk(it.amount) && !overMealCap(it.category, amountOf(it.amount), it.currency))
+  && !!it.what.trim()
 let nextKey = 1
 
 function NewReimbursement({ data, draft, send, onClose, onSent }: { data: ReimbursementsPage; draft?: Partial<Draft>; send: SendReimbursement; onClose: () => void; onSent: () => void }) {
-  const blank = (p: Partial<Item> = {}): Item => ({ key: nextKey++, file: null, fileLabel: '', date: today(), category: 'Internet', amount: '', currency: 'USD', what: '', client: null, billable: 'no', ...p })
+  const blank = (p: Partial<Item> = {}): Item => ({ key: nextKey++, file: null, fileLabel: '', date: today(), category: 'Internet', amount: '', miles: '', currency: 'USD', what: '', client: null, billable: 'no', ...p })
   const [name, setName] = useState(draft?.name ?? '')
   const [client, setClient] = useState(draft?.client ?? 'None')
   const [billable, setBillable] = useState<'yes' | 'no'>(draft?.billable ?? 'no')
   const [items, setItems] = useState<Item[]>(() => [
-    blank({ file: draft?.file ?? null, fileLabel: draft?.fileLabel ?? '', date: draft?.date ?? today(), category: draft?.category ?? 'Internet', amount: draft?.amount ?? '', currency: draft?.currency ?? 'USD', what: draft?.what ?? '' }),
+    blank({ file: draft?.file ?? null, fileLabel: draft?.fileLabel ?? '', date: draft?.date ?? today(), category: draft?.category ?? 'Internet', amount: draft?.amount ?? '', miles: draft?.miles ?? '', currency: draft?.currency ?? 'USD', what: draft?.what ?? '' }),
     ...(draft?.more ?? []).map(m => blank(m)),
   ])
   const [busy, setBusy] = useState(false)
@@ -267,15 +277,17 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
     f.set('count', String(items.length))
     if (name.trim()) f.set('name', name.trim())
     for (const [i, it] of items.entries()) {
-      if (!it.file) return
+      if (!it.file && needsReceipt(it.category)) return
       const day = parsePaidOn(it.date)
       if (!day) { setError(`${many ? `Receipt ${i + 1}: write` : 'Write'} the date of the expense, like Oct 31, 2026.`); return }
       const c = it.client ?? client
-      f.set(`receipt_${i}`, it.file)
+      if (it.file) f.set(`receipt_${i}`, it.file)
       f.set(`date_${i}`, day)
       f.set(`category_${i}`, it.category)
-      f.set(`amount_${i}`, it.amount)
-      f.set(`currency_${i}`, it.currency)
+      // Mileage sends the miles: the server works out the amount from the company's rate.
+      if (isMileage(it)) f.set(`miles_${i}`, it.miles)
+      else f.set(`amount_${i}`, it.amount)
+      f.set(`currency_${i}`, isMileage(it) ? 'USD' : it.currency)
       f.set(`purpose_${i}`, it.what.trim())
       f.set(`client_${i}`, c)
       f.set(`billable_${i}`, c === 'None' ? 'no' : it.client != null ? it.billable : billable)
@@ -295,7 +307,24 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
   const afterLine = data.contractor
     ? (many ? 'Approved, each receipt goes on your next invoice by itself, as its own line. If that invoice is already approved, they go on the one after.' : 'Approved, it goes on your next invoice by itself. If that invoice is already approved, it goes on the one after.')
     : (many ? 'Approved, the portal puts each receipt on a reimbursement document and Finance pays you, outside Rippling payroll.' : 'Approved, the portal puts it on a reimbursement document and Finance pays you, outside Rippling payroll.')
-  const total = totalsText(items.filter(it => amountOk(it.amount)).map(it => ({ amount: Number(it.amount.replace(/,/g, '')), currency: it.currency })))
+  const rate = data.mileageRate
+  const valueOf = (it: Item) => {
+    if (isMileage(it)) { const m = milesOf(it.miles); return m == null ? null : { amount: mileageAmount(m, rate), currency: 'USD' } }
+    return amountOk(it.amount) ? { amount: amountOf(it.amount), currency: it.currency } : null
+  }
+  const total = totalsText(items.map(valueOf).filter((x): x is { amount: number; currency: string } => !!x))
+  /** Under a line: the mileage worked out as it is typed, or the meals rule. */
+  const lineHint = (it: Item) => {
+    if (isMileage(it)) {
+      const m = milesOf(it.miles)
+      return <div className="text-[12px] text-tn-teal font-semibold tabular-nums lining-nums">{m == null ? `Miles times $${rate} a mile, in US dollars. No receipt needed.` : `${mileageText(m, rate)}. No receipt needed.`}</div>
+    }
+    if (it.category === MEALS_TRAVEL) {
+      const over = overMealCap(it.category, amountOf(it.amount), it.currency)
+      return <div className={`text-[12px] leading-[1.45] ${over ? 'text-[#c8323d] font-semibold' : 'text-muted'}`}>{MEAL_HINT}</div>
+    }
+    return null
+  }
   const sendLabel = busy ? 'Sending…' : many ? `Send ${items.length} receipts` : 'Send request'
   const clientOptions = ['None', ...data.clients].map(c => ({ value: c, label: c }))
   const files = (
@@ -337,8 +366,10 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
         )
         const date = <input value={it.date} onChange={e => setItem(it.key, { date: e.target.value })} aria-label={`Date of line ${i + 1}`} className={`${INPUT} min-w-0`} />
         const cat = bare(`Category of line ${i + 1}`, it.category, v => setItem(it.key, { category: v }), CATEGORIES)
-        const amt = <input value={it.amount} onChange={e => setItem(it.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" aria-label={`Amount of line ${i + 1}`} className={`${INPUT} min-w-0`} />
-        const cur = bare(`Currency of line ${i + 1}`, it.currency, v => setItem(it.key, { currency: v }), currencies)
+        const amt = isMileage(it)
+          ? <input value={it.miles} onChange={e => setItem(it.key, { miles: e.target.value })} placeholder="Miles" inputMode="decimal" aria-label={`Miles of line ${i + 1}`} className={`${INPUT} min-w-0`} />
+          : <input value={it.amount} onChange={e => setItem(it.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" aria-label={`Amount of line ${i + 1}`} className={`${INPUT} min-w-0`} />
+        const cur = isMileage(it) ? <div className={`${INPUT} flex items-center bg-subtle text-muted min-w-0`}>USD</div> : bare(`Currency of line ${i + 1}`, it.currency, v => setItem(it.key, { currency: v }), currencies)
         return (
           <div key={it.key} className="border border-[var(--panel-border)] rounded-[12px] p-2.5 flex flex-col gap-2">
             {phone ? (
@@ -349,10 +380,11 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             ) : (
               <div className="grid grid-cols-[40px_120px_minmax(0,1fr)_104px_92px_32px] gap-2 items-center">{thumb}{date}{cat}{amt}{cur}{close}</div>
             )}
-            <input value={it.what} onChange={e => setItem(it.key, { what: e.target.value })} placeholder="What it was for, e.g. Uber to the client" aria-label={`What line ${i + 1} was for`} className={INPUT} />
+            {lineHint(it)}
+            <input value={it.what} onChange={e => setItem(it.key, { what: e.target.value })} placeholder={isMileage(it) ? 'Where you drove, e.g. Office to the ASI convention and back' : 'What it was for, e.g. Uber to the client'} aria-label={`What line ${i + 1} was for`} className={INPUT} />
             {it.client == null ? (
               <div className="flex items-center justify-between gap-3 text-[11.5px]">
-                <span className={`min-w-0 truncate ${has ? 'text-muted' : 'text-[#c8323d] font-semibold'}`}>{has ? `${phone ? '' : `${it.file?.name ?? 'receipt'} · `}${it.fileLabel}` : 'Add the photo or PDF of this receipt'}</span>
+                <span className={`min-w-0 truncate ${has || !needsReceipt(it.category) ? 'text-muted' : 'text-[#c8323d] font-semibold'}`}>{has ? `${phone ? '' : `${it.file?.name ?? 'receipt'} · `}${it.fileLabel}` : needsReceipt(it.category) ? 'Add the photo or PDF of this receipt' : 'No receipt needed for mileage'}</span>
                 <button type="button" onClick={() => setItem(it.key, { client, billable })} className="flex-none border-0 bg-transparent p-0 cursor-pointer text-[12px] font-bold text-tn-teal">Other client for this receipt</button>
               </div>
             ) : (
@@ -381,7 +413,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
   )
   const topFields = (
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto] gap-3 items-end">
-      <label className="flex flex-col gap-[5px]"><FieldLabel>Name (optional)</FieldLabel><input value={name} onChange={e => setName(e.target.value)} maxLength={120} placeholder="e.g. São Paulo trip, Oct 12 to 15" className={INPUT} /></label>
+      <label className="flex flex-col gap-[5px]"><FieldLabel>Event or trip (optional)</FieldLabel><input value={name} onChange={e => setName(e.target.value)} maxLength={120} placeholder="e.g. ASI convention, Aug 5 to 8" className={INPUT} /></label>
       <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />
       <div className="flex flex-col gap-1.5" style={{ opacity: client === 'None' ? 0.45 : 1 }}>
         <FieldLabel>Billable</FieldLabel>
@@ -414,7 +446,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
         ) : (
           <>
             <div className="flex flex-col gap-1.5">
-              <FieldLabel>Receipt (required)</FieldLabel>
+              <FieldLabel>{needsReceipt(first.category) ? 'Receipt (required)' : 'Receipt (optional for mileage)'}</FieldLabel>
               {first.file || first.fileLabel ? (
                 <div className="flex gap-3 items-center border border-[var(--panel-border)] rounded-[12px] p-2.5">
                   <div className="w-[78px] h-24 rounded-[8px] bg-[#e9e6dd] flex items-center justify-center flex-none"><Icon d={CAMERA} size={24} color="#8593a4" width={1.7} /></div>
@@ -436,15 +468,21 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
               )}
               {addMore}
             </div>
+            <label className="flex flex-col gap-[5px]"><FieldLabel>Event or trip (optional)</FieldLabel><input value={name} onChange={e => setName(e.target.value)} maxLength={120} placeholder="e.g. ASI convention, Aug 5 to 8" className={PHONE_INPUT} /></label>
             <label className="flex flex-col gap-[5px]"><FieldLabel>Date of the expense</FieldLabel><input value={first.date} onChange={e => setItem(first.key, { date: e.target.value })} className={PHONE_INPUT} /></label>
             <LabeledSelect label="Category" value={first.category} onChange={v => setItem(first.key, { category: v })} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
-            <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2.5">
-              <label className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={PHONE_INPUT} /></label>
-              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
-            </div>
+            {isMileage(first) ? (
+              <label className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Miles</FieldLabel><input value={first.miles} onChange={e => setItem(first.key, { miles: e.target.value })} placeholder="e.g. 120" inputMode="decimal" className={PHONE_INPUT} /></label>
+            ) : (
+              <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2.5">
+                <label className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={PHONE_INPUT} /></label>
+                <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
+              </div>
+            )}
+            {lineHint(first)}
             {data.contractor
               ? <div className="text-[12px] text-muted leading-[1.45]">{usdNote}</div>
-              : first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
+              : first.currency !== 'USD' && !isMileage(first) && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
             <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={`${TEXTAREA_PLAIN} text-[14px]`} /></label>
             <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />
             {/* Billable only matters once a client is picked; the phone design leaves it out until then. */}
@@ -472,7 +510,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-5 items-start">
           <div className="flex flex-col gap-1.5">
-            <FieldLabel>Receipt (required)</FieldLabel>
+            <FieldLabel>{needsReceipt(first.category) ? 'Receipt (required)' : 'Receipt (optional for mileage)'}</FieldLabel>
             {!(first.file || first.fileLabel) ? (
               <button type="button" onClick={() => pickFor(first.key)}
                 onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)}
@@ -493,17 +531,23 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             {addMore}
           </div>
           <div className="flex flex-col gap-3.5 min-w-0">
+            <label className="flex flex-col gap-[5px]"><FieldLabel>Event or trip (optional)</FieldLabel><input value={name} onChange={e => setName(e.target.value)} maxLength={120} placeholder="e.g. ASI convention, Aug 5 to 8" className={INPUT} /></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-[5px]"><FieldLabel>Date of the expense</FieldLabel><input value={first.date} onChange={e => setItem(first.key, { date: e.target.value })} className={INPUT} /></label>
               <LabeledSelect label="Category" value={first.category} onChange={v => setItem(first.key, { category: v })} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-3">
-              <label className="flex flex-col gap-[5px]"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={INPUT} /></label>
-              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
-            </div>
+            {isMileage(first) ? (
+              <label className="flex flex-col gap-[5px]"><FieldLabel>Miles</FieldLabel><input value={first.miles} onChange={e => setItem(first.key, { miles: e.target.value })} placeholder="e.g. 120" inputMode="decimal" className={INPUT} /></label>
+            ) : (
+              <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-3">
+                <label className="flex flex-col gap-[5px]"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={INPUT} /></label>
+                <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
+              </div>
+            )}
+            {lineHint(first)}
             {data.contractor
               ? <div className="text-[12px] text-muted leading-[1.45] -mt-1.5">{usdNote}</div>
-              : first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 -mt-1.5">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
+              : first.currency !== 'USD' && !isMileage(first) && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 -mt-1.5">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
             <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={TEXTAREA_PLAIN} /></label>
             <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
               <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />
@@ -518,7 +562,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
       )}
       {errorLine}
       <div className="flex justify-end gap-2 items-center">
-        {!ok && <span className="mr-auto text-[12.5px] text-muted">{many ? 'Each receipt needs its photo or PDF, the amount and what it was for.' : 'Add the receipt, the amount and what it was for.'}</span>}
+        {!ok && <span className="mr-auto text-[12.5px] text-muted">{many ? 'Each receipt needs its photo or PDF (mileage: the miles), the amount and what it was for.' : isMileage(first) ? 'Write the miles and where you drove.' : 'Add the receipt, the amount and what it was for.'}</span>}
         <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
         <button type="button" disabled={!ok || busy} onClick={() => void submit()} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
           <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={14} color={BTN_ICON.navy} width={2.4} />{sendLabel}

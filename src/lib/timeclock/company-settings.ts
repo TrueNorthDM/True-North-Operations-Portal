@@ -128,6 +128,8 @@ export interface InvoiceSettingsData {
   approvers: { name: string; who: string }[]
   billing: { name: string; address: string; country: string; email: string }
   paymentDays: number
+  /** Dollars a mile for a Mileage reimbursement. */
+  mileageRate: number
 }
 
 export async function loadInvoiceSettingsData(now = new Date()): Promise<InvoiceSettingsData> {
@@ -146,6 +148,7 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
     ],
     billing: { name: s.billingName ?? '', address: lines[0] ?? '', country: lines.slice(1).join(', '), email: s.billingEmail ?? '' },
     paymentDays: s.paymentDays,
+    mileageRate: s.mileageRate,
   }
 }
 

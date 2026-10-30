@@ -109,7 +109,7 @@ export function reimbursementsFrame(frame: string): ReimbursementsPage {
     { id: 24, date: 'Oct 19, 2026', category: 'Equipment', what: 'USB-C hub for a second monitor', amount: '$12.99', hasReceipt: true, st: { label: 'Approved', tone: 'teal' as const }, info: 'Approved Oct 21. On reimbursement document RMB-2026-0031, waiting for Finance.', who: wc },
     { ...rows[2], who: jt }, { ...rows[3], who: jt },
   ]
-  return { contractor: true, everyone: frame === '9Be' ? everyone : null, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, documents: null, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
+  return { contractor: true, everyone: frame === '9Be' ? everyone : null, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, documents: null, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY, mileageRate: 0.76 }
 }
 
 /**

@@ -194,18 +194,18 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
 
 // ── 13B ─────────────────────────────────────────────────────────────────────
 
-export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string }) => Promise<Done> }) {
+export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
-  const [f, setF] = useState({ prefix: data.prefix, nextNumber: data.nextNumber, rmbPrefix: data.rmbPrefix, billingName: data.billing.name, address: data.billing.address, country: data.billing.country, email: data.billing.email, paymentDays: String(data.paymentDays) })
+  const [f, setF] = useState({ prefix: data.prefix, nextNumber: data.nextNumber, rmbPrefix: data.rmbPrefix, billingName: data.billing.name, address: data.billing.address, country: data.billing.country, email: data.billing.email, paymentDays: String(data.paymentDays), mileageRate: String(data.mileageRate) })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF(x => ({ ...x, [k]: e.target.value }))
   const y = data.nextInvoice.split('-')[1]
   const nextInv = docNumber(f.prefix.toUpperCase(), y, Number(f.nextNumber) || 0)
   const nextRmb = `${f.rmbPrefix.toUpperCase()}-${y}-${data.nextRmb.split('-')[2]}`
   const due = (() => { const d = new Date(Date.UTC(Number(y), 11, 1)); d.setUTCDate(d.getUTCDate() + (parseInt(f.paymentDays, 10) || 0)); return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}` })()
   const field = (k: keyof typeof f, label: string, num = false) => (
-    <label key={k} className="flex flex-col gap-[5px]"><span className={LABEL}>{label}</span><input value={f[k]} onChange={set(k)} disabled={!canEdit} inputMode={num ? 'numeric' : undefined} className={`${INPUT} ${num ? 'tabular-nums lining-nums' : ''}`} /></label>
+    <label key={k} className="flex flex-col gap-[5px]"><span className={LABEL}>{label}</span><input value={f[k]} onChange={set(k)} disabled={!canEdit} inputMode={num ? (k === 'mileageRate' ? 'decimal' : 'numeric') : undefined} className={`${INPUT} ${num ? 'tabular-nums lining-nums' : ''}`} /></label>
   )
   const submit = async () => {
     setBusy(true)
@@ -243,6 +243,10 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
             <div className="flex flex-col gap-[5px]"><span className={LABEL}>Currency</span><div className={`${INPUT} flex items-center bg-subtle text-muted`}>USD</div></div>
           </div>
           <div className="text-[12px] text-muted leading-[1.5]">Every invoice is in USD: contractors ask for their reimbursements in dollars. An employee&apos;s reimbursement in another currency is converted by Finance at the rate of the expense date.</div>
+          <div className="grid grid-cols-2 gap-3 items-end">
+            {field('mileageRate', 'Mileage rate (per mile, USD)', true)}
+            <div className="text-[12px] text-muted leading-[1.5] pb-1">A Mileage reimbursement is the miles times this rate, with no receipt. A request keeps the rate it was sent with.</div>
+          </div>
           {canEdit && <div className="flex justify-end"><button type="button" disabled={busy} onClick={() => void submit()} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button></div>}
         </div>
         <div className="flex flex-col gap-2 xl:sticky xl:top-0">
@@ -277,7 +281,7 @@ const LINES: [string, string, string][] = [
   ['Time off', 'Asked · cancellation asked', "Super Admins and the person's Team Leader"],
   ['Time off', 'Approved, denied or cancelled', 'The person'],
   ['Time off', 'Rippling refused it', 'Super Admins, in red'],
-  ['Reimbursements', 'Asked · decided · document ready · paid', 'Super Admins · the person · Finance · the person'],
+  ['Reimbursements', 'Asked · decided · document ready · paid', 'Super Admins and Finance · the person · Finance · the person'],
   ['Extra hours', 'Asked · decided', 'Super Admins · the person'],
   ['Allowance', '90% · over', 'The person; over without approval also to the Team Leader and Super Admins'],
   ['Timesheets', 'The reminders above', 'As set above'],
