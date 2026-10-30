@@ -19,7 +19,7 @@ import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { closedRefusal } from '@/lib/agenda/google-lock'
-import { APPROVED_DOMAIN } from '@/lib/agenda/settings-data'
+import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
 import { checkHours } from '@/lib/agenda/working-hours'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }

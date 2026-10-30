@@ -30,9 +30,6 @@ export interface AgendaSettingsData {
   country: { code: string; name: string; flag: string } | null
 }
 
-/** Only these addresses connect until Google approves the portal (owner, 30 October 2026). */
-export const APPROVED_DOMAIN = 'truenorthdigitalmarketing.com'
-
 type AccountRow = { id: number; person_id: string | null; email: string; source: string; status: string; connected_at: string; connected_by: string | null }
 const account = (r: AccountRow): AgendaAccount => ({ id: r.id, email: r.email, sample: r.source === 'sample', needsReconnect: r.status === 'needs_reconnect', connectedAt: r.connected_at })
 

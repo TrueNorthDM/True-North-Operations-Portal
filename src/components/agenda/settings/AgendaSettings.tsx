@@ -15,7 +15,7 @@ import { FieldLabel, Icon, Modal, MODAL_TITLE, Toast, type ToastState } from '@/
 import { Select } from '@/components/ui/Select'
 import { failText } from '@/lib/ui/action-error'
 import type { AgendaAccount, AgendaSettingsData } from '@/lib/agenda/settings-data'
-import { APPROVED_DOMAIN } from '@/lib/agenda/settings-data'
+import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
 import { clockLabel } from '@/lib/agenda/time'
 import { copyDay, DAY_NAMES, tidy, WEEKDAYS, type Block, type Weekday, type WorkingHours } from '@/lib/agenda/working-hours'
 

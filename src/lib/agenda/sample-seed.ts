@@ -12,7 +12,7 @@ import { IS_STAGING } from '@/lib/environment'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { sampleBusy, sampleHours, seeded } from './sample-plan'
 import { readHours } from './working-hours'
-import { APPROVED_DOMAIN } from './settings-data'
+import { APPROVED_DOMAIN } from './accounts'
 
 const TEAM_CALENDAR = `office@${APPROVED_DOMAIN}`
 /** The owner's second account in the approved mockup. */
