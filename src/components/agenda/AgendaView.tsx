@@ -402,7 +402,9 @@ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string
           <span className={`leading-[normal] ${LABEL}`}>{g.title}</span>
           {g.items.map(it => (
             <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="flex items-center gap-[9px] border-0 bg-transparent py-[3px] px-0 cursor-pointer text-left leading-[normal]">
-              {it.yrs ? <Anni yrs={it.yrs} size={16} compact /> : <span className="w-2 h-2 rounded-full flex-none" style={{ background: it.c }} />}
+              {it.yrs ? <Anni yrs={it.yrs} size={20} compact />
+                : it.d ? <span className="w-5 h-5 rounded-[6px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={11} width={2.4} /></span>
+                : <span className="w-5 h-5 flex items-center justify-center flex-none"><span className="w-2 h-2 rounded-full" style={{ background: it.c }} /></span>}
               <span className="flex-1 min-w-0 text-[12.5px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
               <span className="text-[11.5px] text-muted whitespace-nowrap">{it.when}</span>
             </button>
