@@ -15,7 +15,7 @@
  */
 
 import { addDays } from '@/lib/timeclock/periods'
-import { WD, dow, hourLabel, type AgendaItem } from './model'
+import { WD, dow, hourLabel, look, type AgendaItem, type Look } from './model'
 
 export interface HomeOut { id: string; personId: string; name: string; avatarUrl: string | null; reason: string; until: string }
 export interface HomeEvent {
@@ -29,6 +29,8 @@ export interface HomeEvent {
   time: boolean
   title: string
   sub: string
+  /** The Agenda's icon for its kind (owner, 29 October 2026: the same tile as the Agenda's List view). */
+  look: Look
 }
 export interface HomeAgenda { out: HomeOut[]; events: HomeEvent[] }
 
@@ -95,11 +97,11 @@ export function homeAgenda(items: readonly AgendaItem[], today: string, now: num
 
   const events: HomeEvent[] = [
     ...todays.map((x): HomeEvent => {
-      if (x.s == null) return { id: x.id, section: 'today', top: WD[dow(today)], big: String(Number(today.slice(8))), time: false, title: titleOf(x), sub: `Today, ${kindSub(x).replace(/^\w/, c => c.toLowerCase())}` }
+      if (x.s == null) return { id: x.id, section: 'today', top: WD[dow(today)], big: String(Number(today.slice(8))), time: false, title: titleOf(x), sub: `Today, ${kindSub(x).replace(/^\w/, c => c.toLowerCase())}`, look: look(x) }
       const [clock, ap] = hourLabel(x.s).split(' ')
-      return { id: x.id, section: 'today', top: ap, big: clock, time: true, title: titleOf(x), sub: `Today, ${Math.round(((x.e ?? x.s + 1) - x.s) * 60)} min` }
+      return { id: x.id, section: 'today', top: ap, big: clock, time: true, title: titleOf(x), sub: `Today, ${Math.round(((x.e ?? x.s + 1) - x.s) * 60)} min`, look: look(x) }
     }),
-    ...later.map((x): HomeEvent => ({ id: x.id, section: 'later', top: WD[dow(x.a)], big: String(Number(x.a.slice(8))), time: false, title: titleOf(x), sub: kindSub(x) })),
+    ...later.map((x): HomeEvent => ({ id: x.id, section: 'later', top: WD[dow(x.a)], big: String(Number(x.a.slice(8))), time: false, title: titleOf(x), sub: kindSub(x), look: look(x) })),
   ].slice(0, HOME_EVENTS)
 
   return { out, events }

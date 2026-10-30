@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { homeAgenda, untilLabel } from './home'
-import type { AgendaItem, AgendaWho } from './model'
+import { AG_ICON, type AgendaItem, type AgendaWho } from './model'
 
 // The handoff's sample day: Monday, October 26, 2026, 10:46 AM.
 const TODAY = '2026-10-26'
@@ -76,6 +76,10 @@ describe('The next 5 events', () => {
       ['later', 'Wed', '28', '1:00 PM, Social'],
       ['later', 'Wed', '11', 'Company holiday'],
     ])
+    // The Agenda's own icon for each kind (owner, 29 October 2026).
+    expect(r.events[0].look.d).toBe(AG_ICON.gift)
+    expect(r.events[1].look.d).toBe(AG_ICON.cal)
+    expect(r.events[2].look.flag).toBe('🇺🇸')
   })
   it('leaves time off, the Good News Calendar and other countries\' holidays to /agenda', () => {
     const r = homeAgenda([

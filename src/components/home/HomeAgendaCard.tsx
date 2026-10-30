@@ -6,6 +6,9 @@
 import Link from 'next/link'
 import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/clocky/entries/ui'
+import { TenureBadge } from '@/components/TenureBadge'
+import { yearColor } from '@/lib/tenure'
+import type { Look } from '@/lib/agenda/model'
 import type { HomeAgenda } from '@/lib/agenda/home'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted'
@@ -58,6 +61,7 @@ function Body({ agenda }: { agenda: HomeAgenda }) {
                 <span className={`font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase ${e.time ? 'text-[#c8323d]' : 'text-muted'}`}>{e.top}</span>
                 <span className={`font-(family-name:--font-display) font-black text-tn-ink tabular-nums ${e.time ? 'text-[17px]' : 'text-[22px]'}`}>{e.big}</span>
               </span>
+              <KindIcon look={e.look} />
               <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                 <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{e.title}</span>
                 <span className="text-[12px] text-foreground">{e.sub}</span>
@@ -68,5 +72,15 @@ function Body({ agenda }: { agenda: HomeAgenda }) {
         {!events.length && <span className="text-[13px] text-muted">Nothing on the Agenda in the next month.</span>}
       </div>
     </>
+  )
+}
+
+/** The Agenda's tile for the item's kind, as its List view draws it: the tenure badge for an anniversary, else the icon or flag. */
+function KindIcon({ look }: { look: Look }) {
+  if (look.yrs) return <TenureBadge milestone={{ kind: 'year', value: look.yrs, color: yearColor(look.yrs) }} size={30} compact />
+  return (
+    <span aria-hidden="true" className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-none" style={{ background: look.bg, color: look.fg }}>
+      {look.flag ? <span className="text-[16px] leading-none">{look.flag}</span> : look.d && <Icon d={look.d} size={15} width={2.2} />}
+    </span>
   )
 }

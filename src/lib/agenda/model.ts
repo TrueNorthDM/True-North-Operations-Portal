@@ -177,7 +177,7 @@ export function look(x: AgendaItem): Look {
   if (x.k === 'bday') return { bg: '#fdf3c4', fg: '#7a5c00', d: AG_ICON.gift, c: '#F2C40A', flag: '' }
   if (x.k === 'anni') return { bg: '#eaf4f4', fg: '#1E7D7F', d: AG_ICON.star, c: '#1E7D7F', flag: '', yrs: x.yrs }
   if (x.k === 'event' && x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d: AG_ICON.people, c: x.team.color, flag: '' }
-  if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: '', c: '#012358', flag: '' }
+  if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: AG_ICON.cal, c: '#012358', flag: '' }
   if (x.k === 'ms') return { bg: '#e6f6ee', fg: '#0d7a4f', d: AG_ICON.flag, c: '#1E9E6A', flag: '' }
   if (x.k === 'gn') return { bg: '#fbe9df', fg: '#b4400f', d: AG_ICON.star, c: '#c2410c', flag: '' }
   return { bg: '#f1f3f6', fg: '#5b6b82', d: '', c: '#a3aebb', flag: flagOf(x.country) }
