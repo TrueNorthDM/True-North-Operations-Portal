@@ -71,7 +71,7 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
           const p = j.payload as { who?: string; start?: string; end?: string }
           if (!p.who || !p.start || !p.end) throw new Final('The job has no person or days.')
           // The type of time off stays private (Super Admins and the person): the calendar says only "out".
-          const id = await insertAllDay(g.token, g.calendar, { summary: `${p.who}, out`, start: p.start, end: p.end })
+          const id = await insertAllDay(g.token, g.calendar, { summary: `${p.who}: Time off`, start: p.start, end: p.end })
           if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_state: 'done', calendar_event_id: id }).eq('id', j.ref_id)
         }
       } else if (j.kind === 'gcal_delete') {

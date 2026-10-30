@@ -47,9 +47,10 @@ import { loadCatalogueData } from '@/lib/timeclock/job-catalogue'
 import { loadCatalog } from '@/lib/timeclock/clocky-context'
 import { JobCatalogue } from '@/components/settings/JobCatalogue'
 import { addFolder, addJob, addOption, linkFolders, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
-import { IntegrationsSettings, InvoiceSettings, NorthTimeOpenSwitch, RemindersSettings, RolloutSettings } from '@/components/settings/ClockySettings'
-import { saveRolloutDates, moveToWave, setNorthTimeOpen } from './rollout-actions'
+import { AgendaGoogleSwitch, IntegrationsSettings, InvoiceSettings, NorthTimeOpenSwitch, RemindersSettings, RolloutSettings } from '@/components/settings/ClockySettings'
+import { saveRolloutDates, moveToWave, setNorthTimeOpen, setAgendaGoogleOpen } from './rollout-actions'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
+import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
 import { removeGoogle, removeRipplingToken, retryIntegrationJob, saveGoogle, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
@@ -224,6 +225,7 @@ export default async function SettingsPage() {
   // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C).
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
   const ntOpen = await northTimeOpen()
+  const agOpen = await agendaGoogleOpen()
   const [integrations, invoiceSettings, reminders, jobCatalogue, rollout] = await Promise.all([
     can.integrations ? loadIntegrations(zone) : null,
     can.invoices ? loadInvoiceSettingsData() : null,
@@ -442,7 +444,8 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div>
-          <SectionHead title="Integrations" desc="Rippling for payroll and PTO, Google Calendar for the team calendar and the Good News Calendar. The portal fills them; nobody copies by hand." />
+          <SectionHead title="Integrations" desc="Rippling for payroll and PTO, Google Calendar for the team calendar. The portal fills them; nobody copies by hand." />
+          <div className="mb-[18px]"><AgendaGoogleSwitch open={agOpen} canChange={access.isSuperAdmin} set={setAgendaGoogleOpen} /></div>
           <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveRipplingToken, removeRipplingToken, saveGoogle, removeGoogle, testGoogle, retryIntegrationJob }} />
         </div>
       ),

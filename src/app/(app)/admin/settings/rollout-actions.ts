@@ -74,6 +74,20 @@ export async function moveToWave(input: { personId: string; wave: Wave | null })
  * Super Admin, really signed in. While closed nobody records hours in North
  * Time and its scheduled jobs do nothing (north-time-lock.ts).
  */
+/** The new Agenda with Google Calendar (migration 134): only a Super Admin opens or closes it. */
+export async function setAgendaGoogleOpen(input: { open: boolean }): Promise<Done> {
+  if (!(await isSuperAdmin())) return no('Only a Super Admin opens or closes the new Agenda.')
+  if (typeof input?.open !== 'boolean') return no(NOT_SAVED)
+  const open = input.open
+  const { error } = await createAdminClient().from('app_settings').update({ agenda_google_open: open }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] agenda google open:', error.message); return no(NOT_SAVED) }
+  await logChange('agenda_google_open', open ? 'opened' : 'closed')
+  revalidatePath('/', 'layout')
+  revalidatePath('/admin/settings')
+  revalidatePath('/agenda')
+  return { ok: true, toast: open ? 'The new Agenda is open for everyone.' : 'The new Agenda is closed: everyone has the Agenda as it was.' }
+}
+
 export async function setNorthTimeOpen(input: { open: boolean }): Promise<Done> {
   if (!(await isSuperAdmin())) return no('Only a Super Admin opens or closes North Time.')
   if (typeof input?.open !== 'boolean') return no(NOT_SAVED)

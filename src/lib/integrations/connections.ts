@@ -19,12 +19,12 @@ export const RIPPLING_CALLS_WRITTEN = false
 
 export interface Connections {
   rippling: { connected: boolean; tokenSaved: boolean; tokenEnd: string | null; connectedBy: string | null; connectedAt: string | null }
-  google: { connected: boolean; account: string | null; teamCalendarId: string | null; goodNewsCalendarId: string | null; connectedBy: string | null; connectedAt: string | null; checkedAt: string | null }
+  google: { connected: boolean; account: string | null; teamCalendarId: string | null; connectedBy: string | null; connectedAt: string | null; checkedAt: string | null }
 }
 
 export async function loadConnections(): Promise<Connections> {
   const { data, error } = await createAdminClient().from('app_settings')
-    .select('rippling_api_token, rippling_connected_by, rippling_connected_at, google_service_account, google_team_calendar_id, google_good_news_calendar_id, google_connected_by, google_connected_at, google_checked_at')
+    .select('rippling_api_token, rippling_connected_by, rippling_connected_at, google_service_account, google_team_calendar_id, google_connected_by, google_connected_at, google_checked_at')
     .eq('singleton_id', 1).maybeSingle()
   if (error) throw new Error(`The connections could not be read: ${error.message}`)
   let account: string | null = null
@@ -38,7 +38,7 @@ export async function loadConnections(): Promise<Connections> {
     },
     google: {
       connected: !!data?.google_service_account && !!data.google_team_calendar_id, account,
-      teamCalendarId: data?.google_team_calendar_id ?? null, goodNewsCalendarId: data?.google_good_news_calendar_id ?? null,
+      teamCalendarId: data?.google_team_calendar_id ?? null,
       connectedBy: data?.google_connected_by ?? null, connectedAt: data?.google_connected_at ?? null, checkedAt: data?.google_checked_at ?? null,
     },
   }

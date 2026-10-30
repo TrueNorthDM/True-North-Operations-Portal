@@ -1,6 +1,6 @@
 /**
  * Google Calendar for the outbox (Clocky part 2: approved time off on the team
- * calendar, 7D; Agenda events, 8E; the Good News Calendar read in). A Google Cloud service
+ * calendar, 7D; Agenda events, 8E). A Google Cloud service
  * account, entered by a Super Admin in Company settings > Integrations (13A),
  * signs a short-lived token itself (RS256, OAuth 2.0 JWT bearer grant); the
  * calendar must be shared with the service account's address.
@@ -9,6 +9,7 @@
  */
 
 import { createSign } from 'node:crypto'
+import { addDays } from '@/lib/timeclock/periods'
 
 interface ServiceAccount { client_email: string; private_key: string; token_uri?: string }
 
@@ -87,4 +88,17 @@ export async function deleteEvent(token: string, calendarId: string, eventId: st
     const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
     throw new Error(`Google Calendar refused to remove the event: ${body?.error?.message ?? res.status}`)
   }
+}
+
+/** An event's first and last day: all-day ends are exclusive in Google; timed ones keep the day they are written in. */
+export function daysOf(e: CalendarEvent): { start: string; end: string; startsAt: string | null; endsAt: string | null } | null {
+  if (e.start?.date) {
+    const end = e.end?.date ? addDays(e.end.date, -1) : e.start.date
+    return { start: e.start.date, end: end < e.start.date ? e.start.date : end, startsAt: null, endsAt: null }
+  }
+  if (e.start?.dateTime) {
+    const start = e.start.dateTime.slice(0, 10), end = (e.end?.dateTime ?? e.start.dateTime).slice(0, 10)
+    return { start, end: end < start ? start : end, startsAt: e.start.dateTime, endsAt: e.end?.dateTime ?? null }
+  }
+  return null
 }

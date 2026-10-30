@@ -47,7 +47,7 @@ export function holidaysIn(from: string, to: string): Map<string, string> {
 /** `rights`: the viewer's event rights; the events they may edit carry the form to edit them. */
 export async function loadAgendaItems(v: AgendaViewer, from: string, to: string, rights?: EventRights): Promise<AgendaItem[]> {
   const c = createAdminClient()
-  const [dir, people, catalog, offRes, evRes, gnRes, homeRes] = await Promise.all([
+  const [dir, people, catalog, offRes, evRes, homeRes] = await Promise.all([
     loadDirectory(),
     loadCelebrationPeople(),
     loadCatalog(),
@@ -55,11 +55,10 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     // A day either side: a timed event can fall on another day in the viewer's zone.
     c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
-    c.from('agenda_good_news').select('google_event_id, title, start_date, end_date, description, html_link').lte('start_date', to).gte('end_date', from).limit(2000),
     // Where people live, for the national holidays.
     c.from('people').select('id, address, location').limit(5000),
   ])
-  for (const r of [offRes, evRes, gnRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
+  for (const r of [offRes, evRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
   const items: AgendaItem[] = []
 
   // Approved time off, with its kind (Vacation, Sick...) for everyone (owner, 27 October 2026; it was the person and Super Admins only).
@@ -102,9 +101,6 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
       ...(rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
     })
   }
-
-  // The Good News Calendar, read only.
-  for (const g of gnRes.data ?? []) items.push({ id: `gn:${g.google_event_id}`, k: 'gn', a: g.start_date, b: g.end_date, title: g.title, desc: g.description, link: g.html_link })
 
   for (const [d, name] of holidaysIn(from, to)) items.push({ id: `hol:${d}`, k: 'hol', a: d, b: d, title: name, country: 'US' })
 

@@ -25,7 +25,7 @@ export interface IntegrationError { id: number; when: string; what: string; text
 
 export interface IntegrationsData {
   rippling: { tokenSaved: boolean; tokenEnd: string | null; who: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
-  google: { connected: boolean; saved: boolean; account: string | null; who: string; teamCalendarId: string; goodNewsCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
+  google: { connected: boolean; saved: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
 }
 
 type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
@@ -108,11 +108,10 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
     google: {
       connected: conn.google.connected, saved: !!conn.google.account, account: conn.google.account,
       who: conn.google.connected ? `Connected as ${conn.google.account ?? 'the service account'}${by(conn.google.connectedBy, conn.google.connectedAt)}.` : conn.google.account ? `Service account ${conn.google.account} saved. Add the team calendar to connect it.` : 'Not connected. Paste the Google service account key to connect it.',
-      teamCalendarId: conn.google.teamCalendarId ?? '', goodNewsCalendarId: conn.google.goodNewsCalendarId ?? '',
+      teamCalendarId: conn.google.teamCalendarId ?? '',
       facts: [
         { k: 'Last sync', v: lastGcal?.done_at ? `${at(lastGcal.done_at)}${gcalToday.length ? `: ${gcalToday.length} PTO event${gcalToday.length === 1 ? '' : 's'} written today` : ''}` : 'Nothing written yet' },
-        { k: 'Writes', v: 'Approved PTO ("Name, out") and events marked for the team calendar' },
-        { k: 'Reads', v: 'The Good News Calendar, shown in Agenda (read only)' },
+        { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' },
       ],
       errors: errorsOf(GOOGLE_KINDS),
     },

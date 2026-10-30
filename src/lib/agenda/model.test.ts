@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
 import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
-import { daysOf } from './good-news'
+import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
 const items = agendaFrame('8A').items
@@ -57,8 +57,8 @@ describe('8B week', () => {
   })
   it('puts all-day bars on different days in the same row', () => {
     const w = weekModel(items, '2026-11-17', TODAY, seesType)
-    expect(w.bars.length).toBe(6)
-    // Sun to Sat, one a day except two on Fri: two rows, not six.
+    expect(w.bars.length).toBe(5)
+    // Sun to Fri, one a day except two on Fri: two rows, not five.
     expect(Math.max(...w.bars.map(b => b.row))).toBe(2)
     expect(w.bars.filter(b => b.row === 2).map(b => b.col)).toEqual(['7 / 8'])
   })

@@ -53,15 +53,13 @@ export async function removeRipplingToken(): Promise<Done> {
   return { ok: true, toast: 'Removed. Nothing goes to Rippling until a token is saved again.' }
 }
 
-/** The service account key (only when a new one is pasted) and the two calendars. Connecting sends what waited for Google. */
-export async function saveGoogle(input: { serviceAccount?: string; teamCalendarId: string; goodNewsCalendarId: string }): Promise<Done> {
+/** The service account key (only when a new one is pasted) and the team calendar. Connecting sends what waited for Google. */
+export async function saveGoogle(input: { serviceAccount?: string; teamCalendarId: string }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
   const c = createAdminClient()
   const team = String(input.teamCalendarId ?? '').trim()
-  const good = String(input.goodNewsCalendarId ?? '').trim()
   if (team && !/^[^\s]+@[^\s]+$/.test(team)) return no('The team calendar ID looks like an address, for example c_xxx@group.calendar.google.com.')
-  if (good && !/^[^\s]+@[^\s]+$/.test(good)) return no('The Good News calendar ID looks like an address, for example c_xxx@group.calendar.google.com.')
-  const patch: { google_team_calendar_id: string | null; google_good_news_calendar_id: string | null; updated_at: string; google_service_account?: string; google_connected_by?: string | null; google_connected_at?: string } = { google_team_calendar_id: team || null, google_good_news_calendar_id: good || null, updated_at: new Date().toISOString() }
+  const patch: { google_team_calendar_id: string | null; updated_at: string; google_service_account?: string; google_connected_by?: string | null; google_connected_at?: string } = { google_team_calendar_id: team || null, updated_at: new Date().toISOString() }
   const key = String(input.serviceAccount ?? '').trim()
   if (key) {
     try { parseServiceAccount(key) } catch (e) { return no(e instanceof Error ? e.message : 'That key is not a Google service account.') }
@@ -97,11 +95,11 @@ export async function removeGoogle(): Promise<Done> {
   return { ok: true, toast: 'Removed. Nothing goes to the calendar until a key is saved again.' }
 }
 
-/** Test connection: a token from the key, then a read of each calendar. */
+/** Test connection: a token from the key, then a read of the team calendar. */
 export async function testGoogle(): Promise<Done> {
   if (!(await allowedTo('cs-integrations'))) return no('Integrations is not open to your access.')
   const c = createAdminClient()
-  const { data: s } = await c.from('app_settings').select('google_service_account, google_team_calendar_id, google_good_news_calendar_id').eq('singleton_id', 1).maybeSingle()
+  const { data: s } = await c.from('app_settings').select('google_service_account, google_team_calendar_id').eq('singleton_id', 1).maybeSingle()
   if (!s?.google_service_account) return no('Google Calendar is not connected: paste the service account key first.')
   try {
     const token = await accessToken(parseServiceAccount(s.google_service_account))
@@ -110,11 +108,10 @@ export async function testGoogle(): Promise<Done> {
       return res.ok
     }
     const team = s.google_team_calendar_id ? await read(s.google_team_calendar_id) : null
-    const good = s.google_good_news_calendar_id ? await read(s.google_good_news_calendar_id) : null
     await c.from('app_settings').update({ google_checked_at: new Date().toISOString() }).eq('singleton_id', 1)
     refresh()
-    const parts = [team === null ? 'no team calendar is set' : team ? 'the team calendar can be read' : 'the team calendar is not shared with the service account', good === null ? 'no Good News calendar is set' : good ? 'the Good News Calendar can be read' : 'the Good News Calendar is not shared with the service account']
-    return team && good !== false ? { ok: true, toast: `Google Calendar answered: ${parts.join('; ')}.` } : no(`Google Calendar answered, but ${parts.join('; ')}.`)
+    const part = team === null ? 'no team calendar is set' : team ? 'the team calendar can be read' : 'the team calendar is not shared with the service account'
+    return team ? { ok: true, toast: `Google Calendar answered: ${part}.` } : no(`Google Calendar answered, but ${part}.`)
   } catch (e) {
     return no(e instanceof Error ? e.message : 'Google Calendar did not answer.')
   }

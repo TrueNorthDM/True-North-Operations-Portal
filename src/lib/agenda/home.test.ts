@@ -81,10 +81,9 @@ describe('The next 5 events', () => {
     expect(r.events[1].look.d).toBe(AG_ICON.cal)
     expect(r.events[2].look.flag).toBe('🇺🇸')
   })
-  it('leaves time off, the Good News Calendar and other countries\' holidays to /agenda', () => {
+  it('leaves time off and other countries\' holidays to /agenda', () => {
     const r = homeAgenda([
       pto('x', 'Dave Sharpe', '2026-10-27', '2026-10-30'),
-      { id: 'gn:1', k: 'gn', a: '2026-10-27', b: '2026-10-27', title: 'Good news' },
       { id: 'hol:KE:2026-10-20', k: 'hol', a: '2026-10-28', b: '2026-10-28', title: 'Mashujaa Day', country: 'KE' },
     ], TODAY, NOW)
     expect(r.events).toEqual([])

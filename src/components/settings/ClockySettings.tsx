@@ -52,7 +52,7 @@ function ReadOnly() {
 export interface IntegrationsApi {
   saveRipplingToken(i: { token: string }): Promise<Done>
   removeRipplingToken(): Promise<Done>
-  saveGoogle(i: { serviceAccount?: string; teamCalendarId: string; goodNewsCalendarId: string }): Promise<Done>
+  saveGoogle(i: { serviceAccount?: string; teamCalendarId: string }): Promise<Done>
   removeGoogle(): Promise<Done>
   testGoogle(): Promise<Done>
   retryIntegrationJob(i: { id: number }): Promise<Done>
@@ -64,7 +64,6 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<'rippling' | 'google' | null>(null)
   const [team, setTeam] = useState(data.google.teamCalendarId)
-  const [good, setGood] = useState(data.google.goodNewsCalendarId)
   const run = async (p: Promise<Done>, after?: () => void) => {
     setBusy(true)
     try {
@@ -121,15 +120,10 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
                 <input value={team} onChange={e => setTeam(e.target.value)} disabled={!canEdit} placeholder="c_xxx@group.calendar.google.com" className={`${INPUT} font-mono text-[12.5px]`} />
                 <span className="text-[11.5px] text-muted">The calendar the team already uses. The portal adds PTO to it.</span>
               </label>
-              <label className="flex flex-col gap-[5px]">
-                <span className={LABEL}>Good News Calendar</span>
-                <input value={good} onChange={e => setGood(e.target.value)} disabled={!canEdit} placeholder="c_xxx@group.calendar.google.com" className={`${INPUT} font-mono text-[12.5px]`} />
-                <span className="text-[11.5px] text-muted">Read into Agenda with its own colour and a &quot;Good News&quot; tag.</span>
-              </label>
-              {canEdit && (team !== data.google.teamCalendarId || good !== data.google.goodNewsCalendarId) && (
+              {canEdit && team !== data.google.teamCalendarId && (
                 <div className="md:col-span-2 flex justify-end">
-                  <button type="button" disabled={busy} onClick={() => void run(api.saveGoogle({ teamCalendarId: team, goodNewsCalendarId: good }))} className={BTN_N}>
-                    <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save the calendars
+                  <button type="button" disabled={busy} onClick={() => void run(api.saveGoogle({ teamCalendarId: team }))} className={BTN_N}>
+                    <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save the calendar
                   </button>
                 </div>
               )}
@@ -159,9 +153,9 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
       {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Settings, API access). Only its last four characters are shown again."
         placeholder="Paste the token" multiline={false} canRemove={data.rippling.tokenSaved} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveRipplingToken({ token: v }), () => setModal(null))} onRemove={() => void run(api.removeRipplingToken(), () => setModal(null))} />}
-      {modal === 'google' && <SecretDialog title="Google service account key" hint="The JSON key of a Google Cloud service account. Share the team calendar (to change events) and the Good News Calendar (to see them) with its address."
+      {modal === 'google' && <SecretDialog title="Google service account key" hint="The JSON key of a Google Cloud service account. Share the team calendar with its address, so the portal can change events on it."
         placeholder='{"type": "service_account", ...}' multiline canRemove={data.google.saved} busy={busy} onClose={() => setModal(null)}
-        onSave={v => void run(api.saveGoogle({ serviceAccount: v, teamCalendarId: team, goodNewsCalendarId: good }), () => setModal(null))} onRemove={() => void run(api.removeGoogle(), () => setModal(null))} />}
+        onSave={v => void run(api.saveGoogle({ serviceAccount: v, teamCalendarId: team }), () => setModal(null))} onRemove={() => void run(api.removeGoogle(), () => setModal(null))} />}
       <Toast toast={toast} />
     </div>
   )
@@ -361,7 +355,10 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
  * Admin's only, with a confirmation in the page. While closed nobody records
  * hours in North Time and its scheduled jobs do nothing.
  */
-export function NorthTimeOpenSwitch({ open, canChange, set }: { open: boolean; canChange: boolean; set: (i: { open: boolean }) => Promise<Done> }) {
+/** What one open/closed switch says (North Time, the new Agenda): off and on, the question before each, who may change it. */
+interface SwitchCopy { name: string; label: string; on: string; off: string; askOpen: string; askClose: string; who: string }
+
+function OpenSwitch({ open, canChange, set, copy }: { open: boolean; canChange: boolean; set: (i: { open: boolean }) => Promise<Done>; copy: SwitchCopy }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -382,33 +379,48 @@ export function NorthTimeOpenSwitch({ open, canChange, set }: { open: boolean; c
     <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
       <div className="flex items-start gap-3">
         <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
-          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">North Time {open ? 'is open' : 'is closed'}</span>
-          <span className="text-[12.5px] text-foreground leading-[1.55]">
-            {open
-              ? 'People record their hours in North Time from their start date (the waves below).'
-              : 'Nobody records hours in North Time, Super Admins included: no clock, no Add time, no requests or approvals, and its scheduled jobs do nothing. The TSheets import keeps taking every entry, and the reports and settings work as usual.'}
-          </span>
+          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{copy.name} {open ? 'is open' : 'is closed'}</span>
+          <span className="text-[12.5px] text-foreground leading-[1.55]">{open ? copy.on : copy.off}</span>
         </span>
-        <button type="button" role="switch" aria-checked={open} aria-label="North Time open" disabled={!canChange || busy || asking} onClick={() => setAsking(true)}
+        <button type="button" role="switch" aria-checked={open} aria-label={copy.label} disabled={!canChange || busy || asking} onClick={() => setAsking(true)}
           className="flex-none w-9 h-5 border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: open ? '#1E7D7F' : '#cbd2da' }}>
           <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: open ? 18 : 2 }} />
         </button>
       </div>
-      {!canChange && <span className="text-[12px] text-muted">Only a Super Admin opens or closes North Time.</span>}
+      {!canChange && <span className="text-[12px] text-muted">{copy.who}</span>}
       {asking && (
         <div role="alert" className="text-[13px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[12px] px-4 py-3 leading-[1.5] flex flex-col gap-3">
-          <span>{open
-            ? 'Close North Time? Nobody will be able to record or decide hours in it until it is opened again.'
-            : 'Open North Time? From each person\'s start date they record their hours here, and its scheduled jobs (reminders, invoices on the 1st, the clock\'s safety net) start running.'}</span>
+          <span>{open ? copy.askClose : copy.askOpen}</span>
           <div className="flex gap-2 justify-end flex-wrap">
             <button type="button" disabled={busy} onClick={() => setAsking(false)} className={BTN_W}>Cancel</button>
-            <button type="button" disabled={busy} onClick={() => void confirm()} className={BTN_N}>{open ? 'Close North Time' : 'Open North Time'}</button>
+            <button type="button" disabled={busy} onClick={() => void confirm()} className={BTN_N}>{open ? `Close ${copy.name}` : `Open ${copy.name}`}</button>
           </div>
         </div>
       )}
       <Toast toast={toast} />
     </div>
   )
+}
+
+export function NorthTimeOpenSwitch({ open, canChange, set }: { open: boolean; canChange: boolean; set: (i: { open: boolean }) => Promise<Done> }) {
+  return <OpenSwitch open={open} canChange={canChange} set={set} copy={{
+    name: 'North Time', label: 'North Time open', who: 'Only a Super Admin opens or closes North Time.',
+    on: 'People record their hours in North Time from their start date (the waves below).',
+    off: 'Nobody records hours in North Time, Super Admins included: no clock, no Add time, no requests or approvals, and its scheduled jobs do nothing. The TSheets import keeps taking every entry, and the reports and settings work as usual.',
+    askClose: 'Close North Time? Nobody will be able to record or decide hours in it until it is opened again.',
+    askOpen: 'Open North Time? From each person\'s start date they record their hours here, and its scheduled jobs (reminders, invoices on the 1st, the clock\'s safety net) start running.',
+  }} />
+}
+
+/** The new Agenda with Google Calendar (migration 134): off in production until the owner opens it. */
+export function AgendaGoogleSwitch({ open, canChange, set }: { open: boolean; canChange: boolean; set: (i: { open: boolean }) => Promise<Done> }) {
+  return <OpenSwitch open={open} canChange={canChange} set={set} copy={{
+    name: 'The new Agenda', label: 'New Agenda open', who: 'Only a Super Admin opens or closes the new Agenda.',
+    on: 'Everyone has the new Agenda: events in a side drawer, Find a time, Agenda settings with Google accounts, working hours and booking links.',
+    off: 'The Agenda works as before: the New event window, no Agenda settings, no Find a time and no booking links.',
+    askClose: 'Close the new Agenda? Everyone goes back to the Agenda as it was; what was saved in the new one stays for when it opens again.',
+    askOpen: 'Open the new Agenda? Everyone sees the new event drawer, Find a time and Agenda settings, and booking links start working.',
+  }} />
 }
 
 

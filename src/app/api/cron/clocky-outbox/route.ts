@@ -1,16 +1,13 @@
 /**
  * GET /api/cron/clocky-outbox, every 5 minutes (Clocky part 2): sends what the
  * decisions queued for Rippling and Google Calendar, and writes the answers
- * back on the requests. See src/lib/integrations/outbox-run.ts. It also reads
- * the Good News Calendar into the Agenda, every 15 minutes at most
- * (lib/agenda/good-news.ts).
+ * back on the requests. See src/lib/integrations/outbox-run.ts.
  */
 
 import { NextResponse } from 'next/server'
 import { isCronRequest } from '@/lib/auth/cron-auth'
 import { CLOSED_SKIP, northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { runOutbox } from '@/lib/integrations/outbox-run'
-import { syncGoodNews } from '@/lib/agenda/good-news'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -25,10 +22,8 @@ export async function GET(request: Request) {
   try {
     const report = await runOutbox()
     if (report.errors.length) console.error('[clocky-outbox]', report.errors.slice(0, 5).join(' | '))
-    // The Good News Calendar failing to read never fails the outbox.
-    const goodNews = await syncGoodNews().catch(e => { console.error('[clocky-outbox] good news:', e instanceof Error ? e.message : e); return { error: e instanceof Error ? e.message : String(e) } })
     // A refused job is an answer, not a failure of the run: it shows on its request.
-    return NextResponse.json({ ok: true, ...report, errors: report.errors.slice(0, 5), goodNews })
+    return NextResponse.json({ ok: true, ...report, errors: report.errors.slice(0, 5) })
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 })
   }

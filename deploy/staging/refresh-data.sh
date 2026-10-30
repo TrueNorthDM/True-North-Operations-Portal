@@ -42,4 +42,8 @@ docker exec -i staging-supabase-db psql -U supabase_admin -h /var/run/postgresql
   -c "ALTER DATABASE postgres SET \"app.settings.jwt_secret\" TO '$JWT_SECRET'" >/dev/null
 docker compose restart auth rest storage >/dev/null
 
+# Production keeps North Time and the new Agenda closed (migrations 132, 134); staging keeps both open to test them.
+docker exec -i staging-supabase-db psql -U supabase_admin -h /var/run/postgresql -d postgres -q \
+  -c "UPDATE public.app_settings SET north_time_open = true, agenda_google_open = true WHERE singleton_id = 1" >/dev/null || true
+
 echo "Staging now holds production's data as of $(basename "$BASE" .tar.gz | sed 's/^base-//')."

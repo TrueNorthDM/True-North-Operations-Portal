@@ -10,8 +10,8 @@
  *   Coming up   the days after, in date order, until there are 5
  *
  * Shown as events: company and team events, milestones, birthdays, work
- * anniversaries and the company holidays. The Good News Calendar and other
- * countries' national holidays stay on /agenda: they would crowd five rows.
+ * anniversaries and the company holidays. Other countries' national
+ * holidays stay on /agenda: they would crowd five rows.
  */
 
 import { addDays } from '@/lib/timeclock/periods'

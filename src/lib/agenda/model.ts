@@ -9,14 +9,13 @@
  *   anni    work anniversaries from the start date
  *   event   company events (Super Admins, Admins) and team events (Team Leaders)
  *   ms      milestones
- *   gn      the Good News Calendar, read in from Google
  *   hol     the company holidays
  */
 
 import { addDays } from '@/lib/timeclock/periods'
 import type { EventEdit } from './events'
 
-export type AgendaKind = 'pto' | 'bday' | 'anni' | 'event' | 'ms' | 'gn' | 'hol'
+export type AgendaKind = 'pto' | 'bday' | 'anni' | 'event' | 'ms' | 'hol'
 export type AgendaView = 'month' | 'week' | 'list'
 
 export interface AgendaWho { id: string; name: string; teamId: string | null; teamName: string | null; color: string }
@@ -62,7 +61,6 @@ export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {
   anni: { label: 'Anniversaries', swatch: '#1E7D7F' },
   event: { label: 'Events', swatch: '#012358' },
   ms: { label: 'Milestones', swatch: '#1E9E6A' },
-  gn: { label: 'Good News', swatch: '#c2410c' },
   hol: { label: 'Holidays', swatch: '#a3aebb' },
 }
 export const KINDS = Object.keys(KIND) as AgendaKind[]
@@ -179,11 +177,10 @@ export function look(x: AgendaItem): Look {
   if (x.k === 'event' && x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d: AG_ICON.people, c: x.team.color, flag: '' }
   if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: AG_ICON.cal, c: '#012358', flag: '' }
   if (x.k === 'ms') return { bg: '#e6f6ee', fg: '#0d7a4f', d: AG_ICON.flag, c: '#1E9E6A', flag: '' }
-  if (x.k === 'gn') return { bg: '#fbe9df', fg: '#b4400f', d: AG_ICON.star, c: '#c2410c', flag: '' }
   return { bg: '#f1f3f6', fg: '#5b6b82', d: '', c: '#a3aebb', flag: flagOf(x.country) }
 }
 
-const SORT: Record<AgendaKind, number> = { hol: 0, event: 1, ms: 2, bday: 3, anni: 4, gn: 5, pto: 9 }
+const SORT: Record<AgendaKind, number> = { hol: 0, event: 1, ms: 2, bday: 3, anni: 4, pto: 9 }
 const byKind = (a: AgendaItem, b: AgendaItem) => (SORT[a.k] - SORT[b.k]) || ((a.s ?? 0) - (b.s ?? 0))
 
 // ── Filters ───────────────────────────────────────────────────────────────────
@@ -299,7 +296,6 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
         const sub = x.k === 'pto' ? `${x.type && seesType(x) ? `${x.type} · ` : ''}${drng(x.a, x.b)}`
           : x.k === 'event' ? `${x.teams ?? 'Everyone'}${x.place ? ` · ${x.place.split(' · ')[0]}` : ''}`
           : x.k === 'ms' ? `Milestone${x.client ? ` · ${x.client}` : ''}`
-          : x.k === 'gn' ? 'Good News Calendar'
           : x.k === 'hol' ? (x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday')
           : x.k === 'anni' ? 'Anniversary' : KIND[x.k].label.replace(/s$/, '')
         return {
@@ -353,10 +349,10 @@ export const cityOf = (zone: string): string => (zone.split('/').pop() ?? zone).
 
 export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; today: string; zone: string; holidays: ReadonlySet<string> }): AgendaCard {
   const L = look(x)
-  const kind = x.k === 'event' && x.team ? `Team event · ${x.team.name}` : x.k === 'event' ? 'Company event' : x.k === 'ms' ? 'Milestone' : x.k === 'gn' ? 'Good News'
+  const kind = x.k === 'event' && x.team ? `Team event · ${x.team.name}` : x.k === 'event' ? 'Company event' : x.k === 'ms' ? 'Milestone'
     : x.k === 'pto' ? 'Time off' : x.k === 'bday' ? 'Birthday' : x.k === 'anni' ? 'Work anniversary'
     : x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday'
-  const base: AgendaCard = { band: L.c, kind, kindFg: x.k === 'gn' ? '#b4400f' : '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', button: null }
+  const base: AgendaCard = { band: L.c, kind, kindFg: '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', button: null }
   const team = x.who?.teamName ?? ''
   const day = (iso: string, t = '') => ({ d: AG_ICON.cal, b: fday(iso), t, bold: true })
   const when = () => (x.a === x.b ? day(x.a, x.s == null ? ', all day' : '') : { d: AG_ICON.cal, b: drng(x.a, x.b), t: '', bold: true })
@@ -398,7 +394,6 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
       foot: x.audience?.length ? '' : 'Everyone sees milestones.',
     }
   }
-  if (x.k === 'gn') return { ...base, rows: [x.a === x.b ? day(x.a) : when()], foot: 'From the Good News Calendar in Google. Read only here; edit it in Google Calendar.', button: x.link ? { label: 'Open in Google Calendar', href: x.link } : null }
   if (x.country && x.country !== 'US') {
     return { ...base, rows: [day(x.a)], foot: `A public holiday in ${countryName(x.country)}, shown for information: it does not change time off or work days. Holiday data: the date-holidays project (CC BY 3.0).` }
   }

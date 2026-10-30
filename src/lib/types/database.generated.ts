@@ -336,56 +336,19 @@ export type Database = {
           },
         ]
       }
-      agenda_good_news: {
-        Row: {
-          description: string | null
-          end_date: string
-          ends_at: string | null
-          google_event_id: string
-          html_link: string | null
-          start_date: string
-          starts_at: string | null
-          synced_at: string
-          title: string
-        }
-        Insert: {
-          description?: string | null
-          end_date: string
-          ends_at?: string | null
-          google_event_id: string
-          html_link?: string | null
-          start_date: string
-          starts_at?: string | null
-          synced_at?: string
-          title: string
-        }
-        Update: {
-          description?: string | null
-          end_date?: string
-          ends_at?: string | null
-          google_event_id?: string
-          html_link?: string | null
-          start_date?: string
-          starts_at?: string | null
-          synced_at?: string
-          title?: string
-        }
-        Relationships: []
-      }
       app_settings: {
         Row: {
           clocky_reminders: Json
-          good_news_synced_at: string | null
           google_checked_at: string | null
           google_connected_at: string | null
           google_connected_by: string | null
-          google_good_news_calendar_id: string | null
           google_service_account: string | null
           google_team_calendar_id: string | null
           monday_account_slug: string | null
           monday_api_token: string | null
           monday_hide_stale_boards: boolean
           monday_webhook_secret: string | null
+          agenda_google_open: boolean
           north_time_open: boolean
           rippling_api_token: string | null
           rippling_checked_at: string | null
@@ -399,17 +362,16 @@ export type Database = {
         }
         Insert: {
           clocky_reminders?: Json
-          good_news_synced_at?: string | null
           google_checked_at?: string | null
           google_connected_at?: string | null
           google_connected_by?: string | null
-          google_good_news_calendar_id?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          agenda_google_open?: boolean
           north_time_open?: boolean
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
@@ -423,17 +385,16 @@ export type Database = {
         }
         Update: {
           clocky_reminders?: Json
-          good_news_synced_at?: string | null
           google_checked_at?: string | null
           google_connected_at?: string | null
           google_connected_by?: string | null
-          google_good_news_calendar_id?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          agenda_google_open?: boolean
           north_time_open?: boolean
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
