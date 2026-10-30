@@ -5,9 +5,10 @@
  * invitations to them go and their working hours; for a Super Admin, the team
  * calendar (office@).
  *
- * Google sign-in is not set up yet, so an account is added by its address and
- * kept as a sample (source 'sample'): the Agenda works with it end to end and
- * nothing goes to Google. Until Google approves the portal only
+ * Accounts connect by Google sign-in (/api/agenda/google/connect) once the
+ * portal's Google app is saved. Until then an account is added by its address
+ * and kept as a sample (source 'sample'): the Agenda works with it end to end
+ * and nothing goes to Google. Until Google approves the portal only
  * @truenorthdigitalmarketing.com addresses connect.
  *
  * Every write is refused while the new Agenda is closed (migration 134), and
@@ -23,6 +24,7 @@ import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
 import { checkHours } from '@/lib/agenda/working-hours'
 import { checkLink, type LinkInput } from '@/lib/agenda/booking'
 import { ensureLink } from '@/lib/agenda/booking-data'
+import { revoke } from '@/lib/agenda/google-oauth'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -38,6 +40,17 @@ async function me(): Promise<{ personId: string; superAdmin: boolean } | Done> {
   return { personId: access.personId, superAdmin: access.level === 'super_admin' }
 }
 const isDone = (x: unknown): x is Done => !!x && typeof x === 'object' && 'ok' in x
+
+/** Before an account goes, tell Google to drop the portal's access to it (best effort; the row goes either way). */
+async function revokeAt(match: { id?: number; team?: true }): Promise<void> {
+  const c = createAdminClient()
+  const q = c.from('agenda_accounts').select('id')
+  const { data: rows } = await (match.team ? q.eq('team_calendar', true) : q.eq('id', match.id ?? -1))
+  const ids = (rows ?? []).map(r => r.id)
+  if (!ids.length) return
+  const { data } = await c.from('agenda_account_tokens').select('refresh_token').in('account_id', ids)
+  for (const t of data ?? []) await revoke(t.refresh_token)
+}
 
 const done = (toast: string): Done => { revalidatePath('/agenda/settings'); revalidatePath('/agenda'); return { ok: true, toast } }
 
@@ -64,6 +77,8 @@ export async function disconnectAccount(input: { id: number }): Promise<Done> {
   const m = await me(); if (isDone(m)) return m
   const id = Number(input?.id)
   if (!Number.isSafeInteger(id)) return no(NOT_SAVED)
+  const { data: own } = await createAdminClient().from('agenda_accounts').select('id').eq('id', id).eq('person_id', m.personId).maybeSingle()
+  if (own) await revokeAt({ id })
   const { data, error } = await createAdminClient().from('agenda_accounts').delete().eq('id', id).eq('person_id', m.personId).select('email')
   if (error) { console.error('[agenda settings] disconnect:', error.message); return no(NOT_SAVED) }
   if (!data?.length) return no('That account is no longer connected.')
@@ -123,6 +138,7 @@ export async function connectTeamCalendar(input: { email: string }): Promise<Don
 export async function disconnectTeamCalendar(): Promise<Done> {
   const m = await me(); if (isDone(m)) return m
   if (!m.superAdmin) return no('Only a Super Admin disconnects the team calendar.')
+  await revokeAt({ team: true })
   const { error } = await createAdminClient().from('agenda_accounts').delete().eq('team_calendar', true)
   if (error) { console.error('[agenda settings] team calendar:', error.message); return no(NOT_SAVED) }
   return done('The team calendar is disconnected.')

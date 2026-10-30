@@ -26,6 +26,8 @@ export interface IntegrationError { id: number; when: string; what: string; text
 export interface IntegrationsData {
   rippling: { tokenSaved: boolean; tokenEnd: string | null; who: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   google: { connected: boolean; saved: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
+  /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
+  googleApp: { saved: boolean; clientId: string; secretEnd: string | null; pickerEnd: string | null; who: string }
 }
 
 type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
@@ -77,7 +79,10 @@ export async function countRetryable(now = new Date()): Promise<number> {
 }
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
-  const [conn, dir, list] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now)])
+  const [conn, dir, list, appRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
+    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at').eq('singleton_id', 1).maybeSingle()])
+  if (appRes.error) throw new Error(`The Google app could not be read: ${appRes.error.message}`)
+  const app = appRes.data
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
   const errorsOf = (kinds: string[]): IntegrationError[] => listedErrors(list, kinds)
     .map(j => {
@@ -114,6 +119,15 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
         { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' },
       ],
       errors: errorsOf(GOOGLE_KINDS),
+    },
+    googleApp: {
+      saved: !!app?.google_oauth_client_id && !!app.google_oauth_client_secret,
+      clientId: app?.google_oauth_client_id ?? '',
+      secretEnd: app?.google_oauth_client_secret ? app.google_oauth_client_secret.slice(-4) : null,
+      pickerEnd: app?.google_picker_key ? app.google_picker_key.slice(-4) : null,
+      who: app?.google_oauth_client_id && app.google_oauth_client_secret
+        ? `Saved${by(app.google_oauth_saved_by ?? null, app.google_oauth_saved_at ?? null)}. People connect their Google accounts in Agenda settings.`
+        : 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.',
     },
   }
 }

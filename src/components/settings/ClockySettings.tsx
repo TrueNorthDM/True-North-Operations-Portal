@@ -56,13 +56,15 @@ export interface IntegrationsApi {
   removeGoogle(): Promise<Done>
   testGoogle(): Promise<Done>
   retryIntegrationJob(i: { id: number }): Promise<Done>
+  saveGoogleApp(i: { clientId: string; clientSecret?: string; pickerKey?: string }): Promise<Done>
+  removeGoogleApp(): Promise<Done>
 }
 
 export function IntegrationsSettings({ data, canEdit, api }: { data: IntegrationsData; canEdit: boolean; api: IntegrationsApi }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
-  const [modal, setModal] = useState<'rippling' | 'google' | null>(null)
+  const [modal, setModal] = useState<'rippling' | 'google' | 'app' | null>(null)
   const [team, setTeam] = useState(data.google.teamCalendarId)
   const run = async (p: Promise<Done>, after?: () => void) => {
     setBusy(true)
@@ -150,6 +152,9 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
           )}
         </div>
       ))}
+      <GoogleAppCard app={data.googleApp} canEdit={canEdit} busy={busy} onEdit={() => setModal('app')} />
+      {modal === 'app' && <GoogleAppDialog app={data.googleApp} busy={busy} onClose={() => setModal(null)}
+        onSave={v => void run(api.saveGoogleApp(v), () => setModal(null))} onRemove={() => void run(api.removeGoogleApp(), () => setModal(null))} />}
       {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Settings, API access). Only its last four characters are shown again."
         placeholder="Paste the token" multiline={false} canRemove={data.rippling.tokenSaved} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveRipplingToken({ token: v }), () => setModal(null))} onRemove={() => void run(api.removeRipplingToken(), () => setModal(null))} />}
@@ -158,6 +163,72 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
         onSave={v => void run(api.saveGoogle({ serviceAccount: v, teamCalendarId: team }), () => setModal(null))} onRemove={() => void run(api.removeGoogle(), () => setModal(null))} />}
       <Toast toast={toast} />
     </div>
+  )
+}
+
+/** The portal's own Google app: Agenda's Google sign-in (Connect a Google account) runs on it. */
+function GoogleAppCard({ app, canEdit, busy, onEdit }: { app: IntegrationsData['googleApp']; canEdit: boolean; busy: boolean; onEdit: () => void }) {
+  const facts = [
+    { k: 'Client ID', v: app.clientId || 'Not saved' },
+    { k: 'Client secret', v: app.secretEnd ? `Saved, ends in ${app.secretEnd}` : 'Not saved' },
+    { k: 'Picker key', v: app.pickerEnd ? `Saved, ends in ${app.pickerEnd}` : 'Not saved (only to pick Drive files)' },
+  ]
+  return (
+    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-4">
+      <div className="flex items-center gap-3.5 flex-wrap">
+        <span className="w-11 h-11 rounded-[12px] flex items-center justify-center font-(family-name:--font-display) font-black text-[18px] flex-none bg-[#eaf4f4] text-[#1E7D7F]">G</span>
+        <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
+          <div className="flex items-center gap-2.5">
+            <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">Google sign-in</span>
+            <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 ${app.saved ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{app.saved ? 'Set up' : 'Not set up'}</span>
+          </div>
+          <span className="text-[12.5px] text-muted">{app.who}</span>
+        </div>
+        {canEdit && <button type="button" disabled={busy} onClick={onEdit} className={BTN_W}>{app.saved ? 'Change keys' : 'Set up'}</button>}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+        {facts.map(f => (
+          <div key={f.k} className="bg-subtle rounded-[12px] px-[13px] py-[11px] flex flex-col gap-1 min-w-0">
+            <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">{f.k}</span>
+            <span className="text-[13px] text-tn-ink font-semibold leading-[1.45] break-all">{f.v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function GoogleAppDialog({ app, busy, onClose, onSave, onRemove }: {
+  app: IntegrationsData['googleApp']; busy: boolean; onClose: () => void
+  onSave: (v: { clientId: string; clientSecret: string; pickerKey: string }) => void; onRemove: () => void
+}) {
+  const [clientId, setClientId] = useState(app.clientId)
+  const [clientSecret, setSecret] = useState('')
+  const [pickerKey, setPicker] = useState('')
+  const ready = !!clientId.trim() && (app.saved || !!clientSecret.trim())
+  return (
+    <Modal label="Google sign-in" width={520} onClose={onClose}>
+      <h2 className={MODAL_TITLE}>Google sign-in</h2>
+      <p className="m-0 text-[13px] text-foreground leading-[1.55]">From the Google Cloud project &quot;True North Operations Portal&quot;: Google Auth Platform &gt; Clients &gt; Portal web, and the Picker key under Credentials.{app.saved ? ' Leave a secret blank to keep the one saved.' : ''}</p>
+      <label className="flex flex-col gap-[5px]">
+        <FieldLabel>Client ID</FieldLabel>
+        <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="000000000000-xxxx.apps.googleusercontent.com" spellCheck={false} autoComplete="off" className={`${INPUT} font-mono text-[12.5px]`} />
+      </label>
+      <label className="flex flex-col gap-[5px]">
+        <FieldLabel>Client secret</FieldLabel>
+        <input value={clientSecret} onChange={e => setSecret(e.target.value)} type="password" placeholder={app.secretEnd ? `Saved, ends in ${app.secretEnd}` : 'GOCSPX-...'} autoComplete="off" className={`${INPUT} font-mono`} />
+      </label>
+      <label className="flex flex-col gap-[5px]">
+        <FieldLabel>Picker API key</FieldLabel>
+        <input value={pickerKey} onChange={e => setPicker(e.target.value)} type="password" placeholder={app.pickerEnd ? `Saved, ends in ${app.pickerEnd}` : 'AIza...'} autoComplete="off" className={`${INPUT} font-mono`} />
+      </label>
+      <div className="text-[12px] text-muted">The secret and the key are kept on the server only, never shown again and never sent to a browser.</div>
+      <div className="flex justify-end gap-2 items-center">
+        {app.saved && <button type="button" disabled={busy} onClick={onRemove} className="mr-auto border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">Remove</button>}
+        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+        <button type="button" disabled={!ready || busy} onClick={() => onSave({ clientId: clientId.trim(), clientSecret: clientSecret.trim(), pickerKey: pickerKey.trim() })} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button>
+      </div>
+    </Modal>
   )
 }
 

@@ -260,6 +260,44 @@ export type Database = {
           },
         ]
       }
+      agenda_account_tokens: {
+        Row: {
+          access_expires_at: string | null
+          access_token: string | null
+          account_id: number
+          google_sub: string | null
+          refresh_token: string
+          scopes: string[]
+          updated_at: string
+        }
+        Insert: {
+          access_expires_at?: string | null
+          access_token?: string | null
+          account_id: number
+          google_sub?: string | null
+          refresh_token: string
+          scopes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          access_expires_at?: string | null
+          access_token?: string | null
+          account_id?: number
+          google_sub?: string | null
+          refresh_token?: string
+          scopes?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_account_tokens_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "agenda_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_accounts: {
         Row: {
           connected_at: string
@@ -589,6 +627,11 @@ export type Database = {
           google_connected_by: string | null
           google_service_account: string | null
           google_team_calendar_id: string | null
+          google_oauth_client_id: string | null
+          google_oauth_client_secret: string | null
+          google_oauth_saved_at: string | null
+          google_oauth_saved_by: string | null
+          google_picker_key: string | null
           monday_account_slug: string | null
           monday_api_token: string | null
           monday_hide_stale_boards: boolean
@@ -613,6 +656,11 @@ export type Database = {
           google_connected_by?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
+          google_oauth_client_id?: string | null
+          google_oauth_client_secret?: string | null
+          google_oauth_saved_at?: string | null
+          google_oauth_saved_by?: string | null
+          google_picker_key?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
@@ -637,6 +685,11 @@ export type Database = {
           google_connected_by?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
+          google_oauth_client_id?: string | null
+          google_oauth_client_secret?: string | null
+          google_oauth_saved_at?: string | null
+          google_oauth_saved_by?: string | null
+          google_picker_key?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean

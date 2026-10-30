@@ -53,7 +53,23 @@ function useToast() {
   return [toast, say] as const
 }
 
-export function AgendaSettings({ data, api }: { data: AgendaSettingsData; api: AgendaSettingsApi }) {
+const CONNECT_ME = '/api/agenda/google/connect?for=me'
+const CONNECT_TEAM = '/api/agenda/google/connect?for=team'
+const PILL_WARN = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-[var(--warn-bg)] text-[#8a6703]'
+
+/** What came back from Google's sign-in, above the cards until closed. */
+function Notice({ notice }: { notice: { text: string; error: boolean } }) {
+  const [open, setOpen] = useState(true)
+  if (!open) return null
+  return (
+    <div role={notice.error ? 'alert' : 'status'} className={`flex items-start gap-2.5 rounded-[12px] px-3.5 py-3 text-[13.5px] leading-[1.45] border ${notice.error ? 'bg-[#fdeeef] border-[#f3c6ca] text-[#8f1f2a]' : 'bg-[#e6f6ee] border-[#b9e3cd] text-[#0d5c3c]'}`}>
+      <span className="flex-1 font-semibold">{notice.text}</span>
+      <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="border-0 bg-transparent p-0 cursor-pointer text-current font-extrabold">✕</button>
+    </div>
+  )
+}
+
+export function AgendaSettings({ data, notice, api }: { data: AgendaSettingsData; notice?: { text: string; error: boolean } | null; api: AgendaSettingsApi }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -71,6 +87,7 @@ export function AgendaSettings({ data, api }: { data: AgendaSettingsData; api: A
   }
   return (
     <div className="flex flex-col gap-[18px]">
+      {notice && <Notice notice={notice} />}
       <TeamCalendarCard data={data} busy={busy} run={run} api={api} />
       {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
       <AccountsCard data={data} busy={busy} run={run} api={api} />
@@ -101,14 +118,16 @@ function TeamCalendarCard({ data, busy, run, api }: { data: AgendaSettingsData; 
           {t ? (
             <div className="flex flex-wrap items-center gap-3 border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3">
               <AccountWho a={t} line={`Connected${t.by ? ` by ${t.by}` : ''}, ${when(t.connectedAt)}`} />
-              <span className={PILL_OK}>Connected</span>
-              <button type="button" className={LINK} disabled={busy} onClick={() => setAsking(true)}>Reconnect</button>
+              {t.needsReconnect ? <span className={PILL_WARN}>Needs reconnect</span> : <span className={PILL_OK}>Connected</span>}
+              {data.googleReady ? <a href={CONNECT_TEAM} className={LINK}>Reconnect</a>
+                : <button type="button" className={LINK} disabled={busy} onClick={() => setAsking(true)}>Reconnect</button>}
               <button type="button" className={LINK_RED} disabled={busy} onClick={() => void run(api.disconnectTeamCalendar())}>Disconnect</button>
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3 border border-dashed border-[#c9d0da] rounded-[12px] px-3.5 py-3">
               <span className={SUB}>No team calendar yet. Connect office@{APPROVED_DOMAIN}.</span>
-              <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect the team calendar</button>
+              {data.googleReady ? <a href={CONNECT_TEAM} className={`${BTN_TEAL} no-underline`}>+ Connect the team calendar</a>
+                : <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect the team calendar</button>}
             </div>
           )}
           <FieldLabel>From the portal to Google</FieldLabel>
@@ -177,15 +196,17 @@ function AccountsCard({ data, busy, run, api }: { data: AgendaSettingsData; busy
           <div className={TITLE}>Your Google accounts</div>
           <p className={`${SUB} m-0 mt-1`}>Events you create are made on one of these, with the Google Meet link, and Find a time and your booking link read when they are busy. Connect as many as you like.</p>
         </div>
-        <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect a Google account</button>
+        {data.googleReady ? <a href={CONNECT_ME} className={`${BTN_TEAL} no-underline`}>+ Connect a Google account</a>
+          : <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect a Google account</button>}
       </div>
       {data.accounts.length > 0 ? (
         <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
           {data.accounts.map((a, i) => (
             <div key={a.id} className={`flex flex-wrap items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-[var(--panel-border)]' : ''}`}>
               <AccountWho a={a} line={`Connected ${when(a.connectedAt)}`} />
-              {a.sample && <span className={PILL_SAMPLE} title="Google sign-in is not set up yet: this account works with sample data in the portal.">Sample</span>}
-              <span className={PILL_OK}>Connected</span>
+              {a.sample && <span className={PILL_SAMPLE} title={data.googleReady ? 'Added before Google sign-in was set up: connect it again to use the real Google account.' : 'Google sign-in is not set up yet: this account works with sample data in the portal.'}>Sample</span>}
+              {a.needsReconnect ? <span className={PILL_WARN}>Needs reconnect</span> : <span className={PILL_OK}>Connected</span>}
+              {data.googleReady && (a.sample || a.needsReconnect) && <a href={CONNECT_ME} className={LINK}>Reconnect</a>}
               <button type="button" className={LINK_RED} disabled={busy} onClick={() => void run(api.disconnectAccount({ id: a.id }))}>Disconnect</button>
             </div>
           ))}

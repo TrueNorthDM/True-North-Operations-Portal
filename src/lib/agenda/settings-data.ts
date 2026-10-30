@@ -4,8 +4,9 @@
  * accounts they connected, where invitations to them go, their working hours,
  * the holidays they see and their time zone. Server only.
  *
- * Google sign-in is not set up yet: accounts are added by address and marked
- * as samples (source 'sample'); the screens do not change when Google comes.
+ * Once a Super Admin saves the portal's Google app (migration 139) accounts
+ * connect by Google sign-in (source 'google'); until then they are added by
+ * address and marked as samples (source 'sample').
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -16,11 +17,14 @@ import { DC, dcVersus, zoneLabel } from './time'
 import { readHours, type WorkingHours } from './working-hours'
 import { ensureLink } from './booking-data'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
+import { loadGoogleApp } from './google-app'
 
 export interface AgendaAccount { id: number; email: string; sample: boolean; needsReconnect: boolean; connectedAt: string }
 
 export interface AgendaSettingsData {
   superAdmin: boolean
+  /** The portal's Google app keys are saved: Connect goes to Google's sign-in. */
+  googleReady: boolean
   teamCalendar: (AgendaAccount & { by: string | null }) | null
   accounts: AgendaAccount[]
   /** The work address, where invitations go unless another account is chosen. */
@@ -41,7 +45,7 @@ const account = (r: AccountRow): AgendaAccount => ({ id: r.id, email: r.email, s
 
 export async function loadAgendaSettings(personId: string, superAdmin: boolean, now = Date.now()): Promise<AgendaSettingsData> {
   const c = createAdminClient()
-  const [dir, accRes, setRes, personRes, appRes, link, origin] = await Promise.all([
+  const [dir, accRes, setRes, personRes, appRes, link, origin, googleApp] = await Promise.all([
     loadDirectory(),
     c.from('agenda_accounts').select('id, person_id, email, source, status, connected_at, connected_by').or(`person_id.eq.${personId},team_calendar.eq.true`).order('connected_at'),
     c.from('agenda_person_settings').select('working_hours, invite_account_id').eq('person_id', personId).maybeSingle(),
@@ -49,6 +53,7 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     c.from('app_settings').select('agenda_all_levels').eq('singleton_id', 1).maybeSingle(),
     ensureLink(personId),
     portalOrigin(),
+    loadGoogleApp(),
   ])
   for (const r of [accRes, setRes, personRes]) if (r.error) throw new Error(`Agenda settings could not be read: ${r.error.message}`)
   const rows = (accRes.data ?? []) as AccountRow[]
@@ -60,6 +65,7 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
   const invite = (setRes.data?.invite_account_id as number | null) ?? null
   return {
     superAdmin,
+    googleReady: !!googleApp,
     teamCalendar: team ? { ...account(team), by: team.connected_by ? dir.nameOf(team.connected_by) : null } : null,
     accounts: mine,
     workEmail: p?.email_true_north ?? null,

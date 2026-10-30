@@ -52,7 +52,7 @@ import { saveRolloutDates, moveToWave, setNorthTimeOpen, setAgendaGoogleOpen } f
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
-import { removeGoogle, removeRipplingToken, retryIntegrationJob, saveGoogle, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
+import { removeGoogle, removeGoogleApp, removeRipplingToken, retryIntegrationJob, saveGoogle, saveGoogleApp, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { anchorOptions } from '@/components/clocky/periods/anchor-options'
 import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
@@ -446,7 +446,7 @@ export default async function SettingsPage() {
         <div>
           <SectionHead title="Integrations" desc="Rippling for payroll and PTO, Google Calendar for the team calendar. The portal fills them; nobody copies by hand." />
           <div className="mb-[18px]"><AgendaGoogleSwitch open={agOpen} canChange={access.isSuperAdmin} set={setAgendaGoogleOpen} /></div>
-          <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveRipplingToken, removeRipplingToken, saveGoogle, removeGoogle, testGoogle, retryIntegrationJob }} />
+          <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveRipplingToken, removeRipplingToken, saveGoogle, removeGoogle, testGoogle, retryIntegrationJob, saveGoogleApp, removeGoogleApp }} />
         </div>
       ),
     },

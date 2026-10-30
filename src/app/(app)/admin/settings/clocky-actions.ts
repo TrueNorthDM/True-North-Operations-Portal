@@ -117,6 +117,46 @@ export async function testGoogle(): Promise<Done> {
   }
 }
 
+const CLIENT_ID = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/
+const BLANK_KEY = /^[A-Za-z0-9_-]{20,}$/
+
+/**
+ * The portal's own Google app (migration 139): the "Portal web" client of the
+ * project "True North Operations Portal", and the Picker key. A blank secret
+ * or key keeps the one saved, so the Client ID can be fixed alone.
+ */
+export async function saveGoogleApp(input: { clientId: string; clientSecret?: string; pickerKey?: string }): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  const clientId = String(input.clientId ?? '').trim()
+  const secret = String(input.clientSecret ?? '').trim()
+  const picker = String(input.pickerKey ?? '').trim()
+  if (!CLIENT_ID.test(clientId)) return no('The Client ID ends in .apps.googleusercontent.com. Copy it from Google Auth Platform > Clients > Portal web.')
+  if (secret && !BLANK_KEY.test(secret)) return no('Paste the whole Client secret, the "client_secret" value in the JSON file.')
+  if (picker && !BLANK_KEY.test(picker)) return no('Paste the whole Picker API key.')
+  const c = createAdminClient()
+  const { data: before, error: readError } = await c.from('app_settings').select('google_oauth_client_secret').eq('singleton_id', 1).maybeSingle()
+  if (readError) { console.error('[settings] google app read:', readError.message); return no(NOT_SAVED) }
+  if (!secret && !before?.google_oauth_client_secret) return no('Paste the Client secret too.')
+  const me = await getRealPerson()
+  const patch: { google_oauth_client_id: string; google_oauth_saved_by: string | null; google_oauth_saved_at: string; updated_at: string; google_oauth_client_secret?: string; google_picker_key?: string } = { google_oauth_client_id: clientId, google_oauth_saved_by: me?.id ?? null, google_oauth_saved_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  if (secret) patch.google_oauth_client_secret = secret
+  if (picker) patch.google_picker_key = picker
+  const { error } = await c.from('app_settings').update(patch).eq('singleton_id', 1)
+  if (error) { console.error('[settings] google app:', error.message); return no(NOT_SAVED) }
+  await logChange('google_oauth_app', secret || picker ? 'saved' : 'client id changed')
+  refresh()
+  return { ok: true, toast: 'Saved. People can now connect their Google accounts in Agenda settings.' }
+}
+
+export async function removeGoogleApp(): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  const { error } = await createAdminClient().from('app_settings').update({ google_oauth_client_id: null, google_oauth_client_secret: null, google_picker_key: null, google_oauth_saved_by: null, google_oauth_saved_at: null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] google app:', error.message); return no(NOT_SAVED) }
+  await logChange('google_oauth_app', 'removed')
+  refresh()
+  return { ok: true, toast: 'Removed. Nobody can connect a Google account until the keys are saved again; accounts already connected keep their access until then.' }
+}
+
 /** Try again on one failed item of the outbox; its request shows it waiting again. */
 export async function retryIntegrationJob(input: { id: number }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins try again.')
