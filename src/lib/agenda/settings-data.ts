@@ -14,6 +14,8 @@ import { countryOf } from './holidays'
 import { countryName, flagOf } from './model'
 import { DC, dcVersus, zoneLabel } from './time'
 import { readHours, type WorkingHours } from './working-hours'
+import { ensureLink } from './booking-data'
+import { portalOrigin } from '@/lib/timeclock/clocky-notify'
 
 export interface AgendaAccount { id: number; email: string; sample: boolean; needsReconnect: boolean; connectedAt: string }
 
@@ -30,6 +32,8 @@ export interface AgendaSettingsData {
   country: { code: string; name: string; flag: string } | null
   /** Who may invite all of True North (a Super Admin chooses). */
   allLevels: string[]
+  /** Their booking link (made, off, the first time they open the page). */
+  link: { url: string; slug: string; on: boolean; lengths: number[]; gap: number; noticeMin: number; windowDays: number; accountId: number | null }
 }
 
 type AccountRow = { id: number; person_id: string | null; email: string; source: string; status: string; connected_at: string; connected_by: string | null }
@@ -37,12 +41,14 @@ const account = (r: AccountRow): AgendaAccount => ({ id: r.id, email: r.email, s
 
 export async function loadAgendaSettings(personId: string, superAdmin: boolean, now = Date.now()): Promise<AgendaSettingsData> {
   const c = createAdminClient()
-  const [dir, accRes, setRes, personRes, appRes] = await Promise.all([
+  const [dir, accRes, setRes, personRes, appRes, link, origin] = await Promise.all([
     loadDirectory(),
     c.from('agenda_accounts').select('id, person_id, email, source, status, connected_at, connected_by').or(`person_id.eq.${personId},team_calendar.eq.true`).order('connected_at'),
     c.from('agenda_person_settings').select('working_hours, invite_account_id').eq('person_id', personId).maybeSingle(),
     c.from('people').select('email_true_north, address, location').eq('id', personId).maybeSingle(),
     c.from('app_settings').select('agenda_all_levels').eq('singleton_id', 1).maybeSingle(),
+    ensureLink(personId),
+    portalOrigin(),
   ])
   for (const r of [accRes, setRes, personRes]) if (r.error) throw new Error(`Agenda settings could not be read: ${r.error.message}`)
   const rows = (accRes.data ?? []) as AccountRow[]
@@ -62,5 +68,10 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     zone: { name: zoneLabel(zone), versus: dcVersus(zone, now), isDc: zone === DC },
     country: cc && cc !== 'US' ? { code: cc, name: countryName(cc), flag: flagOf(cc) } : null,
     allLevels: (appRes.data?.agenda_all_levels as string[] | null) ?? ['super_admin', 'admin'],
+    link: {
+      url: `${origin}/meet/${link.slug}`, slug: link.slug, on: link.is_on, lengths: [...link.lengths].sort((a, b) => a - b),
+      gap: link.gap_min, noticeMin: link.notice_min, windowDays: link.window_days,
+      accountId: mine.some(a => a.id === link.account_id) ? link.account_id : null,
+    },
   }
 }

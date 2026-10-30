@@ -48,6 +48,8 @@ describe('every page asks the access rule', () => {
     'app/login/page.tsx': 'sign-in flow',
     'app/maintenance/page.tsx': 'the maintenance notice',
     'app/(app)/profile/page.tsx': "sends the person to their own page in the Directory, which checks",
+    'app/meet/[slug]/page.tsx': 'the public booking page: open to anyone while the link is on',
+    'app/meet/confirm/[token]/page.tsx': 'the public booking page: the link from the confirmation email',
   }
   const redirectsOnly = (s: string) => /export default (async )?function \w+\(\)\s*\{\s*redirect\((await previewHref\()?/.test(s)
 
@@ -103,6 +105,11 @@ describe('every server action asks the access rule', () => {
     'app/auth/actions.ts': 'sign-in flow',
     'app/auth/two-step-actions.ts': 'sign-in flow',
   }
+  // Public on purpose: no session to ask. Each action checks the link, the
+  // time and its own limits instead.
+  const PUBLIC: Record<string, string> = {
+    'app/meet/actions.ts': 'the public booking page (Agenda booking links)',
+  }
   // Helpers inside a file that themselves ask the rule (guard(), actor(), ...).
   const guardedHelpers = (s: string): Set<string> => {
     const fns = [...s.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)].map(m => ({ name: m[1], at: m.index! }))
@@ -129,7 +136,7 @@ describe('every server action asks the access rule', () => {
     const missing: string[] = []
     for (const f of files) {
       const s = read(f)
-      if (!/^\s*['"]use server['"]/.test(s) || rel(f) in SELF) continue
+      if (!/^\s*['"]use server['"]/.test(s) || rel(f) in SELF || rel(f) in PUBLIC) continue
       const ok = guardedHelpers(s)
       for (const m of s.matchAll(/export\s+async\s+function\s+(\w+)\s*\(/g)) if (!ok.has(m[1])) missing.push(`${rel(f)}: ${m[1]}`)
       // The other way to write one: export const name = async (...) => ...

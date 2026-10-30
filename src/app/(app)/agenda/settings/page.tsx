@@ -8,7 +8,7 @@ import { agendaViewer } from '@/lib/agenda/data'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadAgendaSettings } from '@/lib/agenda/settings-data'
 import { AgendaSettings } from '@/components/agenda/settings/AgendaSettings'
-import { connectAccount, connectTeamCalendar, disconnectAccount, disconnectTeamCalendar, saveWorkingHours, setAllLevels, setInviteAccount } from './actions'
+import { connectAccount, connectTeamCalendar, disconnectAccount, disconnectTeamCalendar, saveBookingLink, saveWorkingHours, setAllLevels, setInviteAccount } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Agenda settings' }
@@ -25,7 +25,7 @@ export default async function AgendaSettingsRoute() {
         <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Agenda settings</h1>
         <p className="m-0 text-[14px] text-foreground">Your Google accounts and how the portal uses them.</p>
       </div>
-      <AgendaSettings data={data} api={{ connectAccount, disconnectAccount, setInviteAccount, saveWorkingHours, connectTeamCalendar, disconnectTeamCalendar, setAllLevels }} />
+      <AgendaSettings data={data} api={{ connectAccount, disconnectAccount, setInviteAccount, saveWorkingHours, connectTeamCalendar, disconnectTeamCalendar, setAllLevels, saveBookingLink }} />
     </div>
   )
 }

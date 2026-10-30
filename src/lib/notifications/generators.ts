@@ -620,6 +620,11 @@ export function agendaBirthdayDrafts(ctx: Ctx, x: { to: string; key: string; tex
   return draftFor(ctx, 'agenda-birthday', ctx.aud.byId.get(x.to), { title: x.text, body: '', href: '/agenda', dedupeKey: x.key })
 }
 
+/** A meeting booked on someone's booking link: to the host, once per booking. */
+export function agendaBookingDrafts(ctx: Ctx, x: { bookingId: number; hostId: string; title: string; body: string }): Draft[] {
+  return draftFor(ctx, 'agenda-booking', ctx.aud.byId.get(x.hostId), { title: x.title, body: x.body, href: '/agenda', dedupeKey: String(x.bookingId) })
+}
+
 /** Someone 3 days late or more: to the Super Admins (ck-reopen), once a day per person. */
 export function clockyLateDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
   return ctx.aud.withTool('ck-reopen').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-late', r, { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key }))

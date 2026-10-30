@@ -18,6 +18,7 @@ import type { AgendaAccount, AgendaSettingsData } from '@/lib/agenda/settings-da
 import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
 import { clockLabel } from '@/lib/agenda/time'
 import { copyDay, DAY_NAMES, tidy, WEEKDAYS, type Block, type Weekday, type WorkingHours } from '@/lib/agenda/working-hours'
+import { GAPS, GAP_LABEL, LENGTHS, NOTICES, NOTICE_LABEL, WINDOWS, WINDOW_LABEL, type LinkInput } from '@/lib/agenda/booking'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 
@@ -29,6 +30,7 @@ export interface AgendaSettingsApi {
   connectTeamCalendar(i: { email: string }): Promise<Done>
   disconnectTeamCalendar(): Promise<Done>
   setAllLevels(i: { levels: string[] }): Promise<Done>
+  saveBookingLink(i: LinkInput): Promise<Done>
 }
 
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[18px] p-5 flex flex-col gap-3.5'
@@ -73,6 +75,7 @@ export function AgendaSettings({ data, api }: { data: AgendaSettingsData; api: A
       {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
       <AccountsCard data={data} busy={busy} run={run} api={api} />
       <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />
+      <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />
       <HolidaysCard country={data.country} />
       <YourTimeCard zone={data.zone} />
       <Toast toast={toast} />
@@ -318,6 +321,98 @@ function WorkingHoursCard({ hours, zone, busy, run, api }: { hours: WorkingHours
           <button type="button" className={BTN_W} disabled={busy} onClick={() => setH(hours)}>Undo changes</button>
           <button type="button" className={BTN_N} disabled={busy} onClick={() => void run(api.saveWorkingHours({ hours: h }))}>Save working hours</button>
         </div>
+      )}
+    </section>
+  )
+}
+
+type Say = (t: ToastState) => void
+
+/** One choice of a few, as in the mockup's segmented buttons. */
+function Seg({ label, value, options, onChange, disabled }: { label: string; value: number; options: readonly number[]; onChange: (v: number) => void; disabled: boolean }) {
+  return (
+    <div className="flex flex-col gap-[5px]">
+      <FieldLabel>{label}</FieldLabel>
+      <div role="radiogroup" aria-label={label} className="inline-flex bg-subtle rounded-[10px] p-[3px] gap-[3px] w-fit">
+        {options.map(o => (
+          <button key={o} type="button" role="radio" aria-checked={o === value} disabled={disabled} onClick={() => onChange(o)}
+            className={`border-0 rounded-[8px] px-3 py-[7px] text-[12.5px] font-extrabold cursor-pointer ${o === value ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.15)]' : 'bg-transparent text-muted hover:text-tn-ink'}`}>
+            {label === 'Gap between meetings' ? GAP_LABEL[o] : label === 'Minimum notice' ? NOTICE_LABEL[o] : WINDOW_LABEL[o]}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BookingLinkCard({ data, busy, run, api, say }: { data: AgendaSettingsData; busy: boolean; run: Run; api: AgendaSettingsApi; say: Say }) {
+  const saved: LinkInput = { on: data.link.on, lengths: data.link.lengths, gap: data.link.gap, noticeMin: data.link.noticeMin, windowDays: data.link.windowDays, accountId: data.link.accountId ?? data.accounts[0]?.id ?? null }
+  const [d, setD] = useState<LinkInput>(saved)
+  const changed = JSON.stringify({ ...d, on: saved.on }) !== JSON.stringify(saved)
+  const noAccount = data.accounts.length === 0
+  const shown = data.link.url.replace(/^https?:\/\//, '')
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(data.link.url); say({ text: 'Link copied.' }) } catch { say({ text: data.link.url }) }
+  }
+  return (
+    <section className={CARD} aria-label="Your booking link">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className={TITLE}>Your booking link</div>
+          <p className={`${SUB} m-0 mt-1`}>Send it to anyone, inside or outside True North. They pick a free time and the meeting is created on your Google account, with a Meet link, and both of you get the invitation.</p>
+        </div>
+        <button type="button" role="switch" aria-checked={data.link.on} aria-label="Booking link on" disabled={busy || noAccount}
+          onClick={() => void run(api.saveBookingLink({ ...d, on: !data.link.on }))}
+          className="mt-1 flex-none w-9 h-5 border-0 rounded-full relative cursor-pointer p-0 disabled:opacity-50" style={{ background: data.link.on ? '#1E7D7F' : '#cbd2da' }}>
+          <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: data.link.on ? 18 : 2 }} />
+        </button>
+      </div>
+      {noAccount ? (
+        <div className="border border-dashed border-[#c9d0da] rounded-[12px] px-3.5 py-3 text-[13px] text-foreground leading-[1.5]">
+          Connect a Google account first: the meetings people book are made on it.
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2.5 border border-[var(--panel-border)] rounded-[12px] px-3.5 py-2.5">
+            <span className="flex-1 min-w-[200px] text-[13.5px] text-foreground break-all">{shown.replace(/[^/]+$/, '')}<b className="text-tn-ink">{data.link.slug}</b></span>
+            <button type="button" className={BTN_W} onClick={() => void copy()}>Copy link</button>
+            <a className={BTN_TEAL} href={`/meet/${data.link.slug}`} target="_blank" rel="noreferrer">Preview</a>
+          </div>
+          {!data.link.on && <div className={`${BEIGE} ${SUB}`}>Your booking link is off. Anyone who opens it sees that you are not taking bookings.</div>}
+          <div className="flex flex-col gap-[5px]">
+            <FieldLabel>Meeting lengths people can pick</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {LENGTHS.map(l => {
+                const on = d.lengths.includes(l)
+                return (
+                  <button key={l} type="button" aria-pressed={on} disabled={busy}
+                    onClick={() => setD(x => ({ ...x, lengths: on ? x.lengths.filter(y => y !== l) : [...x.lengths, l].sort((a, b) => a - b) }))}
+                    className={`border rounded-[10px] px-3 py-[7px] text-[13px] font-bold cursor-pointer ${on ? 'border-tn-teal bg-[#f2f8f7] text-tn-ink' : 'border-[var(--panel-border)] bg-white text-muted hover:text-tn-ink'}`}>
+                    {l} min
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-3.5">
+            <Seg label="Gap between meetings" value={d.gap} options={GAPS} disabled={busy} onChange={v => setD(x => ({ ...x, gap: v }))} />
+            <Seg label="Minimum notice" value={d.noticeMin} options={NOTICES} disabled={busy} onChange={v => setD(x => ({ ...x, noticeMin: v }))} />
+            <Seg label="Can be booked up to" value={d.windowDays} options={WINDOWS} disabled={busy} onChange={v => setD(x => ({ ...x, windowDays: v }))} />
+          </div>
+          <div className="flex flex-col gap-[5px] w-full sm:w-[360px]">
+            <FieldLabel>Create the meetings on</FieldLabel>
+            <Select value={d.accountId == null ? '' : String(d.accountId)} options={data.accounts.map(a => ({ value: String(a.id), label: a.email }))} fullWidth ariaLabel="Create the meetings on"
+              disabled={busy} onChange={v => setD(x => ({ ...x, accountId: v ? Number(v) : null }))}
+              className="h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-semibold text-[13px]" />
+          </div>
+          <div className={`${BEIGE} ${SUB}`}>Busy times come from all your connected Google accounts, your approved time off and the US holidays. People booking see only your free times, never what is on your calendar.</div>
+          {changed && (
+            <div className="flex justify-end gap-2">
+              <button type="button" className={BTN_W} disabled={busy} onClick={() => setD(saved)}>Undo changes</button>
+              <button type="button" className={BTN_N} disabled={busy || !d.lengths.length} onClick={() => void run(api.saveBookingLink({ ...d, on: data.link.on }))}>Save booking link</button>
+            </div>
+          )}
+        </>
       )}
     </section>
   )

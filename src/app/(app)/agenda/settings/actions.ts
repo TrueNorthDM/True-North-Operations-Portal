@@ -21,6 +21,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { closedRefusal } from '@/lib/agenda/google-lock'
 import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
 import { checkHours } from '@/lib/agenda/working-hours'
+import { checkLink, type LinkInput } from '@/lib/agenda/booking'
+import { ensureLink } from '@/lib/agenda/booking-data'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -124,4 +126,20 @@ export async function disconnectTeamCalendar(): Promise<Done> {
   const { error } = await createAdminClient().from('agenda_accounts').delete().eq('team_calendar', true)
   if (error) { console.error('[agenda settings] team calendar:', error.message); return no(NOT_SAVED) }
   return done('The team calendar is disconnected.')
+}
+
+/** Your booking link: on or off, the meeting lengths, gap, notice, window and the account the meetings are made on. */
+export async function saveBookingLink(input: LinkInput): Promise<Done> {
+  const m = await me(); if (isDone(m)) return m
+  const c = createAdminClient()
+  const { data: accts } = await c.from('agenda_accounts').select('id').eq('person_id', m.personId)
+  const r = checkLink(input, (accts ?? []).map(a => a.id as number))
+  if (!r.ok) return no(r.error)
+  await ensureLink(m.personId)
+  const l = r.link
+  const { error } = await c.from('agenda_booking_links').update({
+    is_on: l.on, lengths: l.lengths, gap_min: l.gap, notice_min: l.noticeMin, window_days: l.windowDays, account_id: l.accountId, updated_at: new Date().toISOString(),
+  }).eq('person_id', m.personId)
+  if (error) { console.error('[agenda settings] booking link:', error.message); return no(NOT_SAVED) }
+  return done(l.on ? 'Your booking link is on.' : 'Your booking link is off.')
 }

@@ -296,6 +296,111 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_booking_links: {
+        Row: {
+          account_id: number | null
+          gap_min: number
+          is_on: boolean
+          lengths: number[]
+          notice_min: number
+          person_id: string
+          slug: string
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          account_id?: number | null
+          gap_min?: number
+          is_on?: boolean
+          lengths?: number[]
+          notice_min?: number
+          person_id: string
+          slug: string
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          account_id?: number | null
+          gap_min?: number
+          is_on?: boolean
+          lengths?: number[]
+          notice_min?: number
+          person_id?: string
+          slug?: string
+          updated_at?: string
+          window_days?: number
+        }
+        Relationships: []
+      }
+      agenda_bookings: {
+        Row: {
+          booker_zone: string
+          client_key: string | null
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          emailed_at: string | null
+          emails_sent: number
+          ends_at: string
+          event_id: number | null
+          guests: string[]
+          held_until: string
+          host_id: string
+          id: number
+          name: string
+          note: string | null
+          sample_key: string | null
+          source: string
+          starts_at: string
+          state: string
+          token_hash: string
+        }
+        Insert: {
+          booker_zone: string
+          client_key?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          emailed_at?: string | null
+          emails_sent?: number
+          ends_at: string
+          event_id?: number | null
+          guests?: string[]
+          held_until: string
+          host_id: string
+          id?: number
+          name: string
+          note?: string | null
+          sample_key?: string | null
+          source?: string
+          starts_at: string
+          state?: string
+          token_hash: string
+        }
+        Update: {
+          booker_zone?: string
+          client_key?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          emailed_at?: string | null
+          emails_sent?: number
+          ends_at?: string
+          event_id?: number | null
+          guests?: string[]
+          held_until?: string
+          host_id?: string
+          id?: number
+          name?: string
+          note?: string | null
+          sample_key?: string | null
+          source?: string
+          starts_at?: string
+          state?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       agenda_busy: {
         Row: {
           account_id: number
@@ -4691,6 +4796,24 @@ export type Database = {
       }
     }
     Functions: {
+      agenda_booking_confirm: { Args: { p_gap: number; p_token_hash: string }; Returns: number | null }
+      agenda_booking_hold: {
+        Args: {
+          p_client: string
+          p_email: string
+          p_end: string
+          p_gap: number
+          p_guests: string[]
+          p_held_until: string
+          p_host: string
+          p_name: string
+          p_note: string | null
+          p_start: string
+          p_token_hash: string
+          p_zone: string
+        }
+        Returns: number | null
+      }
       access_commit: {
         Args: { p_expected: Json; p_log: Json; p_ops: Json }
         Returns: number

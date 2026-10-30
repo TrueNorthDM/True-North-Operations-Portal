@@ -57,3 +57,9 @@ export function sampleBusy(key: string, hours: WorkingHours, zone: string, fromD
   }
   return out
 }
+
+/** A Meet link for a sample account: the shape of Google's, made from a key so it stays the same. */
+export function sampleMeetLink(key: string): string {
+  const r = seeded(`meet:${key}`), l = (n: number) => Array.from({ length: n }, () => String.fromCharCode(97 + Math.floor(r() * 26))).join('')
+  return `https://meet.google.com/${l(3)}-${l(4)}-${l(3)}`
+}

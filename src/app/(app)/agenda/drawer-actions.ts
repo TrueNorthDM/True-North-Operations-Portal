@@ -20,7 +20,7 @@ import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { closedRefusal } from '@/lib/agenda/google-lock'
 import { allLevels, invitablePeople, loadAvailability } from '@/lib/agenda/drawer-data'
 import { checkDrawer, invitees, mayManage, type DrawerInput, type Viewer } from '@/lib/agenda/event-rules'
-import { seeded } from '@/lib/agenda/sample-plan'
+import { sampleMeetLink } from '@/lib/agenda/sample-plan'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -41,11 +41,7 @@ async function writer(): Promise<{ access: Access & { personId: string }; viewer
   }
 }
 
-/** A Meet link for a sample account: the shape of Google's, made from the event so it stays the same. */
-const sampleMeet = (key: string) => {
-  const r = seeded(`meet:${key}`), l = (n: number) => Array.from({ length: n }, () => String.fromCharCode(97 + Math.floor(r() * 26))).join('')
-  return `https://meet.google.com/${l(3)}-${l(4)}-${l(3)}`
-}
+const sampleMeet = sampleMeetLink
 
 async function save(input: DrawerInput, id: number | null): Promise<Done> {
   const w = await writer(); if (isDone(w)) return w

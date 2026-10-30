@@ -398,6 +398,16 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open Agenda', href: '/agenda' },
   },
   {
+    // Agenda Google Calendar mockup (owner, 30 October 2026): "What the host gets at the same time".
+    key: 'agenda-booking', src: 'Agenda', block: 'tools', icon: 'agenda', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Agenda', stat: 'bookings', statOne: 'booking',
+    example: { title: 'New booking: Maria Santos', body: 'Mon, Nov 2, 12:30 PM your time · 30 min · 2 people' },
+    title: 'Someone booked a meeting with you',
+    description: 'When someone confirms a time on your booking link, in your own time zone. The meeting is on your Agenda and your Google Calendar. In the bell only.',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Open Agenda', href: '/agenda' },
+  },
+  {
     key: 'clocky-late', src: 'North Time · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheets late', statOne: 'timesheet late',
     example: { title: 'Submit October: it is 3 days late', body: 'Saheed Fidimaye has not submitted.' },

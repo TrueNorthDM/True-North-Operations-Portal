@@ -13,14 +13,16 @@ import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { sampleBusy, sampleHours, seeded } from './sample-plan'
 import { readHours } from './working-hours'
 import { invitees, type Audience, type EventType } from './event-rules'
-import { DC, instantOf } from './time'
+import { DC, instantOf, localOf } from './time'
 import { APPROVED_DOMAIN } from './accounts'
+import { bookingTitle, hostLine, slugFor } from './booking'
+import { notifyAgendaBooking } from '@/lib/notifications/run'
 
 const TEAM_CALENDAR = `office@${APPROVED_DOMAIN}`
 /** The owner's two accounts in the approved mockup (he has no work address in the Directory). */
 const OWNER_ACCOUNTS = ['arnaldo@truenorthdigitalmarketing.com', 'arnaldo@leveluponline.org']
 
-export interface SeedReport { accounts: number; withoutAccount: number; busy: number; settings: number; events: number; guests: number }
+export interface SeedReport { accounts: number; withoutAccount: number; busy: number; settings: number; events: number; guests: number; links: number; bookings: number }
 
 export async function seedAgendaSamples(c: SupabaseClient, today: string): Promise<SeedReport> {
   if (!IS_STAGING) throw new Error('Sample data is for staging only.')
@@ -83,7 +85,8 @@ export async function seedAgendaSamples(c: SupabaseClient, today: string): Promi
     if (e) throw new Error(`Busy times could not be added: ${e.message}`)
   }
   const ev = await seedEvents(c, today, people2, owner?.id ?? null, dir)
-  return { accounts: add.length, withoutAccount: without.size, busy: busy.length, settings: settings.length, ...ev }
+  const bk = await seedBookings(c, today, people2, owner?.id ?? null, dir, hoursOf)
+  return { accounts: add.length, withoutAccount: without.size, busy: busy.length, settings: settings.length, ...ev, ...bk }
 }
 
 const SAMPLE_EVENTS: { type: EventType; title: string; audience: Audience; minutes?: [number, number]; days?: number; external?: string; place?: string; client?: string }[] = [
@@ -161,4 +164,89 @@ async function seedEvents(c: SupabaseClient, today: string, people: { id: string
     }
   }
   return { events, guests }
+}
+
+/** Who booked the sample meetings: people outside True North, as the booking page is for. */
+const BOOKERS: { name: string; email: string; guests: string[]; note: string | null; zone: string; len: number }[] = [
+  { name: 'Maria Santos', email: 'maria.santos@hopeclinic.org', guests: ['joao.lima@hopeclinic.org'], note: 'We would like to talk about the new website.', zone: 'America/Sao_Paulo', len: 30 },
+  { name: 'David Mensah', email: 'david@accraschools.example.org', guests: [], note: null, zone: 'Africa/Accra', len: 60 },
+  { name: 'Grace Wanjiru', email: 'grace.w@nairobihealth.example.org', guests: ['peter.k@nairobihealth.example.org', 'ann.m@nairobihealth.example.org'], note: 'Quarterly report review.', zone: 'Africa/Nairobi', len: 30 },
+  { name: 'Tom Becker', email: 'tom@beckerfoundation.example.com', guests: [], note: 'Intro call.', zone: 'America/Chicago', len: 30 },
+  { name: 'Ana Ribeiro', email: 'ana.ribeiro@mail.example.com', guests: [], note: null, zone: 'Europe/Lisbon', len: 60 },
+  { name: 'Samuel Okafor', email: 'samuel@lagosmedia.example.com', guests: ['tola@lagosmedia.example.com'], note: 'Social media proposal.', zone: 'Africa/Lagos', len: 30 },
+  { name: 'Linda Park', email: 'linda.park@sunrisechurch.example.org', guests: [], note: null, zone: 'America/Los_Angeles', len: 30 },
+  { name: 'Rui Costa', email: 'rui@portoeditions.example.com', guests: [], note: 'Translation project.', zone: 'Europe/Lisbon', len: 60 },
+]
+
+/**
+ * A booking link for everyone with an account (most of them on, the owner's
+ * always), and eight meetings booked through them by people outside True
+ * North, three with the owner. Links people already have are kept;
+ * bookings and their meetings are upserted by sample_key.
+ */
+async function seedBookings(c: SupabaseClient, today: string, people: { id: string; name: string }[], ownerId: string | null, dir: Awaited<ReturnType<typeof loadDirectory>>, hoursOf: Map<string, unknown>): Promise<{ links: number; bookings: number }> {
+  const { data: accts } = await c.from('agenda_accounts').select('id, person_id').not('person_id', 'is', null).order('id')
+  const accountOf = new Map<string, number>()
+  for (const a of (accts ?? []) as { id: number; person_id: string }[]) if (!accountOf.has(a.person_id)) accountOf.set(a.person_id, a.id)
+  const { data: links } = await c.from('agenda_booking_links').select('person_id, slug')
+  const has = new Set((links ?? []).map(l => l.person_id as string))
+  const taken = new Set((links ?? []).map(l => l.slug as string))
+  const OPTIONS = [
+    { lengths: [30, 60], gap_min: 10, notice_min: 1440, window_days: 30 },
+    { lengths: [15, 30], gap_min: 0, notice_min: 120, window_days: 14 },
+    { lengths: [30, 45, 60], gap_min: 15, notice_min: 2880, window_days: 60 },
+  ]
+  const add = people.filter(p => accountOf.has(p.id) && !has.has(p.id)).map(p => {
+    const slug = slugFor(p.name, taken); taken.add(slug)
+    const r = seeded(`link:${p.id}`)
+    return { person_id: p.id, slug, is_on: p.id === ownerId || r() < 0.75, account_id: accountOf.get(p.id)!, ...OPTIONS[Math.floor(r() * OPTIONS.length)] }
+  })
+  if (add.length) {
+    const { error } = await c.from('agenda_booking_links').insert(add)
+    if (error) throw new Error(`Booking links could not be added: ${error.message}`)
+  }
+  if (ownerId && accountOf.has(ownerId)) await c.from('agenda_booking_links').update({ account_id: accountOf.get(ownerId)! }).eq('person_id', ownerId).is('account_id', null)
+  if (ownerId && accountOf.has(ownerId)) await c.from('agenda_booking_links').update({ is_on: true }).eq('person_id', ownerId)
+
+  const { data: on } = await c.from('agenda_booking_links').select('person_id, account_id').eq('is_on', true).not('account_id', 'is', null)
+  const hosts = ((on ?? []) as { person_id: string; account_id: number }[]).sort((a, b) => a.person_id.localeCompare(b.person_id))
+  const others = hosts.filter(h => h.person_id !== ownerId)
+  const owner = hosts.find(h => h.person_id === ownerId)
+  let bookings = 0
+  for (let i = 0; i < BOOKERS.length; i++) {
+    const host = owner && i % 3 === 0 ? owner : others[Math.floor(seeded(`bk:${i}`)() * others.length)] ?? owner
+    if (!host) break
+    const x = BOOKERS[i], zone = dir.zoneOf(host.person_id), hours = readHours(hoursOf.get(host.person_id))
+    // A weekday the host works, in their first block, an hour in.
+    let day = weekdayFrom(today, 2 + i), block = hours[String(new Date(`${day}T12:00:00Z`).getUTCDay() || 7) as keyof typeof hours]?.[0]
+    for (let k = 0; !block && k < 7; k++) { day = weekdayFrom(day, 1); block = hours[String(new Date(`${day}T12:00:00Z`).getUTCDay() || 7) as keyof typeof hours]?.[0] }
+    const startMin = (block?.[0] ?? 540) + 60 + (i % 2) * 90
+    const start = instantOf(day, startMin, zone), end = start + x.len * 60_000
+    const name = dir.nameOf(host.person_id)
+    const { data: ev, error } = await c.from('agenda_events').upsert({
+      kind: 'event', type: 'meeting', audience: 'guests', title: bookingTitle(x.name, name),
+      start_date: localOf(start, DC).date, end_date: localOf(start, DC).date,
+      starts_at: new Date(start).toISOString(), ends_at: new Date(end).toISOString(), time_zone: DC,
+      how: 'online', place: null, meet_link: meetOf(`booking:${i}`), audience_team_ids: null, client: null,
+      description: [x.note, `Booked by ${x.name} (${x.email}) on ${name}'s booking link.`].filter(Boolean).join('\n\n'),
+      add_to_google: false, created_by: host.person_id, sent_from_account_id: host.account_id, source: 'sample', sample_key: `agenda-booking-${i}`,
+    }, { onConflict: 'sample_key' }).select('id').single()
+    if (error || !ev) throw new Error(`Sample booking ${x.name} could not be saved: ${error?.message}`)
+    await c.from('agenda_event_guests').delete().eq('event_id', ev.id)
+    await c.from('agenda_event_guests').insert([x.email, ...x.guests].map(email => ({ event_id: ev.id, email, person_id: null, via: 'guest' })))
+    const at = new Date(start - 3 * 864e5).toISOString()
+    const { data: bk, error: bErr } = await c.from('agenda_bookings').upsert({
+      host_id: host.person_id, starts_at: new Date(start).toISOString(), ends_at: new Date(end).toISOString(),
+      name: x.name, email: x.email, guests: x.guests, note: x.note, booker_zone: x.zone, state: 'booked',
+      token_hash: `sample-${i}`, held_until: at, confirmed_at: at, event_id: ev.id, source: 'sample', sample_key: `agenda-booking-${i}`,
+    }, { onConflict: 'sample_key' }).select('id').single()
+    if (bErr || !bk) throw new Error(`Sample booking ${x.name} could not be saved: ${bErr?.message}`)
+    bookings++
+    if (host.person_id === ownerId) {
+      try {
+        await notifyAgendaBooking({ bookingId: bk.id as number, hostId: host.person_id, title: `New booking: ${x.name}`, body: hostLine(start, x.len, 1 + x.guests.length, zone) })
+      } catch { /* the bell is a nicety for the training */ }
+    }
+  }
+  return { links: add.length, bookings }
 }

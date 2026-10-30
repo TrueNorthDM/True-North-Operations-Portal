@@ -33,7 +33,7 @@ import {
   clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
   clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts,
   clockyReimbursementRequestedDrafts, clockyReimbursementDecidedDrafts, clockyRmbReadyDrafts, clockyRmbPaidDrafts, clockyExtraRequestedDrafts, clockyExtraDecidedDrafts,
-  clockyTimeOffRefusedDrafts, clockyTypeChangeDrafts, clockyReminderDrafts, clockyLateDrafts, clockyAllowanceDrafts, clockyAllowanceOverDrafts, agendaBirthdayDrafts, CLOCK_PANEL_HREF,
+  clockyTimeOffRefusedDrafts, clockyTypeChangeDrafts, clockyReminderDrafts, clockyLateDrafts, clockyAllowanceDrafts, clockyAllowanceOverDrafts, agendaBirthdayDrafts, agendaBookingDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -199,6 +199,9 @@ export const notifyClockyExtraDecided = (x: { id: number; to: readonly string[];
 
 export const notifyClockyTimeOffRefused = (x: { requestId: number; text: string; body: string }) =>
   simple('clocky-timeoff-refused', ctx => clockyTimeOffRefusedDrafts(ctx, x))
+
+export const notifyAgendaBooking = (x: { bookingId: number; hostId: string; title: string; body: string }) =>
+  simple('agenda-booking', ctx => agendaBookingDrafts(ctx, x))
 
 /** The reminders runner's bells, in one delivery (reminders-run.ts). */
 export const notifyClockyReminders = (x: {
