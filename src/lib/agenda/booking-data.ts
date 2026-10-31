@@ -47,8 +47,8 @@ const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).map(w => 
 
 /**
  * The host behind a booking address: `host` when they can be booked, `off`
- * (their name) when the link is off, has no account to make the meeting on,
- * or the person has left; null when there is no such address.
+ * (their name) when the link is off, the person has no account to make the
+ * meeting on, or the person has left; null when there is no such address.
  */
 export async function loadPublicLink(slug: string): Promise<{ host: PublicHost } | { off: string } | null> {
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) return null
@@ -67,12 +67,18 @@ export async function loadHost(personId: string): Promise<PublicHost | null> {
 async function hostOf(l: LinkRow): Promise<{ host: PublicHost } | { off: string }> {
   const { data: p } = await createAdminClient().from('people').select('id, full_name, status').eq('id', l.person_id).maybeSingle()
   const name = ((p?.full_name as string | undefined) ?? '').trim()
-  if (!l.is_on || l.account_id == null || !p || p.status !== 'active') return { off: name || 'This person' }
+  // No account chosen yet (or the chosen one was disconnected): the first one the person connected, as Agenda settings shows it.
+  let accountId = l.account_id
+  if (accountId == null) {
+    const { data: first } = await createAdminClient().from('agenda_accounts').select('id').eq('person_id', l.person_id).order('connected_at').limit(1).maybeSingle()
+    accountId = first?.id ?? null
+  }
+  if (!l.is_on || accountId == null || !p || p.status !== 'active') return { off: name || 'This person' }
   const dir = await loadDirectory()
   return {
     host: {
       personId: l.person_id, name, initials: initialsOf(name), zone: dir.zoneOf(l.person_id), slug: l.slug,
-      lengths: [...l.lengths].sort((a, b) => a - b), gap: l.gap_min, noticeMin: l.notice_min, windowDays: l.window_days, accountId: l.account_id,
+      lengths: [...l.lengths].sort((a, b) => a - b), gap: l.gap_min, noticeMin: l.notice_min, windowDays: l.window_days, accountId,
     },
   }
 }
