@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import { Icon } from '@/components/clocky/entries/ui'
 import { MeetIcon } from '@/components/ui/MeetIcon'
+import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { answerCounts, countsLabel, fday, type Answer, type DetailGuest, type EventDetail } from '@/lib/agenda/model'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink'
@@ -126,20 +127,30 @@ export function DetailTop({ detail, meet, answers }: { detail: EventDetail; meet
 export function DetailFoot({ detail, by, myAnswer, onAnswer, busy }: {
   detail: EventDetail; by: string | null; myAnswer: Answer | null; onAnswer?: (a: 'yes' | 'no' | 'maybe') => void; busy: boolean
 }) {
-  const made = [by ? `Created by ${by}` : '', detail.created ? fday(detail.created).replace(/^\w+, /, '') : ''].filter(Boolean).join(', ')
+  const day = detail.created ? fday(detail.created).replace(/^\w+, /, '') : ''
+  const ROW = 'flex items-center gap-2 min-w-0'
   return (
     <>
-      <div className="flex flex-col gap-[5px] text-[12px] text-muted leading-[1.5]">
-        {(detail.sentFrom || made) && (
-          <span className="[text-wrap:pretty]">
-            {detail.sentFrom && <>Sent from <b className="text-foreground font-semibold break-all">{detail.sentFrom}</b></>}
-            {detail.sentFrom && made && ' · '}{made}
+      <div className="flex flex-col gap-1.5 text-[12.5px] text-muted leading-[1.45] border-t border-[#eef0f3] pt-3">
+        {detail.sentFrom && (
+          <span className={ROW}>
+            <GoogleIcon size={13} className="flex-none" />
+            <span className="min-w-0 truncate">Sent from <b className="text-foreground font-semibold">{detail.sentFrom}</b></span>
+          </span>
+        )}
+        {(by || day) && (
+          <span className={ROW}>
+            <Icon d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={13} color="#8593a4" width={2} className="flex-none" />
+            <span className="min-w-0 truncate">{by ? <>Created by <b className="text-foreground font-semibold">{by}</b></> : 'Created'}{day ? ` on ${day}` : ''}</span>
           </span>
         )}
         {detail.onGoogle && (
-          <span>
-            {detail.teamCalendar ? 'On the team Google Calendar' : 'Also on Google Calendar'}
-            {detail.googleLink && <> · <a href={detail.googleLink} target="_blank" rel="noopener noreferrer" className={LINK}>Open in Google Calendar ↗</a></>}
+          <span className={`${ROW} justify-between flex-wrap gap-y-0.5`}>
+            <span className={ROW}>
+              <Icon d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" size={13} color="#8593a4" width={2} className="flex-none" />
+              {detail.teamCalendar ? 'On the team Google Calendar' : 'Also on Google Calendar'}
+            </span>
+            {detail.googleLink && <a href={detail.googleLink} target="_blank" rel="noopener noreferrer" className={LINK}>Open in Google Calendar ↗</a>}
           </span>
         )}
       </div>
