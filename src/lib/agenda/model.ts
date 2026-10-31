@@ -235,7 +235,7 @@ export function filterItems(items: readonly AgendaItem[], on: ReadonlySet<Agenda
 
 // ── 8A Month ──────────────────────────────────────────────────────────────────
 
-export interface CellItem { id: string; label: string; title: string; look: Look }
+export interface CellItem { id: string; label: string; title: string; look: Look; meet: boolean }
 export interface MonthCell {
   day: string; n: number; inMonth: boolean; today: boolean
   out: { id: string; ini: string; color: string }[]; outTip: string
@@ -255,7 +255,7 @@ export function monthCells(items: readonly AgendaItem[], anchor: string, today: 
       day: d, n: Number(d.slice(8)), inMonth: d.slice(0, 7) === anchor.slice(0, 7), today: d === today,
       out: outs.slice(0, 3).map(x => ({ id: x.id, ini: ini(x.who?.name ?? ''), color: x.who?.color ?? '#9CA3AF' })),
       outTip: outs.map(label).join(' · '),
-      items: its.slice(0, 3).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x) })),
+      items: its.slice(0, 3).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x), meet: !!meetOf(x) })),
       more: Math.max(0, its.length - 3),
     })
   }
@@ -265,7 +265,7 @@ export function monthCells(items: readonly AgendaItem[], anchor: string, today: 
 // ── 8B Week ───────────────────────────────────────────────────────────────────
 
 export interface WeekBar { id: string; col: string; row: number; label: string; title: string; look: Look }
-export interface WeekEvent { id: string; title: string; time: string; top: number; height: number; look: Look }
+export interface WeekEvent { id: string; title: string; time: string; top: number; height: number; look: Look; meet: boolean }
 export interface WeekModel {
   heads: { d: string; n: number; today: boolean }[]
   bars: WeekBar[]
@@ -301,7 +301,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
       weekend: isWeekend(d),
       events: timed.filter(x => x.a === d).map(x => ({
         id: x.id, title: x.title ?? '', time: `${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`,
-        top: (x.s! - first) * WEEK_ROW + 2, height: Math.max(30, ((x.e ?? x.s! + 1) - x.s!) * WEEK_ROW - 4), look: look(x),
+        top: (x.s! - first) * WEEK_ROW + 2, height: Math.max(30, ((x.e ?? x.s! + 1) - x.s!) * WEEK_ROW - 4), look: look(x), meet: !!meetOf(x),
       })),
     })),
   }
@@ -309,7 +309,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
 
 // ── 8C List ───────────────────────────────────────────────────────────────────
 
-export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string; flag: string; yrs?: number }
+export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string; flag: string; yrs?: number; meet: boolean }
 /** The kinds on a day, in the chips' order: the dots of the month on a phone. PTO skips weekends, as the list does. */
 export function dayKinds(items: readonly AgendaItem[], d: string): AgendaKind[] {
   return KINDS.filter(k => items.some(x => x.k === k && covers(x, d) && !(k === 'pto' && isWeekend(d))))
@@ -336,7 +336,7 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
           id: x.id, label: label(x), sub, time: x.s != null ? hourLabel(x.s) : 'All day',
           bg: company ? '#012358' : L.bg, fg: company ? '#F2C40A' : L.fg,
           d: x.k === 'pto' ? AG_ICON.cal : x.k === 'event' ? AG_ICON.clock : x.k === 'hol' ? AG_ICON.flag : L.d || AG_ICON.star,
-          flag: L.flag, yrs: L.yrs,
+          flag: L.flag, yrs: L.yrs, meet: !!meetOf(x),
         }
       }),
     })
@@ -371,6 +371,8 @@ export interface AgendaCard {
   band: string; kind: string; kindFg: string; title: string
   ini: string | null; d: string; flag: string; yrs?: number; icBg: string; icFg: string; round: boolean
   rows: CardRow[]; desc: string | null; foot: string
+  /** An event's Google Meet link: the card shows it as the "Join with Google Meet" box instead of a button. */
+  meet: string | null
   button: { label: string; href: string } | null
 }
 
@@ -381,6 +383,9 @@ export function backOn(end: string, holidays: ReadonlySet<string>): string {
   return d
 }
 
+/** The Google Meet link of an event, when it has one: the card shows the Meet icon for it. */
+export const meetOf = (x: AgendaItem): string | null => (x.k === 'event' && x.link && /^https:\/\/meet\.google\.com\//.test(x.link) ? x.link : null)
+
 /** "America/New_York" -> "New York" */
 export const cityOf = (zone: string): string => (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
 
@@ -389,7 +394,7 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
   const kind = x.k === 'event' && x.team ? `Team event · ${x.team.name}` : x.k === 'event' ? 'Company event' : x.k === 'ms' ? 'Milestone'
     : x.k === 'pto' ? 'Time off' : x.k === 'bday' ? 'Birthday' : x.k === 'anni' ? 'Work anniversary'
     : x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday'
-  const base: AgendaCard = { band: L.c, kind, kindFg: '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', button: null }
+  const base: AgendaCard = { band: L.c, kind, kindFg: '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', meet: null, button: null }
   const team = x.who?.teamName ?? ''
   const day = (iso: string, t = '') => ({ d: AG_ICON.cal, b: fday(iso), t, bold: true })
   const when = () => (x.a === x.b ? day(x.a, x.s == null ? ', all day' : '') : { d: AG_ICON.cal, b: drng(x.a, x.b), t: '', bold: true })
@@ -412,16 +417,20 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
   }
   if (x.k === 'anni') return { ...base, rows: [day(x.a), ...(team ? [{ d: AG_ICON.people, b: '', t: team, bold: false }] : [])], foot: 'From the Directory (Work tab, start date).' }
   if (x.k === 'event') {
+    const meet = meetOf(x)
     return {
       ...base,
       rows: [
         x.s != null ? { d: AG_ICON.clock, b: `${fday(x.a)}, ${hourLabel(x.s)} to ${hourLabel(x.e ?? x.s + 1)}`, t: ` in your time zone (${cityOf(v.zone)})`, bold: true } : when(),
-        ...(x.place ? [{ d: AG_ICON.video, b: '', t: x.place, bold: false }] : []),
+        // A Meet link shows as its own box, so "Google Meet" is not said twice.
+        ...(x.place && !(meet && x.place === 'Google Meet') ? [{ d: AG_ICON.video, b: '', t: x.place, bold: false }] : []),
         { d: AG_ICON.people, b: '', t: `Who sees it: ${x.teams ?? 'Everyone'}`, bold: false },
         ...(x.by ? [{ d: AG_ICON.edit, b: '', t: `Created by ${x.by}`, bold: false }] : []),
       ],
-      foot: x.onGoogle ? 'Also on the team Google Calendar.' : x.team ? `A ${x.team.name} team event.` : '',
-      button: x.link ? { label: 'Join the call', href: x.link } : null,
+      // An event from the New event drawer goes to the Send from account's own calendar, not the team one.
+      foot: x.onGoogle ? (x.evType ? 'Also on Google Calendar.' : 'Also on the team Google Calendar.') : x.team ? `A ${x.team.name} team event.` : '',
+      meet,
+      button: x.link && !meet ? { label: 'Join the call', href: x.link } : null,
     }
   }
   if (x.k === 'ms') {

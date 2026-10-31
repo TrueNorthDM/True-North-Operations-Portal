@@ -119,7 +119,13 @@ describe('8D cards', () => {
   it('writes an event in the viewer\'s zone, with its call', () => {
     const c = cardOf(items.find(x => x.id === 'e1')!, v)
     expect(c.rows[0].b + c.rows[0].t).toBe('Thu, Nov 5, 11:00 AM to 12:00 PM in your time zone (New York)')
-    expect(c.button).toEqual({ label: 'Join the call', href: 'https://meet.google.com/tnd-allh-ands' })
+    expect(c.meet).toBe('https://meet.google.com/tnd-allh-ands')
+    expect(c.button).toBeNull()
+  })
+  it('keeps the button for a call that is not Google Meet', () => {
+    const c = cardOf({ ...items.find(x => x.id === 'e1')!, link: 'https://zoom.us/j/1' }, v)
+    expect(c.meet).toBeNull()
+    expect(c.button).toEqual({ label: 'Join the call', href: 'https://zoom.us/j/1' })
   })
 })
 

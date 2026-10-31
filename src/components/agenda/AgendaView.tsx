@@ -20,6 +20,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { Select } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { MeetIcon } from '@/components/ui/MeetIcon'
 import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
@@ -217,6 +218,7 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
                 style={{ background: it.look.bg, color: it.look.fg }}>
                 {it.look.yrs ? <Anni yrs={it.look.yrs} size={14} compact /> : it.look.flag ? <span className="flex-none text-[11px] leading-none">{it.look.flag}</span> : it.look.d && <Icon d={it.look.d} size={11} width={2.4} className="flex-none" />}
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
+                {it.meet && <MeetIcon size={13} className="ml-auto flex-none" />}
               </button>
             ))}
             {d.more > 0 && <button type="button" onClick={() => onMore(d.day)} className="border-0 bg-transparent px-1.5 py-px text-left text-[11.5px] font-bold leading-[normal] text-tn-teal cursor-pointer">+{d.more} more</button>}
@@ -265,8 +267,9 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
               <button key={e.id} type="button" onClick={() => onOpen(e.id)}
                 className="absolute left-1 right-1 border-0 rounded-[8px] px-[7px] py-[5px] text-left cursor-pointer flex flex-col gap-0.5 overflow-hidden whitespace-nowrap"
                 style={{ top: e.top, height: e.height, background: e.look.bg, color: e.look.fg }}>
-                <span className="text-[11.5px] font-bold leading-[1.25]">{e.title}</span>
+                <span className={`text-[11.5px] font-bold leading-[1.25] overflow-hidden text-ellipsis ${e.meet ? 'pr-5' : ''}`}>{e.title}</span>
                 <span className="text-[10.5px] leading-[normal] opacity-85">{e.time}</span>
+                {e.meet && <MeetIcon size={16} className="absolute right-[5px] bottom-[5px]" />}
               </button>
             ))}
           </div>
@@ -307,6 +310,7 @@ function Rows({ rows, onOpen }: { rows: ListDay['rows']; onOpen: (id: string) =>
             <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink overflow-hidden text-ellipsis">{it.label}</span>
             <span className="text-[12px] text-muted overflow-hidden text-ellipsis">{it.sub}</span>
           </span>
+          {it.meet && <MeetIcon size={20} className="flex-none" />}
           <span className="text-[12px] text-foreground whitespace-nowrap tabular-nums lining-nums">{it.time}</span>
         </button>
       ))}
@@ -476,13 +480,24 @@ function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = f
               </div>
             ))}
           </div>
+          {c.meet && (
+            <a href={c.meet} target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-[13px] rounded-[14px] border border-[var(--panel-border)] bg-[#f8f9fb] px-4 py-3.5 no-underline hover:border-tn-teal">
+              <MeetIcon size={34} className="flex-none" />
+              <span className="min-w-0 flex-1 flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-muted">Join with Google Meet</span>
+                <span className="truncate text-[14px] font-semibold text-tn-ink group-hover:underline">{c.meet.replace(/^https?:\/\//, '')}</span>
+              </span>
+              <Icon d="M7 17L17 7M7 7h10v10" size={15} color="#8593a4" width={2} className="flex-none" />
+            </a>
+          )}
           {c.desc && <div className="text-[13px] text-foreground leading-[1.55] bg-subtle rounded-[10px] px-3 py-2.5 [text-wrap:pretty]">{c.desc}</div>}
           {c.foot && <div className="text-[12px] text-muted leading-[1.5]">{c.foot}</div>}
           {confirm && manage ? (
             <div role="alertdialog" aria-label={`Delete this ${what}?`} className="flex flex-col gap-2.5 border border-[#f3c9cd] bg-[#fdf5f6] rounded-[12px] px-3.5 py-3">
               <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Delete this {what}?</span>
               <span className="text-[13px] text-foreground leading-[1.5] [text-wrap:pretty]">
-                It comes off the Agenda for everyone{item.edit?.google ? ', and off the team Google Calendar' : ''}. This cannot be undone.
+                It comes off the Agenda for everyone{item.edit?.google ? ', and off the team Google Calendar' : item.evType && item.onGoogle ? ', and off Google Calendar, which tells the guests' : ''}. This cannot be undone.
               </span>
               {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
               <div className="flex justify-end gap-2">
