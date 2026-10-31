@@ -152,14 +152,19 @@ export function detailOf(
     const p = pid ? dir.people.get(pid) : undefined
     if (pid && p) {
       const w = whoOf(dir, pid)
-      return { key: pid, name: w.name, ini: initials(w.name), color: w.color, sub: organizer ? `Organizer${w.teamName ? ` · ${w.teamName}` : ''}` : (w.teamName ?? 'True North'), answer: organizer ? 'yes' : answerOf(response), zone: dir.zoneOf(pid), organizer }
+      return { key: organizer ? 'organizer' : email.toLowerCase(), name: w.name, ini: initials(w.name), color: w.color, sub: organizer ? `Organizer${w.teamName ? ` · ${w.teamName}` : ''}` : (w.teamName ?? 'True North'), answer: organizer ? 'yes' : answerOf(response), zone: dir.zoneOf(pid), organizer }
     }
     return { key: email.toLowerCase(), name: email, ini: (email[0] ?? '?').toUpperCase(), color: '#e3e7ee', sub: 'Outside True North', answer: answerOf(response), zone: null, organizer }
   }
-  const org = e.created_by ? [guestOf(e.created_by, '', 'accepted', true)] : []
-  const rest = gs.filter(g => !g.person_id || g.person_id !== e.created_by).map(g => guestOf(g.person_id, g.email, g.response, false))
+  // The organizer is the account it was sent from: the team calendar (office@), or the creator's own account.
+  // The creator invited at another address is a real guest, with their own answer (owner, 31 October 2026).
+  const org: DetailGuest[] = from?.team
+    ? [{ key: 'organizer', name: from.email, ini: 'TN', color: '#F2C40A', sub: 'Organizer · team calendar', answer: 'yes', zone: null, organizer: true }]
+    : e.created_by ? [guestOf(e.created_by, '', 'accepted', true)] : []
+  const sender = from?.email.toLowerCase()
+  const rest = gs.filter(g => g.email.toLowerCase() !== sender).map(g => guestOf(g.person_id, g.email, g.response, false))
   const teamIds = e.audience === 'teams' ? (e.audience_team_ids ?? []) : []
-  const mine = gs.find(g => g.person_id === viewerId)
+  const mine = gs.find(g => g.person_id === viewerId && g.email.toLowerCase() !== sender)
   return {
     eventId: e.id,
     how: e.how === 'online' || e.how === 'in_person' ? e.how : null,
@@ -175,7 +180,7 @@ export function detailOf(
     created: e.created_at ? e.created_at.slice(0, 10) : null,
     googleLink: e.calendar_state === 'done' ? e.google_html_link : null,
     startsAt: e.starts_at,
-    myAnswer: mine && viewerId !== e.created_by ? answerOf(mine.response) : null,
+    myAnswer: mine ? answerOf(mine.response) : null,
     onGoogle: e.calendar_state === 'done',
   }
 }

@@ -179,7 +179,7 @@ export async function eventAnswers(input: { id: number }): Promise<{ ok: true; g
     seen = (await seenEvent(id, viewer)) ?? seen
   }
   const answers: Record<string, Answer> = {}
-  for (const g of seen.guests) answers[g.person_id ?? g.email.toLowerCase()] = answerOf(g.response)
+  for (const g of seen.guests) answers[g.email.toLowerCase()] = answerOf(g.response)
   return { ok: true, gone: false, answers }
 }
 
@@ -192,7 +192,6 @@ export async function answerEvent(input: { id: number; answer: GuestAnswer }): P
   const seen = await seenEvent(id, w.viewer)
   const mine = seen?.guests.find(g => g.person_id === w.access.personId)
   if (!seen || !mine) return no('Only someone invited can answer.')
-  if (seen.e.created_by === w.access.personId) return no('You organize this event.')
   const sent = await answerOnGoogle(id, w.access.personId, mine.email, answer)
   revalidatePath('/agenda')
   const said = answer === 'yes' ? 'going' : answer === 'no' ? 'not going' : 'maybe going'
