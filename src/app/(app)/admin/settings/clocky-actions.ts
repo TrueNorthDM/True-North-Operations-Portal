@@ -157,6 +157,50 @@ export async function removeGoogleApp(): Promise<Done> {
   return { ok: true, toast: 'Removed. Nobody can connect a Google account until the keys are saved again; accounts already connected keep their access until then.' }
 }
 
+/**
+ * What the Drive folder Picker needs in the Super Admin's browser: office@'s
+ * short-lived token, the Picker key and the app number. The token sees only
+ * what the portal made or what is picked (drive.file) and expires in an hour.
+ */
+const fail = (error: string) => ({ ok: false as const, error })
+export async function drivePicker(): Promise<{ ok: true; token: string; key: string; appId: string } | { ok: false; error: string }> {
+  if (!(await allowedTo('cs-integrations-edit'))) return fail('Only Super Admins pick the Drive folder.')
+  const { driveAccount, driveToken } = await import('@/lib/agenda/google-drive')
+  const a = await driveAccount()
+  if (!a.ok) return fail(a.why)
+  const { data } = await createAdminClient().from('app_settings').select('google_oauth_client_id, google_picker_key').eq('singleton_id', 1).maybeSingle()
+  if (!data?.google_picker_key || !data.google_oauth_client_id) return fail('Save the Picker key in Google sign-in first (Change keys).')
+  const token = await driveToken()
+  if (!token) return fail(`${a.email} needs to be connected again in Agenda settings.`)
+  return { ok: true, token, key: data.google_picker_key, appId: data.google_oauth_client_id.split('-')[0] }
+}
+
+/** The folder picked in the Picker: the portal writes receipts and invoices there. */
+export async function saveDriveFolder(input: { id: string; name: string }): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins pick the Drive folder.')
+  const id = String(input?.id ?? '').trim(), name = String(input?.name ?? '').trim().slice(0, 200)
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) return no('That is not a Drive folder. Pick it again.')
+  const me = await getRealPerson()
+  const { error } = await createAdminClient().from('app_settings').update({ drive_folder_id: id, drive_folder_name: name || 'Drive folder', drive_folder_by: me?.id ?? null, drive_folder_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] drive folder:', error.message); return no(NOT_SAVED) }
+  await logChange('drive_folder', `picked ${name}`)
+  refresh()
+  return { ok: true, toast: `Saved. The portal writes into "${name}".` }
+}
+
+/** Writes a small text file into the picked folder, to show the connection works end to end. */
+export async function testDrive(): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins test the integrations.')
+  try {
+    const { saveToDrive } = await import('@/lib/agenda/google-drive')
+    const text = `The True North Operations Portal can write into this folder. Written ${new Date().toISOString()}. You can delete this file.`
+    await saveToDrive({ name: 'Portal connection test.txt', mime: 'text/plain', bytes: new TextEncoder().encode(text) })
+    return { ok: true, toast: 'It works: "Portal connection test.txt" is in the folder. You can delete it there.' }
+  } catch (e) {
+    return no(e instanceof Error ? e.message : 'Drive did not answer. Try again in a moment.')
+  }
+}
+
 /** Try again on one failed item of the outbox; its request shows it waiting again. */
 export async function retryIntegrationJob(input: { id: number }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins try again.')

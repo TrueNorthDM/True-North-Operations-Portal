@@ -70,6 +70,7 @@ export function Part2Frame({ frame }: { frame: string }) {
         teamCalendarId: 'c_truenorth.team@group.calendar.google.com',
         facts: [{ k: 'Last sync', v: 'Nov 3, 9:15 AM: 3 PTO events written today' }, { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' }], errors: [] },
       googleApp: { saved: false, clientId: '', secretEnd: null, pickerEnd: null, who: 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.' },
+      drive: { ready: false, why: 'Connect office@ as the team calendar in Agenda settings first.', folder: null, who: 'No folder picked. Pick the folder where receipts and invoices go; share it with office@ first.' },
     }} />
   }
   if (frame === '10A3' || frame === '10A4') {

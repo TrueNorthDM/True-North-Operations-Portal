@@ -652,6 +652,10 @@ export type Database = {
           google_service_account: string | null
           google_team_calendar_id: string | null
           google_oauth_client_id: string | null
+          drive_folder_at: string | null
+          drive_folder_by: string | null
+          drive_folder_id: string | null
+          drive_folder_name: string | null
           google_oauth_client_secret: string | null
           google_oauth_saved_at: string | null
           google_oauth_saved_by: string | null
@@ -681,6 +685,10 @@ export type Database = {
           google_service_account?: string | null
           google_team_calendar_id?: string | null
           google_oauth_client_id?: string | null
+          drive_folder_at?: string | null
+          drive_folder_by?: string | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           google_oauth_client_secret?: string | null
           google_oauth_saved_at?: string | null
           google_oauth_saved_by?: string | null
@@ -710,6 +718,10 @@ export type Database = {
           google_service_account?: string | null
           google_team_calendar_id?: string | null
           google_oauth_client_id?: string | null
+          drive_folder_at?: string | null
+          drive_folder_by?: string | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           google_oauth_client_secret?: string | null
           google_oauth_saved_at?: string | null
           google_oauth_saved_by?: string | null

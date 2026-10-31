@@ -18,6 +18,7 @@
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import Link from 'next/link'
+import { DriveCard, type DriveApi } from './DriveCard'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
@@ -58,6 +59,7 @@ export interface IntegrationsApi {
   retryIntegrationJob(i: { id: number }): Promise<Done>
   saveGoogleApp(i: { clientId: string; clientSecret?: string; pickerKey?: string }): Promise<Done>
   removeGoogleApp(): Promise<Done>
+  drivePicker?: DriveApi['drivePicker']; saveDriveFolder?: DriveApi['saveDriveFolder']; testDrive?: DriveApi['testDrive']
 }
 
 export function IntegrationsSettings({ data, canEdit, api }: { data: IntegrationsData; canEdit: boolean; api: IntegrationsApi }) {
@@ -156,6 +158,8 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
         </div>
       ))}
       <GoogleAppCard app={data.googleApp} canEdit={canEdit} busy={busy} onEdit={() => setModal('app')} />
+      <DriveCard data={data.drive} canEdit={canEdit} say={say}
+        api={api.drivePicker && api.saveDriveFolder && api.testDrive ? { drivePicker: api.drivePicker, saveDriveFolder: api.saveDriveFolder, testDrive: api.testDrive } : undefined} />
       {modal === 'app' && <GoogleAppDialog app={data.googleApp} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveGoogleApp(v), () => setModal(null))} onRemove={() => void run(api.removeGoogleApp(), () => setModal(null))} />}
       {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Settings, API access). Only its last four characters are shown again."

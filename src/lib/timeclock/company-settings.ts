@@ -13,6 +13,7 @@
  * and the Google service account's address.
  */
 
+import { driveAccount } from '@/lib/agenda/google-drive'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDirectory } from './clocky-context'
 import { dateLabel, dayLabel, localDate, stampLabel } from './format'
@@ -29,6 +30,8 @@ export interface IntegrationsData {
   google: { connected: boolean; saved: boolean; viaOffice: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
   googleApp: { saved: boolean; clientId: string; secretEnd: string | null; pickerEnd: string | null; who: string }
+  /** Drive through office@: `ready` when office@ is connected with Drive and the Picker key is saved; `why` when not. */
+  drive: { ready: boolean; why: string | null; folder: string | null; who: string }
 }
 
 type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
@@ -81,9 +84,10 @@ export async function countRetryable(now = new Date()): Promise<number> {
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
   const [conn, dir, list, appRes, teamRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
-    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at').eq('singleton_id', 1).maybeSingle(),
+    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at, drive_folder_name, drive_folder_by, drive_folder_at').eq('singleton_id', 1).maybeSingle(),
     createAdminClient().from('agenda_accounts').select('email, status, connected_by, connected_at').eq('team_calendar', true).eq('source', 'google').maybeSingle()])
   const office = teamRes.data
+  const driveAcc = await driveAccount()
   if (appRes.error) throw new Error(`The Google app could not be read: ${appRes.error.message}`)
   const app = appRes.data
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
@@ -141,6 +145,14 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
       who: app?.google_oauth_client_id && app.google_oauth_client_secret
         ? `Saved${by(app.google_oauth_saved_by ?? null, app.google_oauth_saved_at ?? null)}. People connect their Google accounts in Agenda settings.`
         : 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.',
+    },
+    drive: {
+      ready: driveAcc.ok && !!app?.google_picker_key,
+      why: !driveAcc.ok ? driveAcc.why : !app?.google_picker_key ? 'Save the Picker key in Google sign-in (Change keys) first.' : null,
+      folder: app?.drive_folder_name ?? null,
+      who: app?.drive_folder_name
+        ? `Writes into "${app.drive_folder_name}"${by(app.drive_folder_by ?? null, app.drive_folder_at ?? null)}, through ${driveAcc.ok ? driveAcc.email : 'office@'}.`
+        : 'No folder picked. Pick the folder where receipts and invoices go; share it with office@ first.',
     },
   }
 }
