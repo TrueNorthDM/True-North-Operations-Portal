@@ -20,7 +20,7 @@ import { failText } from '@/lib/ui/action-error'
 import Link from 'next/link'
 import { DriveCard, type DriveApi } from './DriveCard'
 import { useRouter } from 'next/navigation'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
@@ -34,8 +34,9 @@ import { DateField } from '@/components/ui/DateField'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink outline-none bg-white focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle disabled:text-muted'
-const BTN_W = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal disabled:opacity-50'
-const BTN_N = 'inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-50'
+// The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
+const BTN_W = `${BTN.smallWhite} disabled:opacity-50`
+const BTN_N = `${BTN.navy} disabled:opacity-50`
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const REFRESH = 'M21 12a9 9 0 1 1-3-6.7M21 4v5h-5'
 
@@ -100,7 +101,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
               <span className="text-[12.5px] text-muted">{g.d.who}</span>
             </div>
             {g.key === 'google' && data.google.viaOffice && (
-              <Link href="/agenda/settings" className={`${BTN_W} no-underline`}>Agenda settings</Link>
+              <Link href="/agenda/settings" className={BTN_W}>Agenda settings</Link>
             )}
             {g.key === 'google' && !data.google.viaOffice && data.google.saved && (
               <button type="button" disabled={busy} onClick={() => void run(api.testGoogle())} className={BTN_W}>
@@ -148,7 +149,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
                     <span className="max-md:col-span-2 max-md:row-start-2 text-foreground">{e.what}</span>
                     <span className={`max-md:col-span-2 max-md:row-start-3 leading-[1.45] ${e.failed ? 'text-[#c8323d]' : 'text-foreground'}`}>{e.text}</span>
                     <span className="max-md:col-start-2 max-md:row-start-1 justify-self-end text-right">
-                      {e.failed && canEdit && <button type="button" disabled={busy} onClick={() => void run(api.retryIntegrationJob({ id: e.id }))} className="border-0 rounded-[9px] px-3 py-[7px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12px] leading-[normal] cursor-pointer">Try again</button>}
+                      {e.failed && canEdit && <button type="button" disabled={busy} onClick={() => void run(api.retryIntegrationJob({ id: e.id }))} className={BTN.smallNavy}>Try again</button>}
                       {e.doneText && <span className="text-[11.5px] font-bold text-[#0d7a4f]">{e.doneText}</span>}
                     </span>
                   </div>
@@ -232,8 +233,8 @@ function GoogleAppDialog({ app, busy, onClose, onSave, onRemove }: {
       </label>
       <div className="text-[12px] text-muted">The secret and the key are kept on the server only, never shown again and never sent to a browser.</div>
       <div className="flex justify-end gap-2 items-center">
-        {app.saved && <button type="button" disabled={busy} onClick={onRemove} className="mr-auto border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">Remove</button>}
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+        {app.saved && <button type="button" disabled={busy} onClick={onRemove} className={`${BTN.whiteDanger} mr-auto`}>Remove</button>}
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
         <button type="button" disabled={!ready || busy} onClick={() => onSave({ clientId: clientId.trim(), clientSecret: clientSecret.trim(), pickerKey: pickerKey.trim() })} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button>
       </div>
     </Modal>
@@ -257,8 +258,8 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
       </label>
       <div className="text-[12px] text-muted">Kept on the server only, never shown again and never sent to a browser.</div>
       <div className="flex justify-end gap-2 items-center">
-        {canRemove && <button type="button" disabled={busy} onClick={onRemove} className="mr-auto border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">Remove</button>}
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+        {canRemove && <button type="button" disabled={busy} onClick={onRemove} className={`${BTN.whiteDanger} mr-auto`}>Remove</button>}
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
         <button type="button" disabled={!v.trim() || busy} onClick={() => onSave(v.trim())} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button>
       </div>
     </Modal>
@@ -387,7 +388,7 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
         <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex items-center justify-between gap-2.5 flex-wrap">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Timesheet reminders</span>
           {/* The bell's Tools tab, where these lines land (Company Settings.dc.html 13C). */}
-          <button type="button" onClick={() => openDrawer('bell', 'tools')} className="inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] cursor-pointer hover:border-tn-teal">
+          <button type="button" onClick={() => openDrawer('bell', 'tools')} className={BTN.smallWhite}>
             <Icon d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" size={14} color="#1E9E6A" width={2.2} />See them in the bell
           </button>
         </div>
@@ -471,7 +472,7 @@ function OpenSwitch({ open, canChange, set, copy }: { open: boolean; canChange: 
         <div role="alert" className="text-[13px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[12px] px-4 py-3 leading-[1.5] flex flex-col gap-3">
           <span>{open ? copy.askClose : copy.askOpen}</span>
           <div className="flex gap-2 justify-end flex-wrap">
-            <button type="button" disabled={busy} onClick={() => setAsking(false)} className={BTN_W}>Cancel</button>
+            <button type="button" disabled={busy} onClick={() => setAsking(false)} className={`${BTN.white} disabled:opacity-50`}>Cancel</button>
             <button type="button" disabled={busy} onClick={() => void confirm()} className={BTN_N}>{open ? `Close ${copy.name}` : `Open ${copy.name}`}</button>
           </div>
         </div>

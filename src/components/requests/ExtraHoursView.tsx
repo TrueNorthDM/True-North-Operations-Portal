@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ExtraPage } from '@/lib/timeclock/requests-data'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
@@ -41,7 +41,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
         <Breadcrumb parents={['/requests']} now="Extra hours" />
         <div className="flex items-center justify-between gap-3.5 flex-wrap mt-1.5">
           <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[1.15] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Extra hours</h1>
-          <button type="button" onClick={() => setForm(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)]">
+          <button type="button" onClick={() => setForm(true)} className={BTN.navy}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Ask for extra hours
           </button>
         </div>
@@ -134,8 +134,8 @@ function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Par
       <div className="text-[12.5px] text-tn-teal font-semibold leading-[1.5] bg-tn-teal-soft rounded-[10px] px-3 py-2.5">{after}</div>
       {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
-        <button type="button" disabled={!ok || busy} onClick={() => void submit()} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
+        <button type="button" disabled={!ok || busy} onClick={() => void submit()} className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
           <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={14} color={BTN_ICON.navy} width={2.4} />{busy ? 'Sending…' : 'Send request'}
         </button>
       </div>

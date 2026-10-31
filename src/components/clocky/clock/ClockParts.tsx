@@ -10,6 +10,7 @@
 
 import type { ReactNode, RefObject } from 'react'
 import { Select } from '@/components/ui/Select'
+import { BTN } from '@/lib/ui/buttons'
 
 // ── Icons ───────────────────────────────────────────────────────────────────
 
@@ -94,29 +95,29 @@ export function SectionLabel({ children, className = 'text-muted', inline = fals
   return <span className={`${inline ? '' : 'block '}font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase ${className}`}>{children}</span>
 }
 
-/** A teal text button: Manage, Browse, Change. */
-export const LINK_BTN = 'border-0 bg-transparent cursor-pointer p-0 text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tn-teal'
-
 /** The prototype's focus ring on every button: teal, 2px, offset 2px. */
 export const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tn-teal'
 
 /** An input's focus: a teal border and a soft teal ring. */
 export const INPUT_FOCUS = 'outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
-/** The red-filled confirm (Clock out): the prototype's 11px 18px, 8px gap, no letter spacing. */
-export const BTN_DANGER = 'inline-flex items-center gap-2 bg-[#c8323d] text-[#ffffff] rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] hover:brightness-110'
+// The clock's buttons are the portal's (lib/ui/buttons.ts); these names stay for the clock's call sites.
 
-/** The panel's white button (Cancel, Save as combination, Keep): 10px 16px, 8px gap, no letter spacing. */
-export const CK_BTN_WHITE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
+/** A teal text button: Manage, Browse, Change. */
+export const LINK_BTN = `${BTN.link} cursor-pointer ${FOCUS}`
 
-/** The panel's navy button (Clock in, Keep going, Confirm, Save combination): 11px 18px with the small shadow. */
-export const CK_BTN_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+/** The red-filled confirm (Clock out). */
+export const BTN_DANGER = BTN.danger
 
-/** The navy button of a confirm step (Switch beside Cancel): no shadow. */
-export const CK_BTN_NAVY_FLAT = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:bg-[#0a2f6b]'
+/** The white button (Cancel, Save as combination, Keep). */
+export const CK_BTN_WHITE = BTN.white
+
+/** The navy button (Clock in, Keep going, Confirm, Save combination, Switch). */
+export const CK_BTN_NAVY = BTN.navy
+export const CK_BTN_NAVY_FLAT = BTN.navy
 
 /** The white button with red words and a red symbol (Clock out now). */
-export const BTN_WHITE_DANGER = CK_BTN_WHITE.replace('text-tn-ink', 'text-[#c8323d]').replace('hover:border-tn-teal', 'hover:border-[#c8323d]')
+export const BTN_WHITE_DANGER = BTN.whiteDanger
 
 /** The small round close / back / refresh buttons in a panel header. */
 export function HeadButton({ label, onClick, size = 30, title, children, className = '' }: {

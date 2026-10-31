@@ -5,10 +5,11 @@
  */
 
 import Image from 'next/image'
+import { BTN } from '@/lib/ui/buttons'
 
 export const MAIN = 'p-[26px] flex flex-col gap-4 min-w-0'
 export const H4 = 'm-0 font-(family-name:--font-display) font-black text-[18px] text-tn-ink'
-export const BTN_MAIN = 'inline-flex items-center justify-center border-0 rounded-[12px] px-5 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer no-underline hover:bg-[#0a2f6b] disabled:opacity-40 disabled:cursor-default'
+export const BTN_MAIN = `${BTN.navy} justify-center disabled:opacity-40 disabled:cursor-default`
 export const LINK = 'self-start border-0 bg-transparent p-0 cursor-pointer font-bold text-[13px] text-tn-teal hover:underline disabled:opacity-50'
 
 const STEPS: [number, string][] = [[1, 'Pick a time'], [2, 'Your details'], [3, 'Confirm your email'], [4, 'Booked']]

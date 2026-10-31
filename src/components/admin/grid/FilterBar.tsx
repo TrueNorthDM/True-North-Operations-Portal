@@ -9,7 +9,7 @@ import { useRef, useState } from 'react'
 import type { FilterCond, GridColumn, Operator } from './types'
 import { chipText, isValuelessOp, operatorsFor } from './utils'
 import { Select } from '@/components/ui/Select'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { DateField } from '@/components/ui/DateField'
 
 const inputCls = 'w-full text-[13px] text-tn-ink bg-white border border-slate-200 rounded-[9px] px-2.5 py-2 focus:outline-none focus:border-tn-teal'
@@ -155,7 +155,7 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                 type="button"
                 onClick={add}
                 disabled={!canAdd}
-                className="w-full font-(family-name:--font-display) font-extrabold text-[13px] bg-tn-primary rounded-[10px] px-4 py-2.5 shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:bg-slate-100 disabled:shadow-none disabled:cursor-not-allowed"
+                className={`${BTN.navy} w-full disabled:bg-slate-100 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 <span className={canAdd ? 'text-[#ffffff]' : 'text-slate-400'}>Add filter</span>
               </button>

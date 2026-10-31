@@ -24,6 +24,7 @@ import {
   axisOf, axisSeconds, createSpan, dragSpan, hourTicks, isWork, liveSeconds, nameFor, secondsAt, snapQuarter, xOf, zoneCity,
 } from './model'
 import { Icon, ICON } from './ui'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface Ghost { personId: string; s: number; e: number }
 /** A block being dragged, in seconds from the viewer's midnight; `warn` once it was let go on an overlap (3C4). */
@@ -218,8 +219,8 @@ export function DayTimeline({
         <div role="alert" className="flex gap-2.5 items-center flex-wrap rounded-[11px] bg-[#fdeeef] border border-[#f3c6ca] px-3 py-2.5 text-[13px] text-[#c8323d] font-bold">
           <Icon d={ICON.warn} size={17} />
           <span className="flex-1 min-w-[200px]">{warnText}</span>
-          <button type="button" onClick={onUndo} className="border border-slate-200 rounded-[9px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:border-tn-teal">Undo</button>
-          <button type="button" onClick={() => onFix(moved, otherRow, moved.start!, moved.end!)} className="border-0 rounded-[9px] px-[13px] py-2 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-[#0a2f6b]">Fix overlap</button>
+          <button type="button" onClick={onUndo} className={BTN.smallWhite}>Undo</button>
+          <button type="button" onClick={() => onFix(moved, otherRow, moved.start!, moved.end!)} className={BTN.smallNavy}>Fix overlap</button>
         </div>
       )}
 

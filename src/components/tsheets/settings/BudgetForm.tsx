@@ -5,6 +5,8 @@ import { ConfirmModal } from './ConfirmModal'
 import { saveTrBudget } from '@/lib/tsheets/settings-actions'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { DateField } from '@/components/ui/DateField'
+import { BTN } from '@/lib/ui/buttons'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 interface CurrentBudget {
   hoursAllocated: number | null
@@ -121,7 +123,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
       <div className="rounded-[14px] border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Budget for {client.name}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors text-lg leading-none">&times;</button>
+          <CloseButton onClick={onClose} />
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
         {/* ── Base budget ── */}
@@ -176,7 +178,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
 
         <div className="flex gap-3 justify-end pt-1">
           <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-(family-name:--font-display) font-extrabold text-foreground border border-slate-200 rounded-[10px] hover:border-tn-ink hover:text-tn-ink transition-colors">Cancel</button>
-          <button type="submit" className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] hover:brightness-110 transition-all">Review change</button>
+          <button type="submit" className={BTN.navy}>Review change</button>
         </div>
         </form>
       </div>

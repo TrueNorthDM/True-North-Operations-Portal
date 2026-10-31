@@ -51,6 +51,7 @@ import { MONTH_LONG } from '@/lib/format/months'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, fixedTrack, flexTrack, layoutColumns } from '@/lib/settings/columns'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -499,15 +500,15 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   const topActions = head && (editing ? (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       {error && <span className="text-[13px] text-[var(--bdg-red-fg)]">{error}</span>}
-      <button type="button" onClick={cancel} disabled={saving} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal disabled:opacity-50">Cancel</button>
-      <button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+      <button type="button" onClick={cancel} disabled={saving} className={`${BTN.white} disabled:opacity-50`}>Cancel</button>
+      <button type="button" onClick={() => void save()} disabled={saving} className={`${BTN.navy} disabled:opacity-60`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{saving ? 'Saving…' : 'Save changes'}
       </button>
     </div>
   ) : (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       {error && <span className="text-[13px] text-[var(--bdg-red-fg)]">{error}</span>}
-      <button type="button" onClick={enterEdit} className="inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
+      <button type="button" onClick={enterEdit} className={BTN.white}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" /></svg>Edit
       </button>
     </div>
@@ -709,7 +710,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[22px] py-[11px] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-all hover:brightness-110 disabled:opacity-60"
+              className={`${BTN.navy} disabled:opacity-60`}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
               <span className="text-[#ffffff]">{saving ? 'Saving…' : 'Save changes'}</span>
@@ -719,7 +720,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
           <button
             type="button"
             onClick={enterEdit}
-            className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[22px] py-[11px] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-all hover:brightness-110"
+            className={BTN.navy}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
             <span className="text-[#ffffff]">Edit</span>

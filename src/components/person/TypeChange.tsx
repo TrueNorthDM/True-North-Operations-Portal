@@ -13,7 +13,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { TypeChangeOption } from '@/lib/timeclock/type-change'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 
@@ -64,7 +64,7 @@ export function TypeChangeBanner({ view, api }: { view: TypeChangeView; api: Typ
       <Icon d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" size={18} color="#1E7D7F" width={2.2} className="flex-none" />
       <span className="flex-1 min-w-[240px]"><b>Becomes an employee on {view.scheduled.date}.</b> {view.scheduled.text}</span>
       {view.canCancel && (
-        <button type="button" disabled={busy} onClick={() => void cancel()} className="border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-[#c8323d] disabled:opacity-60">Cancel the change</button>
+        <button type="button" disabled={busy} onClick={() => void cancel()} className={`${BTN.smallWhiteDanger} disabled:opacity-60`}>Cancel the change</button>
       )}
       <Toast toast={toast} />
     </div>
@@ -78,7 +78,7 @@ export function TypeChangeButton({ view, api }: { view: TypeChangeView; api: Typ
   if (!view.canMigrate) return null
   return (
     <div className="flex flex-col gap-2 mt-1">
-      <button type="button" onClick={() => setOpen(true)} className="self-start inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
+      <button type="button" onClick={() => setOpen(true)} className={`${BTN.white} self-start`}>
         <Icon d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7" size={15} color={BTN_ICON.white} width={2.2} />Change to employee…
       </button>
       <span className="text-[12px] text-muted leading-[1.5]">For when a contractor joins Rippling payroll. Only Super Admins.</span>
@@ -149,8 +149,8 @@ function TypeChangeDialog({ view, onClose, schedule, onDone }: { view: TypeChang
       </label>
       {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
-        <button type="button" disabled={!date || busy} onClick={() => void submit()} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-50">
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
+        <button type="button" disabled={!date || busy} onClick={() => void submit()} className={`${BTN.navy} disabled:opacity-50`}>
           <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Schedule the change
         </button>
       </div>

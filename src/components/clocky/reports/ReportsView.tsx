@@ -17,12 +17,13 @@ import { reportSearch as search, type ReportQuery, type ReportView } from '@/lib
 import { fitOnePage, pagePx, sheetPages } from '@/lib/timeclock/receipt-pages'
 import { ReportSheet } from './ReportSheet'
 import { DateField } from '@/components/ui/DateField'
+import { BTN } from '@/lib/ui/buttons'
 
 const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
 const pill = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground')
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
-const WHITE_BTN = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:border-tn-teal'
+const WHITE_BTN = BTN.white
 const TONE = { ink: 'text-tn-ink', ok: 'text-[#0d7a4f]', bad: 'text-[#c8323d]' } as const
 /** A whole day the report can read: a typed year passes through 0002 and 0202 before 2026, so those wait. */
 const fullDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '2000-01-01' && !Number.isNaN(Date.parse(d))

@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { CSSProperties, ReactNode } from 'react'
 import type { DocKind, DocSheetData } from '@/lib/timeclock/pay-docs'
 import { previewPagesText, sheetPages } from '@/lib/timeclock/receipt-pages'
@@ -128,8 +128,8 @@ export function PdfWindow({ name, href, onClose, onDownloaded, children, landsca
             <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink [overflow-wrap:anywhere]">{name}</div>
             <div className={`text-[12px] ${error ? 'text-[#c8323d] font-semibold' : 'text-muted'}`}>{error ?? `${pages ?? `Preview, 1 page${landscape ? ', landscape' : ''}.`} Nothing downloads until you press Download.`}</div>
           </div>
-          <button type="button" onClick={onClose} className="ml-auto md:ml-0 border border-slate-200 rounded-[10px] px-[15px] py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Close</button>
-          <button type="button" disabled={busy} onClick={() => void download()} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+          <button type="button" onClick={onClose} className={`${BTN.white} ml-auto md:ml-0`}>Close</button>
+          <button type="button" disabled={busy} onClick={() => void download()} className={`${BTN.navy} disabled:opacity-60`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>{busy ? 'Making the PDF…' : 'Download'}
           </button>
         </div>

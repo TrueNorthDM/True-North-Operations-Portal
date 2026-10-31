@@ -23,6 +23,7 @@ import type { PersonView, CardRights } from '@/lib/directory/people-types'
 import { useColumnChoices } from '@/components/ui/ColumnsMenu'
 import { saveHiddenColumns } from '@/app/(app)/settings/actions'
 import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
+import { BTN } from '@/lib/ui/buttons'
 
 type Tab = 'people' | 'emails' | 'teams' | 'access' | 'portal'
 
@@ -98,7 +99,7 @@ export function DirectoryTabs({
           <button
             type="button"
             onClick={() => setAddMenu(v => !v)}
-            className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-[18px] py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px"
+            className={BTN.navy}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
             <span className="text-[#ffffff]">Add person</span>

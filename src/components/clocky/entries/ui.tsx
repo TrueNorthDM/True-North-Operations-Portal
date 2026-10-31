@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom'
 import { Select, type SelectOption } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 import { NAV_ICON } from '@/lib/nav/nav-icons'
 import type { PillTone } from '@/lib/timeclock/clocky-types'
 
@@ -79,12 +80,13 @@ export function Pill({ text, tone, tip, size = 'sm' }: { text: string; tone: Pil
   )
 }
 
-// ── Buttons the prototype draws smaller than BTN (Today, Columns, Add row) ──
+// ── Buttons: aliases of lib/ui/buttons.ts, the portal's only button source ──
 
-export const BTN_SMALL = 'inline-flex items-center whitespace-nowrap gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] transition-colors hover:border-tn-teal'
+/** The compact white button (Today, Columns, Add row). */
+export const BTN_SMALL = BTN.smallWhite
 
 /** The square icon buttons of the toolbar (arrows, calendar). */
-export const ICON_BTN = 'w-8 h-8 border-0 bg-transparent rounded-[8px] flex items-center justify-center hover:bg-white transition-colors'
+export const ICON_BTN = BTN.icon
 
 // ── Fields ──────────────────────────────────────────────────────────────────
 
@@ -152,7 +154,7 @@ export function SaveError({ text }: { text: string | null }) {
 export function CloseButton({ onClick, className = '' }: { onClick: () => void; className?: string }) {
   return (
     <button type="button" onClick={onClick} aria-label="Close"
-      className={`w-[30px] h-[30px] flex-none border-0 bg-transparent rounded-[8px] text-muted flex items-center justify-center hover:bg-subtle transition-colors ${className}`}>
+      className={`${BTN.icon} ${className}`}>
       <Icon d={ICON.close} size={17} width={2.2} />
     </button>
   )
@@ -195,21 +197,18 @@ export function Modal({ label, width, onClose, children, alert = false, gap = 14
 /** The modal title lives in lib/ui/modal.ts with the overlay and the card; North Time imports it from here. */
 export { MODAL_TITLE }
 
-/** The page's buttons (toolbar, empty list): white 10px 15px, navy with a small shadow; 8px gap, no letter spacing. */
-export const BTN_PAGE_WHITE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
-export const BTN_PAGE_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+/** The page's buttons (toolbar, empty list). */
+export const BTN_PAGE_WHITE = BTN.white
+export const BTN_PAGE_NAVY = BTN.navy
 
-/** The entry form's Save (3E): 11px 20px with the small shadow. */
-export const BTN_FORM_SAVE = 'inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
-/** The week grid's Save (3B-2): 10px 18px with the small shadow. */
-export const BTN_GRID_SAVE = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-2.5 bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+/** The entry form's Save and the week grid's Save. */
+export const BTN_FORM_SAVE = BTN.navy
+export const BTN_GRID_SAVE = BTN.navy
 
-/** The modals' white button (Cancel, Close): the prototype's 10px 16px. */
-export const BTN_MODAL_WHITE = 'inline-flex items-center border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
-/** The modals' navy button (Submit, Approve, Save): 8px gap, no letter spacing, no shadow. */
-export const BTN_MODAL_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:bg-[#0a2f6b]'
-/** The white button with red words (Deny). */
-export const BTN_MODAL_DANGER = 'inline-flex items-center border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-[#c8323d]'
+/** The modals' buttons: Cancel / Close, Submit / Approve / Save, and the red-worded Deny. */
+export const BTN_MODAL_WHITE = BTN.white
+export const BTN_MODAL_NAVY = BTN.navy
+export const BTN_MODAL_DANGER = BTN.whiteDanger
 
 // ── Toast ───────────────────────────────────────────────────────────────────
 

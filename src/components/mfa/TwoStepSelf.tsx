@@ -14,8 +14,8 @@ import Link from 'next/link'
 import { moveTwoStep } from '@/app/auth/two-step-actions'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { PILL_CLASS, formatDate } from '@/lib/directory/people-types'
+import { BTN } from '@/lib/ui/buttons'
 
-const btn = 'font-(family-name:--font-display) font-extrabold text-[12.5px] rounded-[9px] px-3.5 py-2 transition-all disabled:opacity-50'
 
 export function TwoStepSelf({ since, daysLeft, blocked }: {
   /** When their app was set up; null if it is not. */
@@ -61,13 +61,13 @@ export function TwoStepSelf({ since, daysLeft, blocked }: {
           </span>
         </div>
         {since ? (
-          <button type="button" onClick={move} disabled={pending || !!blocked} title={blocked} className={`${btn} text-tn-ink border border-slate-200 hover:border-tn-ink`}>
+          <button type="button" onClick={move} disabled={pending || !!blocked} title={blocked} className={`${BTN.smallWhite} disabled:opacity-50`}>
             {pending ? 'Moving…' : 'Move to a new phone'}
           </button>
         ) : (
           blocked
-            ? <span title={blocked} className={`${btn} text-[#ffffff] bg-tn-primary opacity-50 cursor-not-allowed`}>Set it up</span>
-            : <Link href="/auth/two-step/setup" className={`${btn} text-[#ffffff] bg-tn-primary hover:brightness-110`}>Set it up</Link>
+            ? <span title={blocked} className={`${BTN.smallNavy} opacity-50 cursor-not-allowed`}>Set it up</span>
+            : <Link href="/auth/two-step/setup" className={BTN.smallNavy}>Set it up</Link>
         )}
       </div>
       {since && <p className="text-[12px] text-muted m-0">Lost your phone? Ask an admin to reset your second step from the Directory.</p>}

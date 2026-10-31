@@ -7,6 +7,7 @@ import { type Audience, type Exception, type Subject, type ToolScope } from '@/l
 import { initialsOf } from '@/lib/directory/people-types'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { BTN } from '@/lib/ui/buttons'
 
 // ── Data from the server ───────────────────────────────────────────────────
 
@@ -52,8 +53,9 @@ export const Glyph = {
   chev: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6" /></svg>,
 }
 
-export const btn = 'inline-flex items-center gap-1.5 rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors hover:border-tn-teal disabled:opacity-45'
-export const btnNavy = 'inline-flex items-center gap-1.5 rounded-[9px] bg-tn-primary text-[#ffffff] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap disabled:opacity-45'
+/** The access pages' buttons are the portal's (lib/ui/buttons.ts). */
+export const btn = `${BTN.white} whitespace-nowrap disabled:opacity-45`
+export const btnNavy = `${BTN.navy} whitespace-nowrap disabled:opacity-45`
 export const card = 'rounded-[14px] border border-[var(--panel-border)] bg-white'
 
 export function Modal({ title, kicker, wide, onClose, children, foot }: { title: string; kicker: string; wide?: boolean; onClose: () => void; children: React.ReactNode; foot?: React.ReactNode }) {

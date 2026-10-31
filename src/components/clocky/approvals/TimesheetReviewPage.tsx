@@ -14,7 +14,7 @@ import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ReviewTone, TimesheetReview } from '@/lib/timeclock/timesheet-review'
 import { InvoiceDoc } from '../invoices/InvoiceDoc'
 import { InvoicePdfModal } from '../invoices/InvoicePdfModal'
@@ -186,13 +186,13 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           <span className="flex-1 min-w-0 [text-wrap:pretty]">{r.result.text}</span>
           {r.result.retry && (
             <button type="button" disabled={busy} onClick={() => void run(api.retry)}
-              className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+              className={`${BTN.smallNavy} disabled:opacity-60`}>
               <Svg d={ICONS.refresh} size={13} stroke={BTN_ICON.navy} sw={2.6} />Try again
             </button>
           )}
           {a.canReopen && (
             <button type="button" disabled={busy} onClick={() => { setReason(''); setModal('reopen') }}
-              className="inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal">Reopen</button>
+              className={BTN.smallWhite}>Reopen</button>
           )}
         </div>
       )}
@@ -272,7 +272,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                   <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Invoice</span>
                   <div className="flex gap-2 items-center">
                     <span className={PILL} style={{ background: TONE[r.invoice.state.tone].bg, color: TONE[r.invoice.state.tone].fg }}>{r.invoice.state.label}</span>
-                    <button type="button" onClick={() => setModal('pdf')} className="inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal">
+                    <button type="button" onClick={() => setModal('pdf')} className={BTN.smallWhite}>
                       <Svg d={ICONS.eye} size={14} stroke={BTN_ICON.white} />Preview PDF
                     </button>
                   </div>
@@ -443,11 +443,11 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="flex-1 min-w-[240px] text-[12.5px] text-muted leading-[1.45] [text-wrap:pretty]">{a.barNote}</span>
             <button type="button" disabled={busy} onClick={() => { setReason(''); setModal('return') }}
-              className="inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal disabled:opacity-60">
+              className={`${BTN.white} disabled:opacity-60`}>
               <Svg d={ICONS.undo} size={15} stroke={BTN_ICON.white} />Return
             </button>
             <button type="button" disabled={busy || noteNeeded} onClick={() => void run(() => api.approve(note.trim() || undefined))}
-              className="inline-flex items-center gap-2 border-0 rounded-[10px] px-5 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13.5px] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
+              className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
               <Svg d={ICONS.check} size={14} stroke={BTN_ICON.navy} sw={3} />{a.label}
             </button>
           </div>
@@ -489,9 +489,9 @@ function ReasonDialog({ title, text, action, warn = null, reason, setReason, bus
             className="w-full box-border resize-y px-3 py-2.5 border border-[#e9d48a] bg-[#fdf8e7] rounded-[10px] text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
         </label>
         <div className="flex justify-end gap-2 mt-1">
-          <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+          <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
           <button type="button" disabled={!ok} onClick={onConfirm}
-            className="border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">{action}</button>
+            className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>{action}</button>
         </div>
       </div>
     </div>

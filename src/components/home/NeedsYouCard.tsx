@@ -27,14 +27,14 @@ import { EMPTY_TAB, tabCount, type HomeRow, type HomeTab, type NeedsYouData, typ
 import { HomeSidePanel } from './HomeSidePanel'
 import { runPanelOp, type Runner } from './needs-you-actions'
 import { DUE_FG, TypeChip } from './needs-you-ui'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 const LABEL: Record<TabKey, string> = { needs: 'Needs you', work: 'My Work', mine: 'Requests' }
 
 // The portal's small white button (owner, 25 October 2026): navy words and a green
 // symbol, a check to approve or mark paid (as the Invoices page's own Mark paid) and
 // an arrow for the rest; teal border on hover.
-const ROW_BUTTON = 'flex-none inline-flex items-center gap-1.5 cursor-pointer border border-[var(--panel-border)] bg-white rounded-[9px] px-[11px] py-[7px] font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink transition-colors hover:border-tn-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40'
+const ROW_BUTTON = `${BTN.smallWhite} flex-none focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40`
 
 function RowSymbol({ label }: { label: string }) {
   return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={label.startsWith('Approve') || label === 'Mark paid' ? 'M5 12l5 5 9-10' : 'M9 6l6 6-6 6'} /></svg>
@@ -175,7 +175,7 @@ function PinnedPay({ row }: { row: HomeRow }) {
         <span className="text-[12.5px] text-[#5b6b82] tabular-nums lining-nums">{row.sub}</span>
       </span>
       {row.figure && <span className="font-(family-name:--font-display) font-black text-[24px] leading-none text-tn-ink tabular-nums lining-nums whitespace-nowrap max-sm:pl-[54px]">{row.figure}</span>}
-      <Link href={row.href!} className="inline-flex items-center gap-2 rounded-[10px] px-4 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] whitespace-nowrap hover:bg-[#0a2f6b] max-sm:ml-auto">
+      <Link href={row.href!} className={`${BTN.navy} whitespace-nowrap max-sm:ml-auto`}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         {row.button}
       </Link>

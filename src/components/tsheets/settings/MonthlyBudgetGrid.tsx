@@ -12,6 +12,7 @@ import { editableMonths } from '@/lib/tsheets/retention'
 import { saveMonthlyBudgets } from '@/lib/tsheets/settings-actions'
 import { money } from '@/lib/tsheets/format'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface MonthlyBudget { month: string; budget: number; extra: number }  // month = 'YYYY-MM'
 
@@ -162,7 +163,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
           <button
             onClick={review}
             disabled={changeCount === 0}
-            className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             Review changes
           </button>

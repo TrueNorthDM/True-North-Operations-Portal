@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { useModal } from '@/components/ui/useModal'
 import { useIsClient } from '@/components/monday/shared'
 import type { Cadence } from '@/lib/timeclock/periods'
+import { BTN } from '@/lib/ui/buttons'
 
 export const CADENCE_LABEL: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }
 
@@ -69,8 +70,8 @@ export function PeriodsDialog({ title, intro, items, action, busy, error, onCanc
         </div>
         {error && <p role="alert" className="m-0 text-[13px] text-[#c8323d]">{error}</p>}
         <div className="flex justify-end gap-2 mt-1">
-          <button type="button" onClick={onCancel} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal">Cancel</button>
-          <button type="button" onClick={onConfirm} disabled={busy} className="inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:bg-[#0a2f6b] disabled:opacity-60">
+          <button type="button" onClick={onCancel} className={BTN.white}>Cancel</button>
+          <button type="button" onClick={onConfirm} disabled={busy} className={`${BTN.navy} disabled:opacity-60`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
             {action}
           </button>

@@ -33,6 +33,7 @@ import type { NotificationButton } from '@/lib/notifications/catalogue'
 import { BTN } from '@/lib/ui/buttons'
 import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
 import { keepGoing as keepGoingAction } from '@/app/(app)/clocky-hours/clock-actions'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export type DrawerKind = 'bell' | 'inbox'
 
@@ -160,9 +161,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
         <div className="pt-4 pr-4 pl-[18px] flex flex-col gap-3 border-b border-[var(--row-rule)] leading-[normal]">
           <div className="flex items-center justify-between">
             <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0" style={{ letterSpacing: 'normal' }}>{d.title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" className="w-[30px] h-[30px] rounded-[8px] text-muted hover:bg-subtle inline-flex items-center justify-center">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-            </button>
+            <CloseButton onClick={onClose} />
           </div>
 
           <div role="tablist" aria-label={d.title} onKeyDown={onTabKey} className="flex gap-1">
@@ -371,7 +370,7 @@ function ClockyRow({ item, unread, done, busy, onButton }: {
               type="button"
               onClick={onButton}
               disabled={busy}
-              className="inline-flex items-center gap-[7px] rounded-[9px] px-[13px] py-2 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] transition-colors hover:bg-[#0a2f6b] disabled:opacity-60"
+              className={`${BTN.smallNavy} disabled:opacity-60`}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#F2C40A" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
               {item.button.label}

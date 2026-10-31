@@ -129,7 +129,7 @@ export function NotificationPreview({ t, hour, sendTest, onClose }: { t: Notific
           {state.text && <span role="status" className={`mr-auto text-[12.5px] font-bold ${state.kind === 'error' ? 'text-[#b3271f]' : 'text-[#0d7a4f]'}`}>{state.text}</span>}
           <button type="button" onClick={onClose} className={BTN.white}>Close</button>
           <button type="button" onClick={send} disabled={state.kind === 'sending' || (tab === 'email' && !canEmail) || !t.available}
-            className={`${BTN.navy} disabled:opacity-40 disabled:hover:translate-y-0`}>
+            className={`${BTN.navy} disabled:opacity-40`}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
             <span className="text-[#ffffff]">{state.kind === 'sending' ? 'Sending…' : tab === 'app' ? 'Send me a test' : 'Email me a test'}</span>
           </button>

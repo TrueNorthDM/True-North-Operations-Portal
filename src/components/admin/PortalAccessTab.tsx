@@ -21,6 +21,7 @@ import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rul
 import { PILL_CLASS, formatDate, initialsOf, type Pill, type PersonView } from '@/lib/directory/people-types'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
+import { BTN } from '@/lib/ui/buttons'
 
 /** A person's second step: set up, not yet, or nothing to set up (no account). */
 export type TwoStep = 'on' | 'none'
@@ -203,7 +204,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
             type="button"
             disabled={pickedRows.length === 0 || pending}
             onClick={inviteAll}
-            className="font-(family-name:--font-display) font-extrabold text-[13px] rounded-[10px] px-4 py-2.5 text-[#ffffff] bg-tn-primary transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {pickedRows.length === 0 ? 'Invite selected' : `Invite ${pickedRows.length} selected`}
           </button>}

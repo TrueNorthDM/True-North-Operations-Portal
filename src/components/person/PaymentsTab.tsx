@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { PaymentsData, PaymentsRow, PayTone } from '@/lib/timeclock/payments-view'
 import type { DocKind, DocSheetData } from '@/lib/timeclock/pay-docs'
 import type { InvoiceDocView } from '@/lib/timeclock/invoice-doc'
@@ -87,7 +87,7 @@ export function PaymentsTab({ data, api, initial }: { data: PaymentsData; api: P
                   <div className="px-3.5 py-2 flex justify-end">
                     {r.doc && (
                       <button type="button" disabled={busy === r.key} onClick={() => void pdf(r)} aria-label={`Preview the PDF of ${r.c1}`}
-                        className="inline-flex items-center gap-1.5 border border-slate-200 rounded-[9px] px-[11px] py-1.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] cursor-pointer hover:border-tn-teal disabled:opacity-60">
+                        className={`${BTN.smallWhite} disabled:opacity-60`}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={EYE} /></svg>PDF
                       </button>
                     )}

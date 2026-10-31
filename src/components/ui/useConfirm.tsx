@@ -79,9 +79,7 @@ function ConfirmBox({ options, onAnswer }: { options: ConfirmOptions; onAnswer: 
         <div className="flex justify-end gap-2 pt-1">
           <button ref={cancel} type="button" className={BTN.white} onClick={() => answer.current(false)}>Cancel</button>
           <button type="button" onClick={() => answer.current(true)}
-            className={options.danger
-              ? 'inline-flex items-center gap-2.5 bg-[#c8323d] text-[#ffffff] rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] hover:brightness-110'
-              : BTN.navy}>
+            className={options.danger ? BTN.danger : BTN.navy}>
             {options.action}
           </button>
         </div>

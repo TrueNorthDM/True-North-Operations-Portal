@@ -18,7 +18,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
@@ -40,8 +40,8 @@ const TONE: Record<OffTone, { bg: string; fg: string }> = {
 }
 const CHECK_ICON = { check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6 6 18', clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2' }
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
-const BTN_WHITE = 'border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal'
-const BTN_NAVY = 'inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed'
+const BTN_WHITE = BTN.white
+const BTN_NAVY = `${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`
 const MON_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const add = (iso: string, n: number) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
@@ -159,7 +159,7 @@ export function TimeOffView({ data, api, initial }: {
                   <span className={PILL} style={{ background: TONE[r.pill.tone].bg, color: TONE[r.pill.tone].fg }}>{r.pill.label}</span>
                   {r.cancel && (
                     <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); if (r.cancel === 'direct') void run(api.cancelTimeOff({ id: r.id })); else { setCancelId(r.id); setModal('cancel') } }}
-                      className="border border-slate-200 rounded-[10px] px-3 py-[7px] bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[12px] cursor-pointer hover:border-[#c8323d]">{r.cancel === 'direct' ? 'Cancel' : 'Cancel…'}</button>
+                      className={BTN.smallWhiteDanger}>{r.cancel === 'direct' ? 'Cancel' : 'Cancel…'}</button>
                   )}
                 </span>
               </div>
@@ -241,7 +241,7 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
                     <span className="text-[12px] text-muted leading-[1.45]">{s.sub}</span>
                     {s.retry && (
                       <div className="flex mt-1.5">
-                        <button type="button" disabled={busy} onClick={onRetry} className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-3.5 py-[9px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+                        <button type="button" disabled={busy} onClick={onRetry} className={`${BTN.smallNavy} disabled:opacity-60`}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" /></svg>Try again
                         </button>
                       </div>
@@ -263,7 +263,7 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
         </div>
         {row.personId === me && row.cancel === 'ask' && (
           <div className="px-[18px] py-3.5 border-t border-[var(--row-rule)] flex justify-end">
-            <button type="button" onClick={onCancel} className="border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">Cancel this time off</button>
+            <button type="button" onClick={onCancel} className={BTN.whiteDanger}>Cancel this time off</button>
           </div>
         )}
       </div>
@@ -288,7 +288,7 @@ function CancelDialog({ row, busy, onClose, onAsk }: { row: TimeOffRow; busy: bo
       <div className="flex justify-end gap-2 mt-1">
         <button type="button" onClick={onClose} className={BTN_WHITE}>Keep it</button>
         <button type="button" disabled={!ok || busy} onClick={() => onAsk(reason.trim())}
-          className="border-0 rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">Ask to cancel</button>
+          className={`${BTN.danger} disabled:opacity-45 disabled:cursor-not-allowed`}>Ask to cancel</button>
       </div>
     </Modal>
   )

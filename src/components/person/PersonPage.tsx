@@ -36,6 +36,7 @@ import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights
 import type { PaymentsData } from '@/lib/timeclock/payments-view'
 import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
+import { BTN } from '@/lib/ui/buttons'
 
 type Editable = 'personal' | 'work' | 'hr'
 type PaymentsProp = { data: PaymentsData; api: PaymentsApi; initial?: Parameters<typeof PaymentsTab>[0]['initial'] }
@@ -47,7 +48,7 @@ const LOCK = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke=
 const EYE = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
 const PENCIL = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
 
-const btnNavy = 'inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[13.5px] bg-tn-primary rounded-[10px] px-4 py-2.5 shadow-[0_10px_24px_-14px_rgba(1,35,88,.7)] transition-all hover:brightness-110'
+const btnNavy = BTN.navy
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 
@@ -150,13 +151,13 @@ function Cover({ data }: { data: PersonPageData }) {
         {(cover.email || cover.whatsapp) && (
           <div className="flex flex-wrap gap-2 lg:justify-end sm:col-span-2 lg:col-span-1">
             {cover.email && (
-              <button type="button" onClick={copyEmail} title={cover.email} className="inline-flex items-center gap-1.5 border border-[var(--panel-border)] bg-white rounded-[9px] px-3 py-[7px] text-[12.5px] font-semibold text-tn-ink whitespace-nowrap hover:border-tn-teal">
+              <button type="button" onClick={copyEmail} title={cover.email} className={`${BTN.smallWhite} whitespace-nowrap`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
                 {copied ? 'Copied' : 'Copy email'}
               </button>
             )}
             {cover.whatsapp && (
-              <a href={`https://wa.me/${cover.whatsapp}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 border border-[var(--panel-border)] bg-white rounded-[9px] px-3 py-[7px] text-[12.5px] font-semibold text-tn-ink whitespace-nowrap hover:border-tn-teal">
+              <a href={`https://wa.me/${cover.whatsapp}`} target="_blank" rel="noopener noreferrer" className={`${BTN.smallWhite} whitespace-nowrap`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="2" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" /></svg>
                 WhatsApp
               </a>

@@ -14,6 +14,7 @@ import { savePersonBeRate, savePersonCostRate, savePersonMonthlySalary, saveTrAs
 import { firstOfNextMonth } from '@/lib/tsheets/report'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { Section, fieldCls } from './PersonParts'
+import { BTN } from '@/lib/ui/buttons'
 
 type Rates = NonNullable<PersonPageData['rates']>
 type Key = 'client' | 'cost' | 'be' | 'salary'
@@ -109,7 +110,7 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
           )}
           {error && <p role="alert" className="m-0 text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setDraft(null)} className="rounded-[9px] border border-slate-200 bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold">Cancel</button>
+            <button type="button" onClick={() => setDraft(null)} className={BTN.white}>Cancel</button>
             <button type="button" disabled={pending} onClick={() => void save()} className="rounded-[9px] bg-[#F2C40A] text-tn-ink px-3.5 py-2 text-[13px] font-bold disabled:opacity-50">{pending ? 'Saving…' : 'Save rates'}</button>
           </div>
         </div>

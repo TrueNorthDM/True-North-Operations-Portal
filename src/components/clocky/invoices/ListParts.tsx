@@ -6,7 +6,7 @@
  * switch, Export CSV, a person's cell, the state pill and Mark paid on a row.
  */
 
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import { STATE_PILL } from './InvoiceParts'
 
@@ -60,7 +60,7 @@ export function StateSwitch<K extends string>({ options, value, onChange }: { op
 export function ExportCsvButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="ml-auto inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
+      className={`${BTN.white} ml-auto`}>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={DOWN} /></svg>Export CSV
     </button>
   )
@@ -87,7 +87,7 @@ export function StatePill({ st }: { st: InvoiceStateKey }) {
 export function RowMarkPaid({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={e => { e.stopPropagation(); onClick() }}
-      className="inline-flex shrink-0 items-center gap-[7px] border border-slate-200 rounded-[10px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] whitespace-nowrap cursor-pointer hover:border-tn-teal">
+      className={`${BTN.smallWhite} shrink-0 whitespace-nowrap`}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Mark paid
     </button>
   )

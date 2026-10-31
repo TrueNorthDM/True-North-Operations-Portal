@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
+import { BTN } from '@/lib/ui/buttons'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DriveApi {
@@ -38,7 +39,7 @@ function loadPicker(): Promise<void> {
   return loading
 }
 
-const BTN = 'inline-flex items-center gap-2 border border-[var(--panel-border)] rounded-[10px] px-3.5 py-2 bg-white font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink cursor-pointer hover:border-tn-teal disabled:opacity-50 disabled:cursor-default'
+const ROW_BTN = `${BTN.smallWhite} disabled:opacity-50 disabled:cursor-default`
 
 export function DriveCard({ data, canEdit, api, say }: {
   data: { ready: boolean; why: string | null; folder: string | null; who: string }
@@ -97,8 +98,8 @@ export function DriveCard({ data, canEdit, api, say }: {
         </div>
         {canEdit && api && data.ready && (
           <div className="flex gap-2 flex-wrap">
-            {data.folder && <button type="button" disabled={busy} onClick={() => void test()} className={BTN}>Write a test file</button>}
-            <button type="button" disabled={busy} onClick={() => void pick()} className={BTN}>{data.folder ? 'Change folder' : 'Pick the folder'}</button>
+            {data.folder && <button type="button" disabled={busy} onClick={() => void test()} className={ROW_BTN}>Write a test file</button>}
+            <button type="button" disabled={busy} onClick={() => void pick()} className={ROW_BTN}>{data.folder ? 'Change folder' : 'Pick the folder'}</button>
           </div>
         )}
       </div>

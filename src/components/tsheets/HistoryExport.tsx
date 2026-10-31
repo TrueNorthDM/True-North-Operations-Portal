@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { RangeFilter } from './RangeFilter'
 import { rangeOf, shiftMonth, type RangeChoice } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
+import { BTN } from '@/lib/ui/buttons'
 
 export function HistoryExport({ currentMonth }: { currentMonth: string }) {
   // A calendar year to start with: it is the table this button sits under.
@@ -49,7 +50,7 @@ export function HistoryExport({ currentMonth }: { currentMonth: string }) {
       <a
         href={valid ? `${ROUTES.i7}/history/csv?from=${range.from}&to=${range.to}` : undefined}
         aria-disabled={!valid}
-        className={`inline-flex items-center gap-2.5 bg-tn-primary text-white rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-transform ${valid ? 'hover:-translate-y-px' : 'opacity-50 pointer-events-none'}`}
+        className={`${BTN.navy} ${valid ? '' : 'opacity-50 pointer-events-none'}`}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
         <span className="text-[#ffffff]">CSV</span>

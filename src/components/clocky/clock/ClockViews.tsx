@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import { ChooseFields } from './ChooseFields'
 import { activityNeedsNotes, type FieldName, type MissingName } from '@/lib/timeclock/entry-rules'
@@ -454,13 +454,13 @@ export function OnView({
               className={`flex-1 min-w-0 box-border h-9 px-[11px] border border-[var(--row-rule)] rounded-[9px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
             {notes.trim() && (
               <button type="button" onMouseDown={e => e.preventDefault()} onClick={commitNote} disabled={noteStatus === 'saving'}
-                className={`${CK_BTN_NAVY_FLAT} h-9 !py-0 !px-3.5 disabled:opacity-60 ${FOCUS}`}>Save note</button>
+                className={`${BTN.smallNavy} h-9 disabled:opacity-60 ${FOCUS}`}>Save note</button>
             )}
           </div>
         ) : (
           <div className="flex items-start gap-2.5 bg-subtle rounded-[9px] px-[11px] py-2">
             <div className="flex-1 min-w-0 text-[13px] text-tn-ink leading-[1.45] break-words">{notes}</div>
-            <button type="button" onClick={() => setNoteEditing(true)} className={`${LINK_BTN} inline-flex items-center gap-1 shrink-0`}>
+            <button type="button" onClick={() => setNoteEditing(true)} className={`${LINK_BTN} shrink-0`}>
               <Icon d={ICON.pencil} size={13} stroke="currentColor" sw={2} />Edit
             </button>
           </div>

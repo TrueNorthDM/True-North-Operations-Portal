@@ -20,7 +20,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { previewAnchorMove, setPayPeriodAnchor } from '@/app/(app)/clocky-hours/periods/actions'
 import { addDays } from '@/lib/timeclock/periods'
 import { dayLabel, longDateLabel } from '@/lib/timeclock/format'
@@ -30,8 +30,8 @@ import { FIELD_LABEL, PeriodsDialog, useToast } from './ui'
 
 // The Edit / Done button (Timesheet Periods.dc.html 5A): Edit navy 11px 20px with
 // its shadow, Done white 10px 18px; 8px gap, no letter spacing.
-const PERIODS_EDIT = 'inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b] disabled:opacity-60'
-const PERIODS_DONE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[18px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal disabled:opacity-60'
+const PERIODS_EDIT = `${BTN.navy} disabled:opacity-60`
+const PERIODS_DONE = `${BTN.white} disabled:opacity-60`
 
 export interface PeriodsActions {
   previewAnchorMove: (input: { anchor: string }) => Promise<Result<{ data: AnchorPreview }>>
@@ -231,7 +231,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
       {canEdit && (
         <div className="flex justify-end items-center gap-2.5 mt-1.5 pt-5 border-t border-slate-200">
           {editing && <span className="text-[13px] text-muted mr-auto">Editing. Changes apply when you press Done.</span>}
-          {editing && <button type="button" disabled={pending} onClick={cancel} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal disabled:opacity-60">Cancel</button>}
+          {editing && <button type="button" disabled={pending} onClick={cancel} className={`${BTN.white} disabled:opacity-60`}>Cancel</button>}
           <button type="button" aria-pressed={editing} disabled={pending} onClick={() => (editing ? done() : setEditing(true))} className={editing ? PERIODS_DONE : PERIODS_EDIT}>
             {editing ? (
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>

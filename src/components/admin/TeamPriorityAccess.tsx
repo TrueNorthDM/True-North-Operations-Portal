@@ -27,6 +27,7 @@ import {
 } from '@/lib/monday/worklist/team-priority'
 import type { PriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 import { setPriorityGrant } from '@/app/(app)/admin/access-levels/actions'
+import { BTN } from '@/lib/ui/buttons'
 
 /** A person as this section needs them, with the access rule's answers already in. */
 export interface PriorityPerson {
@@ -258,7 +259,7 @@ export function TeamPriorityAccess({
                   type="button"
                   onClick={() => run(adding, addScope, () => setAdding(''))}
                   disabled={pending || !adding}
-                  className="inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] bg-tn-primary border border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px disabled:opacity-50 disabled:translate-y-0"
+                  className={`${BTN.smallNavy} disabled:opacity-50`}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                   <span className="text-[#ffffff]">Add</span>

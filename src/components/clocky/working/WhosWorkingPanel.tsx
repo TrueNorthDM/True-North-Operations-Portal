@@ -20,6 +20,7 @@ import { ClockField, ClockToast, FOCUS, HeadButton, ICON, Icon, SearchInput, Sto
 import { ClockOutForDialog } from './ClockOutForDialog'
 import type { WorkingApi } from './working-api'
 import { SORTS, emptyTitle, groupsOf, scopeText, viewerTime, type WorkingFilter, type WorkingRow, type WorkingSort } from './working-model'
+import { BTN } from '@/lib/ui/buttons'
 
 export const WHOS_WORKING_HREF = '/clocky-hours/whos-working'
 /** A person's entries on Time entries. */
@@ -201,7 +202,7 @@ export function WhosWorkingPanel({
               <Icon d={ICON.clock} size={34} stroke="#cbd2da" sw={1.8} />
               <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{emptyTitle(ui.filter, ui.query)}</div>
               {ui.filter === 'on' && !ui.query.trim() && (
-                <button type="button" onClick={() => set({ filter: 'all' })} className={`inline-flex items-center border border-slate-200 rounded-[10px] px-[15px] py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal ${FOCUS}`}>See everyone today</button>
+                <button type="button" onClick={() => set({ filter: 'all' })} className={`${BTN.white} ${FOCUS}`}>See everyone today</button>
               )}
             </div>
           )}

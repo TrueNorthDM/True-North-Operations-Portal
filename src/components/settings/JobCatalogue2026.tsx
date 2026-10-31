@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { alpha } from '@/components/clocky/clock/clock-model'
 import { ActivitiesSection, Bill, TH } from '@/components/clocky/WhichJob2026View'
 import type { ActivityRow, CatalogueRow } from '@/lib/timeclock/job-catalogue'
@@ -27,7 +27,7 @@ export interface Api2026 {
   addJob: (i: { parentId: number | null; name?: string; billable?: boolean; use?: string }) => Promise<Done>
 }
 
-export const SMALL_BTN = 'inline-flex items-center gap-1.5 border border-slate-200 rounded-[9px] px-[11px] py-1.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] leading-[normal] cursor-pointer hover:border-tn-teal disabled:opacity-50'
+export const SMALL_BTN = `${BTN.smallWhite} disabled:opacity-50`
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle'
 const PLUS = 'M12 5v14M5 12h14'
 const OFF = 'text-[10.5px] font-bold rounded-full px-2 py-[3px] bg-[#f1f3f6] text-muted whitespace-nowrap'

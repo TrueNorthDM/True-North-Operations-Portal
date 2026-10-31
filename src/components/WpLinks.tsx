@@ -1,3 +1,4 @@
+import { BTN } from '@/lib/ui/buttons'
 /**
  * WpLinks: Dev / Live WordPress quick-access pills shown on each project
  * page header. Renders nothing when both URLs are missing.
@@ -33,7 +34,7 @@ export function WpLinks({ dev, live, accent }: Props) {
           href={dev}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-[9px] border border-slate-200 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-slate-50"
+          className={BTN.smallWhite}
         >
           <span className="w-[7px] h-[7px] rounded-full bg-slate-400" aria-hidden="true" />
           WP Dev <span aria-hidden="true">↗</span>

@@ -530,7 +530,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         </div>
         <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums lining-nums whitespace-nowrap">{rangeText(ui.period, range.from, range.to)}</span>
         <div className="relative" ref={calRef}>
-          <button type="button" aria-label="Jump to a week" aria-expanded={ui.calOpen} onClick={() => setUi(u => ({ ...u, calOpen: !u.calOpen }))} className={`${ICON_BTN} text-tn-green`}>
+          <button type="button" aria-label="Jump to a week" aria-expanded={ui.calOpen} onClick={() => setUi(u => ({ ...u, calOpen: !u.calOpen }))} className={`${ICON_BTN} text-tn-green!`}>
             <Icon d={ICON.calendar} size={17} />
           </button>
           {ui.calOpen && (

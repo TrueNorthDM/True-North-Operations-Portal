@@ -29,6 +29,7 @@ import type { NavItem } from '@/lib/access/nav'
 import type { PageGroup } from '@/lib/settings/pages'
 import { FAVOURITES_MAX, START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
 import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
+import { BTN } from '@/lib/ui/buttons'
 
 type Result = { ok: boolean; error?: string }
 type Save = (patch: SettingsPatch) => Promise<Result>
@@ -129,7 +130,7 @@ function Favourites({ items, groups, onChange }: { items: NavItem[]; groups: Pag
               </div>
             </div>
           ))}
-          <button type="button" onClick={() => setOpen(false)} className="rounded-[9px] bg-tn-primary text-[#ffffff] px-3.5 py-2 text-[13px] font-bold">Done</button>
+          <button type="button" onClick={() => setOpen(false)} className={BTN.navy}>Done</button>
         </div>
       )}
     </div>
@@ -253,7 +254,7 @@ export function PersonalSettings({
           </Row>
           <Row label="Sign out on all devices" hint="Ends your sessions on every computer and phone: this one at once, the others within the hour. Useful after using a shared computer." status={statusFor('signout')}>
             <button type="button" disabled={!!blocked} title={blocked} onClick={signOutAll}
-              className="rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold hover:border-[#b3271f] hover:text-[#b3271f] disabled:opacity-50 disabled:hover:border-[var(--panel-border)] disabled:hover:text-tn-ink">Sign out on all devices</button>
+              className={`${BTN.whiteDanger} disabled:opacity-50`}>Sign out on all devices</button>
           </Row>
         </Section>
 

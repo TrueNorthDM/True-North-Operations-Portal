@@ -9,7 +9,7 @@
 // October 2026). Not set up for the person: one line that says whom to ask.
 
 import Link from 'next/link'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { PayPeriodResult, PayPeriodView } from '@/lib/timeclock/home-pay-period'
 
 const TONE = {
@@ -84,7 +84,7 @@ function Band({ band, tone }: { band: NonNullable<PayPeriodView['band']>; tone: 
         <span className="text-[13px] text-[#5b6b82] tabular-nums lining-nums">{band.sub}</span>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href="/clocky-hours?submit=1" className={`rounded-[10px] px-4 py-[11px] ${display} font-extrabold text-[13.5px] flex items-center gap-2 bg-tn-primary text-[#ffffff] whitespace-nowrap hover:bg-[#0a2f6b]`}>
+        <Link href="/clocky-hours?submit=1" className={`${BTN.navy} ${display} whitespace-nowrap`}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill={BTN_ICON.navy} aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>Review and send
         </Link>
         <Link href="/clocky-hours" className={`border border-[#d9dee6] bg-white rounded-[10px] px-[14px] py-[11px] ${display} font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap hover:border-tn-teal`}>

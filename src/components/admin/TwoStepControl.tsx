@@ -10,6 +10,7 @@
 import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { PILL_CLASS, formatDate, type Pill } from '@/lib/directory/people-types'
+import { BTN } from '@/lib/ui/buttons'
 
 export type TwoStepState = 'on' | 'not-set-up' | 'no-account'
 
@@ -19,7 +20,6 @@ const PILL: Record<TwoStepState, Pill> = {
   'no-account': { kind: 'grey', label: 'No account yet' },
 }
 
-const btn = 'font-(family-name:--font-display) font-extrabold text-[12px] rounded-[8px] px-3 py-1.5 transition-all disabled:opacity-50'
 
 export function TwoStepControl({ name, state, since, reset }: {
   name: string
@@ -67,7 +67,7 @@ export function TwoStepControl({ name, state, since, reset }: {
         </span>
         {/* No reset handed in, no button: whoever cannot reset never sees one. */}
         {current === 'on' && reset && (
-          <button type="button" disabled={pending} onClick={onReset} className={`${btn} text-tn-ink border border-slate-200 hover:border-tn-ink`}>
+          <button type="button" disabled={pending} onClick={onReset} className={`${BTN.smallWhite} disabled:opacity-50`}>
             {pending ? 'Resetting…' : 'Reset'}
           </button>
         )}

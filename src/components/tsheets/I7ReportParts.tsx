@@ -61,7 +61,7 @@ export function ExportImageButton({ month, monthly = true }: { month: string; mo
         onClick={download}
         disabled={busy || !monthly}
         title={monthly ? 'Download a shareable budget image for the team' : 'The team image is a month. Choose a single month to make one.'}
-        className="inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal disabled:opacity-45 disabled:hover:border-slate-200 disabled:hover:text-tn-ink disabled:cursor-not-allowed"
+        className={`${BTN.white} disabled:opacity-45 disabled:cursor-not-allowed`}
       >
         {busy ? <Spinner /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" /><path d="m21 15-4.5-4.5L7 20" /></svg>}
         <span>{busy ? 'Generating…' : 'Team Update'}</span>
@@ -199,7 +199,7 @@ export function NoteCard({ month, note, canEdit }: { month: string; note: string
           {error && <p className="text-xs text-[var(--bdg-red-fg)]">{error}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-sm font-(family-name:--font-display) font-bold text-muted hover:text-tn-ink">Cancel</button>
-            <button onClick={save} disabled={saving} className="px-4 py-1.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:-translate-y-px transition-transform disabled:opacity-40">{saving ? 'Saving…' : 'Save'}</button>
+            <button onClick={save} disabled={saving} className={`${BTN.navy} disabled:opacity-40`}>{saving ? 'Saving…' : 'Save'}</button>
           </div>
         </div>
       ) : note ? (

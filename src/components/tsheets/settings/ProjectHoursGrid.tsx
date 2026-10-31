@@ -12,6 +12,7 @@ import { editableMonths } from '@/lib/tsheets/retention'
 import { saveProjectMonthHours } from '@/lib/tsheets/settings-actions'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface ProjectMonthHours { project: string; month: string; hours: number }  // month = 'YYYY-MM'
 
@@ -282,7 +283,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
           <button
             onClick={review}
             disabled={changeCount === 0}
-            className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             Review changes
           </button>
@@ -342,7 +343,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
             </div>
             <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
               <button type="button" onClick={() => setCopyFor(null)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
-              <button type="button" onClick={applyCopy} disabled={copyTargets(copyFor).length === 0} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              <button type="button" onClick={applyCopy} disabled={copyTargets(copyFor).length === 0} className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}>
                 <span className="text-[#ffffff]">Apply to {copyTargets(copyFor).length} month{copyTargets(copyFor).length !== 1 ? 's' : ''}</span>
               </button>
             </div>

@@ -5,6 +5,7 @@ import { ITEM, LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
 
 import { undoChange } from '@/app/(app)/admin/access-levels/actions'
 import { type AccessPageData, btn, card, Modal, when } from './parts'
+import { BTN } from '@/lib/ui/buttons'
 
 // ── Change log ─────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function Undo({ entry, onClose, onDone }: { entry: AccessPageData['log'][number]
   }
   return (
     <Modal kicker="Undo" title={`Undo "${entry.summary}"`} onClose={onClose}
-      foot={<><span className="text-[12px] text-muted">The undo is a new entry in the log, pointing at the one it reverses. Nothing is erased.</span><span className="flex gap-2"><button type="button" className={btn} onClick={onClose}>Cancel</button><button type="button" className="inline-flex items-center rounded-[9px] bg-[#c8323d] text-[#ffffff] px-3.5 py-2 text-[13px] font-bold disabled:opacity-45" disabled={reason.trim().length < 8 || pending} onClick={run}>{pending ? 'Undoing…' : 'Undo the change'}</button></span></>}>
+      foot={<><span className="text-[12px] text-muted">The undo is a new entry in the log, pointing at the one it reverses. Nothing is erased.</span><span className="flex gap-2"><button type="button" className={btn} onClick={onClose}>Cancel</button><button type="button" className={`${BTN.danger} disabled:opacity-45`} disabled={reason.trim().length < 8 || pending} onClick={run}>{pending ? 'Undoing…' : 'Undo the change'}</button></span></>}>
       <p className="text-[13px] m-0">Puts back what was there before this change, for everyone it touched. The impact is worked out again and kept with the undo.</p>
       <label className="block space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Why undo? Required</span>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className="w-full rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[13.5px] text-tn-ink outline-none focus:border-tn-teal" /></label>

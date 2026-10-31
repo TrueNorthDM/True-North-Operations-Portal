@@ -11,7 +11,7 @@
  */
 
 import { useState } from 'react'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { EVENT_ZONES } from '@/lib/agenda/zones'
 import { hourLabel } from '@/lib/agenda/model'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN } from '@/components/clocky/entries/ui'
@@ -189,9 +189,9 @@ export function NewEventDialog({ setup, api, editing, onClose, onDone }: {
       </button>
       {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:border-tn-teal">Cancel</button>
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
         <button type="button" disabled={!ok || busy} onClick={() => void submit()}
-          className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
+          className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
           {editing
             ? <><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save changes</>
             : <><Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{ms ? 'Create milestone' : 'Create event'}</>}

@@ -6,6 +6,7 @@
  */
 
 import Link from 'next/link'
+import { BTN } from '@/lib/ui/buttons'
 
 export const SETUP_HREF = '/auth/two-step/setup'
 
@@ -30,7 +31,7 @@ export function TwoStepBanner({ daysLeft }: { daysLeft: number }) {
       </span>
       <Link
         href={SETUP_HREF}
-        className="inline-flex items-center gap-1.5 shrink-0 rounded-[8px] bg-tn-primary px-3 py-1.5 font-(family-name:--font-display) font-extrabold text-[12px] text-[#ffffff] hover:brightness-110 transition-all"
+        className={`${BTN.smallNavy} shrink-0`}
       >
         Set it up now
       </Link>

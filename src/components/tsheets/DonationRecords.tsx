@@ -22,6 +22,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-ledger'
 import { ROUTES } from '@/lib/nav/routes'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { BTN } from '@/lib/ui/buttons'
 
 const monthLabel = (ym: string) => `${MONTH_SHORT[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 
@@ -328,7 +329,7 @@ function Row(
           </button>
           <button
             type="button" disabled={pending} onClick={() => submit(amount)}
-            className="rounded-[10px] bg-tn-primary px-3 py-1.5 text-[13.5px] font-bold text-white disabled:opacity-50"
+            className={`${BTN.navy} disabled:opacity-50`}
           >
             {pending ? 'Saving' : 'Save'}
           </button>

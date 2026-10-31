@@ -88,7 +88,7 @@ export function OverlapFix({ a, b, onTrim, onBack, onCancel, busy }: {
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className={BTN_MODAL_WHITE}>Cancel</button>
-        <button type="button" onClick={onBack} disabled={busy} className={`${BTN_MODAL_NAVY} text-[#ffffff] disabled:opacity-60`}>Back and edit</button>
+        <button type="button" onClick={onBack} disabled={busy} className={`${BTN_MODAL_NAVY} disabled:opacity-60`}>Back and edit</button>
       </div>
     </Modal>
   )

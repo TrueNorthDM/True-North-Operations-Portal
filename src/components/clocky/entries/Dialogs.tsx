@@ -8,13 +8,13 @@
  */
 
 import { useState } from 'react'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { isSent } from '@/lib/timeclock/periods'
 import type { PillTone, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import { BTN_MODAL_DANGER, BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LABEL, MODAL_TITLE, Modal, Pill, TEXTAREA_PLAIN, TEXTAREA_WARN } from './ui'
 
-const DISABLED = 'disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0'
+const DISABLED = 'disabled:opacity-45 disabled:cursor-not-allowed'
 
 // ── 3I ──────────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export function DeleteDialog({ text, busy, onClose, onDelete }: {
       <div className="flex justify-end gap-2 mt-1">
         <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
         <button type="button" disabled={!ok} onClick={() => onDelete(reason.trim())}
-          className="inline-flex items-center rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">
+          className={`${BTN.danger} disabled:opacity-45 disabled:cursor-not-allowed`}>
           Delete
         </button>
       </div>

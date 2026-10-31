@@ -16,11 +16,12 @@ import type { Decided } from '@/app/(app)/admin/settings/skipped-actions'
 import { decidedText, REASON_FOR_ALLOWANCE, splitDecided, type DecideInput } from '@/lib/timeclock/skipped-decisions'
 import { dateLabel, timeLabel } from '@/lib/timeclock/format'
 import { FieldLabel, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, BTN_MODAL_WHITE, BTN_MODAL_NAVY, type ToastState } from '@/components/clocky/entries/ui'
+import { BTN } from '@/lib/ui/buttons'
 
 const hours = (s: number) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const COLS = 'lg:grid-cols-[34px_minmax(0,1fr)_110px_120px_80px_minmax(0,1.6fr)_190px]'
-const ACT = 'inline-flex items-center border border-slate-200 rounded-[9px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] cursor-pointer hover:border-tn-teal disabled:opacity-50 disabled:cursor-default'
+const ACT = `${BTN.smallWhite} disabled:opacity-50 disabled:cursor-default`
 const BOX = 'w-4 h-4 accent-[#1E7D7F] cursor-pointer'
 
 /**

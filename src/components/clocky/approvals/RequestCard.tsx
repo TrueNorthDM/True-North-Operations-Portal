@@ -13,7 +13,7 @@
 
 import { useState } from 'react'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-cards'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
@@ -129,10 +129,10 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
           <div className="flex justify-end gap-2">
             {!deny ? (
               <>
-                <button type="button" disabled={busy} onClick={() => setDeny(true)} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">{card.denyLabel}</button>
+                <button type="button" disabled={busy} onClick={() => setDeny(true)} className={BTN.whiteDanger}>{card.denyLabel}</button>
                 <button type="button" disabled={busy || (report && !itemsReady)}
                   onClick={() => (report && onDecideItems ? onDecideItems(waiting.map(i => (pick(i.id).deny ? { id: i.id, decision: 'deny', note: pick(i.id).note.trim() } : { id: i.id, decision: 'approve' }))) : onApprove())}
-                  className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
+                  className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
                   <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />
                   {report && toDeny.length
                     ? (toApprove.length ? `Approve ${toApprove.length}, deny ${toDeny.length} (${totalsText(toApprove.map(i => i.value))})` : `Deny ${toDeny.length}`)
@@ -141,9 +141,9 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
               </>
             ) : (
               <>
-                <button type="button" onClick={() => { setDeny(false); setReason('') }} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+                <button type="button" onClick={() => { setDeny(false); setReason('') }} className={BTN.white}>Cancel</button>
                 <button type="button" disabled={!reason.trim() || busy}
-                  onClick={() => (report && onDecideItems ? onDecideItems(waiting.map(i => ({ id: i.id, decision: 'deny', note: reason.trim() }))) : onDeny(reason.trim()))} className="border-0 rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">{card.denyLabel}</button>
+                  onClick={() => (report && onDecideItems ? onDecideItems(waiting.map(i => ({ id: i.id, decision: 'deny', note: reason.trim() }))) : onDeny(reason.trim()))} className={`${BTN.danger} disabled:opacity-45 disabled:cursor-not-allowed`}>{card.denyLabel}</button>
               </>
             )}
           </div>

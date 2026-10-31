@@ -13,7 +13,7 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Icon, Modal, MODAL_TITLE } from '@/components/clocky/entries/ui'
+import { CloseButton, Icon, Modal, MODAL_TITLE } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { failText } from '@/lib/ui/action-error'
@@ -27,6 +27,7 @@ import { ScopeChoice } from './ScopeChoice'
 import type { Repeat, Scope } from '@/lib/agenda/recurrence'
 import { DateField } from '@/components/ui/DateField'
 import { MODAL_BACKDROP } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
@@ -235,7 +236,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
         <div className="flex-none flex items-center gap-3 px-5 md:px-7 pt-5 pb-3 bg-white">
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a title" maxLength={160} aria-label="Title"
             className="flex-1 min-w-0 border-0 border-b-2 border-[var(--panel-border)] focus:border-tn-teal bg-transparent outline-none py-1.5 font-(family-name:--font-display) font-black text-[20px] text-tn-ink" />
-          <button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 border-0 bg-transparent rounded-[8px] text-muted text-[22px] leading-none cursor-pointer hover:bg-subtle">×</button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] px-5 md:px-7 pb-6 flex flex-col gap-[22px]">
@@ -413,9 +414,9 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
         </div>
 
         <div className="flex-none flex flex-wrap items-center gap-2.5 px-5 md:px-7 py-3.5 border-t border-[var(--panel-border)] bg-white">
-          {start && <button type="button" disabled={busy} onClick={() => (start.occurrence ? setScopeFor('delete') : setAsking(true))} className="border border-slate-200 rounded-[12px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer">Delete</button>}
+          {start && <button type="button" disabled={busy} onClick={() => (start.occurrence ? setScopeFor('delete') : setAsking(true))} className={BTN.whiteDanger}>Delete</button>}
           <span className="flex gap-2.5 ml-auto">
-            <button type="button" onClick={onClose} className="border border-slate-200 rounded-[12px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer">Cancel</button>
+            <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
             <button type="button" disabled={busy || setup.accounts.length === 0} onClick={() => void save()}
               className={`inline-flex items-center gap-2 border-0 rounded-[12px] px-5 py-2.5 font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] cursor-pointer disabled:opacity-50 ${account ? 'bg-tn-primary hover:bg-[#0a2f6b]' : 'bg-[#97a3b8]'}`}>
               <span className="text-[#F2C40A]">{start ? '✓' : '+'}</span>{start ? 'Save changes' : `Create ${word}`}
@@ -432,8 +433,8 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
           <h2 className={MODAL_TITLE}>Delete {title || 'this event'}?</h2>
           <p className="m-0 text-[13px] text-foreground leading-[1.5]">It leaves the Agenda, and everyone invited gets Google&apos;s cancellation.</p>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setAsking(false)} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer">Cancel</button>
-            <button type="button" disabled={busy} onClick={() => void remove()} className="border-0 rounded-[10px] px-4 py-2.5 bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer">Delete</button>
+            <button type="button" onClick={() => setAsking(false)} className={BTN.white}>Cancel</button>
+            <button type="button" disabled={busy} onClick={() => void remove()} className={BTN.danger}>Delete</button>
           </div>
         </Modal>
       )}

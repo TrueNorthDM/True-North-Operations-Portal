@@ -18,6 +18,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { BTN } from './buttons'
 import { join } from 'node:path'
 
 function tsxFiles(dir: string, out: string[] = []): string[] {
@@ -82,8 +83,11 @@ function offences(): Offence[] {
       if (!/^\s*(<span[^>]*>|\{[^}]*\}\s*<span|[A-Z][a-z])/.test(after)) continue
 
       const back = t.slice(Math.max(0, m.index! - 1400), m.index!)
-      const navyAt = back.lastIndexOf('bg-tn-primary')
-      const whiteAt = back.lastIndexOf('bg-white')
+      // The shells now come from BTN (and North Time's aliases of it), so the
+      // constant's name marks the tone as well as a literal class does.
+      const lastOf = (re: RegExp) => Math.max(-1, ...[...back.matchAll(re)].map(x => x.index!))
+      const navyAt = lastOf(/bg-tn-primary|BTN\.(navy|smallNavy)\b|BTN_[A-Z_]*NAVY\b/g)
+      const whiteAt = lastOf(/bg-white|BTN\.(white|smallWhite)\b|BTN_[A-Z_]*WHITE\b/g)
       if (navyAt < 0 && whiteAt < 0) continue
       const tone = navyAt > whiteAt ? 'navy' : 'white'
 
@@ -128,5 +132,46 @@ describe('button symbols', () => {
       .join('')
       .match(/BTN_ICON\.(navy|white)/g) ?? []
     expect(seen.length).toBeGreaterThan(8)
+  })
+})
+
+// The owner's set (31 October 2026): one source, so one look per kind.
+describe('button shells', () => {
+  it('write white words as #ffffff, which dark mode cannot remap', () => {
+    for (const [kind, cls] of Object.entries(BTN)) {
+      expect(cls, kind).not.toMatch(/(^|\s)text-white(\s|$)/)
+    }
+    for (const kind of ['navy', 'danger', 'smallNavy', 'smallDanger'] as const) {
+      expect(BTN[kind], kind).toContain('text-[#ffffff]')
+    }
+  })
+
+  it('share one shape per size', () => {
+    for (const kind of ['navy', 'white', 'danger', 'whiteDanger'] as const) {
+      expect(BTN[kind], kind).toContain('rounded-[10px]')
+      expect(BTN[kind], kind).toContain('py-[11px]')
+      expect(BTN[kind], kind).toContain('text-[13px]')
+    }
+    for (const kind of ['smallNavy', 'smallWhite', 'smallDanger', 'smallWhiteDanger'] as const) {
+      expect(BTN[kind], kind).toContain('rounded-[9px]')
+      expect(BTN[kind], kind).toContain('py-[7px]')
+      expect(BTN[kind], kind).toContain('text-[12.5px]')
+    }
+  })
+
+  // A full-size navy or red button drawn by hand is a copy that will drift.
+  it('are not copied by hand outside buttons.ts', () => {
+    const copies: string[] = []
+    for (const file of tsxFiles('src')) {
+      if (file.replace(/\\/g, '/').includes('design-check/')) continue
+      const t = readFileSync(file, 'utf8')
+      for (const m of t.matchAll(/['"`][^'"`]*['"`]/g)) {
+        const s = m[0]
+        if (/bg-(tn-primary|\[#c8323d\])/.test(s) && s.includes('py-[11px]') && /rounded-\[10px\]/.test(s)) {
+          copies.push(`${file}:${t.slice(0, m.index!).split('\n').length}`)
+        }
+      }
+    }
+    expect(copies, copies.join('\n  ')).toEqual([])
   })
 })

@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { MON, parsePaidOn } from '@/lib/timeclock/paid-on'
@@ -88,9 +88,9 @@ export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder 
       {note !== null && <div className="text-[12px] text-muted leading-[1.5]">{note ?? `${target.who} sees "Paid" with this date and reference. Paid once: the action goes away after this.`}</div>}
       {error && <div role="alert" className="text-[12.5px] font-semibold text-[#c8323d]">{error}</div>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
+        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
         <button type="button" disabled={busy} onClick={() => void submit()}
-          className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+          className={`${BTN.navy} disabled:opacity-60`}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{busy ? 'Saving…' : 'Mark paid'}
         </button>
       </div>

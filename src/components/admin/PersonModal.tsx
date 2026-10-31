@@ -35,6 +35,7 @@ import type { TeamOption } from './DirectoryTabs'
 import { DateField } from '@/components/ui/DateField'
 import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { BTN } from '@/lib/ui/buttons'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -127,7 +128,7 @@ export function PersonModal({
         {/* footer */}
         <div className="shrink-0 flex items-center gap-2.5 px-8 py-4 border-t border-slate-200 bg-subtle">
           <button type="button" onClick={() => setState(null)} className="ml-auto font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Cancel</button>
-          <button type="button" disabled={pending || !draft.fullName.trim() || !cadence} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
+          <button type="button" disabled={pending || !draft.fullName.trim() || !cadence} onClick={save} className={`${BTN.navy} disabled:opacity-50`}>
             <span className="text-[#ffffff]">{pending ? 'Saving…' : 'Add person'}</span>
           </button>
         </div>

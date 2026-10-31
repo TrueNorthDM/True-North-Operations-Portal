@@ -11,7 +11,7 @@
 
 import { useRef, useState, type ReactNode } from 'react'
 import { useModal } from '@/components/ui/useModal'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
 import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, optionsOf, sortedOptions, suggestName, valueOf, type SaveDraft } from './clock-model'
@@ -220,7 +220,7 @@ export function ManageCombosModal({ combinations, busy, error, contained, onReor
           {rows.length === 0 && <div className="p-4 text-[13px] text-muted">No combinations yet. Star a recent one to save it.</div>}
         </div>
         <div className="flex justify-end">
-          <button type="button" onClick={onClose} className={`rounded-[10px] px-5 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b] ${FOCUS}`}>Done</button>
+          <button type="button" onClick={onClose} className={`${BTN.navy} ${FOCUS}`}>Done</button>
         </div>
       </div>
     </ClockWindow>

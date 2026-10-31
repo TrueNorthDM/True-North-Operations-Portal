@@ -19,13 +19,13 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Select } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MeetIcon } from '@/components/ui/MeetIcon'
 import { DetailFoot, DetailTop } from './EventDetail'
 import { ScopeChoice } from './ScopeChoice'
 import type { Scope } from '@/lib/agenda/recurrence'
 import type { WorkingHours } from '@/lib/agenda/working-hours'
-import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
+import { CloseButton, BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, AGENDA_H, ALL_DAY_ROWS, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type WeekEvent, type AgendaView as View, type ListDay,
@@ -112,7 +112,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
           <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Agenda</h1>
         </div>
         {(drawer || data.create) && (
-          <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b]">
+          <button type="button" onClick={() => setCreating(true)} className={BTN.navy}>
             <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{!drawer && data.create?.mode === 'team' ? 'New team event' : 'New event'}
           </button>
         )}
@@ -126,7 +126,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
               className={`${SEG_BTN} ${view === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{k[0].toUpperCase() + k.slice(1)}</button>
           ))}
         </div>
-        <button type="button" onClick={() => go(view, data.today)} className="border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] cursor-pointer hover:border-tn-teal">Today</button>
+        <button type="button" onClick={() => go(view, data.today)} className={BTN.smallWhite}>Today</button>
         <div className="flex items-center gap-0.5">
           <button type="button" aria-label="Previous" onClick={() => go(view, stepAnchor(view, anchor, -1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M15 18l-6-6 6-6" size={17} width={2.2} /></button>
           <button type="button" aria-label="Next" onClick={() => go(view, stepAnchor(view, anchor, 1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M9 6l6 6-6 6" size={17} width={2.2} /></button>
@@ -591,7 +591,7 @@ interface CardGoogle {
 }
 
 /** The small white row actions (the "Open in Google Calendar" link's look): green symbol, navy words. */
-const ROW_BTN = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] no-underline cursor-pointer hover:border-tn-teal'
+const ROW_BTN = BTN.smallWhite
 
 function ItemCard({ item, me, today, holidays, onClose, manage, google, startConfirm = false }: {
   item: AgendaItem; me: AgendaData['me']; today: string; holidays: ReadonlySet<string>; onClose: () => void
@@ -651,7 +651,7 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
               <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase" style={{ color: c.kindFg }}>{c.kind}</span>
               <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink leading-[1.3]">{c.title}</span>
             </div>
-            <button type="button" onClick={onClose} aria-label="Close" className="w-[30px] h-[30px] border-0 bg-transparent rounded-[8px] cursor-pointer text-muted flex items-center justify-center hover:bg-subtle"><Icon d="M6 6l12 12M18 6 6 18" size={17} width={2.2} /></button>
+            <CloseButton onClick={onClose} />
           </div>
           <div className="flex flex-col gap-[9px]">
             {c.rows.map((r, i) => (
@@ -705,7 +705,7 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
               <div className="flex justify-end gap-2">
                 <button type="button" disabled={busy} onClick={() => { setConfirm(false); setError(null) }} className={`${BTN_MODAL_WHITE} cursor-pointer`}>Keep it</button>
                 <button type="button" disabled={busy} onClick={() => void remove()}
-                  className="inline-flex items-center rounded-[10px] px-[18px] py-[11px] border-0 bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">
+                  className={`${BTN.danger} disabled:opacity-45 disabled:cursor-not-allowed`}>
                   {busy ? 'Deleting…' : 'Delete'}
                 </button>
               </div>

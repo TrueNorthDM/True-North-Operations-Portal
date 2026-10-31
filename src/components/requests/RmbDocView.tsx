@@ -11,7 +11,7 @@ import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RmbDocPage } from '@/lib/timeclock/requests-data'
 import type { DocSheetData } from '@/lib/timeclock/pay-docs'
 import type { Result } from '@/lib/timeclock/clocky-types'
@@ -95,11 +95,11 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
         </div>
         <div className="flex flex-col gap-3.5">
           <div className="bg-white border border-[var(--panel-border)] rounded-[16px] p-[18px] flex flex-col gap-2.5">
-            <button type="button" onClick={() => void openPdf()} className="inline-flex items-center justify-center gap-2 border border-slate-200 rounded-[10px] px-4 py-[11px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
+            <button type="button" onClick={() => void openPdf()} className={`${BTN.white} justify-center`}>
               <Icon d={EYE} size={15} color={BTN_ICON.white} width={2.2} />Preview PDF
             </button>
             {d.canPay && (
-              <button type="button" onClick={() => setPay(true)} className="inline-flex items-center justify-center gap-2 border-0 rounded-[10px] px-4 py-3 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b]">
+              <button type="button" onClick={() => setPay(true)} className={`${BTN.navy} justify-center`}>
                 <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Mark paid
               </button>
             )}

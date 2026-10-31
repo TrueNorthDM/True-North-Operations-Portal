@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { saveRules } from './actions'
 import { DateField } from '@/components/ui/DateField'
+import { BTN } from '@/lib/ui/buttons'
 
 // Only what Clocky and the import read (audit of 20 October 2026). Rounding,
 // the auto clock-out and overtime are Clocky's own fixed rules, and how often
@@ -57,7 +58,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
       <div className="flex items-center gap-3">
         <button
           onClick={() => { setR(rules); setOpen(true) }}
-          className="px-4 py-2 rounded-[10px] border border-slate-200 bg-white text-tn-ink font-(family-name:--font-display) font-bold text-sm hover:border-tn-teal transition-colors"
+          className={BTN.white}
         >
           Change the rules
         </button>
@@ -97,7 +98,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
 
       <div className="flex items-center gap-3">
         <button onClick={save} disabled={pending}
-          className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold disabled:opacity-50">
+          className={`${BTN.navy} disabled:opacity-50`}>
           {pending ? 'Saving…' : 'Save the rules'}
         </button>
         <button onClick={() => { setOpen(false); setR(rules) }} disabled={pending}

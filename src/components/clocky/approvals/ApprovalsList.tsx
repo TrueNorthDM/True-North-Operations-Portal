@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { formatDuration } from '@/lib/timeclock/rounding'
@@ -60,7 +60,7 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
 const FILTERS: [Filter, string][] = [['all', 'All'], ['ts', 'Timesheet'], ['off', 'Time off'], ['rmb', 'Reimbursement'], ['xh', 'Extra hours'], ['cor', 'Added time']]
 const ROW_GRID = 'grid grid-cols-[minmax(170px,.9fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_250px] gap-x-[22px] gap-y-3 items-center px-[18px] py-4'
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
-const BTN_WHITE = 'inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer'
+const BTN_WHITE = BTN.smallWhite
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 
 /** "Tue, Oct 13, 2026 · 4:00 PM to 5:00 PM": the day, and the rest. */
@@ -246,9 +246,9 @@ export function ApprovalsList({ initialData, api, initial }: {
                     {tab === 'wait' && r.request?.canDecide && (
                       <>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setReq({ row: r, deny: true }) }}
-                          className={`${BTN_WHITE} text-[#c8323d] hover:border-[#c8323d]`}>{r.request.denyLabel}</button>
+                          className={BTN.smallWhiteDanger}>{r.request.denyLabel}</button>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); void decideRequest(r, 'approve') }}
-                          className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b]">
+                          className={BTN.smallNavy}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{r.request.approveLabel}
                         </button>
                       </>
@@ -256,15 +256,15 @@ export function ApprovalsList({ initialData, api, initial }: {
                     {tab === 'wait' && r.type !== 'ts' && r.card && (
                       <>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setCard({ row: r.card!, deny: true }) }}
-                          className={`${BTN_WHITE} text-[#c8323d] hover:border-[#c8323d]`}>Deny</button>
+                          className={BTN.smallWhiteDanger}>Deny</button>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); if (r.card!.overlap) setCard({ row: r.card!, deny: false }); else void decide(r.card!, 'approve') }}
-                          className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b]">
+                          className={BTN.smallNavy}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Approve
                         </button>
                       </>
                     )}
                     {(tab === 'wait' || tab === 'others') && r.type === 'ts' && r.href && (
-                      <button type="button" onClick={e => { e.stopPropagation(); open(r) }} className={`${BTN_WHITE} text-tn-ink hover:border-tn-teal`}>
+                      <button type="button" onClick={e => { e.stopPropagation(); open(r) }} className={BTN_WHITE}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={EYE} /></svg>
                         {tab === 'wait' ? 'Review' : 'Open'}
                       </button>

@@ -96,7 +96,7 @@ function RemindStrip({ rows, remind }: { rows: readonly TransitionRow[]; remind:
             <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 border-t border-[var(--row-rule)] first:border-t-0">
               <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink min-w-[150px]">{p.name}</span>
               <span className="text-[12.5px] text-muted tabular-nums lining-nums min-w-[90px]">{p.n} {p.n === 1 ? 'entry' : 'entries'}</span>
-              <button type="button" disabled={busy === id} onClick={() => void send(id)} className={`${BTN_SMALL} py-1.5 disabled:opacity-50`}>
+              <button type="button" disabled={busy === id} onClick={() => void send(id)} className={`${BTN_SMALL} disabled:opacity-50`}>
                 <Icon d={ICON.send} size={13} color={BTN_ICON.white} width={2.4} />{s?.ok ? 'Remind again' : 'Remind'}
               </button>
               {s && <span role={s.ok ? 'status' : 'alert'} className={`text-[12.5px] font-semibold ${s.ok ? 'text-[var(--ok-fg)]' : 'text-[#c8323d]'}`}>{s.text}</span>}

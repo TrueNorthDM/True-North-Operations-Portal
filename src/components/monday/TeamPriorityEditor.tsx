@@ -457,7 +457,7 @@ export function TeamPriorityEditor({
       type="button"
       onClick={() => void go(`/my-work?tab=work&pteam=${team.id}`)}
       disabled={pending}
-      className={`${BTN.navy} shrink-0 disabled:opacity-50 disabled:translate-y-0`}
+      className={`${BTN.navy} shrink-0 disabled:opacity-50`}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
       <span className="text-[#ffffff]">{busy ? 'Saving…' : save.state === 'conflict' ? 'Close' : 'Save and close'}</span>

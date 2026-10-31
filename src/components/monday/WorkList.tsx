@@ -402,7 +402,7 @@ export function WorkList({
             <Link
               href={priorityHref}
               prefetch={false}
-              className="inline-flex items-center gap-2 px-3 py-[7px] rounded-[10px] border border-[var(--panel-border)] bg-white font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink transition-colors hover:border-tn-teal"
+              className={BTN.smallWhite}
             >
               <OrderIcon />
               Team priority

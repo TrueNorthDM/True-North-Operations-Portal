@@ -8,6 +8,7 @@
 
 import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 const V = 280 // viewport (crop circle) diameter, px
 const OUT = 400 // exported square size, px
@@ -88,7 +89,6 @@ export function AvatarEditor({ open, onClose, onSave, busy }: {
   function close() { reset(); onClose() }
 
   if (!open) return null
-  const btn = 'font-(family-name:--font-display) font-extrabold text-[13px] rounded-[10px] px-4 py-2.5 transition-all'
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
@@ -133,8 +133,8 @@ export function AvatarEditor({ open, onClose, onSave, busy }: {
         {error && <p className="text-[12.5px] text-red-600 mt-2">{error}</p>}
 
         <div className="flex items-center justify-end gap-2.5 mt-5">
-          <button type="button" onClick={close} className={`${btn} text-foreground border border-slate-200 hover:border-tn-ink`}>Cancel</button>
-          <button type="button" disabled={!src || busy} onClick={save} className={`${btn} text-white bg-tn-primary hover:brightness-110 disabled:opacity-50`}>
+          <button type="button" onClick={close} className={BTN.white}>Cancel</button>
+          <button type="button" disabled={!src || busy} onClick={save} className={`${BTN.navy} disabled:opacity-50`}>
             <span className="text-[#ffffff]">{busy ? 'Saving…' : 'Save photo'}</span>
           </button>
         </div>

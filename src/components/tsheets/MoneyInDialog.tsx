@@ -199,7 +199,7 @@ export function MoneyInDialog(
               </button>
               <button
                 type="button" onClick={save} disabled={busy}
-                className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-2.5 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-wait"
+                className={`${BTN.navy} disabled:opacity-60 disabled:cursor-wait`}
               >
                 {busy ? 'Saving…' : 'Save'}
               </button>

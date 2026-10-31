@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
+import { BTN } from '@/lib/ui/buttons'
 import { failText } from '@/lib/ui/action-error'
 import type { AgendaAccount, AgendaSettingsData } from '@/lib/agenda/settings-data'
 import { APPROVED_DOMAIN } from '@/lib/agenda/accounts'
@@ -37,10 +38,10 @@ const CARD = 'bg-white border border-[var(--panel-border)] rounded-[18px] p-5 fl
 const TITLE = 'font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink'
 const SUB = 'text-[13px] text-foreground leading-[1.5]'
 const BEIGE = 'bg-subtle rounded-[12px] px-3.5 py-3'
-const BTN_TEAL = 'inline-flex items-center gap-2 border-0 rounded-[12px] px-4 py-2.5 bg-tn-teal text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13.5px] cursor-pointer disabled:opacity-50'
-const BTN_W = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal disabled:opacity-50'
-const BTN_N = 'inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-50'
-const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13px] text-tn-teal hover:underline disabled:opacity-50'
+// The settings' buttons are the portal's (lib/ui/buttons.ts); the connect buttons were teal and are navy now.
+const BTN_W = `${BTN.white} disabled:opacity-50`
+const BTN_N = `${BTN.navy} disabled:opacity-50`
+const LINK = `${BTN.link} disabled:opacity-50`
 const LINK_RED = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13px] text-[#b2412f] hover:underline disabled:opacity-50'
 const PILL_OK = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-[#e2f2ee] text-[#16695c]'
 const PILL_SAMPLE = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-subtle text-muted'
@@ -127,8 +128,8 @@ function TeamCalendarCard({ data, busy, run, api }: { data: AgendaSettingsData; 
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3 border border-dashed border-[#c9d0da] rounded-[12px] px-3.5 py-3">
               <span className={SUB}>No team calendar yet. Connect office@{APPROVED_DOMAIN}.</span>
-              {data.googleReady ? <a href={CONNECT_TEAM} className={`${BTN_TEAL} no-underline`}>+ Connect the team calendar</a>
-                : <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect the team calendar</button>}
+              {data.googleReady ? <a href={CONNECT_TEAM} className={`${BTN_N}`}>+ Connect the team calendar</a>
+                : <button type="button" className={BTN_N} disabled={busy} onClick={() => setAsking(true)}>+ Connect the team calendar</button>}
             </div>
           )}
           <FieldLabel>From the portal to Google</FieldLabel>
@@ -197,8 +198,8 @@ function AccountsCard({ data, busy, run, api }: { data: AgendaSettingsData; busy
           <div className={TITLE}>Your Google accounts</div>
           <p className={`${SUB} m-0 mt-1`}>Events you create are made on one of these, with the Google Meet link, and Find a time and your booking link read when they are busy. Connect as many as you like.</p>
         </div>
-        {data.googleReady ? <a href={CONNECT_ME} className={`${BTN_TEAL} no-underline`}>+ Connect a Google account</a>
-          : <button type="button" className={BTN_TEAL} disabled={busy} onClick={() => setAsking(true)}>+ Connect a Google account</button>}
+        {data.googleReady ? <a href={CONNECT_ME} className={`${BTN_N}`}>+ Connect a Google account</a>
+          : <button type="button" className={BTN_N} disabled={busy} onClick={() => setAsking(true)}>+ Connect a Google account</button>}
       </div>
       {data.accounts.length > 0 ? (
         <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
@@ -400,7 +401,7 @@ function BookingLinkCard({ data, busy, run, api, say }: { data: AgendaSettingsDa
           <div className="flex flex-wrap items-center gap-2.5 border border-[var(--panel-border)] rounded-[12px] px-3.5 py-2.5">
             <span className="flex-1 min-w-[200px] text-[13.5px] text-foreground break-all">{shown.replace(/[^/]+$/, '')}<b className="text-tn-ink">{data.link.slug}</b></span>
             <button type="button" className={BTN_W} onClick={() => void copy()}>Copy link</button>
-            <a className={BTN_TEAL} href={`/meet/${data.link.slug}`} target="_blank" rel="noreferrer">Preview</a>
+            <a className={BTN_N} href={`/meet/${data.link.slug}`} target="_blank" rel="noreferrer">Preview</a>
           </div>
           {!data.link.on && <div className={`${BEIGE} ${SUB}`}>Your booking link is off. Anyone who opens it sees that you are not taking bookings.</div>}
           <div className="flex flex-col gap-[5px]">

@@ -17,7 +17,7 @@
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Catalogue2026, SMALL_BTN, Switch } from './JobCatalogue2026'
@@ -227,9 +227,9 @@ function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }:
           </div>
           {canEdit && (
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setDraft(null)} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:border-tn-teal">Cancel</button>
+              <button type="button" onClick={() => setDraft(null)} className={BTN.white}>Cancel</button>
               <button type="button" disabled={busy} onClick={() => void run(api.saveJob({ id: row.id, name: ed.name, parentId: ed.parent === NO_FOLDER ? null : Number(ed.parent), active: ed.active, billable: ed.billable, company: ed.company, project: ed.project, use: ed.use })).then(r => { if (r.ok) setDraft(null) })}
-                className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-50 disabled:cursor-not-allowed">
+                className={`${BTN.navy} disabled:opacity-50 disabled:cursor-not-allowed`}>
                 <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save
               </button>
             </div>
@@ -306,7 +306,7 @@ function Fields({ data, structure, canEdit, api, startField, say }: { data: Cata
           <form className="flex gap-2 px-4 py-3 border-t border-[var(--panel-border)] bg-[#faf9f5]" onSubmit={async e => { e.preventDefault(); const v = fresh.trim(); if (!v) return; const r = await settle(api.addOption({ fieldId: Number(f.id), label: v })); if (r.ok) setFresh(''); say(r) }}>
             <input value={fresh} onChange={e => setFresh(e.target.value)} placeholder="New option" maxLength={120} aria-label="New option"
               className="flex-1 h-[38px] box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink bg-white outline-none focus:border-tn-teal" />
-            <button type="submit" className="inline-flex items-center gap-1.5 border border-slate-200 rounded-[10px] px-3.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal"><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Add</button>
+            <button type="submit" className={BTN.smallWhite}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Add</button>
           </form>
         )}
         <div className="px-4 py-2.5 text-[12px] text-muted leading-[1.5]">A hidden option stays on old entries and leaves the pickers. Options are never deleted, so history keeps its words.</div>

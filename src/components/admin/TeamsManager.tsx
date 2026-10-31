@@ -20,6 +20,7 @@ import type { ToolAudience } from '@/lib/access/tools'
 import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/color-palette'
 import { Select } from '@/components/ui/Select'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
@@ -84,7 +85,7 @@ export function TeamsManager({ cards, people, canEdit }: { cards: TeamCard[]; pe
         </p>
         {/* Teams and positions are Super Admin only (d-positions); everyone else reads. */}
         {canEdit && <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
-          className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
+          className={`${BTN.navy} disabled:opacity-50`}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           <span className="text-[#ffffff]">New team</span>
         </button>}
@@ -300,7 +301,7 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
               Cancel
             </button>
             <button type="button" onClick={submit} disabled={!canSave}
-              className="font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-5 py-2.5 shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
+              className={`${BTN.navy} disabled:opacity-50`}>
               <span className="text-[#ffffff]">{mode === 'new' ? 'Create team' : 'Save changes'}</span>
             </button>
           </div>

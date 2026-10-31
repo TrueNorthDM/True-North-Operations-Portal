@@ -10,6 +10,7 @@ import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface ClientWithBudget {
   id: number
@@ -228,7 +229,7 @@ function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () =
       <div className="space-y-5">
         <p className="text-sm text-muted">No budget set for this client yet.</p>
         <div className="flex justify-end">
-          <button onClick={onEdit} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all">Set budget</button>
+          <button onClick={onEdit} className={BTN.navy}>Set budget</button>
         </div>
       </div>
     )
@@ -269,7 +270,7 @@ function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () =
       )}
 
       <div className="flex justify-end">
-        <button onClick={onEdit} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all">Edit</button>
+        <button onClick={onEdit} className={BTN.navy}>Edit</button>
       </div>
     </div>
   )

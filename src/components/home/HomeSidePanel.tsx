@@ -29,15 +29,16 @@
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
-import { FieldLabel } from '@/components/clocky/entries/ui'
+import { CloseButton, FieldLabel } from '@/components/clocky/entries/ui'
 import { parsePaidOn } from '@/lib/timeclock/paid-on'
 import { asksForNote, panelText, type HomeRow, type PanelButton, type PanelField } from '@/lib/home/needs-you-model'
 import { DUE_FG, TypeChip, typeOf } from './needs-you-ui'
 import type { Runner } from './needs-you-actions'
+import { BTN } from '@/lib/ui/buttons'
 
 const SYMBOL = { check: 'M5 12l5 5 9-10', arrow: 'M9 6l6 6-6 6' }
-const PRIMARY = 'flex-1 cursor-pointer border-0 rounded-[11px] px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[14px] flex items-center justify-center gap-2 bg-tn-primary text-[#ffffff] disabled:opacity-60 disabled:cursor-wait'
-const SECONDARY = 'cursor-pointer border border-[#d9dee6] bg-white rounded-[11px] px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink disabled:opacity-60 disabled:cursor-wait'
+const PRIMARY = `${BTN.navy} flex-1 justify-center disabled:opacity-60 disabled:cursor-wait`
+const SECONDARY = `${BTN.white} justify-center disabled:opacity-60 disabled:cursor-wait`
 // The Mark paid dialog's input (InvoiceParts.tsx INPUT).
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
@@ -128,9 +129,7 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
               <span className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase" style={{ color: t.fg }}>{t.label}</span>
               {row.due && <span className="text-[12.5px] font-bold" style={{ color: DUE_FG[row.due.tone] }}>· {row.due.label}</span>}
             </span>
-            <button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 border-0 bg-transparent rounded-[8px] cursor-pointer text-muted flex items-center justify-center hover:bg-[#f4f2ec] hover:text-tn-ink">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-            </button>
+            <CloseButton onClick={onClose} />
           </div>
           <div className="font-(family-name:--font-display) font-extrabold text-[22px] leading-[1.25] text-tn-ink">{p.title}</div>
           <div className="text-[14px] text-[#5b6b82] leading-[1.5] tabular-nums">{p.sub}</div>

@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { BTN } from '@/lib/ui/buttons'
 
 interface Report {
   state: 'running' | 'done' | 'failed'
@@ -88,14 +89,14 @@ export function ImportRunner({ hasCutoff, mismatched }: { hasCutoff: boolean; mi
         <button
           onClick={() => run('full')}
           disabled={busy !== null}
-          className="px-4 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 transition-transform hover:-translate-y-0.5 disabled:translate-y-0"
+          className={`${BTN.navy} disabled:opacity-50`}
         >
           {busy === 'full' ? 'Importing…' : 'Run full import'}
         </button>
         <button
           onClick={() => run('delta')}
           disabled={busy !== null}
-          className="px-4 py-2.5 rounded-[10px] border border-slate-200 bg-white text-tn-ink font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 hover:border-tn-teal transition-colors"
+          className={`${BTN.white} disabled:opacity-50`}
         >
           {busy === 'delta' ? 'Catching up…' : 'Catch up (delta)'}
         </button>
