@@ -14,6 +14,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { IS_STAGING } from '@/lib/environment'
 
 export const RIPPLING_CALLS_WRITTEN = false
 
@@ -23,9 +24,12 @@ export interface Connections {
 }
 
 export async function loadConnections(): Promise<Connections> {
-  const { data, error } = await createAdminClient().from('app_settings')
-    .select('rippling_api_token, rippling_connected_by, rippling_connected_at, google_service_account, google_team_calendar_id, google_connected_by, google_connected_at, google_checked_at')
-    .eq('singleton_id', 1).maybeSingle()
+  const [{ data, error }, { data: office }] = await Promise.all([
+    createAdminClient().from('app_settings')
+      .select('rippling_api_token, rippling_connected_by, rippling_connected_at, google_service_account, google_team_calendar_id, google_connected_by, google_connected_at, google_checked_at')
+      .eq('singleton_id', 1).maybeSingle(),
+    createAdminClient().from('agenda_accounts').select('id').eq('team_calendar', true).eq('source', 'google').eq('status', 'connected').maybeSingle(),
+  ])
   if (error) throw new Error(`The connections could not be read: ${error.message}`)
   let account: string | null = null
   if (data?.google_service_account) {
@@ -37,7 +41,10 @@ export async function loadConnections(): Promise<Connections> {
       tokenEnd: data?.rippling_api_token ? data.rippling_api_token.slice(-4) : null, connectedBy: data?.rippling_connected_by ?? null, connectedAt: data?.rippling_connected_at ?? null,
     },
     google: {
-      connected: !!data?.google_service_account && !!data.google_team_calendar_id, account,
+      // office@ connected by Google sign-in (Agenda settings) is the team calendar too (31 October 2026).
+      // Not on staging: its office@ is the real one, and staging's time off carries real names, so
+      // it waits there until the owner decides (open question, 31 October 2026).
+      connected: (!!data?.google_service_account && !!data.google_team_calendar_id) || (!!office && !IS_STAGING), account,
       teamCalendarId: data?.google_team_calendar_id ?? null,
       connectedBy: data?.google_connected_by ?? null, connectedAt: data?.google_connected_at ?? null, checkedAt: data?.google_checked_at ?? null,
     },
