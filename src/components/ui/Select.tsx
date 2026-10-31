@@ -22,6 +22,8 @@ export interface SelectOption {
   value: string
   label: string
   disabled?: boolean
+  /** A small mark before the label, in the menu and on the trigger (the Google "G" of an account). */
+  icon?: React.ReactNode
   /**
    * Heading this option sits under. Options are NOT reordered here: the caller
    * sorts them so that a group's members are adjacent, and a heading is drawn
@@ -198,6 +200,7 @@ export function Select({
                   active ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
                 }`}
               >
+                {o.icon && <span className="flex-none flex">{o.icon}</span>}
                 <span className="flex-1 truncate">{o.label}</span>
                 {active && (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
@@ -226,8 +229,9 @@ export function Select({
       >
         {/* A chosen value reads as ink and an unchosen one as muted, which is
             how the trigger says whether it is filtering anything. */}
-        <span className={`truncate ${selected ? `text-tn-ink${strongValue ? ' font-semibold' : ''}` : mutePlaceholder ? 'text-muted' : ''}`}>
-          {selected ? selected.label : placeholder}
+        <span className={`flex items-center gap-2 min-w-0 ${selected ? `text-tn-ink${strongValue ? ' font-semibold' : ''}` : mutePlaceholder ? 'text-muted' : ''}`}>
+          {selected?.icon && <span className="flex-none flex">{selected.icon}</span>}
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
       </button>

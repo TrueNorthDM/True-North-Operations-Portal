@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Icon, Modal, MODAL_TITLE } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
+import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { failText } from '@/lib/ui/action-error'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
 import type { Answer, DrawerEdit } from '@/lib/agenda/model'
@@ -389,7 +390,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
                 <Link href="/agenda/settings" className="inline-flex items-center rounded-[10px] px-3 py-2 bg-tn-teal text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px]">Connect a Google account</Link>
               </div>
             ) : (
-              <Select value={account == null ? '' : String(account)} placeholder="Select account" options={setup.accounts.map(a => ({ value: String(a.id), label: a.team ? `From ${a.email} (team calendar)` : `From ${a.email}` }))}
+              <Select value={account == null ? '' : String(account)} placeholder="Select account" options={setup.accounts.map(a => ({ value: String(a.id), label: a.team ? `${a.email} (team calendar)` : a.email, icon: <GoogleIcon size={16} /> }))}
                 onChange={v => { setAccount(v ? Number(v) : null); setFromErr(false) }} fullWidth ariaLabel="Send from"
                 className={`${SELECT} ${fromErr ? '!border-[#d98c1f] shadow-[0_0_0_3px_rgba(217,140,31,.15)]' : ''}`} />
             )}
