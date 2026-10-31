@@ -27,7 +27,7 @@ import type { Scope } from '@/lib/agenda/recurrence'
 import type { WorkingHours } from '@/lib/agenda/working-hours'
 import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, WEEK_SHOWN_HOURS, stepAnchor, viewDays, weekModel, weekNumber,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, AGENDA_H, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -150,7 +150,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 items-start">
         <div className="min-w-0">
           {view === 'month' && (phone
             ? <MonthPhone items={items} anchor={anchor} today={data.today} seesType={seesType} pick={pick} onPick={setPick} onOpen={setCard} />
@@ -160,11 +160,11 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} hours={data.me.hours} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
-        {/* The side column is as tall as the calendar and never taller: Coming up
-            fills what is left under the small month (week and list) and shows
-            the items that fit (owner, 31 October 2026). */}
-        <div className="relative min-w-0 lg:min-h-[600px]">
-          <div className="flex flex-col gap-4 lg:absolute lg:inset-0">
+        {/* The side column has the calendar's height (AGENDA_H) in every view, the
+            list included: Coming up fills what is left under the small month and
+            shows the items that fit (owner, 31 October 2026). */}
+        <div className="min-w-0">
+          <div className="flex flex-col gap-4 lg:h-(--agenda-h)" style={{ ['--agenda-h' as string]: `${AGENDA_H}px` }}>
             {view !== 'month' && !phone && <MiniMonth anchor={anchor} today={data.today} onPick={d => go(view, d)} />}
             <ComingUp items={items} today={data.today} onOpen={setCard} />
           </div>
@@ -212,16 +212,16 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
 function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; anchor: string; today: string; onOpen: (id: string) => void; onMore: (day: string) => void }) {
   const cells = monthCells(items, anchor, today)
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden flex flex-col" style={{ height: AGENDA_H }}>
       <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))] bg-subtle border-b border-[var(--panel-border)]">
         <div className={`px-2.5 py-2 leading-[normal] ${LABEL}`}>W</div>
         {DOWS.map(d => <div key={d} className={`px-2.5 py-2 leading-[normal] ${LABEL}`}>{d}</div>)}
       </div>
-      <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))]">
+      <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))] auto-rows-[minmax(0,1fr)] flex-1 min-h-0">
         {cells.map((d, i) => [
           i % 7 === 0 && <div key={`w${d.day}`} className="box-border border-r border-b border-[var(--row-rule)] pt-[11px] text-center text-[11px] font-bold leading-[normal] text-tn-teal tabular-nums lining-nums">{weekNumber(d.day)}</div>,
           (
-          <div key={d.day} className={`min-h-[124px] box-border border-r border-b border-[var(--row-rule)] pt-1.5 px-1.5 pb-2 flex flex-col gap-[3px] min-w-0 ${d.inMonth ? 'bg-white' : 'bg-[#faf9f5]'}`}>
+          <div key={d.day} className={`min-h-0 overflow-hidden box-border border-r border-b border-[var(--row-rule)] pt-1.5 px-1.5 pb-2 flex flex-col gap-[3px] min-w-0 ${d.inMonth ? 'bg-white' : 'bg-[#faf9f5]'}`}>
             <div className="flex items-center justify-between gap-1 min-h-6">
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold leading-[normal] tabular-nums lining-nums ${d.today ? 'bg-tn-primary text-[#ffffff]' : d.inMonth ? 'text-tn-ink' : 'text-[#cbd2da]'}`}>{d.n}</span>
               {d.out.length > 0 && (
@@ -272,14 +272,14 @@ function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: 
   const box = useRef<HTMLDivElement>(null)
   const follow = useRef(true)
   const startOfWork = Math.min(...Object.values(hours ?? {}).map(b => b?.[0]?.[0] ?? 1440), 8 * 60) / 60
-  const target = line ? line.top - WEEK_SHOWN_HOURS * WEEK_ROW / 2 : startOfWork * WEEK_ROW
   useEffect(() => { follow.current = true }, [anchor])
   useEffect(() => {
-    if (box.current && follow.current) box.current.scrollTop = Math.max(0, target)
-  }, [anchor, target])
+    const b = box.current
+    if (b && follow.current) b.scrollTop = Math.max(0, line ? line.top - b.clientHeight / 2 : startOfWork * WEEK_ROW)
+  }, [anchor, line?.top, startOfWork]) // eslint-disable-line react-hooks/exhaustive-deps
   const stop = () => { follow.current = false }
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden flex flex-col" style={{ height: AGENDA_H }}>
       <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] bg-subtle border-b border-[var(--panel-border)]">
         <div />
         {wk.heads.map(h => (
@@ -300,7 +300,7 @@ function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: 
           </button>
         ))}
       </div>
-      <div ref={box} onWheel={stop} onTouchMove={stop} onKeyDown={stop} className="overflow-y-auto overscroll-contain" style={{ height: WEEK_SHOWN_HOURS * WEEK_ROW }}>
+      <div ref={box} onWheel={stop} onTouchMove={stop} onKeyDown={stop} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       <div className="relative grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
         <div className="flex flex-col">
           {wk.hours.map(h => <div key={h} className="h-20 box-border px-2 py-0.5 text-[10.5px] text-muted leading-[normal] tabular-nums lining-nums border-t border-[#f1f3f6]">{h}</div>)}

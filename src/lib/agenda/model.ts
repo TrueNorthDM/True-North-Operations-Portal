@@ -341,6 +341,8 @@ const cellTime = (h: number) => hourLabel(h).replace(':00', '').replace(' ', '')
 
 export function monthCells(items: readonly AgendaItem[], anchor: string, today: string): MonthCell[] {
   const { from, to } = viewDays('month', anchor), cells: MonthCell[] = []
+  // The month is as tall as the week (AGENDA_H): a six-week month has room for two items a day.
+  const cap = (Date.parse(to) - Date.parse(from)) / 864e5 + 1 > 35 ? 2 : 3
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const outs = items.filter(x => x.k === 'pto' && covers(x, d) && !isWeekend(d))
     const its = items.filter(x => x.k !== 'pto' && covers(x, d)).sort(byKind)
@@ -348,8 +350,8 @@ export function monthCells(items: readonly AgendaItem[], anchor: string, today: 
       day: d, n: Number(d.slice(8)), inMonth: d.slice(0, 7) === anchor.slice(0, 7), today: d === today,
       out: outs.slice(0, 3).map(x => ({ id: x.id, ini: ini(x.who?.name ?? ''), color: x.who?.color ?? '#9CA3AF' })),
       outTip: outs.map(label).join(' · '),
-      items: its.slice(0, 3).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x), meet: !!meetOf(x) })),
-      more: Math.max(0, its.length - 3),
+      items: its.slice(0, cap).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x), meet: !!meetOf(x) })),
+      more: Math.max(0, its.length - cap),
     })
   }
   return cells
@@ -423,9 +425,10 @@ export function nowLine(wk: Pick<WeekModel, 'days' | 'first' | 'last'>, now: { d
   return { col, top: (h - wk.first) * WEEK_ROW }
 }
 
-/** One hour of the week, in pixels: seven of them fill the box, so cards read larger (owner, 31 October 2026). */
+/** One hour of the week, in pixels: about seven fit in AGENDA_H, so cards read larger (owner, 31 October 2026). */
 export const WEEK_ROW = 80
-export const WEEK_SHOWN_HOURS = 7
+/** The month, the week and the side column end on one line, whatever the view (owner, 31 October 2026). */
+export const AGENDA_H = 680
 
 export function weekModel(items: readonly AgendaItem[], anchor: string, today: string, seesType: (x: AgendaItem) => boolean): WeekModel {
   const { from } = viewDays('week', anchor), days = [...Array(7)].map((_, i) => addDays(from, i))
