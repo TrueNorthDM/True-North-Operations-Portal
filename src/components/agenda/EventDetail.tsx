@@ -26,6 +26,13 @@ const MARK: Record<Answer, { t: string; label: string; fg: string; bg: string }>
   waiting: { t: '…', label: 'No answer yet', fg: '#6f7c8f', bg: '#eef0f3' },
 }
 
+/** The Yes, No and Maybe buttons: each answer in its own colour, filled once chosen. */
+const RSVP = {
+  yes: { label: 'Yes', d: 'M5 12l5 5L20 7', solid: '#16795a', soft: '#e2f2ee', line: '#b5e0d0', ink: '#16695c' },
+  no: { label: 'No', d: 'M6 6l12 12M18 6 6 18', solid: '#c8323d', soft: '#fbe7e9', line: '#f1c3c8', ink: '#b4232f' },
+  maybe: { label: 'Maybe', d: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', solid: '#8a6703', soft: '#fdf3cf', line: '#f0dc93', ink: '#7a5c00' },
+} as const
+
 const mapsUrl = (q: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
 
 /** The place (in person) or the Meet box, then the people. */
@@ -137,15 +144,18 @@ export function DetailFoot({ detail, by, myAnswer, onAnswer, busy }: {
         )}
       </div>
       {myAnswer && onAnswer && (
-        <div className="flex flex-col gap-[9px] border-t border-[#eef0f3] pt-3.5">
+        <div className="flex flex-col gap-2.5 rounded-[14px] bg-[#f3f2ee] px-3.5 py-3">
           <span className={HEAD}>Going?</span>
           <div className="flex gap-2">
             {(['yes', 'no', 'maybe'] as const).map(a => {
-              const on = myAnswer === a
+              const on = myAnswer === a, k = RSVP[a]
+              const answered = myAnswer !== 'waiting'
               return (
                 <button key={a} type="button" aria-pressed={on} disabled={busy} onClick={() => onAnswer(a)}
-                  className={`flex-1 rounded-[10px] py-2.5 font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer disabled:opacity-60 disabled:cursor-default border ${on ? 'border-tn-teal bg-tn-teal-soft text-tn-teal' : 'border-[var(--panel-border)] bg-white text-tn-ink hover:border-tn-teal'}`}>
-                  {on ? '✓ ' : ''}{a === 'yes' ? 'Yes' : a === 'no' ? 'No' : 'Maybe'}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-[10px] py-2.5 border-2 font-(family-name:--font-display) font-extrabold text-[13.5px] cursor-pointer transition-colors disabled:cursor-default ${answered && !on ? 'opacity-60 hover:opacity-100' : ''}`}
+                  style={on ? { background: k.solid, borderColor: k.solid, color: '#ffffff' } : { background: k.soft, borderColor: k.line, color: k.ink }}>
+                  <Icon d={k.d} size={15} width={2.6} color={on ? '#ffffff' : k.ink} />
+                  {k.label}
                 </button>
               )
             })}
