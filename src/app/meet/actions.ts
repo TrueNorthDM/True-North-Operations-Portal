@@ -22,6 +22,7 @@ import { sendEmail } from '@/lib/email/resend'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { freeSlots, loadHost, loadPublicLink } from '@/lib/agenda/booking-data'
 import { bookingTitle, bookingZoneLabel, checkBooking, confirmEmail, HOLD_MINUTES, hostLine, whenLine, type BookingInput } from '@/lib/agenda/booking'
+import { sendToGoogle } from '@/lib/agenda/google-events'
 import { sampleMeetLink } from '@/lib/agenda/sample-plan'
 import { DC, localOf } from '@/lib/agenda/time'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
@@ -168,7 +169,8 @@ export async function confirmBooking(input: { token: string }): Promise<Confirme
     return no(TRY_AGAIN)
   }
   const eventId = ev.id as number
-  await c.from('agenda_events').update({ meet_link: sampleMeetLink(`${eventId}`) }).eq('id', eventId)
+  const onGoogle = acct?.source === 'google'
+  if (!onGoogle) await c.from('agenda_events').update({ meet_link: sampleMeetLink(`${eventId}`) }).eq('id', eventId)
   const guests = [b.email as string, ...((b.guests ?? []) as string[])]
   const { data: known } = await c.from('people').select('id, email_true_north, email_goodnews').eq('status', 'active')
   const personOf = new Map<string, string>()
@@ -178,6 +180,8 @@ export async function confirmBooking(input: { token: string }): Promise<Confirme
   const { error: gErr } = await c.from('agenda_event_guests').insert(guests.map(email => ({ event_id: eventId, email, person_id: personOf.get(email) ?? null, via: 'guest' })))
   if (gErr) console.error('[booking] guests:', gErr.message)
   await c.from('agenda_bookings').update({ event_id: eventId }).eq('id', b.id)
+  // On a Google account the meeting goes to the host's Google Calendar: Google invites the guests and makes the Meet link.
+  if (onGoogle && !(await sendToGoogle(eventId))) console.error(`[booking] event ${eventId} is in the portal but not on Google`)
   try {
     await notifyAgendaBooking({ bookingId: b.id, hostId: host.personId, title: `New booking: ${b.name}`, body: hostLine(start, len, guests.length, host.zone) })
   } catch (e) {
