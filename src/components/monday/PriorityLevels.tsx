@@ -28,7 +28,7 @@ function LevelDelta({ by }: { by: number }) {
   if (!by) return <span className="text-[var(--faint)] text-[13px]">-</span>
   return by > 0
     ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${by}`}</span>
-    : <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>{`down ${-by}`}</span>
+    : <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`down ${-by}`}</span>
 }
 
 function Late({ count }: { count: number }) {

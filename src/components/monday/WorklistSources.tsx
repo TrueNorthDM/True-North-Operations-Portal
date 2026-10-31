@@ -22,6 +22,7 @@ import { STALE_MONTHS } from '@/lib/monday/worklist/stale'
 import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
 import { Tabs } from '@/components/ui/Tabs'
 import { CARD } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 const PRIORITIES = [
   { key: 'high', label: 'High' },
@@ -135,7 +136,7 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
 
   return (
     <div className="space-y-4">
-      {error && <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+      {error && <div role="alert" className={ERROR_BOX}>{error}</div>}
 
       {/* Above the tabs, because it governs the boards list below it and not
           the People tab beside it. */}

@@ -18,8 +18,8 @@ import type { Result } from '@/lib/timeclock/clocky-types'
 import { DocPdfModal } from '@/components/clocky/invoices/InvoicePdfModal'
 import { InvoiceHistory, MarkPaidDialog } from '@/components/clocky/invoices/InvoiceParts'
 import { Icon, Toast, type ToastState } from '@/components/clocky/entries/ui'
-import { REQ_TONE } from './ReimbursementsView'
-import { PAGE_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 export interface RmbDocApi {
   getPayDoc(i: { kind: 'rmb'; id: number }): Promise<Result<{ doc: DocSheetData }>>
@@ -44,7 +44,6 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
       say({ text: 'That did not go through. Check your connection and try again.', error: true })
     }
   }
-  const tone = REQ_TONE[d.st.tone]
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-max content-start gap-4 leading-[normal]">
@@ -52,13 +51,13 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
         <Breadcrumb parents={['/requests', { href: '/requests/reimbursements', label: 'Reimbursements' }]} now={d.number} />
         <div className="flex items-center gap-3.5 flex-wrap mt-1.5">
           <h1 className={PAGE_TITLE}>{d.number}</h1>
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[11px] py-[5px]" style={{ background: tone.bg, color: tone.fg }}>{d.st.label}</span>
+          <span className={pillClass(d.st.tone)}>{d.st.label}</span>
         </div>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{d.who} · {d.items.length} approved item{d.items.length === 1 ? '' : 's'} · made by the portal for Finance to pay.</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-[18px] items-start">
-        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-4 py-5 md:px-[34px] md:py-[30px] flex flex-col gap-[22px] min-w-0">
+        <div className={`${CARD} px-4 py-5 md:px-[34px] md:py-[30px] flex flex-col gap-[22px] min-w-0`}>
           {/* On a phone the paper stacks: the date under the title, Pay to over From, each item as a short block. */}
           <div className="flex flex-col md:flex-row md:justify-between items-start gap-3 md:gap-4">
             <div>
@@ -95,7 +94,7 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
           <div className="text-[12.5px] text-muted leading-[1.55]">Every item was approved by a Super Admin and has its receipt. Each item is paid once: once this document is paid, its items show Paid in {d.first}&apos;s Reimbursements.</div>
         </div>
         <div className="flex flex-col gap-3.5">
-          <div className="bg-white border border-[var(--panel-border)] rounded-[16px] p-[18px] flex flex-col gap-2.5">
+          <div className={`${CARD} p-[18px] flex flex-col gap-2.5`}>
             <button type="button" onClick={() => void openPdf()} className={`${BTN.white} justify-center`}>
               <Icon d={EYE} size={15} color={BTN_ICON.white} width={2.2} />Preview PDF
             </button>

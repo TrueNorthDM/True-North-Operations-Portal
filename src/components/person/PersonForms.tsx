@@ -21,6 +21,7 @@ import type { Result } from '@/lib/timeclock/clocky-types'
 import type { CadencePreview } from '@/lib/timeclock/clocky-periods-data'
 import { DateField } from '@/components/ui/DateField'
 import { FIELD_LABEL } from '@/lib/ui/type'
+import { CHECKBOX } from '@/lib/ui/fields'
 
 /** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
 export interface CadenceActions {
@@ -52,7 +53,7 @@ function Seg({ value, options, onPick }: { value: string; options: { v: string; 
 function SaveBar({ what, pending, error, onCancel, onSave, left }: { what: string; pending: boolean; error: string | null; onCancel: () => void; onSave: () => void; left?: ReactNode }) {
   return (
     <>
-      {error && <p className="text-sm text-red-600 mt-4 mb-0">{error}</p>}
+      {error && <p className="text-sm text-[#c8323d] mt-4 mb-0">{error}</p>}
       <div className="sticky bottom-3 mt-5 flex items-center justify-between gap-3 flex-wrap rounded-[12px] bg-tn-primary px-4 py-2.5 shadow-[0_18px_36px_-18px_rgba(1,35,88,.7)]">
         <span className="flex items-center gap-2.5 text-[13px] text-[#ffffff]">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">Editing</span>
@@ -193,7 +194,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
                   <button type="button" onClick={() => set('teams', d.teams.map((t, j) => ({ ...t, primary: j === i })))} aria-label={row.primary ? 'Primary department' : 'Set as primary department'} title={row.primary ? 'Primary department' : 'Set as primary department'} className={`shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] ${row.primary ? 'text-tn-primary bg-tn-teal-soft' : 'text-slate-300 hover:text-tn-teal hover:bg-tn-teal-soft'}`}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={row.primary ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                   </button>
-                  <button type="button" onClick={() => set('teams', d.teams.filter((_, j) => j !== i))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-red-50 hover:text-red-600">
+                  <button type="button" onClick={() => set('teams', d.teams.filter((_, j) => j !== i))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-[#fdeeef] hover:text-[#c8323d]">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                   </button>
                 </div>
@@ -220,7 +221,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
               <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={selectFieldCls} ariaLabel="Milestone type" /></div>
               <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={dateFieldCls} aria-label="Milestone date" /></div>
               <div className="flex-1 min-w-[160px]"><input value={row.note} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)))} className={fieldCls} placeholder="What changed…" aria-label="Milestone note" /></div>
-              <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-red-50 hover:text-red-600">
+              <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-[#fdeeef] hover:text-[#c8323d]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
@@ -256,7 +257,7 @@ export function HrForm({ data, pending, error, onCancel, onSave }: FormProps<Par
       {h.hasTsheets && (
         <Section title="QuickBooks Time">
           <label className="flex items-center gap-2.5 pt-2 text-[13.5px] text-foreground cursor-pointer">
-            <input type="checkbox" checked={d.unlinkTsheets} onChange={e => setD(x => ({ ...x, unlinkTsheets: e.target.checked }))} className="h-4 w-4 accent-[#012358]" />
+            <input type="checkbox" checked={d.unlinkTsheets} onChange={e => setD(x => ({ ...x, unlinkTsheets: e.target.checked }))} className={CHECKBOX} />
             Unlink their QuickBooks Time account
           </label>
         </Section>

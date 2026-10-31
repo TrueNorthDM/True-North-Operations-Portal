@@ -53,7 +53,7 @@ function Figures({ c }: { c: I7Carryover }) {
           <div className={LABEL}>Balance left</div>
           <div className={`text-[26px] leading-[1.2] font-(family-name:--font-display) font-extrabold tabular-nums ${c.totalLeft < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{moneySigned(c.totalLeft)}</div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 text-[11.5px] font-(family-name:--font-display) font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${pill.cls}`}>
+        <span className={`gap-1.5 ${pill.cls}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
         </span>
       </div>

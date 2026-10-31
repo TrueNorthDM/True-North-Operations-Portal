@@ -192,9 +192,9 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
 
   if (fetchError) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-2">
-        <p className="font-semibold text-red-700">The report could not be read just now</p>
-        <p className="text-sm text-red-600 m-0">
+      <div className="rounded-[10px] bg-[#fdeeef] p-6 space-y-2">
+        <p className="font-semibold text-[#c8323d]">The report could not be read just now</p>
+        <p className="text-sm text-[#c8323d] m-0">
           Nothing is shown rather than a figure that could be wrong. Reload the page in a moment. If it keeps happening, look at the integrations on <Link href="/admin/automations" className="underline">Automations</Link>.
         </p>
       </div>

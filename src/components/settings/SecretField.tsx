@@ -29,6 +29,7 @@ import { useEditing } from './editing-context'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN } from '@/lib/ui/buttons'
 import { SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export interface SecretInfo {
   exists: boolean
@@ -220,7 +221,7 @@ export function SecretField({
       )}
 
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className={ERROR_BOX}>
           {error}
         </div>
       )}

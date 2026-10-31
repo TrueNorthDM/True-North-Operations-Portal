@@ -1,3 +1,4 @@
+import { PILL } from '@/components/ui/Pill'
 // The badge vocabulary of the work list.
 //
 // Its own module, with no 'use client', for two reasons. A server component
@@ -10,11 +11,10 @@
  * A badge: 20px line box, no vertical padding, so it sits on the text line
  * beside it rather than half a line below.
  */
-export const chip =
-  'inline-flex items-center align-top font-[family-name:var(--font-open-sans)] text-[10px] font-extrabold tracking-[.06em] uppercase px-2 leading-5 rounded-[5px]'
+export const chip = `${PILL} align-top`
 
 export const PRIORITY_CHIP: Record<string, string> = {
-  high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
+  high: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]',
   medium: 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]',
   // #66727f is 4.9:1 on white. It was #9aa7b6, 2.5:1, quiet enough to be
   // unreadable (audit, 10 October 2026).
@@ -24,8 +24,8 @@ export const PRIORITY_CHIP: Record<string, string> = {
 export type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 
 export const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
-  late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
-  today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]' },
+  late: { label: 'Late', className: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]' },
+  today: { label: 'Due today', className: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' },
   upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
   odd: { label: 'Check date', className: 'bg-[var(--chip-neutral-bg)] text-muted' },
 }

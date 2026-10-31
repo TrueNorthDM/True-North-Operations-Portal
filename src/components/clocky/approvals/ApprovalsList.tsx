@@ -32,6 +32,7 @@ import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { PILL, pillClass } from '@/components/ui/Pill'
 
 export interface QueueApi {
   getQueue(): Promise<Result<{ data: QueueData }>>
@@ -61,7 +62,6 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
 }
 const FILTERS: [Filter, string][] = [['all', 'All'], ['ts', 'Timesheet'], ['off', 'Time off'], ['rmb', 'Reimbursement'], ['xh', 'Extra hours'], ['cor', 'Added time']]
 const ROW_GRID = 'grid grid-cols-[minmax(170px,.9fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_250px] gap-x-[22px] gap-y-3 items-center px-[18px] py-4'
-const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const BTN_WHITE = BTN.smallWhite
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 
@@ -272,7 +272,7 @@ export function ApprovalsList({ initialData, api, initial }: {
                     )}
                     {tab === 'done' && r.done && (
                       <div className="flex flex-col items-end gap-1 max-w-full text-right">
-                        <span className={PILL} style={{ background: TONES[r.done.tone].bg, color: TONES[r.done.tone].fg }}>{r.done.label}</span>
+                        <span className={pillClass(r.done.tone)}>{r.done.label}</span>
                         <span className="text-[11.5px] text-muted leading-[1.4] [text-wrap:pretty]">{r.done.by}</span>
                       </div>
                     )}

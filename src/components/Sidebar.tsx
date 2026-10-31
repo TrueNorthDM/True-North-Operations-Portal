@@ -35,6 +35,7 @@ import type { NavItem, ResolvedEntry } from '@/lib/access/nav'
 import { NAV_COUNT_LABEL, badgeText, hubCount, railCountKeys, type NavCount } from '@/lib/nav/counts'
 import { getRailCounts } from '@/app/(app)/rail-actions'
 import { onPath, pathOf } from '@/lib/nav/path'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
 
@@ -288,7 +289,7 @@ export function Sidebar({
             ) : (
               <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{hub.label}</span>
             )}
-            <button type="button" onClick={() => setOpen(null)} aria-label="Close" className="text-muted hover:text-tn-ink text-[18px] leading-none px-1">×</button>
+            <CloseButton onClick={() => setOpen(null)} />
           </div>
           <p className="text-[12px] text-muted leading-normal px-2 pb-2.5 m-0">{hub.hint}</p>
           {hub.groups.map((g, gi) => (

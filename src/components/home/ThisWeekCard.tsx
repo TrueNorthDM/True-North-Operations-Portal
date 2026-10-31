@@ -7,13 +7,13 @@ import { Icon } from '@/components/clocky/entries/ui'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { ThisWeek } from '@/lib/agenda/model'
-import { FIELD_LABEL } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 const LABEL = FIELD_LABEL
 
 export function ThisWeekCard({ week, linked = true }: { week: ThisWeek; linked?: boolean }) {
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-5 py-[18px] flex flex-col gap-4 leading-[normal]">
+    <div className={`${CARD} px-5 py-[18px] flex flex-col gap-4 leading-[normal]`}>
       <div className="flex items-center justify-between">
         <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">This week</span>
         <span className="text-[12px] text-muted">{week.range}</span>

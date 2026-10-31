@@ -23,6 +23,7 @@ import {
   describeLine, emptyForm, h2, linesToSend, pendingSummary, stageProblem, toEntry,
   type ManualForm, type ManualOptions, type ManualRow, type StagedLine,
 } from './manual-hours'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 // The types live in ./manual-hours; re-exported so importers keep reaching
 // them here.
@@ -104,7 +105,7 @@ export function ManualHours(
       </div>
 
       {error ? (
-        <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-[13px] text-red-800 mb-4">{error}</div>
+        <div role="alert" className={`${ERROR_BOX} mb-4`}>{error}</div>
       ) : null}
 
       <ManualHoursForm options={options} month={month} form={form} patch={patch} onStage={stage} busy={busy} />

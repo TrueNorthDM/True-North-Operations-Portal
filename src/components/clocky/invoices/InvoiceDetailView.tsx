@@ -16,7 +16,8 @@ import { InvoiceDoc } from './InvoiceDoc'
 import { InvoicePdfModal } from './InvoicePdfModal'
 import { InvoiceHistory, MarkPaidDialog, STATE_PILL } from './InvoiceParts'
 import type { InvoicesApi } from './InvoicesList'
-import { PAGE_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { Pill } from '@/components/ui/Pill'
 
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 
@@ -52,17 +53,17 @@ export function InvoiceDetailView({ d, api, initial }: {
         <Breadcrumb parents={['/clocky-hours', { href: '/clocky-hours/invoices', label: 'Invoices' }]} now={d.doc.number} />
         <div className="flex items-center gap-3.5 flex-wrap mt-1.5">
           <h1 className={PAGE_TITLE}>{d.doc.number}</h1>
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[11px] py-[5px]" style={{ background: pill.bg, color: pill.fg }}>{pill.label}</span>
+          <Pill tone={pill.tone} text={pill.label} />
           <span className="text-[13px] text-muted">{d.who} · {d.doc.period}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-[18px] items-start">
-        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden flex flex-col min-w-0">
+        <div className={`${CARD} overflow-hidden flex flex-col min-w-0`}>
           <InvoiceDoc inv={d.doc} variant="detail" />
         </div>
         <div className="flex flex-col gap-3.5">
-          <div className="bg-white border border-[var(--panel-border)] rounded-[16px] p-[18px] flex flex-col gap-2.5">
+          <div className={`${CARD} p-[18px] flex flex-col gap-2.5`}>
             <button type="button" onClick={() => setPdf(true)}
               className={`${BTN.white} justify-center`}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={EYE} /></svg>Preview PDF

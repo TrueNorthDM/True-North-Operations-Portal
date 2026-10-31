@@ -26,6 +26,7 @@ import { useEditing } from './editing-context'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export const WEBHOOK_PATH = '/api/monday/webhook/'
 
@@ -138,7 +139,7 @@ export function WebhookUrlField({
           </div>
           <p aria-live="polite" className="text-xs m-0 text-slate-600">
             {copy === 'copied' && 'The full URL is on the clipboard.'}
-            {copy === 'failed' && <span className="text-red-700">Copy failed. Press Show, then select the URL and copy it by hand.</span>}
+            {copy === 'failed' && <span className="text-[#c8323d]">Copy failed. Press Show, then select the URL and copy it by hand.</span>}
           </p>
         </div>
       ) : (
@@ -154,7 +155,7 @@ export function WebhookUrlField({
       )}
 
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className={ERROR_BOX}>
           {error}
         </div>
       )}

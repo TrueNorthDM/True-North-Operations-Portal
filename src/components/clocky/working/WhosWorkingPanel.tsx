@@ -21,7 +21,8 @@ import { ClockOutForDialog } from './ClockOutForDialog'
 import type { WorkingApi } from './working-api'
 import { SORTS, emptyTitle, groupsOf, scopeText, viewerTime, type WorkingFilter, type WorkingRow, type WorkingSort } from './working-model'
 import { BTN } from '@/lib/ui/buttons'
-import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 export const WHOS_WORKING_HREF = '/clocky-hours/whos-working'
 /** A person's entries on Time entries. */
@@ -132,7 +133,7 @@ export function WhosWorkingPanel({
   const dialogPerson = data && ui.dialog ? data.people.find(p => p.personId === ui.dialog) ?? null : null
 
   const place = page
-    ? `relative bg-white border border-[var(--panel-border)] rounded-[16px] ${fill ? 'h-full' : 'h-[calc(100dvh-var(--chrome-top)-92px)] min-h-[480px]'}`
+    ? `relative ${CARD} ${fill ? 'h-full' : 'h-[calc(100dvh-var(--chrome-top)-92px)] min-h-[480px]'}`
     : `${contained ? 'absolute' : 'fixed'} right-0 bottom-0 ${contained ? '' : 'top-[var(--chrome-top)]'} w-[481px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]`
 
   return (
@@ -231,7 +232,7 @@ function PersonRow({ row: r, menuOpen, onMenu, onClockOut }: { row: WorkingRow; 
         <div className="flex items-center gap-[7px] flex-wrap">
           <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{p.name}</span>
           {r.tags.map(t => (
-            <span key={t.text} title={t.tip} className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-2 py-[2px] tabular-nums lining-nums"
+            <span key={t.text} title={t.tip} className={`${PILL} tabular-nums lining-nums`}
               style={{ background: t.bg, color: t.fg }}>{t.text}</span>
           ))}
         </div>

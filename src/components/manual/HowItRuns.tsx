@@ -14,7 +14,7 @@
  */
 
 import { RunsToc } from './RunsToc'
-import { SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { SECTION_TITLE, CARD, TH } from '@/lib/ui/type'
 
 
 const ACTIONS = 'https://github.com/TrueNorthDM/True-North-Operations-Portal/actions'
@@ -54,7 +54,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
         <thead>
           <tr>
             {head.map(h => (
-              <th key={h} className="text-left bg-subtle font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.08em] text-muted px-4 py-2.5 border-b border-slate-200 whitespace-nowrap">{h}</th>
+              <th key={h} className={`${TH} whitespace-nowrap`}>{h}</th>
             ))}
           </tr>
         </thead>

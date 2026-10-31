@@ -31,6 +31,8 @@ import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
+import { PILL } from '@/components/ui/Pill'
+import { CARD } from '@/lib/ui/type'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'status' | 'tsheets'
 
@@ -66,7 +68,7 @@ const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews 
 
 function PillBadge({ pill }: { pill: Pill }) {
   return (
-    <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+    <span className={`${PILL} ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
   )
 }
 
@@ -144,7 +146,7 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen, column
       </div>
 
       {/* table */}
-      <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: gridTemplate }}>
           <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
           {visCols.map(c => (

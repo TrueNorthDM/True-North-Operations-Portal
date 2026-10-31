@@ -12,7 +12,7 @@ export type { OpenDecision, Source, SourceState }
 
 const SOURCE_CHIP: Record<SourceState, { label: string; className: string }> = {
   live: { label: 'live', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  'to-build': { label: 'to build', className: 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]' },
+  'to-build': { label: 'to build', className: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' },
 }
 
 export function ReportMethod(

@@ -17,6 +17,7 @@ import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
+import { CARD } from '@/lib/ui/type'
 
 // The personal address is on the person's own page (Personal tab), not here.
 const COLS: { key: 'trueNorth' | 'goodnews' | 'coe'; label: string }[] = [
@@ -81,7 +82,7 @@ export function EmailsTab({ people, onOpen, columns: given }: {
         <ColumnsMenu columns={TABLE_COLUMNS} fixed={fixedOf('directory-emails')} choice={choice} />
       </div>
 
-      <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: layout.template }}>
           <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
           {shownCols.map(c => (

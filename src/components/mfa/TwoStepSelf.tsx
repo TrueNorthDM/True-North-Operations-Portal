@@ -71,7 +71,7 @@ export function TwoStepSelf({ since, daysLeft, blocked }: {
         )}
       </div>
       {since && <p className="text-[12px] text-muted m-0">Lost your phone? Ask an admin to reset your second step from the Directory.</p>}
-      {error && <p className="text-[12.5px] text-red-600 m-0">{error}</p>}
+      {error && <p className="text-[12.5px] text-[#c8323d] m-0">{error}</p>}
     </div>
   )
 }

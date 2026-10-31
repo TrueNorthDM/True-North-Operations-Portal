@@ -26,7 +26,7 @@ import {
   GROUP_ORDER, filterAndSort, parseLangs, splitIntoGroups, patchQuery, readView,
   sortPatch, statusCounts, toggledLangs, type GroupKey, type SortKey,
 } from './page-list-model'
-import { CARD } from '@/lib/ui/type'
+import { CARD, TH_CELL } from '@/lib/ui/type'
 
 // The pure rules live in ./page-list-model; these two are re-exported so
 // importers keep reaching them here.
@@ -168,11 +168,11 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               <col className="w-12" />
             </colgroup>
             <thead>
-              {/* Single-row header (matches the handoff): Raleway 800, navy ink,
-                  warm bg. Status + All Live stay sortable via SortHeader. */}
-              <tr className="border-b border-slate-200 bg-subtle text-left">
-                <th className="px-5 py-3 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink">Page name</th>
-                <th className="px-5 py-3 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink border-l border-slate-200">Langs</th>
+              {/* Single-row header: the portal's header cell (lib/ui/type.ts).
+                  Status + All Live stay sortable via SortHeader. */}
+              <tr>
+                <th className={`${TH_CELL} text-left px-5 py-2.5`}>Page name</th>
+                <th className={`${TH_CELL} text-left px-5 py-2.5 border-l`}>Langs</th>
                 <SortHeader
                   label="Status"
                   active={sortKey === 'hreflang_status'}
@@ -185,7 +185,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   dir={sortDir}
                   onClick={() => toggleSort('all_live')}
                 />
-                <th className="px-3" />
+                <th className={`${TH_CELL} px-3`} />
               </tr>
             </thead>
             <tbody>

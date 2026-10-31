@@ -10,7 +10,8 @@
 import { useState } from 'react'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { BTN } from '@/lib/ui/buttons'
-import { FIELD_LABEL } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DriveApi {
@@ -87,13 +88,13 @@ export function DriveCard({ data, canEdit, api, say }: {
   }
   const on = data.ready && !!data.folder
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-4">
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-4`}>
       <div className="flex items-center gap-3.5 flex-wrap">
         <span className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-none bg-[#eaf4f4]"><GoogleIcon size={22} /></span>
         <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
           <div className="flex items-center gap-2.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">Google Drive</span>
-            <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 ${on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{on ? 'Folder picked' : 'Not set up'}</span>
+            <span className={`${PILL} ${on ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{on ? 'Folder picked' : 'Not set up'}</span>
           </div>
           <span className="text-[12.5px] text-muted">{data.ready ? data.who : data.why}</span>
         </div>

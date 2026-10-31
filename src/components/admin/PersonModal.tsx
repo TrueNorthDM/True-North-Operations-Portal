@@ -38,6 +38,7 @@ import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
 import { FIELD_LABEL } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -124,7 +125,7 @@ export function PersonModal({
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
           <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} canTeams={canTeams} cadence={cadence} setCadence={setCadence} />
           <p className="text-[12.5px] text-muted mt-4">Personal details and HR are filled in on their page, which opens once they are added.</p>
-          {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
+          {error && <p role="alert" className="text-sm text-[#c8323d] mt-2">{error}</p>}
         </div>
 
         {/* footer */}
@@ -141,7 +142,7 @@ export function PersonModal({
 
 // ── shared bits ──
 function PillBadge({ pill }: { pill: Pill }) {
-  return <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+  return <span className={`${PILL} ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
 }
 
 function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
@@ -274,7 +275,7 @@ function EditBody({
                 <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => ({ ...t, primary: j === i })) }))} aria-label={row.primary ? 'Primary department' : 'Set as primary department'} title={row.primary ? 'Primary department' : 'Set as primary department'} className={`shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] transition-colors ${row.primary ? 'text-tn-primary bg-tn-teal-soft' : 'text-slate-300 hover:text-tn-teal hover:bg-tn-teal-soft'}`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill={row.primary ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                 </button>
-                <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+                <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-[#fdeeef] hover:text-[#c8323d]">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -317,7 +318,7 @@ function EditBody({
               <div className="flex-1 min-w-0">
                 <input type="text" value={row.note} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)) }))} className={fieldCls} placeholder="What changed…" />
               </div>
-              <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: d.milestones.filter((_, j) => j !== i) }))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+              <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: d.milestones.filter((_, j) => j !== i) }))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-[#fdeeef] hover:text-[#c8323d]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>

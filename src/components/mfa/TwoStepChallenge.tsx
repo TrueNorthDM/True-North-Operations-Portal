@@ -7,6 +7,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export interface TwoStepChallengeProps {
   email: string
@@ -58,7 +59,7 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
         className="w-full rounded-xl border-[1.5px] border-slate-300 bg-card px-4 py-3 text-center font-mono text-[22px] tracking-[.35em] text-tn-ink transition-colors focus:border-tn-teal focus:outline-none focus:ring-[3px] focus:ring-tn-teal/20"
       />
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">{error}</div>
+        <div role="alert" className={ERROR_BOX}>{error}</div>
       )}
       <button
         type="submit"

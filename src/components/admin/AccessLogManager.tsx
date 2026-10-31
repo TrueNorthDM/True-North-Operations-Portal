@@ -19,6 +19,7 @@ import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
+import { CARD } from '@/lib/ui/type'
 
 export interface AccessLogEntry {
   id: string
@@ -88,7 +89,7 @@ export function AccessLogManager({ entries, columns: given }: {
         <span className="ml-auto text-[12.5px] text-muted">{rows.length} of {entries.length} accesses</span>
       </div>
 
-      <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: gridTemplate }}>
           <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
           {show.has('email') && <SortHeader label="Email" active={sort?.id === 'email'} dir={sort?.id === 'email' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'email'))} />}

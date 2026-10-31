@@ -8,6 +8,7 @@ import { initialsOf } from '@/lib/directory/people-types'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
+import { Pill } from '@/components/ui/Pill'
 
 // ── Data from the server ───────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ export const KIND_COUNT = Object.fromEntries((['page', 'tool', 'tab', 'action'] 
 
 export function Tag({ kind }: { kind: Exclude<ItemKind, 'module'> }) {
   const k = KIND_TAG[kind]
-  return <span title={k.help} className={`inline-block rounded-[5px] px-1.5 py-px font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.08em] uppercase cursor-help ${k.cls}`}>{k.label}</span>
+  return <Pill tip={k.help} colorClass={k.cls} className="cursor-help" text={k.label} />
 }
 
 export const Glyph = {

@@ -29,7 +29,7 @@ export function useOutside(open: boolean, close: () => void) {
   return ref
 }
 
-const DASH = <span className="text-[var(--faint)]">–</span>
+const DASH = <span className="text-[var(--faint)]">-</span>
 const CELL = 'px-3 py-2.5 min-w-0 text-[13px] leading-[1.35] tabular-nums lining-nums overflow-hidden text-ellipsis whitespace-nowrap'
 
 function Cell({ k, r, all, nowMs, onEdit }: { k: ColumnKey; r: EntryView; all: boolean; nowMs: number; onEdit: () => void }) {

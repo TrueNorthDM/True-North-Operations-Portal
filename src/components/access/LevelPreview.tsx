@@ -96,7 +96,7 @@ export function LevelPreview({ state, setState, rules, teams, teamName, today, s
                 <div><div className="text-[11.5px] font-bold text-muted mb-1">What they can do here</div>
                   <div className="space-y-0.5">{kids.filter(k => k.kind === 'action').map(k => { const x = d(k.key); return (
                     <div key={k.key} className="grid grid-cols-[18px_minmax(0,1fr)_auto] gap-2 items-center rounded-[8px] px-2 py-1 odd:bg-white">
-                      <span className={x.ok ? 'text-[#1E9E6A] font-black' : 'text-[#b3bcc8]'}>{x.ok ? '✓' : '–'}</span>
+                      <span className={x.ok ? 'text-[#1E9E6A] font-black' : 'text-[#b3bcc8]'}>{x.ok ? '✓' : '-'}</span>
                       <span className={`text-[12.5px] ${x.ok ? 'text-tn-ink' : 'text-muted'}`}>{k.label}</span>
                       <span className="flex flex-wrap gap-1 justify-end">{x.reasons.map(r => <span key={r.text} className="text-[11px] rounded-full bg-subtle px-2">{r.text}</span>)}</span>
                     </div>) })}</div></div>

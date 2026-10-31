@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import { invitePerson, revokeInvite } from '@/app/(app)/admin/people/actions'
 import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rule'
 import { PILL_CLASS, formatDate, type Pill, type PersonView } from '@/lib/directory/people-types'
+import { PILL as PILL_SHAPE } from '@/components/ui/Pill'
 
 const PILL: Record<PortalAccessState, Pill> = {
   'signed-in': { kind: 'green', label: 'Has access' },
@@ -91,7 +92,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
       {confirmDialog}
       <span className="inline-flex items-center gap-2">
         <span
-          className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}
+          className={`${PILL_SHAPE} ${PILL_CLASS[pill.kind]}`}
           title={since && (state === 'invited' || state === 'signed-in') ? `Invited ${since}` : undefined}
         >
           {pill.label}
@@ -107,7 +108,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
           </button>
         )}
         {canInvite && (state === 'invited' || state === 'signed-in') && (
-          <button type="button" disabled={pending} onClick={revoke} className={`${btn} text-red-600 border border-[rgba(215,57,47,.35)] hover:bg-red-50`}>
+          <button type="button" disabled={pending} onClick={revoke} className={`${btn} text-[#c8323d] border border-[rgba(215,57,47,.35)] hover:bg-[#fdeeef]`}>
             Revoke
           </button>
         )}
@@ -116,7 +117,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
         <span className="text-[11.5px] text-muted max-w-[240px] text-right">Add a @goodnewsadvocates.org address to invite them: it is the one they sign in with.</span>
       )}
       {note && <span className="text-[11.5px] text-tn-teal font-semibold max-w-[240px] text-right">{note}</span>}
-      {error && <span className="text-[11.5px] text-red-600 max-w-[240px] text-right">{error}</span>}
+      {error && <span className="text-[11.5px] text-[#c8323d] max-w-[240px] text-right">{error}</span>}
     </span>
   )
 }

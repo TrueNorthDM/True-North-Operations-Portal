@@ -56,9 +56,9 @@ export function ProfileAvatar({ name, avatarUrl, color, size = 60 }: { name: str
         </button>
       </div>
       {avatarUrl && (
-        <button type="button" onClick={remove} disabled={busy} className="block mt-1.5 text-[11px] font-semibold text-muted hover:text-red-600 transition-colors disabled:opacity-50">Remove</button>
+        <button type="button" onClick={remove} disabled={busy} className="block mt-1.5 text-[11px] font-semibold text-muted hover:text-[#c8323d] transition-colors disabled:opacity-50">Remove</button>
       )}
-      {err && <p className="text-[11px] text-red-600 mt-1 max-w-[90px]">{err}</p>}
+      {err && <p className="text-[11px] text-[#c8323d] mt-1 max-w-[90px]">{err}</p>}
       <AvatarEditor open={open} onClose={() => setOpen(false)} onSave={onSave} busy={busy} />
     </div>
   )

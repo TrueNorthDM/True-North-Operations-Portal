@@ -13,13 +13,13 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { alpha } from '@/components/clocky/clock/clock-model'
 import type { ActivityRow } from '@/lib/timeclock/job-catalogue'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
-import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, SECTION_TITLE, TH_CELL } from '@/lib/ui/type'
 
 export type { ActivityRow }
 export interface ProjectRow { client: string; division: string; project: string; use: string; billable: boolean }
 
 /** The table head and the Billable pill, shared with Company settings > Job catalogue. */
-export const TH = 'text-left px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted bg-subtle border-b border-[var(--panel-border)]'
+export const TH = `${TH_CELL} text-left px-3.5 py-2.5`
 export const Bill = ({ on }: { on: boolean }) => (
   <span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{on ? 'Billable' : 'Not billable'}</span>
 )

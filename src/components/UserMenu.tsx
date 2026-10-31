@@ -164,7 +164,7 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
             <button
               type="submit"
               role="menuitem"
-              className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-red-600 transition-colors focus:outline-none focus-visible:bg-slate-50 focus-visible:text-red-600 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
+              className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#c8323d] transition-colors focus:outline-none focus-visible:bg-slate-50 focus-visible:text-[#c8323d] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
             >
               Sign out
             </button>

@@ -30,7 +30,7 @@ import {
   type NotificationType, type Pref, type Rule, type Timing,
 } from '@/lib/notifications/catalogue'
 import { zoneLabel } from '@/lib/notifications/zones'
-import { CategoryPill, EyeGlyph, FixToggle, LockGlyph, NameCell, TD, TH, TIMING, WhenFixed, fixedSentence } from './notifications/parts'
+import { CategoryPill, EyeGlyph, FixToggle, LockGlyph, NameCell, TD, TH, TH_CELL, TIMING, WhenFixed, fixedSentence } from './notifications/parts'
 import { NotificationPreview, type SendTest } from './notifications/NotificationPreview'
 
 type Result = { ok: boolean; error?: string }
@@ -140,7 +140,7 @@ export function NotificationSettings({
         <table className="w-full border-collapse text-[13.5px] min-w-[760px]">
           <thead>
             {tab === 'mine' ? (
-              <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>On</th><th className={TH}>When</th><th className={`${TH} text-center`}>Preview</th></tr>
+              <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>On</th><th className={TH}>When</th><th className={`${TH_CELL} px-4 py-2.5 text-center whitespace-nowrap`}>Preview</th></tr>
             ) : (
               <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>Default on</th><th className={TH}>Default when</th><th className={TH}>Turned off by</th></tr>
             )}

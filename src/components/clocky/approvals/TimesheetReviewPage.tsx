@@ -21,7 +21,8 @@ import { InvoiceDoc } from '../invoices/InvoiceDoc'
 import { InvoicePdfModal } from '../invoices/InvoicePdfModal'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
-import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
+import { PAGE_TITLE, FIELD_LABEL, CARD as SHARED_CARD } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 type Res = { ok: true; toast: string } | { ok: false; error: string }
 export interface ReviewApi {
@@ -53,8 +54,7 @@ const DAY = {
 const HEADS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const ICONS = { check: 'M5 12l5 5 9-10', undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3', alert: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', send: 'M22 2 11 13M22 2l-7 20-4-9-9-4z', lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4', eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', refresh: 'M21 12a9 9 0 1 1-3-6.7M21 4v5h-5' }
 const LABEL = FIELD_LABEL
-const CARD = 'bg-white border border-[var(--panel-border)] rounded-[16px]'
-const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[9px] py-1'
+const CARD = SHARED_CARD
 const ENT_COLS = 'grid-cols-[178px_84px_minmax(220px,1.4fr)_140px_170px_100px_104px_minmax(150px,1fr)]'
 
 const Svg = ({ d, size, stroke, sw = 2.2 }: { d: string; size: number; stroke: string; sw?: number }) => (
@@ -165,7 +165,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
         <Breadcrumb parents={['/clocky-hours', { href: '/clocky-hours/approvals', label: 'Approvals' }]} now={r.who} />
         <div className="flex items-center gap-3.5 flex-wrap">
           <h1 className={`${PAGE_TITLE} whitespace-nowrap`}>{r.title}</h1>
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[11px] py-[5px]" style={{ background: TONE[r.state.tone].bg, color: TONE[r.state.tone].fg }}>{r.state.label}</span>
+          <span className={pillClass(r.state.tone)}>{r.state.label}</span>
           <span className="text-[13px] text-muted tabular-nums lining-nums">{r.submitted}</span>
         </div>
       </div>
@@ -270,7 +270,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                 <div className="flex items-center justify-between gap-2.5 flex-wrap px-[18px] py-3.5">
                   <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Invoice</span>
                   <div className="flex gap-2 items-center">
-                    <span className={PILL} style={{ background: TONE[r.invoice.state.tone].bg, color: TONE[r.invoice.state.tone].fg }}>{r.invoice.state.label}</span>
+                    <span className={pillClass(r.invoice.state.tone)}>{r.invoice.state.label}</span>
                     <button type="button" onClick={() => setModal('pdf')} className={BTN.smallWhite}>
                       <Svg d={ICONS.eye} size={14} stroke={BTN_ICON.white} />Preview PDF
                     </button>
@@ -305,7 +305,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
             <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5 min-w-0`}>
               <div className="flex items-center justify-between gap-2.5">
                 <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Payroll summary</span>
-                <span className={PILL} style={{ background: TONE[r.payroll.st.tone].bg, color: TONE[r.payroll.st.tone].fg }}>{r.payroll.st.label}</span>
+                <span className={pillClass(r.payroll.st.tone)}>{r.payroll.st.label}</span>
               </div>
               <div className="border border-[var(--row-rule)] rounded-[12px] px-6 py-[22px] flex flex-col gap-4">
                 <div className="flex justify-between gap-4 items-start">

@@ -22,6 +22,8 @@ import { PILL_CLASS, formatDate, initialsOf, type Pill, type PersonView } from '
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 import { BTN } from '@/lib/ui/buttons'
+import { CHECKBOX } from '@/lib/ui/fields'
+import { CARD } from '@/lib/ui/type'
 
 /** A person's second step: set up, not yet, or nothing to set up (no account). */
 export type TwoStep = 'on' | 'none'
@@ -212,7 +214,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
       </div>
       {report && <p className="text-[12.5px] font-semibold text-tn-teal mb-3">{report}</p>}
 
-      <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         <div className={`${GRID} px-[22px] py-[13px] bg-subtle border-b border-slate-200 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted`} style={gridStyle}>
           <input
             type="checkbox"
@@ -225,7 +227,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
               else allShownPickable.forEach(r => n.add(r.p.id))
               return n
             })}
-            className="h-4 w-4 accent-[#012358]"
+            className={CHECKBOX}
           />
           <span>Person</span>
           {show.has('signsIn') && <span>Signs in with</span>}
@@ -247,7 +249,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
           >
             <span onClick={e => e.stopPropagation()}>
               {pickable(r.state) && (
-                <input type="checkbox" aria-label={`Select ${r.p.full_name}`} checked={picked.has(r.p.id)} onChange={() => toggle(r.p.id)} className="h-4 w-4 accent-[#012358]" />
+                <input type="checkbox" aria-label={`Select ${r.p.full_name}`} checked={picked.has(r.p.id)} onChange={() => toggle(r.p.id)} className={CHECKBOX} />
               )}
             </span>
             <span className="inline-flex items-center gap-3 min-w-0">

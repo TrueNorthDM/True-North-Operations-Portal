@@ -52,13 +52,13 @@ export function payrollDocOf(x: {
   const off = x.weeks.reduce((n, w) => n + w.off, 0)
   return {
     kind: 'Payroll summary', title: x.name, titleSize: 24,
-    meta: [{ k: 'Pay period', v: p.full }, { k: 'Submitted', v: x.submittedOn ? dateLabel(x.submittedOn) : '–' }, { k: 'Rippling', v: x.sentAt ? 'Sent' : 'After approval', gold: true }],
+    meta: [{ k: 'Pay period', v: p.full }, { k: 'Submitted', v: x.submittedOn ? dateLabel(x.submittedOn) : '-' }, { k: 'Rippling', v: x.sentAt ? 'Sent' : 'After approval', gold: true }],
     parties: [
       { k: 'Employee', name: x.name, l1: `${x.team} · US Employee`, l2: 'Paid through Rippling payroll' },
       { k: 'Approved hours go to', name: 'Rippling payroll', l1: 'Hours and PTO by day', l2: x.sentAt ? `Sent ${x.sentAt}` : 'Waiting for approval' },
     ],
     heads: ['Week', 'Worked', 'Time off', 'Paid hours'],
-    rows: x.weeks.map((w, i) => ({ a: i === 0 ? 'First week' : i === 1 ? 'Second week' : `Week ${i + 1}`, b: formatDuration(w.worked), c: w.off ? formatDuration(w.off) : '–', d: formatDuration(w.worked + w.off) })),
+    rows: x.weeks.map((w, i) => ({ a: i === 0 ? 'First week' : i === 1 ? 'Second week' : `Week ${i + 1}`, b: formatDuration(w.worked), c: w.off ? formatDuration(w.off) : '-', d: formatDuration(w.worked + w.off) })),
     totalLabel: 'Paid hours', total: formatDuration(worked + off),
     stamp: x.sentAt ? `Sent to Rippling ${x.sentAt.replace(/, \d+:\d+ [AP]M$/, '')}` : null,
     file: `payroll-${x.name.split(' ')[0].toLowerCase()}-${p.label.toLowerCase().replace(/ /g, '-')}.pdf`,

@@ -4,7 +4,7 @@
  * field carries the same small uppercase label above it.
  *
  * The clocky FieldLabel (components/clocky/entries/ui.tsx) is built from
- * FIELD_LABEL; table header cells keep their own look.
+ * FIELD_LABEL; table header cells share TH below.
  */
 
 /** The page title, the h1 at the top of a page. */
@@ -27,3 +27,18 @@ export const FIELD_LABEL = `${FIELD_LABEL_TYPE} text-muted`
  * padding stays with each card. Large hero panels may keep 16px corners.
  */
 export const CARD = 'bg-white border border-[var(--panel-border)] rounded-[14px]'
+
+/**
+ * A table header cell (owner, 31 October 2026): the small uppercase label on
+ * the subtle fill, over the panel border. TH_CELL leaves out the padding and
+ * the alignment, for a column that sets its own: two text-align or padding
+ * classes in one list do not reliably let the later one win. Print, PDF and
+ * email layouts keep their own.
+ */
+export const TH_TYPE = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted'
+
+/** TH without padding and alignment. A tinted column takes TH_TYPE and its own fill. */
+export const TH_CELL = `${TH_TYPE} bg-subtle border-b border-[var(--panel-border)]`
+
+/** The header cell as most columns use it: left aligned, 16px by 10px. */
+export const TH = `px-4 py-2.5 text-left ${TH_CELL}`

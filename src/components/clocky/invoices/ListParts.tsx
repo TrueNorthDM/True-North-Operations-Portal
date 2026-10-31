@@ -10,6 +10,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import { STATE_PILL } from './InvoiceParts'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { Pill } from '@/components/ui/Pill'
 
 export const LIST_HEAD = 'px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted whitespace-nowrap'
 const DOWN = 'M12 3v12M7 10l5 5 5-5M5 21h14'
@@ -81,7 +82,7 @@ export function PersonCell({ initials, who, team, teamColor }: { initials: strin
 }
 
 export function StatePill({ st }: { st: InvoiceStateKey }) {
-  return <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[9px] py-1" style={{ background: STATE_PILL[st].bg, color: STATE_PILL[st].fg }}>{STATE_PILL[st].label}</span>
+  return <Pill tone={STATE_PILL[st].tone} text={STATE_PILL[st].label} />
 }
 
 /** Mark paid on a row; the row itself opens, so the click stops here. */

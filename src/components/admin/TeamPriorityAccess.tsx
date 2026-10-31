@@ -28,7 +28,8 @@ import {
 import type { PriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 import { setPriorityGrant } from '@/app/(app)/admin/access-levels/actions'
 import { BTN } from '@/lib/ui/buttons'
-import { SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { SECTION_TITLE, CARD, TH_CELL } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 /** A person as this section needs them, with the access rule's answers already in. */
 export interface PriorityPerson {
@@ -59,7 +60,7 @@ const cardHead = 'font-(family-name:--font-display) font-extrabold text-[14.5px]
 function LevelPill({ level }: { level: string }) {
   const pill = roleTypePill(level)
   return (
-    <span className={`shrink-0 inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10.5px] rounded-[6px] px-2 py-[3px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>
+    <span className={`shrink-0 ${PILL} ${PILL_CLASS[pill.kind]}`}>
       {pill.label}
     </span>
   )
@@ -187,7 +188,7 @@ export function TeamPriorityAccess({
           <p className="mt-1 text-[12.5px] text-muted leading-relaxed m-0">
             For someone whose level and team position do not give it, without changing either.
           </p>
-          {error && <p className="mt-2 text-[12.5px] text-red-600 m-0">{error}</p>}
+          {error && <p className="mt-2 text-[12.5px] text-[#c8323d] m-0">{error}</p>}
 
           {!data.grantsAvailable ? (
             <p className="mt-3 rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3.5 py-3 text-[12.5px] leading-relaxed text-[var(--warn-fg)] m-0">
@@ -225,7 +226,7 @@ export function TeamPriorityAccess({
                       type="button"
                       onClick={() => run(person.id, null)}
                       disabled={pending}
-                      className="shrink-0 text-[12.5px] font-(family-name:--font-display) font-extrabold text-muted hover:text-red-600 transition-colors disabled:opacity-50"
+                      className="shrink-0 text-[12.5px] font-(family-name:--font-display) font-extrabold text-muted hover:text-[#c8323d] transition-colors disabled:opacity-50"
                     >
                       Remove
                     </button>
@@ -279,10 +280,10 @@ export function TeamPriorityAccess({
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-subtle border-y border-slate-200">
-                <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-2.5">Person</th>
-                <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-2.5">Teams</th>
-                <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-2.5">Why</th>
+              <tr className="border-t border-[var(--panel-border)]">
+                <th className={`${TH_CELL} text-left px-5 py-2.5`}>Person</th>
+                <th className={`${TH_CELL} text-left px-4 py-2.5`}>Teams</th>
+                <th className={`${TH_CELL} text-left px-4 py-2.5`}>Why</th>
               </tr>
             </thead>
             <tbody>

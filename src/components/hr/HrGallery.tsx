@@ -9,7 +9,7 @@ import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import type { TeamKey } from '@/lib/directory/people-types'
 import type { Milestone } from '@/lib/tenure'
-import { CARD_TITLE } from '@/lib/ui/type'
+import { CARD_TITLE, CARD } from '@/lib/ui/type'
 
 export interface HrHolder {
   id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string
@@ -23,7 +23,7 @@ export function HrGallery({ quarters, years }: {
   years: HrSection[]
 }) {
   const card = (s: HrSection) => (
-    <div key={s.key} className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div key={s.key} className={`${CARD} p-4`}>
       <div className="flex items-center justify-between gap-3">
         <TenureBadge milestone={s.milestone} size={128} />
         <div className="text-right">

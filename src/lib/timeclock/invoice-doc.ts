@@ -52,7 +52,7 @@ export function invoiceDocOf(i: InvRow, lines: LineRow[], periodName: string): I
   return {
     id: i.id, number: i.number, date: dateLabel(i.issued_on), period: periodName, due: dateLabel(i.due_on), state: st,
     lines: lines.filter(l => l.kind !== 'reimbursement').map(l => ({
-      desc: l.description, hrs: l.hours_seconds != null ? formatDuration(l.hours_seconds) : '–', muted: l.kind === 'fixed',
+      desc: l.description, hrs: l.hours_seconds != null ? formatDuration(l.hours_seconds) : '-', muted: l.kind === 'fixed',
       rate: l.kind === 'fixed' ? 'Fixed' : l.rate != null ? usd(Number(l.rate)) : '', amt: usd(Number(l.amount)),
     })),
     reimb: lines.filter(l => l.kind === 'reimbursement').map(l => ({ desc: l.description, cat: l.client ?? '', amt: usd(Number(l.amount)) })),

@@ -9,7 +9,7 @@
  */
 
 import { CARD as CARD_BOX } from '@/lib/ui/type'
-import { INPUT } from '@/lib/ui/fields'
+import { INPUT, CHECKBOX } from '@/lib/ui/fields'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -65,7 +65,7 @@ function Notice({ notice }: { notice: { text: string; error: boolean } }) {
   const [open, setOpen] = useState(true)
   if (!open) return null
   return (
-    <div role={notice.error ? 'alert' : 'status'} className={`flex items-start gap-2.5 rounded-[12px] px-3.5 py-3 text-[13.5px] leading-[1.45] border ${notice.error ? 'bg-[#fdeeef] border-[#f3c6ca] text-[#8f1f2a]' : 'bg-[#e6f6ee] border-[#b9e3cd] text-[#0d5c3c]'}`}>
+    <div role={notice.error ? 'alert' : 'status'} className={`flex items-start gap-2.5 rounded-[12px] px-3.5 py-3 text-[13.5px] leading-[1.45] border ${notice.error ? 'bg-[#fdeeef] border-[#f3c6ca] text-[#c8323d]' : 'bg-[#e6f6ee] border-[#b9e3cd] text-[#0d5c3c]'}`}>
       <span className="flex-1 font-semibold">{notice.text}</span>
       <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="border-0 bg-transparent p-0 cursor-pointer text-current font-extrabold">✕</button>
     </div>
@@ -164,7 +164,7 @@ function AllLevelsCard({ levels, busy, run, api }: { levels: string[]; busy: boo
         {LEVELS.map(([k, l]) => (
           <label key={k} className={`inline-flex items-center gap-2 border rounded-[10px] px-3 py-2 text-[13.5px] font-bold text-tn-ink ${k === 'super_admin' ? 'opacity-70' : 'cursor-pointer'} ${on.includes(k) ? 'border-tn-teal bg-[#f2f8f7]' : 'border-[var(--panel-border)]'}`}>
             <input type="checkbox" checked={on.includes(k)} disabled={k === 'super_admin' || busy}
-              onChange={() => setOn(x => (x.includes(k) ? x.filter(y => y !== k) : [...x, k]))} />{l}
+              onChange={() => setOn(x => (x.includes(k) ? x.filter(y => y !== k) : [...x, k]))} className={`${CHECKBOX} disabled:cursor-default`} />{l}
           </label>
         ))}
       </div>
@@ -322,7 +322,7 @@ function WorkingHoursCard({ hours, zone, busy, run, api }: { hours: WorkingHours
                         <div className="text-[12px] font-extrabold text-muted px-2 pt-1 pb-1.5">Copy {DAY_NAMES[d]}&apos;s hours to</div>
                         {WEEKDAYS.filter(o => o !== d).map(o => (
                           <label key={o} className="flex items-center gap-2.5 px-2 py-[7px] rounded-[8px] text-[13.5px] font-bold text-tn-ink cursor-pointer hover:bg-subtle">
-                            <input type="checkbox" checked={copyTo.has(o)} onChange={() => setCopyTo(s => { const n = new Set(s); if (n.has(o)) n.delete(o); else n.add(o); return n })} />
+                            <input type="checkbox" checked={copyTo.has(o)} onChange={() => setCopyTo(s => { const n = new Set(s); if (n.has(o)) n.delete(o); else n.add(o); return n })} className={CHECKBOX} />
                             {DAY_NAMES[o]}
                           </label>
                         ))}

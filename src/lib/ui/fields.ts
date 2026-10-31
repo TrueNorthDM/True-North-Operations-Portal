@@ -48,3 +48,6 @@ export const DATE_FIELD_SM = `h-8 box-border px-2.5 border rounded-[8px] text-[1
  * height, border, corners and text size, so the row lines up.
  */
 export const SELECT_FIELD = `h-10 box-border px-3 border rounded-[10px] text-[13px] ${FILL}`
+
+/** The checkbox and the radio: 16px, ticked in navy. Disabled styling stays at the call site. */
+export const CHECKBOX = 'w-4 h-4 accent-[#012358] cursor-pointer'

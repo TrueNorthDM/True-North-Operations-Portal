@@ -18,6 +18,7 @@ import type { Range } from '@/lib/tsheets/range'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { monthName } from '@/lib/timeclock/periods'
 import { ROUTES } from '@/lib/nav/routes'
+import { CARD } from '@/lib/ui/type'
 
 // Small spinner for the "generating…" state.
 function Spinner() {
@@ -189,7 +190,7 @@ export function NoteCard({ month, note, canEdit }: { month: string; note: string
   }
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} p-5`}>
       <div className="flex items-center justify-between gap-3 mb-2">
         <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px]">Month note <span className="text-xs font-normal text-muted">· shown on the client report</span></h3>
         {canEdit && !editing && <button onClick={() => { setVal(note); setEditing(true) }} className="text-xs font-(family-name:--font-display) font-bold px-3 py-1.5 rounded-[9px] border border-slate-200 text-foreground hover:border-tn-teal hover:text-tn-teal transition-colors">Edit</button>}

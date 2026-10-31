@@ -165,7 +165,7 @@ export function CheckPerson({ people, rules, teamName, today, initialWho, onPrev
                   const deep = i.parent && ITEM.get(i.parent)?.kind !== 'module'
                   return (
                     <div key={i.key} className="grid grid-cols-[18px_minmax(0,1fr)_auto] gap-2.5 items-center rounded-[8px] px-2.5 py-1 odd:bg-[#fafbfc]" style={{ paddingLeft: deep ? 34 : 10 }}>
-                      <span className={x.ok ? 'text-[#1E9E6A] font-black' : 'text-[#b3bcc8]'}>{x.ok ? '✓' : '–'}</span>
+                      <span className={x.ok ? 'text-[#1E9E6A] font-black' : 'text-[#b3bcc8]'}>{x.ok ? '✓' : '-'}</span>
                       <span className={`text-[13px] ${x.ok ? 'text-tn-ink' : 'text-muted'}`}>{i.label} <span className="text-[11px] text-muted">{KIND_TAG[i.kind as Exclude<ItemKind, 'module'>]?.label}</span></span>
                       <span className="flex flex-wrap gap-1 justify-end">{x.reasons.map(r => <span key={r.text} className={`text-[11px] font-semibold rounded-full px-2 ${r.kind === 'exception' ? 'bg-[#fbf1cf] text-[#8a6703]' : x.ok ? 'bg-[rgba(30,125,127,.1)] text-tn-teal' : 'bg-subtle text-muted'}`}>{r.text}</span>)}</span>
                     </div>

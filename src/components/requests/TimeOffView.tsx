@@ -30,6 +30,7 @@ import { PhoneSheet } from './PhoneSheet'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Tabs } from '@/components/ui/Tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { PILL, pillClass } from '@/components/ui/Pill'
 
 export interface TimeOffApi {
   askTimeOff(i: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>>
@@ -42,7 +43,6 @@ const TONE: Record<OffTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' }, neu: { bg: '#f1f3f6', fg: '#5b6b82' },
 }
 const CHECK_ICON = { check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6 6 18', clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2' }
-const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const BTN_WHITE = BTN.white
 const BTN_NAVY = `${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`
 const MON_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -118,7 +118,7 @@ export function TimeOffView({ data, api, initial }: {
               return (
                 <div key={t.id} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
                   <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}</span>
-                  <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">–</span>
+                  <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">-</span>
                   <span className="text-[12px] text-muted">{waiting ? `${formatDuration(waiting).replace(' 00m', '')} waiting for approval` : 'From Rippling, once connected'}</span>
                 </div>
               )
@@ -154,7 +154,7 @@ export function TimeOffView({ data, api, initial }: {
                   ))}
                 </span>
                 <span className="flex-none ml-auto flex items-center gap-2.5">
-                  <span className={PILL} style={{ background: TONE[r.pill.tone].bg, color: TONE[r.pill.tone].fg }}>{r.pill.label}</span>
+                  <span className={pillClass(r.pill.tone)}>{r.pill.label}</span>
                   {r.cancel && (
                     <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); if (r.cancel === 'direct') void run(api.cancelTimeOff({ id: r.id })); else { setCancelId(r.id); setModal('cancel') } }}
                       className={BTN.smallWhiteDanger}>{r.cancel === 'direct' ? 'Cancel' : 'Cancel…'}</button>
@@ -216,7 +216,7 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
           <div className="flex-1 min-w-0 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <span className={`${PILL} bg-[#eef1fb] text-[#3b4fa8]`}>{row.type}</span>
-              <span className={PILL} style={{ background: TONE[d.stateTone].bg, color: TONE[d.stateTone].fg }}>{d.stateLabel}</span>
+              <span className={pillClass(d.stateTone)}>{d.stateLabel}</span>
             </div>
             <div className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[1.3] tabular-nums lining-nums">{d.dates}</div>
             <div className="text-[12.5px] text-muted">{row.who} · {row.count}</div>

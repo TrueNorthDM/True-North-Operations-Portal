@@ -9,23 +9,20 @@
 
 import { useState } from 'react'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
-import type { PaymentsData, PaymentsRow, PayTone } from '@/lib/timeclock/payments-view'
+import type { PaymentsData, PaymentsRow } from '@/lib/timeclock/payments-view'
 import type { DocKind, DocSheetData } from '@/lib/timeclock/pay-docs'
 import type { InvoiceDocView } from '@/lib/timeclock/invoice-doc'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { DocPdfModal, InvoicePdfModal } from '@/components/clocky/invoices/InvoicePdfModal'
 import { Toast, type ToastState } from '@/components/clocky/entries/ui'
+import { pillClass } from '@/components/ui/Pill'
+import { CARD } from '@/lib/ui/type'
 
 export interface PaymentsApi {
   getInvoiceDoc(i: { id: number }): Promise<Result<{ doc: InvoiceDocView }>>
   getPayDoc(i: { kind: DocKind; id: number }): Promise<Result<{ doc: DocSheetData }>>
 }
 
-/** Company Settings.dc.html T: the pills' colours. */
-const TONE: Record<PayTone, { bg: string; fg: string }> = {
-  ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
-  neu: { bg: '#f1f3f6', fg: '#5b6b82' }, teal: { bg: '#eaf4f4', fg: '#1E7D7F' }, navy: { bg: '#e8effa', fg: '#1e40af' },
-}
 const COLS = 'grid grid-cols-[minmax(160px,1.2fr)_minmax(110px,.8fr)_90px_100px_190px_minmax(150px,1.2fr)_80px]'
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 
@@ -64,7 +61,7 @@ export function PaymentsTab({ data, api, initial }: { data: PaymentsData; api: P
         ))}
       </div>
       {data.tables.map(t => (
-        <div key={t.title} className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+        <div key={t.title} className={`${CARD} overflow-hidden`}>
           <div className="flex items-baseline gap-2.5 px-[18px] py-3.5 border-b border-[var(--panel-border)] flex-wrap">
             <span className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink whitespace-nowrap">{t.title}</span>
             <span className="flex-[1_1_300px] text-[12.5px] text-muted">{t.sub}</span>
@@ -81,7 +78,7 @@ export function PaymentsTab({ data, api, initial }: { data: PaymentsData; api: P
                   <div className="px-3.5 py-[11px] text-foreground whitespace-nowrap">{r.c3}</div>
                   <div className="px-3.5 py-[11px] text-right font-(family-name:--font-display) font-extrabold text-tn-ink whitespace-nowrap">{r.c4}</div>
                   <div className="px-3.5 py-[11px]">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[9px] py-1" style={{ background: TONE[r.st.tone].bg, color: TONE[r.st.tone].fg }}>{r.st.label}</span>
+                    <span className={pillClass(r.st.tone)}>{r.st.label}</span>
                   </div>
                   <div className="px-3.5 py-[11px] text-foreground text-[12.5px] leading-[1.45]">{r.c5}</div>
                   <div className="px-3.5 py-2 flex justify-end">

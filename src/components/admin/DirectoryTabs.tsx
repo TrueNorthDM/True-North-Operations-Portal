@@ -151,7 +151,7 @@ export function DirectoryTabs({
       {tab === 'people' && (
         <div className="space-y-5">
           {/* Source-of-truth notice, People feeds every other surface. */}
-          <div className="flex items-start gap-3.5 rounded-[16px] border border-tn-teal/25 bg-tn-teal-soft px-5 py-4">
+          <div className="flex items-start gap-3.5 rounded-[14px] border border-tn-teal/25 bg-tn-teal-soft px-5 py-4">
             <span className="shrink-0 mt-0.5 inline-flex w-9 h-9 items-center justify-center rounded-[11px] bg-white text-tn-teal shadow-[0_1px_2px_rgba(1,35,88,.08)]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
             </span>

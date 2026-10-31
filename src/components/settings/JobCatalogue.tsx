@@ -14,7 +14,7 @@
  * Super Admins change it; Admins read it.
  */
 
-import { INPUT, INPUT_SM, TEXTAREA } from '@/lib/ui/fields'
+import { INPUT, INPUT_SM, TEXTAREA, CHECKBOX } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
@@ -414,7 +414,7 @@ function LinkWindow({ client, clients, folders, run, link, onClose }: {
           const on = picked.has(x.id)
           return (
             <label key={x.id} className="flex items-center gap-3 px-3.5 py-2.5 border-b last:border-b-0 border-[var(--row-rule)] cursor-pointer hover:bg-[#f8f7f3] leading-[normal]">
-              <input type="checkbox" checked={on} onChange={() => toggle(x.id)} className="w-4 h-4 accent-[#1E7D7F] flex-none" />
+              <input type="checkbox" checked={on} onChange={() => toggle(x.id)} className={`${CHECKBOX} flex-none`} />
               <span className="flex-1 min-w-0 font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{x.name}</span>
               {other && <span className="text-[11.5px] text-muted whitespace-nowrap">{on ? `moves from ${other}` : `now ${other}`}</span>}
             </label>

@@ -287,7 +287,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const sec = byDay.get(d)
     if (sec) { calendar.push({ iso: d, n, v: hm(sec), kind: 'work', tip: `${dayLabel(d)}: ${hm(sec)}` }); continue }
     if (w > 0 && w < 6 && d <= today) { skip.push(d); calendar.push({ iso: d, n, v: 'No time', kind: 'skip', tip: `${dayLabel(d)}: weekday with no time` }); continue }
-    calendar.push({ iso: d, n, v: '–', kind: 'none', tip: '' })
+    calendar.push({ iso: d, n, v: '-', kind: 'none', tip: '' })
   }
 
   // By client.
@@ -383,7 +383,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       if (w === 0 || w === 6) continue
       const p = ptoDay.get(d)
       const sec = byDay.get(d)
-      rows.push({ day: dayLabel(d), w: sec ? hm(sec) : '–', worked: !!sec, o: p ? `${hm(p.seconds)} ${p.type}` : '–', pto: !!p })
+      rows.push({ day: dayLabel(d), w: sec ? hm(sec) : '-', worked: !!sec, o: p ? `${hm(p.seconds)} ${p.type}` : '-', pto: !!p })
     }
     const rip: NonNullable<TimesheetReview['payroll']>['rip'] = s.state !== 'approved'
       ? { text: `Sent to Rippling when approved: ${ripWhat}, by day.`, tone: 'neu', icon: 'send' }
@@ -391,7 +391,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
         : job?.state === 'done' ? { text: `Sent to Rippling, ${at(job.done_at)}: ${ripWhat}.`, tone: 'ok', icon: 'check' }
           : { text: `Approved: ${ripWhat} wait for Rippling to be connected in Company settings.`, tone: 'neu', icon: 'send' }
     return {
-      rows, total: `Total, ${hm(tot + offTotal)}`, worked: hm(tot), off: offTotal ? `${hm(offTotal)} ${offType}` : '–', period: rangeLabel(start, end) + `, ${end.slice(0, 4)}`,
+      rows, total: `Total, ${hm(tot + offTotal)}`, worked: hm(tot), off: offTotal ? `${hm(offTotal)} ${offType}` : '-', period: rangeLabel(start, end) + `, ${end.slice(0, 4)}`,
       st: s.state === 'approved' ? (job?.state === 'failed' ? { label: 'Rippling refused it', tone: 'bad' } : { label: job?.state === 'done' ? 'Sent to Rippling' : 'Approved', tone: 'ok' }) : ret ? { label: 'Returned', tone: 'bad' } : { label: 'Waiting for approval', tone: 'warn' },
       rip,
       line: `${team?.name ?? 'No team'} · US Employee · paid through Rippling payroll`,
@@ -455,8 +455,8 @@ function entryRow(e: ReviewView, zone: string): ReviewEntry {
   const client = billedClient(e)
   return {
     time: e.start ? `${timeLabel(e.start, zone)} to ${e.end ? timeLabel(e.end, zone) : 'now'}` : 'Duration only',
-    dur: formatDuration(e.seconds), job: e.path, act: e.activityShown || e.activity || '–', cp: [e.company, e.project].filter(Boolean).join(' · ') || '–',
-    code: e.code || '–', meta: [e.activityShown || e.activity, e.company, e.project, e.code].filter(Boolean).join(' · '),
+    dur: formatDuration(e.seconds), job: e.path, act: e.activityShown || e.activity || '-', cp: [e.company, e.project].filter(Boolean).join(' · ') || '-',
+    code: e.code || '-', meta: [e.activityShown || e.activity, e.company, e.project, e.code].filter(Boolean).join(' · '),
     billable: e.billable === 'yes', note: e.notes, color: clientColor(client), client,
     flag: e.autoOut ? (e.autoOut.confirmed ? { text: 'Stopped by North Time, end time confirmed', tone: 'neu' } : { text: 'Stopped by North Time, end time not confirmed', tone: 'warn' }) : null,
   }
@@ -483,9 +483,9 @@ function previousOf(src: ReviewSource, now: NonNullable<TimesheetReview['invoice
   return {
     title: `${first}'s last invoices`,
     rows: [
-      { per: now.period, hrs: seconds ? formatDuration(seconds) : '–', amt: now.total, st: now.state.label === 'Approved' || now.state.label === 'Paid' ? now.state.label : 'This one', stTone: now.state.label === 'Approved' || now.state.label === 'Paid' ? 'ok' : 'warn', current: true },
+      { per: now.period, hrs: seconds ? formatDuration(seconds) : '-', amt: now.total, st: now.state.label === 'Approved' || now.state.label === 'Paid' ? now.state.label : 'This one', stTone: now.state.label === 'Approved' || now.state.label === 'Paid' ? 'ok' : 'warn', current: true },
       ...prev.map(p => ({
-        per: periodLabel({ start: p.period_start, end: p.period_end }).full, hrs: p.seconds ? formatDuration(p.seconds) : '–', amt: usd(p.total),
+        per: periodLabel({ start: p.period_start, end: p.period_end }).full, hrs: p.seconds ? formatDuration(p.seconds) : '-', amt: usd(p.total),
         st: p.state === 'paid' && p.paid_on ? `Paid ${dateLabel(p.paid_on).replace(/, \d{4}$/, '')}` : p.state === 'approved' ? 'Approved' : p.state === 'draft' ? 'Draft' : 'Waiting',
         stTone: (p.state === 'paid' || p.state === 'approved' ? 'ok' : 'warn') as ReviewTone, current: false,
       })),

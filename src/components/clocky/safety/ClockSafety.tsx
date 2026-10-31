@@ -63,7 +63,7 @@ const zoneCity = (zone: string) => (zone.split('/').pop() ?? zone).replace(/_/g,
 
 /** "-20m", "+10m", "0m"; "–" when the end is not confirmed. */
 function diffText(min: number | null): { text: string; color: string } {
-  if (min == null) return { text: '–', color: 'var(--faint)' }
+  if (min == null) return { text: '-', color: 'var(--faint)' }
   return { text: min === 0 ? '0m' : `${min < 0 ? '-' : '+'}${Math.abs(min)}m`, color: min < 0 ? '#012358' : 'var(--muted)' }
 }
 

@@ -120,7 +120,7 @@ function Header({ sub }: { sub: string }) {
   )
 }
 
-const empty = <span className="text-[var(--faint)]">–</span>
+const empty = <span className="text-[var(--faint)]">-</span>
 
 function ProblemCell({ r }: { r: TransitionRow }) {
   if (!r.problems.length) {

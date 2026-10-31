@@ -9,6 +9,7 @@ import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { confirmLink } from '@/app/auth/actions'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export function ConfirmForm() {
   const params = useSearchParams()
@@ -30,7 +31,7 @@ export function ConfirmForm() {
       <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Sign in to the portal</h1>
       <p className="text-sm text-foreground">One more click and you&apos;re in.</p>
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className={ERROR_BOX}>
           {error}
         </div>
       )}

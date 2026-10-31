@@ -53,6 +53,7 @@ import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui
 import { fixedOf, fixedTrack, flexTrack, layoutColumns } from '@/lib/settings/columns'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
+import { CARD } from '@/lib/ui/type'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -542,7 +543,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         <ColumnsMenu columns={allColumns} fixed={fixedOf('rates')} choice={choice} />
       </div>
 
-      <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)] leading-[normal]">
+      <div className={`${CARD} overflow-x-auto leading-[normal]`}>
         <div style={{ minWidth: layout.minWidth }}>
           {/* header */}
           <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`} style={gridStyle}>

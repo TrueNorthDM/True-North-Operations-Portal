@@ -22,6 +22,7 @@ import {
   overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
+import { Pill } from '@/components/ui/Pill'
 
 
 // ── Alerts at the top of the body ───────────────────────────────────────────
@@ -499,7 +500,7 @@ export function OnView({
               <div className="flex justify-between items-center gap-2.5 text-[12.5px]">
                 <span className="flex items-center gap-[7px] font-semibold text-tn-ink min-w-0">
                   <span className="truncate">{b.label}</span>
-                  {b.running && <span className="text-[10px] font-(family-name:--font-display) font-extrabold tracking-[.06em] uppercase text-[#0d7a4f] bg-[#e6f6ee] rounded-full px-[7px] py-[2px]">now</span>}
+                  {b.running && <Pill tone="green">now</Pill>}
                 </span>
                 <span className="text-foreground tabular-nums lining-nums whitespace-nowrap">{b.dur}</span>
               </div>

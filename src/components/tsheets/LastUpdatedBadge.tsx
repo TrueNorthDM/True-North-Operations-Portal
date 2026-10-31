@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from 'react'
 import { sourceWording, type LastUpdated } from '@/lib/timeclock/last-updated'
+import { pillClass } from '@/components/ui/Pill'
 
 function timeAgo(iso: string): string {
   const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
@@ -42,14 +43,12 @@ export function LastUpdatedBadge({ status }: { status: LastUpdated }) {
 
   // A failed import is worth its own colour: the figure below is still true, but
   // the imported half of it is older than the badge makes it look.
-  const cls = status.importFailed
-    ? 'border-amber-300 bg-amber-50 text-[#7a4e05]'
-    : 'border-slate-200 text-slate-500'
+  const cls = pillClass(status.importFailed ? 'amber' : 'gray')
 
   return (
     <span
       title={status.importFailed ? `${why} The last import attempt failed, so the imported hours are older than this.` : why}
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs ${cls}`}
+      className={`${cls} gap-1.5`}
     >
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992V4.356M2.985 14.652H7.977v4.992M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 14.652l3.181 3.182a8.25 8.25 0 0013.803-3.7" />

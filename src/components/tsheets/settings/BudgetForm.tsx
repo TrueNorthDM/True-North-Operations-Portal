@@ -56,7 +56,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
 
   function period(start: string, end: string): string {
     if (!start) return '(not set)'
-    return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
+    return end ? `${dateLabel(start)} to ${dateLabel(end)}` : `${dateLabel(start)} onward`
   }
 
   function buildLines(): string[] {
@@ -142,7 +142,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
               <input type="number" min="0" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 8000" className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
+              <label className={labelCls}>Start date <span className="text-[#c8323d]">*</span></label>
               <DateField value={budgetStart} onChange={v => setBudgetStart(v)} className={dateCls} />
             </div>
             <div>
@@ -163,7 +163,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
             <div />
             <div>
               <label className={labelCls}>
-                Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-muted font-normal">(when extra is set)</span>}
+                Start date {hasExtra ? <span className="text-[#c8323d]">*</span> : <span className="text-muted font-normal">(when extra is set)</span>}
               </label>
               <DateField value={extraStart} onChange={v => setExtraStart(v)} disabled={!hasExtra} className={dateCls} />
             </div>
@@ -177,7 +177,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
           )}
         </fieldset>
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-[#c8323d]">{error}</p>}
 
         <div className="flex gap-3 justify-end pt-1">
           <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-(family-name:--font-display) font-extrabold text-foreground border border-slate-200 rounded-[10px] hover:border-tn-ink hover:text-tn-ink transition-colors">Cancel</button>

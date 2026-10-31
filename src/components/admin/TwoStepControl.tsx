@@ -11,6 +11,7 @@ import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { PILL_CLASS, formatDate, type Pill } from '@/lib/directory/people-types'
 import { BTN } from '@/lib/ui/buttons'
+import { PILL as PILL_SHAPE } from '@/components/ui/Pill'
 
 export type TwoStepState = 'on' | 'not-set-up' | 'no-account'
 
@@ -60,7 +61,7 @@ export function TwoStepControl({ name, state, since, reset }: {
       {confirmDialog}
       <span className="inline-flex items-center gap-2">
         <span
-          className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}
+          className={`${PILL_SHAPE} ${PILL_CLASS[pill.kind]}`}
           title={current === 'on' && since ? `Set up ${formatDate(since)}` : undefined}
         >
           {pill.label}
@@ -76,7 +77,7 @@ export function TwoStepControl({ name, state, since, reset }: {
         <span className="text-[11.5px] text-muted max-w-[240px] text-right">The portal asks {first} to set it up at the next sign-in.</span>
       )}
       {note && <span className="text-[11.5px] text-tn-teal font-semibold max-w-[240px] text-right">{note}</span>}
-      {error && <span className="text-[11.5px] text-red-600 max-w-[240px] text-right">{error}</span>}
+      {error && <span className="text-[11.5px] text-[#c8323d] max-w-[240px] text-right">{error}</span>}
     </span>
   )
 }

@@ -71,7 +71,7 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
         </svg>
         {pending ? 'Deleting…' : 'Delete page'}
       </button>
-      {error && <span role="alert" className="mt-1 text-xs text-red-600">{error}</span>}
+      {error && <span role="alert" className="mt-1 text-xs text-[#c8323d]">{error}</span>}
       {confirmDialog}
     </div>
   )

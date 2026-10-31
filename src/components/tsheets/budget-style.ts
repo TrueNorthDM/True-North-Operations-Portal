@@ -4,13 +4,15 @@
 // server component references, not these values.
 
 import { BUDGET_STATUS_LABEL, type BudgetStatus } from '@/lib/tsheets/i7-view'
+import { pillClass } from '@/components/ui/Pill'
 
-// The status and its words are the PDF's too (lib/tsheets/i7-view.ts).
+// The status and its words are the PDF's too (lib/tsheets/i7-view.ts); the
+// pill is the portal's one pill (components/ui/Pill), with its class whole.
 export const BUDGET_PILL: Record<BudgetStatus, { cls: string; label: string }> = {
-  good: { cls: 'text-[#1E9E6A] bg-[#eafaf1] border-[#c3ead5]', label: BUDGET_STATUS_LABEL.good },
-  warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: BUDGET_STATUS_LABEL.warn },
-  bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: BUDGET_STATUS_LABEL.bad },
-  none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: BUDGET_STATUS_LABEL.none },
+  good: { cls: pillClass('green'), label: BUDGET_STATUS_LABEL.good },
+  warn: { cls: pillClass('amber'), label: BUDGET_STATUS_LABEL.warn },
+  bad: { cls: pillClass('red'), label: BUDGET_STATUS_LABEL.bad },
+  none: { cls: pillClass('gray'), label: BUDGET_STATUS_LABEL.none },
 }
 
 // Colours at real budget-% positions: yellowing past ~50%, red toward and over 100%.

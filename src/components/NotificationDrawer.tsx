@@ -33,7 +33,7 @@ import type { NotificationButton } from '@/lib/notifications/catalogue'
 import { BTN } from '@/lib/ui/buttons'
 import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
 import { keepGoing as keepGoingAction } from '@/app/(app)/clocky-hours/clock-actions'
-import { CloseButton } from '@/components/clocky/entries/ui'
+import { CloseButton, Toast } from '@/components/clocky/entries/ui'
 import { Segmented } from '@/components/ui/Segmented'
 import { TAB_COUNT, TAB_COUNT_OFF, TAB_COUNT_ON, tabClass } from '@/lib/ui/tabs'
 
@@ -207,7 +207,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
           </button>
         </div>
 
-        {error && <p role="alert" className="m-0 px-5 py-2 text-[12.5px] text-[#b3271f] border-b border-[var(--row-rule)]">{error}</p>}
+        {error && <p role="alert" className="m-0 px-5 py-2 text-[12.5px] text-[#c8323d] border-b border-[var(--row-rule)]">{error}</p>}
 
         <div id="drawer-panel" role="tabpanel" aria-labelledby={`drawer-tab-${current.key}`} className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-0.5">
           {rows.length === 0 ? (
@@ -286,12 +286,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
           })}
         </div>
 
-        {toast && (
-          <div role="status" className="fixed left-1/2 bottom-6 -translate-x-1/2 z-[90] flex items-center gap-3 w-max max-w-[calc(100%-32px)] bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M5 12l5 5 9-10" /></svg>
-            <p className="m-0">{toast}</p>
-          </div>
-        )}
+        <Toast toast={toast ? { text: toast } : null} />
 
         {/* Chat and Email have no settings yet: the link is the bell's alone. */}
         {kind === 'bell' && (

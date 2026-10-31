@@ -18,7 +18,6 @@ import { BTN } from '@/lib/ui/buttons'
 import { TEXTAREA as FIELD_TEXTAREA, TEXTAREA_SHAPE } from '@/lib/ui/fields'
 import { FIELD_LABEL_TYPE } from '@/lib/ui/type'
 import { NAV_ICON } from '@/lib/nav/nav-icons'
-import type { PillTone } from '@/lib/timeclock/clocky-types'
 
 /** True in the browser, false while the server renders: portals only exist in the browser. */
 const noop = () => () => {}
@@ -65,22 +64,8 @@ export function Icon({ d, size = 16, color = 'currentColor', width = 2, fill = '
 
 // ── Pills ───────────────────────────────────────────────────────────────────
 
-export const TONE: Record<PillTone, { bg: string; fg: string }> = {
-  ok: { bg: 'var(--ok-bg)', fg: 'var(--ok-fg)' },
-  warn: { bg: 'var(--warn-bg)', fg: 'var(--warn-fg)' },
-  bad: { bg: '#fdeeef', fg: '#c8323d' },
-  neutral: { bg: 'var(--chip-neutral-bg)', fg: 'var(--chip-neutral-fg)' },
-}
-
-/** The status pill of the list (Raleway 800 10px, uppercase). */
-export function Pill({ text, tone, tip, size = 'sm' }: { text: string; tone: PillTone; tip?: string; size?: 'sm' | 'md' }) {
-  return (
-    <span title={tip || undefined} style={{ background: TONE[tone].bg, color: TONE[tone].fg }}
-      className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full whitespace-nowrap ${size === 'sm' ? 'px-2 py-[3px]' : 'px-[9px] py-1'}`}>
-      {text}
-    </span>
-  )
-}
+/** The status pill of the list: the portal's one pill (components/ui/Pill), on the badge tokens. */
+export { Pill } from '@/components/ui/Pill'
 
 // ── Buttons: aliases of lib/ui/buttons.ts, the portal's only button source ──
 
@@ -155,9 +140,9 @@ export function SaveError({ text }: { text: string | null }) {
 
 // ── Modal window ────────────────────────────────────────────────────────────
 
-export function CloseButton({ onClick, className = '' }: { onClick: () => void; className?: string }) {
+export function CloseButton({ onClick, className = '', label = 'Close' }: { onClick: () => void; className?: string; label?: string }) {
   return (
-    <button type="button" onClick={onClick} aria-label="Close"
+    <button type="button" onClick={onClick} aria-label={label}
       className={`${BTN.icon} ${className}`}>
       <Icon d={ICON.close} size={17} width={2.2} />
     </button>

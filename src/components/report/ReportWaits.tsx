@@ -43,7 +43,7 @@ function ByBoard({ boards }: { boards: BoardWait[] }) {
               className={`${chip} w-14 justify-center ${b.latePct === null
                 ? 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'
                 : b.latePct >= 25
-                  ? 'bg-[rgba(194,65,12,.12)] text-[#c2410c]'
+                  ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
                   : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
             >
               {b.latePct === null ? '-' : `${b.latePct}%`}

@@ -17,14 +17,13 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ExtraPage } from '@/lib/timeclock/requests-data'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
-import { REQ_TONE } from './ReimbursementsView'
-import { PAGE_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 export interface ExtraApi {
   askExtraHours(i: { personId: string; hours: number; when: string; client: string; why: string }): Promise<Result<{ toast: string }>>
 }
 
-const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const INPUT = `${FIELD} tabular-nums lining-nums`
 
 export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: ExtraApi; initial?: { form?: boolean; draft?: Partial<Draft> } }) {
@@ -51,7 +50,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
       </div>
 
       {a && (
-        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-5 py-[18px] flex flex-col gap-3">
+        <div className={`${CARD} px-5 py-[18px] flex flex-col gap-3`}>
           <div className="flex justify-between items-baseline gap-3 flex-wrap">
             <span className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">{a.period}</span>
             <span className="font-(family-name:--font-display) font-black text-[22px] text-tn-ink tabular-nums lining-nums">{a.used} <span className="text-[14px] text-muted font-bold">of {a.cap}</span></span>
@@ -74,7 +73,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
               <span className="text-[12.5px] text-foreground leading-[1.45]">{r.why}</span>
             </span>
             <span className="flex-none ml-auto flex flex-col items-end gap-1">
-              <span className={PILL} style={{ background: REQ_TONE[r.st.tone].bg, color: REQ_TONE[r.st.tone].fg }}>{r.st.label}</span>
+              <span className={pillClass(r.st.tone)}>{r.st.label}</span>
               <span className="text-[11.5px] text-muted">{r.by}</span>
             </span>
           </div>

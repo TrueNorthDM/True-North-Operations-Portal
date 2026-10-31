@@ -16,7 +16,7 @@ import { formatClock } from '@/lib/timeclock/rounding'
 import type { ClockChoice } from '@/lib/timeclock/clocky-types'
 import { useOutside } from './EntriesList'
 import { gridEditKey, gridRowKey, type GridModel, type GridSource } from './model'
-import { BTN_GRID_SAVE, BTN_SMALL, Icon, ICON, LABEL, MENU } from './ui'
+import { BTN_GRID_SAVE, BTN_SMALL, Icon, ICON, LABEL, MENU, SaveError } from './ui'
 
 const COLS = 'minmax(250px,1fr) repeat(7,86px) 90px'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -82,11 +82,7 @@ export function WeekGrid({ who, days, today, model, editable, combos, onOpenAdd,
         )}
       </div>
 
-      {error && (
-        <div role="alert" className="flex gap-2.5 items-center rounded-[11px] bg-[#fdeeef] border border-[#f3c6ca] px-3 py-2.5 text-[13px] text-[#c8323d] font-bold">
-          <Icon d={ICON.warn} size={17} />{error}
-        </div>
-      )}
+      <SaveError text={error} />
 
       <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
         <div className="min-w-[980px]">

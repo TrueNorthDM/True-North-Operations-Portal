@@ -9,6 +9,7 @@ import { addException, endException } from '@/app/(app)/admin/access-levels/acti
 import { type AccessPageData, type Person, Tag, btn, btnNavy, card, Modal, when, addDays, endOfMonth } from './parts'
 import { DateField } from '@/components/ui/DateField'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { TH_CELL } from '@/lib/ui/type'
 
 export function Exceptions({ data, people, onDone }: { data: AccessPageData; people: Person[]; onDone: () => void }) {
   const [adding, setAdding] = useState(false)
@@ -31,7 +32,7 @@ export function Exceptions({ data, people, onDone }: { data: AccessPageData; peo
       </div>
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full border-collapse text-[13px] min-w-[820px]">
-          <thead><tr>{['Person', 'Item', 'Effect', 'Until', 'Reason', 'Added', ''].map(h => <th key={h} className="text-left bg-subtle px-3 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">{h}</th>)}</tr></thead>
+          <thead><tr>{['Person', 'Item', 'Effect', 'Until', 'Reason', 'Added', ''].map(h => <th key={h} className={`${TH_CELL} text-left px-3 py-2.5`}>{h}</th>)}</tr></thead>
           <tbody>
             {data.exceptions.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-muted">No exceptions. Everyone follows their level and teams.</td></tr>}
             {data.exceptions.map(e => {

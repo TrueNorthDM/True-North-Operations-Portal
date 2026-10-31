@@ -89,7 +89,7 @@ function Delta({ by }: { by: number }) {
   if (by === 0) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>placed</span>
   return by > 0
     ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${n(by)}`}</span>
-    : <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>{`down ${n(-by)}`}</span>
+    : <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`down ${n(-by)}`}</span>
 }
 
 function GripIcon() {

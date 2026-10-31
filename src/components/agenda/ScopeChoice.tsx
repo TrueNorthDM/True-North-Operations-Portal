@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { Modal, MODAL_TITLE } from '@/components/clocky/entries/ui'
 import type { Scope } from '@/lib/agenda/recurrence'
 import { BTN } from '@/lib/ui/buttons'
+import { CHECKBOX } from '@/lib/ui/fields'
 
 const CHOICES: [Scope, string][] = [['one', 'This event'], ['following', 'This and following events'], ['all', 'All events']]
 
@@ -22,7 +23,7 @@ export function ScopeChoice({ action, busy, onPick, onClose }: { action: 'save' 
       <div className="flex flex-col gap-1" role="radiogroup" aria-label="Which events">
         {CHOICES.map(([k, l]) => (
           <label key={k} className="flex items-center gap-3 rounded-[10px] px-2.5 py-2 cursor-pointer hover:bg-subtle text-[14px] text-tn-ink font-semibold">
-            <input type="radio" name="scope" checked={scope === k} onChange={() => setScope(k)} className="w-4 h-4 accent-[#012358]" />
+            <input type="radio" name="scope" checked={scope === k} onChange={() => setScope(k)} className={CHECKBOX} />
             {l}
           </label>
         ))}

@@ -6,6 +6,8 @@
 
 import { NavIcon } from '@/components/NavIcon'
 import { CATEGORY_LABEL, timingIsChoice, type NotificationType, type Rule, type Timing } from '@/lib/notifications/catalogue'
+import { Pill } from '@/components/ui/Pill'
+import { TH as BASE_TH, TH_CELL } from '@/lib/ui/type'
 
 export function LockGlyph({ open = false, size = 11 }: { open?: boolean; size?: number }) {
   return (
@@ -50,7 +52,7 @@ export function WhenFixed({ timing, only, locked, faded }: { timing: Timing; onl
 
 export function CategoryPill({ block }: { block: NotificationType['block'] }) {
   const cls = block === 'system' ? 'bg-[#efedfc] text-[#5b4bc4]' : 'bg-[rgba(30,125,127,.1)] text-tn-teal'
-  return <span className={`inline-block rounded-full px-[9px] py-0.5 text-[10.5px] font-extrabold tracking-[.08em] uppercase font-(family-name:--font-display) ${cls}`}>{CATEGORY_LABEL[block]}</span>
+  return <Pill colorClass={cls} text={CATEGORY_LABEL[block]} />
 }
 
 /**
@@ -88,7 +90,9 @@ export function fixedSentence(t: NotificationType, r: Rule): string | null {
   return parts.length ? `Set by an admin: ${parts.join(', ')}.` : null
 }
 
-export const TH = 'text-left font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] whitespace-nowrap'
+/** The portal's table header cell (lib/ui/type.ts), on one line. */
+export const TH = `${BASE_TH} whitespace-nowrap`
+export { TH_CELL }
 export const TD = 'px-4 py-3 border-t border-[var(--row-rule)] align-middle'
 
 export function NameCell({ t, faded, below }: { t: NotificationType; faded: boolean; below?: React.ReactNode }) {

@@ -12,6 +12,7 @@ import { Popover, PopoverItem } from './PageListParts'
 import { languageName } from '@/lib/language-display'
 import { STATUS_LABEL, langFilterLabel, type StatusFilter } from './page-list-model'
 import { CARD } from '@/lib/ui/type'
+import { CHECKBOX } from '@/lib/ui/fields'
 
 export function PageListToolbar({
   search, onSearch, onPatch, onToggleLang,
@@ -117,7 +118,7 @@ export function PageListToolbar({
                       type="checkbox"
                       checked={checked}
                       onChange={() => onToggleLang(lang)}
-                      className="w-4 h-4 rounded border-slate-300"
+                      className={CHECKBOX}
                     />
                     <span className="font-mono uppercase text-xs text-slate-500 w-7">{lang}</span>
                     <span className="text-slate-800">{languageName(lang)}</span>

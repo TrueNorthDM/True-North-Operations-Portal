@@ -10,6 +10,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export interface TwoStepEnrollProps {
   /** Supabase's totp.qr_code: an SVG data URL. */
@@ -117,7 +118,7 @@ export function TwoStepEnroll({ qr, secret, uri, email, verify, signOut, skip }:
       </div>
 
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">{error}</div>
+        <div role="alert" className={ERROR_BOX}>{error}</div>
       )}
 
       <button

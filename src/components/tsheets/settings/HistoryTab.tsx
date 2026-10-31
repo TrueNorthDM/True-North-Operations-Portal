@@ -60,8 +60,8 @@ function describe(e: AuditEntry): Change {
       if (b.extra_budget !== a.extra_budget) return { badge: 'Extra', kind: 'amber', summary: arrow(b.extra_budget, a.extra_budget) }
       if (b.start_date !== a.start_date || b.budget_end_date !== a.budget_end_date) {
         const s = a.start_date ? String(a.start_date) : '-'
-        const en = a.budget_end_date ? String(a.budget_end_date) : 'ongoing'
-        return { badge: 'Budget period', kind: 'teal', summary: `${s} – ${en}` }
+        const en = String(a.budget_end_date ?? '')
+        return { badge: 'Budget period', kind: 'teal', summary: a.budget_end_date ? `${s} to ${en}` : `${s} onward` }
       }
       if (b.hourly_rate !== a.hourly_rate) return { badge: 'Hourly rate', kind: 'violet', summary: arrow(b.hourly_rate, a.hourly_rate) }
       return { badge: 'Budget', kind: 'blue', summary: '' }

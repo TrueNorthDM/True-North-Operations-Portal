@@ -14,6 +14,7 @@ import { failText } from '@/lib/ui/action-error'
 import { findDay, nextFree, WINDOW, type Avail } from '@/lib/agenda/find-time'
 import { clockLabel, DC, instantOf } from '@/lib/agenda/time'
 import { FIELD_LABEL } from '@/lib/ui/type'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 type Person = { id: string; name: string; place: string; avail: Avail }
 export type FindTimeApi = (i: { personIds: string[]; from: string }) => Promise<{ ok: true; people: Person[] } | { ok: false; error: string }>
@@ -87,7 +88,7 @@ export function FindTimePanel({ api, personIds, externals, names, me, date, from
       className="fixed z-[62] bottom-0 top-[var(--chrome-top)] left-0 right-0 md:left-16 md:right-[max(50%,520px)] bg-white md:border-r border-[var(--panel-border)] overflow-y-auto [scrollbar-width:none] px-5 md:px-[30px] pt-[26px] pb-8 flex flex-col gap-[26px]">
       <div className="flex justify-between items-center">
         <b className="font-(family-name:--font-display) font-black text-[20px] text-tn-ink">Find a time</b>
-        <button type="button" onClick={onClose} aria-label="Close Find a time" className="w-8 h-8 border-0 bg-transparent rounded-[8px] text-muted text-[22px] leading-none cursor-pointer hover:bg-subtle">×</button>
+        <CloseButton onClick={onClose} label="Close Find a time" />
       </div>
       <p className="-mt-3.5 m-0 text-[12.5px] text-muted leading-[1.45]">Times in Washington DC (ET). Busy times come from everyone&apos;s connected Google accounts, their time off and the US holidays. You only see busy or free, never what the event is.</p>
 

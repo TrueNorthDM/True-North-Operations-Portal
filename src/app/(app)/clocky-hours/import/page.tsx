@@ -12,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ImportRunner } from '../ImportRunner'
 import { RulesForm, type Rules } from '../RulesForm'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { PAGE_TITLE, SECTION_TITLE, FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { PAGE_TITLE, SECTION_TITLE, FIELD_LABEL, CARD, TH_CELL } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Import' }
@@ -90,7 +90,7 @@ export default async function ClockyImportPage() {
   const card = `${CARD} p-5`
   const label = FIELD_LABEL
   // Table headers keep their own look for now.
-  const head = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
+  const head = TH_CELL
 
   return (
     <div className="space-y-8">
@@ -148,7 +148,7 @@ export default async function ClockyImportPage() {
             </span>
           )}
         </div>
-        {run?.error && <p className="text-sm text-red-600 font-mono m-0">{run.error}</p>}
+        {run?.error && <p className="text-sm text-[#c8323d] font-mono m-0">{run.error}</p>}
 
         <ImportRunner hasCutoff={Boolean(s?.import_cutoff_date)} mismatched={mismatched.length} />
       </section>}
@@ -168,13 +168,13 @@ export default async function ClockyImportPage() {
             <div className={`${CARD} overflow-x-auto`}>
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-subtle border-b border-slate-200">
-                    <th className={`text-left ${head} px-4 py-3`}>Month</th>
-                    <th className={`text-right ${head} px-3 py-3`}>Entries there</th>
-                    <th className={`text-right ${head} px-3 py-3`}>Entries here</th>
-                    <th className={`text-right ${head} px-3 py-3`}>Hours there</th>
-                    <th className={`text-right ${head} px-3 py-3`}>Hours here</th>
-                    <th className={`text-left ${head} px-3 py-3`}>Match</th>
+                  <tr>
+                    <th className={`text-left ${head} px-4 py-2.5`}>Month</th>
+                    <th className={`text-right ${head} px-3 py-2.5`}>Entries there</th>
+                    <th className={`text-right ${head} px-3 py-2.5`}>Entries here</th>
+                    <th className={`text-right ${head} px-3 py-2.5`}>Hours there</th>
+                    <th className={`text-right ${head} px-3 py-2.5`}>Hours here</th>
+                    <th className={`text-left ${head} px-3 py-2.5`}>Match</th>
                   </tr>
                 </thead>
                 <tbody>

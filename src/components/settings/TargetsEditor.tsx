@@ -35,6 +35,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import type { TargetsBoard as TargetsBoardInfo } from '@/lib/boards/targets-data'
 import { isCycled, shortDay, WEEKLY } from '@/lib/boards/publishing-cycles'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 // ── Language dots, flag colours, keyed by the Monday label text ─────────────
 const LANG_DOT: Record<string, string> = {
@@ -282,7 +283,7 @@ function BoardTargets({ board, rows, canEdit, thisMonday }: { board: TargetsBoar
   const addable = board.languages.filter(l => !targeted.has(l.trim().toLowerCase()))
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} p-5`}>
       {confirmDialog}
       <div className="flex items-center gap-3 mb-4">
         <span className={`inline-flex w-9 h-9 items-center justify-center rounded-[9px] font-(family-name:--font-display) font-extrabold text-[12px] shrink-0 ${boardBadge(abbr)}`}>{abbr}</span>
@@ -477,7 +478,7 @@ function Publishers({ names, canEdit }: { names: string[]; canEdit: boolean }) {
   }
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} p-5`}>
       {confirmDialog}
       <h3 className="m-0 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Publishers</h3>
       <p className="mt-1 mb-3 text-[12.5px] text-muted">
@@ -586,7 +587,7 @@ function AuditHistory({ audit }: { audit: AuditLogRow[] }) {
                     {subject && <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{subject}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className={`inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 ${PILL_CLASS[change.kind]}`}>{change.label}</span>
+                    <span className={`${PILL} ${PILL_CLASS[change.kind]}`}>{change.label}</span>
                     {change.summary && <span className="text-[12.5px] text-foreground tabular-nums">{change.summary}</span>}
                   </div>
                 </div>

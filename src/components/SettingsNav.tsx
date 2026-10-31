@@ -13,6 +13,7 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { CARD } from '@/lib/ui/type'
+import { Pill } from '@/components/ui/Pill'
 
 export interface SettingsSection {
   id: string
@@ -82,7 +83,7 @@ export function SettingsNav({
                 {/* NEW marks a section not opened yet; the open one does not need it (Company Settings.dc.html). */}
                 {s.badge && s.badge.count > 0
                   ? <span title={s.badge.label} aria-label={s.badge.label} className="font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-px tabular-nums lining-nums leading-[normal]">{s.badge.count}</span>
-                  : s.isNew && !on && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
+                  : s.isNew && !on && <Pill tone="blue">New</Pill>}
               </button>
             )
           })}

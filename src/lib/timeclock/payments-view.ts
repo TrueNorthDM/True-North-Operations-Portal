@@ -63,7 +63,7 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
   }
   const rows = x.invoices.map(i => {
     const w = where(i)
-    return { key: `i${i.id}`, c1: i.number, c2: periodLabel({ start: i.period_start, end: i.period_end }).full, c3: i.seconds ? formatDuration(i.seconds) : '–', c4: usd(Number(i.total)), st: INVOICE_STATE[w.st], c5: w.text, doc: { kind: 'invoice' as const, id: i.id } }
+    return { key: `i${i.id}`, c1: i.number, c2: periodLabel({ start: i.period_start, end: i.period_end }).full, c3: i.seconds ? formatDuration(i.seconds) : '-', c4: usd(Number(i.total)), st: INVOICE_STATE[w.st], c5: w.text, doc: { kind: 'invoice' as const, id: i.id } }
   })
   const [y, m, d] = x.today.split('-').map(Number)
   const since = new Date(Date.UTC(y, m - 4, d)).toISOString().slice(0, 10)
@@ -86,8 +86,8 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
     kind: 'contractor', first,
     cards: [
       { label: 'Paid, last 3 months', val: usd(paid.reduce((n, i) => n + Number(i.total), 0)), sub: `${paid.length} invoice${paid.length === 1 ? '' : 's'}, paid outside Rippling`, fg: '#0d7a4f' },
-      { label: 'Waiting', val: wait ? usd(Number(wait.total)) : '–', sub: wait ? `${wait.number}, ${where(wait).text.replace(/^With/, 'with').replace(/^Hours/, 'hours')}` : 'Nothing waiting', fg: '#8a6d1a' },
-      { label: 'Last payment', val: last ? dateLabel(last.paid_on!) : '–', sub: last?.paid_ref ? `Ref. ${last.paid_ref}` : '', fg: '#012358' },
+      { label: 'Waiting', val: wait ? usd(Number(wait.total)) : '-', sub: wait ? `${wait.number}, ${where(wait).text.replace(/^With/, 'with').replace(/^Hours/, 'hours')}` : 'Nothing waiting', fg: '#8a6d1a' },
+      { label: 'Last payment', val: last ? dateLabel(last.paid_on!) : '-', sub: last?.paid_ref ? `Ref. ${last.paid_ref}` : '', fg: '#012358' },
     ],
     tables: [
       { title: 'Invoices', sub: 'One a month, made when the timesheet is submitted.', heads: heads(['Number', 'Period', 'Hours', 'Total', 'State', 'Paid', ''], 3), rows, empty: 'No invoices yet. The first one is made when the timesheet is submitted.' },
@@ -115,7 +115,7 @@ export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; 
         : p.state === 'approved' || p.state === 'recorded' ? (p.sent?.state === 'waiting_connection' ? 'Waits for the Rippling connection' : 'Queued for Rippling')
           : p.state === 'returned' ? 'Returned: change it and submit again'
             : `With ${x.hoursBy ?? 'the approver'}${p.offText ? ` · ${p.offText}` : ''}`
-    return { key: `p${p.id}`, c1: periodLabel({ start: p.start, end: p.end }).label, c2: formatDuration(p.worked), c3: p.off ? formatDuration(p.off) : '–', c4: formatDuration(p.worked + p.off), st, c5, doc: { kind: 'payroll' as const, id: p.id } }
+    return { key: `p${p.id}`, c1: periodLabel({ start: p.start, end: p.end }).label, c2: formatDuration(p.worked), c3: p.off ? formatDuration(p.off) : '-', c4: formatDuration(p.worked + p.off), st, c5, doc: { kind: 'payroll' as const, id: p.id } }
   })
   const sent = x.periods.filter(p => p.sent?.state === 'done').slice(0, 3)
   const wait = x.periods.find(p => p.state === 'submitted')
@@ -123,7 +123,7 @@ export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; 
     kind: 'employee', first,
     cards: [
       { label: 'Sent to Rippling, last 3 periods', val: formatDuration(sent.reduce((n, p) => n + p.worked + p.off, 0)), sub: `${formatDuration(sent.reduce((n, p) => n + p.off, 0))} of it PTO`, fg: '#0d7a4f' },
-      { label: 'Waiting', val: wait ? periodLabel({ start: wait.start, end: wait.end }).label : '–', sub: wait ? `With ${x.hoursBy ?? 'the approver'}` : 'Nothing waiting', fg: '#8a6d1a' },
+      { label: 'Waiting', val: wait ? periodLabel({ start: wait.start, end: wait.end }).label : '-', sub: wait ? `With ${x.hoursBy ?? 'the approver'}` : 'Nothing waiting', fg: '#8a6d1a' },
       { label: 'Pay', val: 'In Rippling', sub: 'Salary and pay stubs live in Rippling', fg: '#012358' },
     ],
     tables: [

@@ -19,6 +19,7 @@ import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { Pill } from '@/components/ui/Pill'
 
 type Result = 'pass' | 'fail' | 'skip'
 type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
@@ -239,7 +240,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-(family-name:--font-display) font-bold text-[14.5px] text-tn-ink">{c.check}</span>
                               {c.needs && (
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">needs: {c.needs}</span>
+                                <Pill tone="amber">needs: {c.needs}</Pill>
                               )}
                             </div>
                             <div className="text-[13px] leading-relaxed text-muted mt-1"><span className="font-semibold text-slate-400">Expect:</span> {c.expect}</div>

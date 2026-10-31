@@ -54,7 +54,7 @@ export function BookingConfirm({ view, confirm }: { view: ConfirmView; confirm: 
             <Mark kind="mail" />
             <h4 className={H4}>Confirm your meeting</h4>
             <p className="m-0 text-[14px] leading-[1.5] text-foreground max-w-[520px]">{view.when}, on Google Meet{list.length > 1 ? `, with ${list.length - 1} ${list.length === 2 ? 'guest' : 'guests'}` : ''}.</p>
-            {err && <p role="alert" className="m-0 text-[13px] font-bold text-[#b2412f] max-w-[520px]">{err}</p>}
+            {err && <p role="alert" className="m-0 text-[13px] font-bold text-[#c8323d] max-w-[520px]">{err}</p>}
             <button type="button" className={BTN_MAIN} disabled={busy} onClick={() => void go()}>{busy ? 'Booking…' : 'Confirm my meeting'}</button>
             {err && <a href={again} className="font-bold text-[13px] text-tn-teal hover:underline">Pick another time</a>}
           </div>

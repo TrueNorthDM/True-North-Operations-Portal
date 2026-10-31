@@ -14,6 +14,7 @@ import { saveMonthlyBudgets } from '@/lib/tsheets/settings-actions'
 import { money } from '@/lib/tsheets/format'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { BTN } from '@/lib/ui/buttons'
+import { TH_CELL } from '@/lib/ui/type'
 
 export interface MonthlyBudget { month: string; budget: number; extra: number }  // month = 'YYYY-MM'
 
@@ -84,7 +85,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
   }
 
   const cellInput = `num-cell w-full ${INPUT_SM} text-right tabular-nums`
-  const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal px-3 py-3 whitespace-nowrap'
+  const th = `${TH_CELL} text-right px-3 py-2.5 whitespace-nowrap`
   const rowLabel = 'text-left text-[12px] font-(family-name:--font-display) font-bold text-tn-ink px-3 py-2.5 sticky left-0 whitespace-nowrap'
   const changeCount = diff().changes.length
 
@@ -120,8 +121,8 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
       <div className="rounded-[12px] border border-slate-200 overflow-x-auto">
         <table className="min-w-full text-sm table-fixed">
           <thead>
-            <tr className="bg-tn-teal-soft border-b border-slate-200">
-              <th className={`text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal px-3 py-3 sticky left-0 bg-tn-teal-soft ${COL0}`}>Month →</th>
+            <tr>
+              <th className={`${TH_CELL} text-left px-3 py-2.5 sticky left-0 ${COL0}`}>Month →</th>
               {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
             </tr>
           </thead>
@@ -156,7 +157,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
           </tbody>
         </table>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[#c8323d]">{error}</p>}
       {editing && (
         <div className="flex items-center justify-end gap-3">
           {changeCount > 0 && <span className="text-xs text-slate-500">{changeCount} month{changeCount !== 1 ? 's' : ''} changed</span>}

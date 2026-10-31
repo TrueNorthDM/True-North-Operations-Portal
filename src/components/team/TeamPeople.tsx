@@ -18,10 +18,11 @@ import { initialsOf, roleTypePill } from '@/lib/directory/people-types'
 import Link from 'next/link'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { Tabs } from '@/components/ui/Tabs'
+import { PILL as SHARED_PILL } from '@/components/ui/Pill'
+import { CARD } from '@/lib/ui/type'
 
-// The pill shape the handoff uses for both role and status: 9px, uppercase,
-// fully round, and never allowed to grow with its row.
-const PILL = 'inline-flex items-center shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.05em] uppercase rounded-full px-2 py-[3px]'
+// The portal's one pill (components/ui/Pill), never allowed to grow with its row.
+const PILL = `${SHARED_PILL} shrink-0`
 
 
 /**
@@ -34,7 +35,7 @@ const PILL = 'inline-flex items-center shrink-0 font-(family-name:--font-display
 function TeamCard({ team }: { team: RestrictedTeam }) {
   const colour = team.color
   return (
-    <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} overflow-hidden`}>
       <div className="h-1.5" style={{ background: colour }} />
       <div className="p-5">
         <div className="flex items-center justify-between gap-2 mb-4">
@@ -119,7 +120,7 @@ export function TeamPeople({
 
       {showTeams && tab === 'teams' && (
         teams.length === 0
-          ? <div className="border border-[var(--panel-border)] bg-white rounded-[16px] px-6 py-12 text-center text-[13px] text-muted">You are not on a team yet.</div>
+          ? <div className={`${CARD} px-6 py-12 text-center text-[13px] text-muted`}>You are not on a team yet.</div>
           : (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {teams.map(t => <TeamCard key={t.id} team={t} />)}
@@ -129,7 +130,7 @@ export function TeamPeople({
 
       <div className={showTeams && tab === 'teams' ? 'hidden' : 'contents'}>
       {alone && (
-        <div className="border border-[var(--panel-border)] bg-white rounded-[16px] p-5 mb-4">
+        <div className={`${CARD} p-5 mb-4`}>
           <p className="text-[14.5px] text-muted leading-[1.6] m-0">
             Your own page. You are not on a team yet, so no colleagues are listed.
           </p>
@@ -142,7 +143,7 @@ export function TeamPeople({
         className="w-full sm:w-[420px] mb-4"
       />
 
-      <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         {shown.length === 0 && (
           <div className="px-5 py-9 text-center text-[13.5px] text-muted">No one matches “{q}”.</div>
         )}
@@ -177,7 +178,7 @@ export function TeamPeople({
 
               <span className="text-[12.5px] text-muted w-40 shrink-0">{p.teamName ?? '-'}</span>
 
-              <span className={`${PILL} ${active ? 'bg-[var(--ok-bg)] text-[var(--ok-fg)]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>
+              <span className={`${PILL} ${active ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>
                 {active ? 'Active' : 'Inactive'}
               </span>
 

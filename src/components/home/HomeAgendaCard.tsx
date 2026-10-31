@@ -10,9 +10,9 @@ import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { Look } from '@/lib/agenda/model'
 import type { HomeAgenda } from '@/lib/agenda/home'
-import { CARD } from '@/lib/ui/type'
+import { CARD, TH_TYPE } from '@/lib/ui/type'
 
-const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted'
+const HEAD = TH_TYPE
 
 export function HomeAgendaCard({ agenda, linked = true }: { agenda: HomeAgenda | 'unavailable'; linked?: boolean }) {
   return (

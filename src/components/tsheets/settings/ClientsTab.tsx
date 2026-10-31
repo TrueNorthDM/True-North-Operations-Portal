@@ -11,6 +11,7 @@ import { MONTH_SHORT } from '@/lib/format/months'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
+import { TH_CELL, CARD } from '@/lib/ui/type'
 
 export interface ClientWithBudget {
   id: number
@@ -50,14 +51,14 @@ function dateLabel(date: string): string {
   return idx >= 0 && idx < 12 ? `${MONTH_SHORT[idx]} ${Number(d)}, ${y}` : date
 }
 
-/** A start/optional-end pair as "Jul 1, 2026 – Sep 30, 2026" or "Jul 1, 2026 – ongoing". */
+/** A start/optional-end pair as "Jul 1, 2026 to Sep 30, 2026" or "Jul 1, 2026 onward". */
 function periodLabel(start: string | null | undefined, end: string | null | undefined): string {
   if (!start) return '-'
-  return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
+  return end ? `${dateLabel(start)} to ${dateLabel(end)}` : `${dateLabel(start)} onward`
 }
 
 const Dash = () => <span className="text-slate-300">-</span>
-const TH = 'text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3.5'
+const TH = `${TH_CELL} px-5 py-2.5`
 
 export function ClientsTab({ clients, estimateRate }: Props) {
   // Only the selected id is state, the client object is derived from `clients`,
@@ -67,7 +68,7 @@ export function ClientsTab({ clients, estimateRate }: Props) {
 
   if (clients.length === 0) {
     return (
-      <div className="rounded-[16px] border border-slate-200 bg-white p-8 text-center space-y-2">
+      <div className={`${CARD} p-8 text-center space-y-2`}>
         <p className="text-sm font-medium text-tn-ink">No clients yet</p>
         <p className="text-xs text-muted">Sync clients from the top of the page to pull job codes from TSheets.</p>
       </div>
@@ -75,11 +76,11 @@ export function ClientsTab({ clients, estimateRate }: Props) {
   }
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
-            <tr className="bg-subtle border-b border-slate-200">
+            <tr>
               <th className={`text-left ${TH}`}>Client</th>
               <th className={`text-right ${TH}`}>Hours</th>
               <th className={`text-right ${TH}`}>Budget</th>

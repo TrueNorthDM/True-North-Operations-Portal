@@ -32,7 +32,9 @@ import { reportDate } from '@/lib/report/clock'
 import { siteHost, type SiteCode } from '@/lib/href-links/rules'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { langChipStyle } from '@/components/href-links/lang-chip'
-import { PAGE_TITLE, CARD_TITLE, CARD } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD_TITLE, CARD, TH_CELL } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
+import { Pill } from '@/components/ui/Pill'
 
 interface ConfirmationState {
   language_code: string
@@ -208,7 +210,7 @@ export function PageDetail({
       </div>
 
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className={ERROR_BOX}>
           {error}
         </div>
       )}
@@ -262,7 +264,7 @@ export function PageDetail({
                     aria-invalid={fieldError ? true : undefined}
                     aria-describedby={fieldError ? `${errId} ${helpId}` : helpId}
                     className={`flex-1 min-w-0 ${INPUT_SHAPE} bg-white ${
-                      fieldError ? 'border-red-400' : 'border-[var(--panel-border)]'
+                      fieldError ? 'border-[#c8323d]' : 'border-[var(--panel-border)]'
                     }`}
                   />
                   {/* Opens the SAVED link (the field may hold unsaved typing),
@@ -289,7 +291,7 @@ export function PageDetail({
                   )}
                 </div>
                 {fieldError && (
-                  <p id={errId} role="alert" className="mt-1 ml-[54px] text-xs text-red-700">
+                  <p id={errId} role="alert" className="mt-1 ml-[54px] text-xs text-[#c8323d]">
                     {fieldError}
                   </p>
                 )}
@@ -338,9 +340,7 @@ export function PageDetail({
                       discontinued
                     </span>
                     {conf?.confirmed_on_live && (
-                      <span className="text-[10px] uppercase tracking-wider bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">
-                        was live
-                      </span>
+                      <Pill tone="green">was live</Pill>
                     )}
                   </div>
                 )
@@ -361,9 +361,9 @@ export function PageDetail({
         <h2 className={CARD_TITLE}>Confirmations</h2>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left border-b border-slate-200">
-              <th scope="col" className="py-2 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink w-1/2">Language</th>
-              <th scope="col" className="py-2 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink">Confirmed live</th>
+            <tr>
+              <th scope="col" className={`${TH_CELL} text-left px-3 py-2.5 w-1/2`}>Language</th>
+              <th scope="col" className={`${TH_CELL} text-left px-3 py-2.5`}>Confirmed live</th>
             </tr>
           </thead>
           <tbody>

@@ -23,7 +23,7 @@ import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
 import { Tabs } from '@/components/ui/Tabs'
-import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD, TH_TYPE } from '@/lib/ui/type'
 
 interface Props {
   data: I7Report
@@ -150,7 +150,8 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
   const availSep = !showCost && showBudgetAvail ? ` ${sep}` : ''
   const hrsAvailSep = !showCost && !showBudgetAvail ? ` ${sep}` : ''
 
-  const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
+  // The portal's header type (lib/ui/type.ts); the row carries the fill, so the tinted budget and hours columns show over it.
+  const thNum = `text-right ${TH_TYPE} px-3 py-2.5 whitespace-nowrap border-b border-[var(--panel-border)]`
   const selectCls = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
 
   return (
@@ -248,8 +249,8 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         <div className={`${CARD} overflow-x-auto`}>
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-subtle border-b border-slate-200">
-                <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project · Job code · Activity</th>
+              <tr className="bg-subtle">
+                <th className={`text-left ${TH_TYPE} px-4 py-2.5 sticky left-0 bg-subtle z-10 border-b border-[var(--panel-border)]`}>Project · Job code · Activity</th>
                 {showBudgetHrs && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
                 {showHrsAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${hrsAvailSep}`}>Hrs avail.</th>}
                 {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${availSep}`}>Budget avail.</th>}

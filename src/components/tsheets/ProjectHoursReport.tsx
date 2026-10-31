@@ -24,7 +24,7 @@ import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 import { peopleView } from '@/lib/timeclock/project-people'
 import { Tabs } from '@/components/ui/Tabs'
-import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD, TH_TYPE } from '@/lib/ui/type'
 
 // Two header rows: what a block of columns is about, then what each one holds.
 //
@@ -36,12 +36,12 @@ import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 // 10px like every other heading on the page. It was 9.5px, and half a pixel
 // does not read as a tier, it reads as a heading that failed to line up. The
 // wider tracking is what says this one spans the columns beneath it.
-const thGroup = 'text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted px-2 pt-3 pb-1.5 whitespace-nowrap'
+const thGroup = `text-center ${TH_TYPE} px-2 pt-3 pb-1.5 whitespace-nowrap`
 // px-2 on the number columns, which is the last of the width. The sidebar and
 // the page padding take 112px, so a 1280-wide laptop has 1168 for a table that
 // wants 1148 once the year-to-date net is out of it. Twelve columns each giving
 // back four pixels is what buys the margin.
-const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2 pb-3 pt-1 whitespace-nowrap'
+const thNum = `text-right ${TH_TYPE} px-2 pb-3 pt-1 whitespace-nowrap`
 /** The line that starts a block of columns, drawn in the head, body and foot alike. */
 const edge = 'border-l border-[rgba(1,35,88,0.1)]'
 const card = `${CARD} p-5`
@@ -211,7 +211,7 @@ export function ProjectHoursReport(
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-subtle">
-              <th rowSpan={2} className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10 align-bottom">Project</th>
+              <th rowSpan={2} className={`text-left ${TH_TYPE} px-4 py-3 sticky left-0 bg-subtle z-10 align-bottom border-b border-[var(--panel-border)]`}>Project</th>
               <th colSpan={3} className={`${thGroup} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Prepaid hours</th>
               {/* In the People view the person columns and their total are all
                   this month's hours, so they sit under the one heading. */}
@@ -219,7 +219,7 @@ export function ProjectHoursReport(
               <th colSpan={view === 'costs' ? 3 : 1} className={`${thGroup} ${edge}`}>{thisYear} to date</th>
               <th className={`${thGroup} ${edge}`}>{lastYear}</th>
             </tr>
-            <tr className="bg-subtle border-b border-slate-200">
+            <tr className="bg-subtle border-b border-[var(--panel-border)]">
               <th className={`${thNum} ${bal}`}>Carried in</th>
               <th className={`${thNum} ${bal}`}>Prepaid</th>
               <th className={`${thNum} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Remaining</th>

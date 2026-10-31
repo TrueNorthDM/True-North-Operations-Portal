@@ -137,7 +137,7 @@ export function ReportPeople({
           {/* A red zero is a warning about nothing. Zero is a grey dash. */}
           <div className="px-4 py-3 text-right">
             {p.late > 0
-              ? <span className={`${chip} bg-[rgba(194,65,12,.12)] text-[#c2410c]`}>{p.late}</span>
+              ? <span className={`${chip} bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]`}>{p.late}</span>
               : <span className="text-[13.5px] text-[var(--faint)]">-</span>}
           </div>
 

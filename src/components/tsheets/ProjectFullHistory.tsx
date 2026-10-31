@@ -18,7 +18,7 @@
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import { historyRowName, historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
 import { MONTH_SHORT } from '@/lib/format/months'
-import { SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { SECTION_TITLE, CARD, TH_CELL } from '@/lib/ui/type'
 
 const shortMonth = (ym: string) => MONTH_SHORT[Number(ym.slice(5, 7)) - 1]
 
@@ -30,7 +30,7 @@ const shortMonth = (ym: string) => MONTH_SHORT[Number(ym.slice(5, 7)) - 1]
 // fit: twelve of them plus the project column do not belong on one screen, and
 // squeezing them until they do is how a figure ends up mid-air between two
 // columns. Past the floor the wrapper scrolls and the project column stays.
-const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2 py-2.5 whitespace-nowrap min-w-[94px]'
+const th = `${TH_CELL} text-right px-2 py-2.5 whitespace-nowrap min-w-[94px]`
 const cell = 'px-2 py-2 text-right tabular-nums whitespace-nowrap text-[14px] min-w-[94px]'
 const label = 'px-3 py-2 text-left text-[14px] text-tn-ink whitespace-nowrap'
 
@@ -57,8 +57,8 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
       <div className={`${CARD} overflow-x-auto`}>
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-subtle border-b border-slate-200">
-              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle z-10 border-r border-slate-200">
+            <tr>
+              <th className={`${TH_CELL} text-left px-3 py-2.5 sticky left-0 z-10 border-r`}>
                 Project
               </th>
               {months.map(m => <th key={m.month} className={th}>{shortMonth(m.month)}</th>)}

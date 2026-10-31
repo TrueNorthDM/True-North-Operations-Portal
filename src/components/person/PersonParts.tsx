@@ -10,6 +10,7 @@ import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA } from '@/lib/ui/fields
 import type { ReactNode } from 'react'
 import { PILL_CLASS, type Pill } from '@/lib/directory/people-types'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
+import { PILL } from '@/components/ui/Pill'
 
 /** The person forms' fields: the portal's field (lib/ui/fields.ts), full width, with the date, menu and textarea beside it. */
 export const fieldCls = `${INPUT} w-full`
@@ -38,12 +39,12 @@ export function Section({ title, right, tag, flush, children }: {
 
 // The handoff's blue (US Employee, Full-Time) and green (Active); the rest keep the Directory's.
 const PAGE_PILL: Partial<Record<Pill['kind'], string>> = {
-  blue: 'bg-[#e8effa] text-[#1e40af]',
-  green: 'bg-[var(--ok-bg)] text-[var(--ok-fg)]',
+  blue: 'bg-[var(--bdg-blue-bg)] text-[var(--bdg-blue-fg)]',
+  green: 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]',
 }
 
 export const PillBadge = ({ pill }: { pill: Pill }) => (
-  <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase rounded-full px-2.5 py-[3px] whitespace-nowrap leading-[normal] ${PAGE_PILL[pill.kind] ?? PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+  <span className={`${PILL} ${PAGE_PILL[pill.kind] ?? PILL_CLASS[pill.kind]}`}>{pill.label}</span>
 )
 
 export function TeamsList({ teams }: { teams: NonNullable<PersonPageData['work']>['teams'] }) {

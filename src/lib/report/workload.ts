@@ -130,9 +130,9 @@ export const READING_LABEL: Record<Reading, string> = {
 }
 
 export const READING_CHIP: Record<Reading, string> = {
-  overloaded: 'bg-[rgba(194,65,12,.14)] text-[#c2410c]',
+  overloaded: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]',
   waiting: 'bg-[rgba(87,155,252,.16)] text-[#2a5cab]',
-  'at-capacity': 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]',
+  'at-capacity': 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]',
   spare: 'bg-[rgba(30,125,127,.12)] text-tn-teal',
   steady: 'bg-[rgba(133,147,164,.14)] text-[var(--chip-neutral-fg)]',
 }
@@ -151,7 +151,7 @@ export function loadColour(load: number): string {
 }
 
 export function netChip(net: number): string {
-  if (net > 0.4) return 'bg-[rgba(194,65,12,.12)] text-[#c2410c]'
+  if (net > 0.4) return 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
   if (net < -0.1) return 'bg-[rgba(30,125,127,.12)] text-tn-teal'
   return 'bg-[rgba(133,147,164,.14)] text-[var(--chip-neutral-fg)]'
 }

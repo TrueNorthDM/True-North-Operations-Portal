@@ -13,14 +13,16 @@ import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { MON, parsePaidOn } from '@/lib/timeclock/paid-on'
 import { FieldLabel, Modal, MODAL_TITLE, TEXTAREA_PLAIN } from '../entries/ui'
+import type { PillColor } from '@/components/ui/Pill'
+import { CARD } from '@/lib/ui/type'
 
-/** Invoices.dc.html ST and T: each state's words and colours. */
-export const STATE_PILL: Record<InvoiceStateKey, { label: string; bg: string; fg: string }> = {
-  draft: { label: 'Draft', bg: '#f1f3f6', fg: '#5b6b82' },
-  hrs: { label: 'Waiting for hours', bg: '#f1f3f6', fg: '#5b6b82' },
-  wait: { label: 'Waiting for approval', bg: '#fdf8e7', fg: '#8a6d1a' },
-  appr: { label: 'Approved', bg: '#eaf4f4', fg: '#1E7D7F' },
-  paid: { label: 'Paid', bg: '#e6f6ee', fg: '#0d7a4f' },
+/** Invoices.dc.html ST: each state's words, and its pill's tone (components/ui/Pill). */
+export const STATE_PILL: Record<InvoiceStateKey, { label: string; tone: PillColor }> = {
+  draft: { label: 'Draft', tone: 'gray' },
+  hrs: { label: 'Waiting for hours', tone: 'gray' },
+  wait: { label: 'Waiting for approval', tone: 'amber' },
+  appr: { label: 'Approved', tone: 'green' },
+  paid: { label: 'Paid', tone: 'green' },
 }
 
 export interface PayTarget { id: number; number: string; who: string; line: string; total: string }
@@ -101,7 +103,7 @@ export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder 
 /** The History card: newest first, a dot per step and the line between them. */
 export function InvoiceHistory({ items }: { items: { text: string; when: string; dot: string }[] }) {
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] p-[18px] flex flex-col gap-1">
+    <div className={`${CARD} p-[18px] flex flex-col gap-1`}>
       <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mb-2">History</div>
       {items.map((h, i) => (
         <div key={i} className="flex gap-3">

@@ -14,6 +14,7 @@ import { saveProjectMonthHours } from '@/lib/tsheets/settings-actions'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
+import { TH_CELL } from '@/lib/ui/type'
 
 export interface ProjectMonthHours { project: string; month: string; hours: number }  // month = 'YYYY-MM'
 
@@ -147,7 +148,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
   }
 
   const cellInput = `num-cell w-full ${INPUT_SM} text-right tabular-nums`
-  const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 whitespace-nowrap'
+  const th = `${TH_CELL} text-right px-3 py-2.5 whitespace-nowrap`
   const changeCount = diff().changes.length
 
   // ── $ allocation (live): a PLANNING estimate, allocated = total budgeted hours
@@ -180,8 +181,8 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       <div className="rounded-[12px] border border-slate-200 overflow-x-auto">
         <table className="min-w-full text-sm table-fixed">
           <thead>
-            <tr className="bg-hfa-soft border-b border-slate-200">
-              <th className={`text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 sticky left-0 bg-hfa-soft ${COL0}`}>Project</th>
+            <tr>
+              <th className={`${TH_CELL} text-left px-3 py-2.5 sticky left-0 ${COL0}`}>Project</th>
               {months.map(ym => (
                 <th key={ym} className={th}>
                   <span className="inline-flex items-center justify-end gap-1.5">
@@ -271,7 +272,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
           Planning estimate: <b className="text-foreground">Allocated</b> = total budgeted hours × the highest Rate/client ({money(estimateRate ?? 0)}/h, from People &amp; rates). <b className="text-foreground">Budget</b> = the month’s budget + extra (the ceiling). <b className="text-foreground">Left</b> = ceiling − allocated; red means the hours don’t fit the budget at that rate.
         </p>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[#c8323d]">{error}</p>}
       {editing && (
         <p className="text-[11px] text-muted px-0.5 leading-relaxed">
           <b className="text-foreground">Copy a month</b> with the copy icon in its header, then choose which months to apply it to; <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.

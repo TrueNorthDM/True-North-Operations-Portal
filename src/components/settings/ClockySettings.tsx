@@ -32,7 +32,8 @@ import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { DateField } from '@/components/ui/DateField'
-import { FIELD_LABEL } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
@@ -91,13 +92,13 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
     <div className="flex flex-col gap-[18px]">
       {!canEdit && <ReadOnly />}
       {cards.map(g => (
-        <div key={g.key} className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-4">
+        <div key={g.key} className={`${CARD} px-[22px] py-5 flex flex-col gap-4`}>
           <div className="flex items-center gap-3.5 flex-wrap">
             <span className="w-11 h-11 rounded-[12px] flex items-center justify-center font-(family-name:--font-display) font-black text-[18px] flex-none" style={{ background: g.icBg, color: g.icFg }}>{g.mark}</span>
             <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
               <div className="flex items-center gap-2.5">
                 <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">{g.name}</span>
-                <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 ${g.on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{g.on ? g.onLabel : 'Not connected'}</span>
+                <span className={`${PILL} ${g.on ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{g.on ? g.onLabel : 'Not connected'}</span>
               </div>
               <span className="text-[12.5px] text-muted">{g.d.who}</span>
             </div>
@@ -184,13 +185,13 @@ function GoogleAppCard({ app, canEdit, busy, onEdit }: { app: IntegrationsData['
     { k: 'Picker key', v: app.pickerEnd ? `Saved, ends in ${app.pickerEnd}` : 'Not saved (only to pick Drive files)' },
   ]
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-4">
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-4`}>
       <div className="flex items-center gap-3.5 flex-wrap">
         <span className="w-11 h-11 rounded-[12px] flex items-center justify-center font-(family-name:--font-display) font-black text-[18px] flex-none bg-[#eaf4f4] text-[#1E7D7F]">G</span>
         <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
           <div className="flex items-center gap-2.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">Google sign-in</span>
-            <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 ${app.saved ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{app.saved ? 'Set up' : 'Not set up'}</span>
+            <span className={`${PILL} ${app.saved ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{app.saved ? 'Set up' : 'Not set up'}</span>
           </div>
           <span className="text-[12.5px] text-muted">{app.who}</span>
         </div>
@@ -298,7 +299,7 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
     <div className="flex flex-col gap-[18px]">
       {!canEdit && <ReadOnly />}
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-4 items-start">
-        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
+        <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>
           <div className="grid grid-cols-3 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}</div>
           <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
@@ -385,7 +386,7 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
   return (
     <div className="flex flex-col gap-[18px]">
       {!canEdit && <ReadOnly />}
-      <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex items-center justify-between gap-2.5 flex-wrap">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Timesheet reminders</span>
           {/* The bell's Tools tab, where these lines land (Company Settings.dc.html 13C). */}
@@ -409,7 +410,7 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
           </div>
         ))}
       </div>
-      <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex flex-col gap-[3px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">New bell lines</span>
           <span className="text-[12.5px] text-muted">Bell only. The one email North Time sends is still &quot;Your clock stopped&quot;.</span>
@@ -457,7 +458,7 @@ function OpenSwitch({ open, canChange, set, copy }: { open: boolean; canChange: 
     }
   }
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
       <div className="flex items-start gap-3">
         <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{copy.name} {open ? 'is open' : 'is closed'}</span>
@@ -543,7 +544,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
           The rollout tables are not in the database yet (migration 129). Until they are, nobody has a start date and nothing changes.
         </div>
       )}
-      <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
+      <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Start dates</span>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {([[1, d1, setD1, 'Wave 1: Team Leaders and above'], [2, d2, setD2, 'Wave 2: everyone else']] as const).map(([w, v, setV, label]) => (
@@ -566,7 +567,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
         )}
       </div>
 
-      <Link href={skippedHref} className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-4 flex items-center gap-3 no-underline hover:border-tn-teal">
+      <Link href={skippedHref} className={`${CARD} px-[22px] py-4 flex items-center gap-3 no-underline hover:border-tn-teal`}>
         <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Clocked in TSheets after switching</span>
           <span className="text-[12.5px] text-muted">{data.setAside ? `${data.setAside} TSheets ${data.setAside === 1 ? 'entry' : 'entries'} set aside, waiting for someone to decide: count it or discard it.` : 'Nothing waiting. TSheets entries dated on or after a person\'s start date show here, and the ones decided stay listed.'}</span>
@@ -579,7 +580,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
         {waves.map(({ w, date, people }) => (
-          <div key={w} className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+          <div key={w} className={`${CARD} overflow-hidden`}>
             <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex flex-col gap-[3px]">
               <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Wave {w} · {people.length} {people.length === 1 ? 'person' : 'people'}</span>
               <span className="text-[12.5px] text-muted">{date ? `Starts on ${startDayLabel(date)}.` : 'No date yet.'} {w === 1 ? 'Team Leader level and above, plus anyone added by hand.' : 'Everyone else.'}</span>

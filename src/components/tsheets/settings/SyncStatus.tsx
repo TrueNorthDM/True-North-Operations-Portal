@@ -69,7 +69,7 @@ export function SyncStatus({ syncedAt, interactive = false, failed = false }: Pr
           {inner}
         </span>
       )}
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-[#c8323d]">{error}</span>}
     </div>
   )
 }

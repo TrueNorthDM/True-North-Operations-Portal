@@ -10,7 +10,7 @@ import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7TrendPoint } from '@/lib/tsheets/types'
 import { HistoryExport } from '@/components/tsheets/HistoryExport'
 import { MONTH_LONG } from '@/lib/format/months'
-import { CARD } from '@/lib/ui/type'
+import { CARD, TH_CELL } from '@/lib/ui/type'
 
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
@@ -84,12 +84,12 @@ export function ClientFullHistory(
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-subtle border-b border-slate-200">
-                    <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Month</th>
-                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Budget</th>
-                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Carry-in</th>
-                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Used</th>
-                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Hours used</th>
+                  <tr>
+                    <th className={`${TH_CELL} text-left px-5 py-2.5`}>Month</th>
+                    <th className={`${TH_CELL} text-right px-5 py-2.5`}>Budget</th>
+                    <th className={`${TH_CELL} text-right px-5 py-2.5`}>Carry-in</th>
+                    <th className={`${TH_CELL} text-right px-5 py-2.5`}>Used</th>
+                    <th className={`${TH_CELL} text-right px-5 py-2.5`}>Hours used</th>
                   </tr>
                 </thead>
                 <tbody>

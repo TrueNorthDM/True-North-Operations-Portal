@@ -18,13 +18,14 @@ import { dateLabel, timeLabel } from '@/lib/timeclock/format'
 import { FieldLabel, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, BTN_MODAL_WHITE, BTN_MODAL_NAVY, type ToastState } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
 import { Tabs } from '@/components/ui/Tabs'
-import { FIELD_LABEL } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { CHECKBOX } from '@/lib/ui/fields'
 
 const hours = (s: number) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 const LABEL = FIELD_LABEL
 const COLS = 'lg:grid-cols-[34px_minmax(0,1fr)_110px_120px_80px_minmax(0,1.6fr)_190px]'
 const ACT = `${BTN.smallWhite} disabled:opacity-50 disabled:cursor-default`
-const BOX = 'w-4 h-4 accent-[#1E7D7F] cursor-pointer'
+const BOX = CHECKBOX
 
 /**
  * The window open, if any: confirm a count, give the reason for counting past
@@ -104,7 +105,7 @@ export function SkippedList({ entries, zone, abbr, canDecide, decide }: {
       {list.length === 0
         ? <p className="text-[14px] text-muted m-0">{tab === 'todo' ? 'Nothing to decide. When someone clocks in TSheets on or after their North Time start date, the entry shows here.' : 'Nothing decided yet.'}</p>
         : (
-          <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+          <div className={`${CARD} overflow-hidden`}>
             <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] text-[13px] text-foreground flex flex-wrap items-center gap-x-4 gap-y-2">
               <span>
                 <b className="text-tn-ink">{list.length}</b> {list.length === 1 ? 'entry' : 'entries'}

@@ -152,7 +152,7 @@ export function EstimateAudit({ rows }: { rows: EffortBasis[] }) {
           <span className="flex-none w-[74px] text-right">
             <span className={`${chip} ${e.measured
               ? 'bg-[rgba(30,125,127,.12)] text-tn-teal'
-              : 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]'}`}
+              : 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]'}`}
             >
               {e.measured ? 'measured' : 'fallback'}
             </span>

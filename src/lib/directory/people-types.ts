@@ -160,7 +160,7 @@ export const PILL_CLASS: Record<PillKind, string> = {
   amber: 'text-[var(--bdg-gold-fg)] bg-[var(--bdg-gold-bg)]',
   pink: 'text-rose-700 bg-rose-100',
   red: 'text-[var(--bdg-red-fg)] bg-[var(--bdg-red-bg)]',
-  blue: 'text-blue-700 bg-blue-50',
+  blue: 'text-[var(--bdg-blue-fg)] bg-[var(--bdg-blue-bg)]',
   teal: 'text-tn-teal bg-tn-teal-soft',
   grey: 'text-[var(--bdg-slate-fg)] bg-[var(--bdg-slate-bg)]',
   violet: 'text-[var(--bdg-purple-fg)] bg-[var(--bdg-purple-bg)]',

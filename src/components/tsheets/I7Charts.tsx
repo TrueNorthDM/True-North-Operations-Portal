@@ -11,6 +11,7 @@ import type { I7Report } from '@/lib/tsheets/types'
 import { fmtHours } from '@/lib/tsheets/format'
 import { activityMix } from '@/lib/tsheets/i7-view'
 import { shares } from '@/lib/tsheets/shares'
+import { CARD } from '@/lib/ui/type'
 
 // Brand palette, teal / blue / purple / orange / cyan / green.
 const PROJ = ['#1E7D7F', '#3B82C6', '#e08a1e', '#6d5ae0', '#00A3DD', '#009C3B']
@@ -25,7 +26,7 @@ interface Props {
 
 function Card({ title, subtitle, className = '', legend, children }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode }) {
   return (
-    <div className={`rounded-[16px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(1,35,88,.06)] p-5 ${className}`}>
+    <div className={`${CARD} p-5 ${className}`}>
       <div className={`mb-4 flex items-start justify-between gap-3 flex-wrap`}>
         <div>
           <h3 className={`text-[15px] font-(family-name:--font-display) font-extrabold text-tn-ink`}>{title}</h3>

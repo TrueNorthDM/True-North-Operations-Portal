@@ -24,7 +24,8 @@ import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-
 import { ROUTES } from '@/lib/nav/routes'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { BTN } from '@/lib/ui/buttons'
-import { SECTION_TITLE, FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { SECTION_TITLE, FIELD_LABEL, CARD, TH_CELL } from '@/lib/ui/type'
+import { Pill } from '@/components/ui/Pill'
 
 const monthLabel = (ym: string) => `${MONTH_SHORT[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 
@@ -38,7 +39,8 @@ function when(iso: string): string {
   return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}, ${time}`
 }
 
-const TH = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 whitespace-nowrap'
+const TH = `${TH_CELL} text-left px-3 py-2.5 whitespace-nowrap`
+const TH_R = `${TH_CELL} text-right px-3 py-2.5 whitespace-nowrap`
 const TD = 'px-3 py-2.5 text-[14px] text-tn-ink align-top'
 const FIELD = INPUT_SM
 
@@ -85,13 +87,13 @@ export function DonationRecords(
           <div className={`${CARD} overflow-x-auto`}>
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="bg-subtle border-b border-slate-200">
+                <tr>
                   <th className={TH}>Project</th>
                   <th className={TH}>Month</th>
-                  <th className={`${TH} text-right`}>Amount</th>
+                  <th className={TH_R}>Amount</th>
                   <th className={TH}>Note</th>
                   <th className={TH}>Last changed</th>
-                  {canEdit && <th className={`${TH} text-right`}>&nbsp;</th>}
+                  {canEdit && <th className={TH_R}>&nbsp;</th>}
                 </tr>
               </thead>
               <tbody>
@@ -133,13 +135,13 @@ export function DonationRecords(
           <div className={`${CARD} overflow-x-auto`}>
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="bg-subtle border-b border-slate-200">
+                <tr>
                   <th className={TH}>When</th>
                   <th className={TH}>Who</th>
                   <th className={TH}>What</th>
                   <th className={TH}>Project</th>
                   <th className={TH}>Month</th>
-                  <th className={`${TH} text-right`}>Change</th>
+                  <th className={TH_R}>Change</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,16 +195,7 @@ function YearChip({ label, active, href }: { label: string; active: boolean; hre
 }
 
 function ActionChip({ action }: { action: DonationLogEntry['action'] }) {
-  const tone = action === 'created'
-    ? 'bg-[#e7f5ee] text-[#1E9E6A]'
-    : action === 'deleted'
-      ? 'bg-[#fdece5] text-[#c2410c]'
-      : 'bg-[#fdf3e2] text-[#b06d0a]'
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[11.5px] font-bold uppercase tracking-wide ${tone}`}>
-      {action}
-    </span>
-  )
+  return <Pill tone={action === 'created' ? 'green' : action === 'deleted' ? 'red' : 'amber'} text={action} />
 }
 
 /** "$425.00 → $500.00", or just the one figure when there is only one. */

@@ -11,15 +11,17 @@ import { healthSummary, type HealthProblem } from '@/lib/health/summary'
 import { formatEt } from '@/lib/format/et'
 import { RunChecksButton } from './RunChecksButton'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
-import { PAGE_TITLE, SECTION_TITLE, CARD_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, SECTION_TITLE, CARD_TITLE, CARD } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
+import { PILL, pillTone } from '@/components/ui/Pill'
 
 export const dynamic = 'force-dynamic'
 
 const KIND_STYLE: Record<AutomationKind, { label: string; cls: string }> = {
-  webhook: { label: 'Webhook', cls: 'text-tn-teal bg-tn-teal-soft border-tn-teal/20' },
-  cron: { label: 'Scheduled', cls: 'text-[#5a49c8] bg-[#efeafc] border-[#5a49c8]/20' },
-  client: { label: 'On app load', cls: 'text-[#b45309] bg-amber-50 border-amber-300/40' },
-  'server-action': { label: 'On action', cls: 'text-slate-600 bg-slate-100 border-slate-300/50' },
+  webhook: { label: 'Webhook', cls: 'text-tn-teal bg-tn-teal-soft' },
+  cron: { label: 'Scheduled', cls: 'text-[var(--bdg-purple-fg)] bg-[var(--bdg-purple-bg)]' },
+  client: { label: 'On app load', cls: pillTone('amber') },
+  'server-action': { label: 'On action', cls: pillTone('gray') },
 }
 
 function StatusDot({ status }: { status: HealthStatus | 'unknown' }) {
@@ -88,7 +90,7 @@ export default async function AutomationsPage() {
       </div>
 
       {/* Overall status + run-now */}
-      <div className="rounded-[16px] border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} px-5 py-4`}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <StatusDot status={overall} />
@@ -113,7 +115,7 @@ export default async function AutomationsPage() {
       </div>
 
       {readError && (
-        <div role="alert" className="rounded-[14px] border border-[#d7392f]/30 bg-[#fdecea] px-4 py-3 text-[13px] text-[#8f1f18]">
+        <div role="alert" className={ERROR_BOX}>
           {readError} The status below is unknown until they can be read; reload the page in a minute.
         </div>
       )}
@@ -136,11 +138,11 @@ export default async function AutomationsPage() {
           const st = statusText(h, monitoredFlag, !!readError)
           const kind = KIND_STYLE[a.kind]
           return (
-            <div key={a.id} className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+            <div key={a.id} className={`${CARD} p-5`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className={CARD_TITLE}>{a.name}</h2>
-                  <span className={`inline-block mt-1.5 font-(family-name:--font-display) font-bold text-[10.5px] tracking-wide uppercase border rounded-full px-2 py-0.5 ${kind.cls}`}>{kind.label}</span>
+                  <span className={`${PILL} mt-1.5 ${kind.cls}`}>{kind.label}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 rounded-full border border-slate-200 bg-subtle px-2.5 py-1">
                   <StatusDot status={st.status} />
@@ -176,7 +178,7 @@ export default async function AutomationsPage() {
       {anyHealth && (
         <div>
           <h2 className={`${SECTION_TITLE} mb-3`}>Latest health signals</h2>
-          <div className="rounded-[16px] border border-slate-200 bg-white overflow-hidden">
+          <div className={`${CARD} overflow-hidden`}>
             {Object.values(health).sort((a, b) => a.service.localeCompare(b.service)).map((h, i) => (
               <div key={h.service} className={`flex items-center gap-3 px-5 py-3 ${i === 0 ? '' : 'border-t border-slate-100'}`}>
                 <StatusDot status={h.status} />

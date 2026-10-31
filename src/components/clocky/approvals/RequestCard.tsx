@@ -18,6 +18,7 @@ import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-ca
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
 import { SEG_BOX, SEG_OFF, SEG_ON, SEG_OPT } from '@/lib/ui/segmented'
+import { PILL } from '@/components/ui/Pill'
 
 const TYPE: Record<Card['kind'], { bg: string; fg: string }> = {
   off: { bg: '#eef1fb', fg: '#3b4fa8' }, 'off-cancel': { bg: '#eef1fb', fg: '#3b4fa8' }, rmb: { bg: '#fbf3e4', fg: '#8a5a12' }, 'rmb-report': { bg: '#fbf3e4', fg: '#8a5a12' }, xh: { bg: '#f0edfb', fg: '#5847c9' },
@@ -56,7 +57,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       <div className="flex items-center justify-between gap-2.5">
         {/* On a phone the title goes under the type when they do not fit side by side; the type stays one line. */}
         <div className="flex items-center gap-x-2.5 gap-y-1.5 flex-wrap min-w-0">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap" style={{ background: t.bg, color: t.fg }}>{card.type}</span>
+          <span className={PILL} style={{ background: t.bg, color: t.fg }}>{card.type}</span>
           <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink tabular-nums lining-nums">{card.title}</span>
         </div>
         <CloseButton onClick={onClose} />
@@ -157,8 +158,8 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
 
 const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
 const DONE: Record<string, { label: string; bg: string; fg: string }> = {
-  approved: { label: 'Approved', bg: '#e6f6ee', fg: '#0d7a4f' }, on_invoice: { label: 'On invoice', bg: '#e6f6ee', fg: '#0d7a4f' },
-  paid: { label: 'Paid', bg: '#e6f6ee', fg: '#0d7a4f' }, denied: { label: 'Denied', bg: '#fdeeef', fg: '#c8323d' },
+  approved: { label: 'Approved', bg: 'var(--bdg-green-bg)', fg: 'var(--bdg-green-fg)' }, on_invoice: { label: 'On invoice', bg: 'var(--bdg-green-bg)', fg: 'var(--bdg-green-fg)' },
+  paid: { label: 'Paid', bg: 'var(--bdg-green-bg)', fg: 'var(--bdg-green-fg)' }, denied: { label: 'Denied', bg: 'var(--bdg-red-bg)', fg: 'var(--bdg-red-fg)' },
 }
 
 /** One receipt of the request: open it, see it, and (while waiting) approve or deny it. */
@@ -190,7 +191,7 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
             ))}
           </div>
         ) : done ? (
-          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap" style={{ background: done.bg, color: done.fg }}>{done.label}</span>
+          <span className={PILL} style={{ background: done.bg, color: done.fg }}>{done.label}</span>
         ) : null}
       </div>
       {waiting && canDecide && pick.deny && !disabled && (

@@ -10,7 +10,7 @@
  * opens the panel beside it (FindTimePanel).
  */
 
-import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA } from '@/lib/ui/fields'
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA, CHECKBOX } from '@/lib/ui/fields'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
@@ -336,7 +336,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
                   <div className="absolute top-[calc(100%+6px)] left-0 z-10 w-[min(440px,calc(100vw-48px))] bg-white border border-[var(--panel-border)] rounded-[14px] shadow-[0_14px_34px_rgba(1,35,88,.18)] p-1.5 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
                     {setup.teams.map(tm => (
                       <label key={tm.id} className="flex items-center gap-2.5 px-2 py-2 rounded-[8px] text-[13.5px] font-bold text-tn-ink cursor-pointer hover:bg-subtle">
-                        <input type="checkbox" checked={teams.includes(tm.id)} onChange={() => setTeams(ts => (ts.includes(tm.id) ? ts.filter(x => x !== tm.id) : [...ts, tm.id]))} />
+                        <input type="checkbox" checked={teams.includes(tm.id)} onChange={() => setTeams(ts => (ts.includes(tm.id) ? ts.filter(x => x !== tm.id) : [...ts, tm.id]))} className={CHECKBOX} />
                         <i className="w-[9px] h-[9px] rounded-full inline-block" style={{ background: tm.color }} />{tm.name}<small className="ml-auto text-muted font-semibold">{tm.count}</small>
                       </label>
                     ))}

@@ -130,7 +130,7 @@ export function AvatarEditor({ open, onClose, onSave, busy }: {
           </>
         )}
 
-        {error && <p className="text-[12.5px] text-red-600 mt-2">{error}</p>}
+        {error && <p className="text-[12.5px] text-[#c8323d] mt-2">{error}</p>}
 
         <div className="flex items-center justify-end gap-2.5 mt-5">
           <button type="button" onClick={close} className={BTN.white}>Cancel</button>

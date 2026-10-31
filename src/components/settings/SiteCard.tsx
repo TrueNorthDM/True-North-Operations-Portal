@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/Switch'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CARD } from '@/lib/ui/type'
 
 interface SiteCardProps {
   site: {
@@ -179,7 +180,7 @@ export function SiteCard({ site }: SiteCardProps) {
   )
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white p-[22px] shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} p-[22px]`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">

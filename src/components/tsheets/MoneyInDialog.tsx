@@ -32,6 +32,7 @@ import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { FIELD_LABEL } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 const FIELD = `w-full ${INPUT} text-right tabular-nums`
 const LABEL = `block ${FIELD_LABEL} mb-1.5`
@@ -189,7 +190,7 @@ export function MoneyInDialog(
             </div>
 
             {error && (
-              <p className="mt-4 mb-0 rounded-[10px] border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-700">{error}</p>
+              <p className={`${ERROR_BOX} mt-4 mb-0`}>{error}</p>
             )}
 
             <div className="flex items-center justify-end gap-2.5 pt-5">

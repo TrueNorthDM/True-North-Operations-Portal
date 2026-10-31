@@ -19,6 +19,7 @@ import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { chip } from '@/components/monday/tokens'
 import { setBoardJobcode } from '@/app/(app)/admin/settings/monday/actions'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export type BoardLink = {
   id: number
@@ -56,14 +57,14 @@ export function BoardProjects(
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
-      {error && <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+      {error && <div role="alert" className={ERROR_BOX}>{error}</div>}
 
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-[13px] text-foreground">
           {`${linked.toLocaleString('en-US')} of ${boards.length.toLocaleString('en-US')} boards linked to a project`}
         </span>
         {linked === 0 ? (
-          <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>
+          <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>
             every estimate is the company average
           </span>
         ) : null}

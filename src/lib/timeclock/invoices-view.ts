@@ -109,7 +109,7 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
       : st === 'appr' ? `Approved ${i.approved_at ? dateLabel(i.approved_at.slice(0, 10)) : ''}`.trim()
         : st === 'hrs' ? `Hours with ${src.nameOf(hb)}`
           : st === 'wait' ? (!sub || (route && oneStep(route, src.settings)) ? `With ${src.nameOf(ib)}` : `Hours approved · with ${src.nameOf(ib)}`)
-            : '–'
+            : '-'
     const p = src.person(i.person_id)
     return {
       id: i.id, number: i.number, personId: i.person_id, who: p.name, initials: initialsOf(p.name), team: p.team, teamColor: p.color,

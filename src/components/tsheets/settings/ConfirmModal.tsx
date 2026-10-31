@@ -37,7 +37,7 @@ export function ConfirmModal({ open, title, lines, onConfirm, onCancel, loading 
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">
-            Justification <span className="text-red-500">*</span>
+            Justification <span className="text-[#c8323d]">*</span>
           </label>
           <textarea
             className={`w-full ${TEXTAREA}`}

@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useRef, useId } from 'react'
+import { TH_CELL } from '@/lib/ui/type'
 
 export type SortDir = 'asc' | 'desc'
 
@@ -161,13 +162,13 @@ export function SortHeader({
     <th
       scope="col"
       aria-sort={ariaSort}
-      className={`px-5 py-3 ${className}`}
+      className={`${TH_CELL} text-left px-5 py-2.5 ${className}`}
     >
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center gap-1 group font-(family-name:--font-display) font-extrabold text-[11px] transition-colors ${
-          active ? 'text-tn-ink' : 'text-tn-ink/70 hover:text-tn-ink'
+        className={`inline-flex items-center gap-1 group font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase transition-colors ${
+          active ? 'text-tn-ink' : 'text-muted hover:text-tn-ink'
         }`}
       >
         {label}

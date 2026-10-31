@@ -16,6 +16,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { summarizeResult, relativeTime, activityMoment, type ActivityTag } from '@/lib/activity'
 import type { ActivityRow } from '@/lib/href-links/data'
 import { CARD_TITLE, CARD } from '@/lib/ui/type'
+import { pillClass, type PillColor } from '@/components/ui/Pill'
 
 interface Props {
   rows: ActivityRow[]
@@ -25,14 +26,14 @@ interface Props {
  * Colour per tag. Same shape as the Monday / System / WordPress chips in the
  * overview's "How to do this": a small uppercase pill, one colour family.
  */
-const tagStyle: Record<ActivityTag, { label: string; className: string }> = {
-  URL_RECEIVED: { label: 'Link received', className: 'bg-sky-50 text-sky-700 border-sky-200' },
-  APPLY_LINK:   { label: 'Apply Link',    className: 'bg-purple-50 text-purple-700 border-purple-200' },
-  DONE:         { label: 'Done',          className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  ALL_LIVE:     { label: 'All live',      className: 'bg-green-100 text-green-800 border-green-300' },
-  DELETED:      { label: 'Deleted',       className: 'bg-red-50 text-red-700 border-red-200' },
-  WARN:         { label: 'Warning',       className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ERROR:        { label: 'Error',         className: 'bg-red-50 text-red-700 border-red-200' },
+const tagStyle: Record<ActivityTag, { label: string; tone: PillColor }> = {
+  URL_RECEIVED: { label: 'Link received', tone: 'blue' },
+  APPLY_LINK:   { label: 'Apply Link',    tone: 'blue' },
+  DONE:         { label: 'Done',          tone: 'green' },
+  ALL_LIVE:     { label: 'All live',      tone: 'green' },
+  DELETED:      { label: 'Deleted',       tone: 'red' },
+  WARN:         { label: 'Warning',       tone: 'amber' },
+  ERROR:        { label: 'Error',         tone: 'red' },
 }
 
 export function ActivityLog({ rows }: Props) {
@@ -83,7 +84,7 @@ export function ActivityLog({ rows }: Props) {
           <span className="text-xs text-slate-500 whitespace-nowrap">
             {rows.length === 0 ? 'None yet' : (
               <>
-                {failures > 0 && <span className="font-bold text-red-700">{failures} failed · </span>}
+                {failures > 0 && <span className="font-bold text-[#c8323d]">{failures} failed · </span>}
                 {warnings > 0 && <span className="font-semibold text-amber-700">{warnings} to check · </span>}
                 {rows.length} recent {rows.length === 1 ? 'event' : 'events'}
               </>
@@ -104,7 +105,7 @@ export function ActivityLog({ rows }: Props) {
                 return (
                   <li key={row.id} className="px-5 py-3 flex items-start gap-3 text-sm">
                     <span
-                      className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 mt-0.5 ${style.className}`}
+                      className={`${pillClass(style.tone)} shrink-0 mt-0.5`}
                     >
                       {style.label}
                     </span>

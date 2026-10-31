@@ -138,10 +138,10 @@ export default function ViewStageClient({ myName }: { myName: string }) {
           the case that proved it, and the preview showed it as correct.
         */}
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
             PREVIEW_CAVEATS.length
-              ? 'border-amber-300/60 bg-amber-50 text-[#7a4e05]'
-              : 'border-emerald-300/60 bg-emerald-50 text-emerald-800'
+              ? 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]'
+              : 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]'
           }`}
         >
           <span aria-hidden="true">{PREVIEW_CAVEATS.length ? '⚠' : '✓'}</span>

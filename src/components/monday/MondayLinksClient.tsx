@@ -11,6 +11,7 @@ import type { LinkBoard } from '@/lib/monday/worklist/links'
 import type { AccountProfile } from '@/lib/monday/worklist/account'
 import { dateLabel, n } from './shared'
 import { CARD_TITLE, CARD } from '@/lib/ui/type'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 interface Option { value: string; label: string }
 
@@ -49,7 +50,7 @@ function WhoIsThis({ id }: { id: number }) {
     return () => { alive = false }
   }, [id])
 
-  if (err) return <div role="alert" className="text-sm text-red-700">{err}</div>
+  if (err) return <div role="alert" className="text-sm text-[#c8323d]">{err}</div>
   if (!p) return <div className="text-sm text-muted" role="status">Looking…</div>
 
   const col = 'text-[10px] font-extrabold uppercase tracking-wider text-muted mb-1.5'
@@ -157,7 +158,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
     <div className="space-y-5">
       {confirmDialog}
       {error && (
-        <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+        <div role="alert" className={ERROR_BOX}>{error}</div>
       )}
 
       <SearchField value={q} onChange={setQ} placeholder="Search accounts…" className="max-w-[380px]" />
@@ -184,7 +185,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
                   </span>
                   <span className="block text-xs text-muted truncate">{a.email ?? `id ${a.mondayUserId}`}</span>
                 </span>
-                <span className={`${chip} bg-[rgba(224,138,30,.1)] text-[#b06d0a]`}>{`${n(a.assignments)} assigned`}</span>
+                <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`${n(a.assignments)} assigned`}</span>
                 <span className="w-[220px]">
                   <Select
                     value={choice[a.mondayUserId] ?? ''}
@@ -241,7 +242,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
                 <span className="block text-xs text-muted truncate">{a.email ?? 'no email'}</span>
               </span>
 
-              <span className={`${chip} ${a.assignments > 0 ? 'bg-[rgba(224,138,30,.1)] text-[#b06d0a]' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`${chip} ${a.assignments > 0 ? 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' : 'bg-slate-100 text-slate-500'}`}>
                 {`${n(a.assignments)} assigned`}
               </span>
 

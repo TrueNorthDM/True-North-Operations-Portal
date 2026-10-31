@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
 import { HomeSection, NORTH_TIME_TOC, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
+import { Pill } from '@/components/ui/Pill'
 
 // ── Icons (line style, system look) ─────────────────────────────────
 const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
@@ -206,7 +207,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
                   <Chip k={r.icon} className="w-[38px] h-[38px]" />
                   <div className="w-[118px] shrink-0 font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{r.name}</div>
                   <div className="flex-1 min-w-0 text-[13px] leading-relaxed text-muted">{r.desc}</div>
-                  {r.admin && <span className="shrink-0 font-(family-name:--font-display) font-extrabold text-[9.5px] uppercase tracking-wider text-amber-700 bg-amber-50 rounded-full px-2.5 py-[3px]">Admin</span>}
+                  {r.admin && <Pill tone="amber" className="shrink-0">Admin</Pill>}
                 </div>
               ))}
             </div>

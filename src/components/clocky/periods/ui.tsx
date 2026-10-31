@@ -7,12 +7,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useModal } from '@/components/ui/useModal'
-import { useIsClient } from '@/components/monday/shared'
 import type { Cadence } from '@/lib/timeclock/periods'
 import { BTN } from '@/lib/ui/buttons'
 import { FIELD_LABEL } from '@/lib/ui/type'
+import { Toast } from '@/components/clocky/entries/ui'
+import { Pill } from '@/components/ui/Pill'
 
 export const CADENCE_LABEL: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }
 
@@ -21,19 +21,18 @@ export { FIELD_LABEL }
 
 /** Monthly in neutral, Every 2 weeks in teal (5B, 5C); "Not set" in amber, for someone with no cadence of their own yet. */
 export function CadencePill({ cadence, size = 10 }: { cadence: Cadence | null; size?: 10 | 10.5 }) {
-  const tone = cadence === null ? 'bg-[var(--warn-bg)] text-[var(--warn-fg)]' : cadence === 'biweekly' ? 'bg-tn-teal-soft text-tn-teal' : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'
-  return (
-    <span className={`inline-flex font-(family-name:--font-display) font-extrabold tracking-[.05em] uppercase rounded-full px-2.5 py-[3px] whitespace-nowrap leading-[normal] ${size === 10 ? 'text-[10px]' : 'text-[10.5px]'} ${tone}`}>
-      {cadence === null ? 'Not set' : CADENCE_LABEL[cadence]}
-    </span>
-  )
+  void size
+  if (cadence === null) return <Pill tone="amber" text="Not set" />
+  // The two cadences are kinds, not states: Every 2 weeks keeps its teal.
+  return cadence === 'biweekly'
+    ? <Pill colorClass="bg-tn-teal-soft text-tn-teal" text={CADENCE_LABEL[cadence]} />
+    : <Pill tone="gray" text={CADENCE_LABEL[cadence]} />
 }
 
 /** The "New" tag on what this handoff added (the menu item, the section, the column). */
 export function NewTag({ size = 9 }: { size?: 9 | 8.5 }) {
-  return (
-    <span className={`inline-flex font-(family-name:--font-display) font-extrabold tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full leading-[normal] ${size === 9 ? 'text-[9px] px-[7px] py-0.5' : 'text-[8.5px] px-1.5 py-0.5'}`}>New</span>
-  )
+  void size
+  return <Pill tone="blue" text="New" />
 }
 
 export interface DialogItem { name: string; change: string; eff: string }
@@ -85,18 +84,11 @@ export function PeriodsDialog({ title, intro, items, action, busy, error, onCanc
 /** The navy toast at the foot of the window, five seconds. */
 export function useToast(): [React.ReactNode, (text: string) => void] {
   const [text, setText] = useState<string | null>(null)
-  const mounted = useIsClient()
   useEffect(() => {
     if (!text) return
     const t = setTimeout(() => setText(null), 5000)
     return () => clearTimeout(t)
   }, [text])
-  const node = text && mounted ? createPortal(
-    <div role="status" className="fixed left-1/2 bottom-6 -translate-x-1/2 z-[90] flex items-center gap-3 w-max max-w-[calc(100%-32px)] bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold leading-[1.4] shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)]">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M5 12l5 5 9-10" /></svg>
-      <p className="m-0">{text}</p>
-    </div>,
-    document.body,
-  ) : null
+  const node = <Toast toast={text ? { text } : null} />
   return [node, setText]
 }

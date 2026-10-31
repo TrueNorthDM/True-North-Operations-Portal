@@ -23,7 +23,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MON, parsePaidOn } from '@/lib/timeclock/paid-on'
-import type { ReimbursementsPage, ReqTone } from '@/lib/timeclock/requests-data'
+import type { ReimbursementsPage } from '@/lib/timeclock/requests-data'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, TRIGGER, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -34,12 +34,8 @@ import { CATEGORIES, MEAL_HINT, MEALS_TRAVEL, MILEAGE, mileageAmount, mileageTex
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Tabs } from '@/components/ui/Tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
-export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
-  ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
-  neu: { bg: '#f1f3f6', fg: '#5b6b82' }, teal: { bg: '#eaf4f4', fg: '#1E7D7F' }, navy: { bg: '#e8effa', fg: '#1e40af' },
-}
-const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const COLS = 'grid grid-cols-[130px_130px_minmax(220px,1fr)_110px_120px_minmax(220px,1fr)]'
 const COLS_ALL = 'grid grid-cols-[180px_120px_120px_minmax(200px,1fr)_110px_110px_minmax(200px,1fr)]'
 
@@ -161,7 +157,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
                 </div>
                 <span className="text-[12px] text-muted tabular-nums lining-nums">{r.date} · {r.category}</span>
                 <div className="flex items-start gap-2">
-                  <span className={`${PILL} flex-none`} style={{ background: REQ_TONE[r.st.tone].bg, color: REQ_TONE[r.st.tone].fg }}>{r.st.label}</span>
+                  <span className={`${pillClass(r.st.tone)} flex-none`}>{r.st.label}</span>
                   <span className="text-[12px] text-[#5b6b82] leading-[1.45] [text-wrap:pretty]">{r.info}</span>
                 </div>
               </div>
@@ -197,7 +193,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
                   )}
                 </div>
                 <div className="px-3.5 py-3 text-right font-(family-name:--font-display) font-extrabold text-tn-ink">{r.amount}</div>
-                <div className="px-3.5 py-3"><span className={PILL} style={{ background: REQ_TONE[r.st.tone].bg, color: REQ_TONE[r.st.tone].fg }}>{r.st.label}</span></div>
+                <div className="px-3.5 py-3"><span className={pillClass(r.st.tone)}>{r.st.label}</span></div>
                 <div className="px-3.5 py-3 text-[#5b6b82] text-[12.5px] leading-[1.45] [text-wrap:pretty]">{r.info}</div>
               </div>
               </Fragment>

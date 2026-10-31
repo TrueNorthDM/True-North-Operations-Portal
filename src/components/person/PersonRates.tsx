@@ -109,7 +109,7 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
               </div>
             </div>
           )}
-          {error && <p role="alert" className="m-0 text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="m-0 text-sm text-[#c8323d]">{error}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setDraft(null)} className={BTN.white}>Cancel</button>
             <button type="button" disabled={pending} onClick={() => void save()} className="rounded-[9px] bg-[#F2C40A] text-tn-ink px-3.5 py-2 text-[13px] font-bold disabled:opacity-50">{pending ? 'Saving…' : 'Save rates'}</button>

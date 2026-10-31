@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/Switch'
 import { setStepSource } from '@/app/(app)/admin/settings/monday/actions'
 import { chip } from '@/components/monday/tokens'
 import { isNotAStep, type StepUnderReview } from '@/lib/monday/worklist/steps-review'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 const BUTTON = 'text-[12px] font-semibold px-2.5 py-1 rounded-md border transition-colors'
 
@@ -51,7 +52,7 @@ export function StepReview(
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
-      {error && <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+      {error && <div role="alert" className={ERROR_BOX}>{error}</div>}
 
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-[13px] text-foreground">
@@ -63,7 +64,7 @@ export function StepReview(
           {`${progress.unverifiedAssignments.toLocaleString('en-US')} assignments still rest on a guess`}
         </span>
         {progress.suspicious > 0 ? (
-          <span className={`${chip} bg-[rgba(194,65,12,.12)] text-[#c2410c]`}>
+          <span className={`${chip} bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]`}>
             {`${progress.suspicious} look wrong`}
           </span>
         ) : null}
@@ -102,7 +103,7 @@ export function StepReview(
                 <span className="text-[13px] font-semibold text-tn-ink truncate">{s.stepName}</span>
                 {s.suspicious ? (
                   <span
-                    className={`${chip} bg-[rgba(194,65,12,.12)] text-[#c2410c]`}
+                    className={`${chip} bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]`}
                     title="This reads like a dropdown rather than a stage of work"
                   >
                     check

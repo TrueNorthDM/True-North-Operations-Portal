@@ -100,7 +100,7 @@ export function PersonDrawer({
         <div className="px-[22px] pt-4 pb-1.5">
           <h4 className={`${SECTION_TITLE} mb-1`}>Delivered in this period</h4>
           {error ? (
-            <p role="alert" className="text-[12.5px] text-[#c2410c] m-0">{error}</p>
+            <p role="alert" className="text-[12.5px] text-[#c8323d] m-0">{error}</p>
           ) : detail === null ? (
             <Skeleton rows={4} />
           ) : detail.deliveries.length === 0 ? (
@@ -142,7 +142,7 @@ function Deliveries({ detail }: { detail: PersonDetail }) {
             <div className="px-3 py-2.5 text-right text-[12.5px] text-foreground">{formatDays(r.heldDays)}</div>
             <div className="px-3 py-2.5 text-right">
               <span className={`${chip} ${l.late
-                ? 'bg-[rgba(194,65,12,.12)] text-[#c2410c]'
+                ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
                 : l.noDue ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
               >
                 {l.label}

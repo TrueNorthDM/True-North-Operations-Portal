@@ -58,7 +58,7 @@ export function NotRelevantButton({ pageId, initialValue }: Props) {
         </svg>
         Not relevant
       </button>
-      {error && <span role="alert" className="mt-1 text-xs text-red-600">{error}</span>}
+      {error && <span role="alert" className="mt-1 text-xs text-[#c8323d]">{error}</span>}
     </div>
   )
 }

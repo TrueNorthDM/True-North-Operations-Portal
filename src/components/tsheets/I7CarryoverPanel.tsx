@@ -61,7 +61,7 @@ export function BudgetBalanceCard(
       <div className="p-5">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget balance</div>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-(family-name:--font-display) font-bold px-3 py-1 rounded-full border ${pill.cls}`}>
+          <span className={`gap-1.5 ${pill.cls}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
           </span>
         </div>

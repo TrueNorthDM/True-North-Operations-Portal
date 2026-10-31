@@ -11,6 +11,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ALL_COLUMNS, toggleColumn, type ColumnDef, type ColumnKey } from '@/lib/monday/worklist/columns'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { CHECKBOX } from '@/lib/ui/fields'
 
 export function ColumnsMenu({ visible, onChange, offered }: {
   visible: ColumnKey[]
@@ -74,7 +75,7 @@ export function ColumnsMenu({ visible, onChange, offered }: {
                   checked={c.required || visible.includes(c.key)}
                   disabled={c.required}
                   onChange={() => onChange(toggleColumn(visible, c.key))}
-                  className="w-4 h-4 accent-[#1E7D7F]"
+                  className={`${CHECKBOX} disabled:cursor-default`}
                 />
                 <span className="flex-1">{c.label}</span>
                 {c.required && <span className="text-[11px] text-muted">always</span>}

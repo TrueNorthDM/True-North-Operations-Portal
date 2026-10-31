@@ -63,7 +63,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
         >
           Change the rules
         </button>
-        {msg && <span className={`text-sm ${msg.ok ? 'text-[#1f8a5b]' : 'text-red-600'}`}>{msg.text}</span>}
+        {msg && <span className={`text-sm ${msg.ok ? 'text-[#1f8a5b]' : 'text-[#c8323d]'}`}>{msg.text}</span>}
       </div>
     )
   }
@@ -106,7 +106,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
           className="px-4 py-2.5 rounded-[10px] border border-slate-200 text-tn-ink font-(family-name:--font-display) font-bold text-sm disabled:opacity-50">
           Cancel
         </button>
-        {msg && <span className={`text-sm ${msg.ok ? 'text-[#1f8a5b]' : 'text-red-600'}`}>{msg.text}</span>}
+        {msg && <span className={`text-sm ${msg.ok ? 'text-[#1f8a5b]' : 'text-[#c8323d]'}`}>{msg.text}</span>}
       </div>
     </div>
   )

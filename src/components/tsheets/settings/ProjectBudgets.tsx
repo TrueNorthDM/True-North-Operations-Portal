@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
 import { saveProjectBudget } from '@/lib/tsheets/settings-actions'
 import { MonthField } from '@/components/ui/DateField'
+import { TH_CELL } from '@/lib/ui/type'
 
 export interface ProjectBudget {
   project: string
@@ -80,11 +81,11 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
       <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <th className="text-left font-medium px-4 py-2">Project</th>
-              <th className="text-right font-medium px-4 py-2 w-36">Budget hours</th>
-              <th className="text-left font-medium px-4 py-2 w-44">Effective from</th>
-              <th className="px-4 py-2 w-32" />
+            <tr>
+              <th className={`${TH_CELL} text-left px-4 py-2.5`}>Project</th>
+              <th className={`${TH_CELL} text-right px-4 py-2.5 w-36`}>Budget hours</th>
+              <th className={`${TH_CELL} text-left px-4 py-2.5 w-44`}>Effective from</th>
+              <th className={`${TH_CELL} px-4 py-2.5 w-32`} />
             </tr>
           </thead>
           <tbody>
@@ -121,7 +122,7 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
           </tbody>
         </table>
       </div>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && <p className="text-xs text-[#c8323d] mt-2">{error}</p>}
 
       <ConfirmModal
         open={pending !== null}

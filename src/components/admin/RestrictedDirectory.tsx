@@ -21,7 +21,8 @@ import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { roleTypePill, statusPill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
 import { Tabs } from '@/components/ui/Tabs'
-import { PAGE_TITLE } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 export interface RestrictedTeamMember {
   id: string
@@ -114,7 +115,7 @@ export function RestrictedDirectory({
         className="w-full max-w-[420px]"
       />
 
-      <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         {rows.length === 0 && <div className="px-[22px] py-[52px] text-center text-sm text-muted">No one matches “{q}”.</div>}
         {rows.map((p, i) => {
           const rp = roleTypePill(p.roleType)
@@ -126,12 +127,12 @@ export function RestrictedDirectory({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="text-[14px] font-semibold text-foreground truncate">{p.name}</span>
-                  <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 shrink-0 ${PILL_CLASS[rp.kind]}`}>{rp.label}</span>
+                  <span className={`${PILL} shrink-0 ${PILL_CLASS[rp.kind]}`}>{rp.label}</span>
                 </span>
                 <span className="block text-[12.5px] text-muted truncate">{p.title ?? '-'}</span>
               </span>
               <span className="hidden sm:block text-[12.5px] text-muted truncate max-w-[160px]">{p.teamName ?? '-'}</span>
-              <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 shrink-0 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
+              <span className={`${PILL} shrink-0 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
               {p.href && (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-slate-300 shrink-0"><path d="M9 18l6-6-6-6" /></svg>
               )}
@@ -156,7 +157,7 @@ export function RestrictedDirectory({
 function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
   if (teams.length === 0) {
     return (
-      <div className="rounded-[16px] border border-slate-200 bg-white px-5 py-12 text-center">
+      <div className={`${CARD} px-5 py-12 text-center`}>
         <p className="text-sm font-semibold text-tn-ink m-0">You are not on a team yet</p>
         <p className="mt-1.5 text-[13px] text-muted m-0">Ask an admin to add you to one.</p>
       </div>
@@ -166,7 +167,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
   return (
     <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
       {teams.map(t => (
-        <div key={t.id} className="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+        <div key={t.id} className={`${CARD} overflow-hidden`}>
           <div className="h-1.5" style={{ background: t.color }} />
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
@@ -182,7 +183,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
                     <span className="block text-[13px] font-semibold text-foreground truncate">{m.name}</span>
                     {m.title && <span className="block text-[11.5px] text-muted truncate">{m.title}</span>}
                   </span>
-                  <span className="shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 bg-slate-100 text-slate-500">
+                  <span className="shrink-0 ${PILL} bg-slate-100 text-slate-500">
                     {m.positionLabel}
                   </span>
                 </div>
@@ -199,7 +200,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
                     {t.tools.map(tool => (
                       <li key={tool.label} className="flex items-center justify-between gap-2 text-[12.5px]">
                         <span className="text-foreground truncate">{tool.label}</span>
-                        <span className="shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 bg-tn-teal-soft text-tn-teal">
+                        <span className="shrink-0 ${PILL} bg-tn-teal-soft text-tn-teal">
                           {tool.audience === 'lead' ? 'Lead only' : 'Whole team'}
                         </span>
                       </li>

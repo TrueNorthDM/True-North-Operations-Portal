@@ -54,6 +54,7 @@
   --bdg-orange-bg: rgba(232,133,12,.13);  --bdg-orange-fg: #b8650a; --bdg-orange-active: #E8850C;
   --bdg-red-bg: rgba(225,29,42,.12);      --bdg-red-fg: #c8323d;    --bdg-red-active: #E11D2A;
   --bdg-slate-bg: rgba(120,135,160,.16);  --bdg-slate-fg: #5b6b82;  --bdg-slate-active: #7d8da5;
+  --bdg-blue-bg: rgba(1,35,88,.08);     --bdg-blue-fg: #1d4a8c;   --bdg-blue-active: #012358;
   --bdg-gslate-bg: rgba(148,161,178,.17); --bdg-gslate-fg: #6b7788; --bdg-gslate-active: #94a1b2;
   --bdg-dgreen-bg: rgba(18,122,62,.13);   --bdg-dgreen-fg: #127A3E; --bdg-dgreen-active: #127A3E;
   --bdg-tslate-bg: #eef1f4;               --bdg-tslate-fg: #5b6b82; --bdg-tslate-active: #5b6b82;

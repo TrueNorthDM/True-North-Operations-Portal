@@ -12,6 +12,7 @@ import { TwoStepEnroll } from './TwoStepEnroll'
 import { startEnroll, verifyEnroll, skipTwoStep, type EnrollStart } from '@/app/auth/two-step-actions'
 import { signOut } from '@/app/auth/actions'
 import { BTN } from '@/lib/ui/buttons'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 export function TwoStepSetup({ email, skipLabel }: { email: string; skipLabel: string | null }) {
   const [factor, setFactor] = useState<EnrollStart | null>(null)
@@ -33,7 +34,7 @@ export function TwoStepSetup({ email, skipLabel }: { email: string; skipLabel: s
     // Never a dead end: the page offers no other way out (audit, 8 October 2026).
     return (
       <div className="flex flex-col gap-4">
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">{error}</div>
+        <div role="alert" className={ERROR_BOX}>{error}</div>
         <div className="flex flex-wrap gap-2.5">
           <button type="button" className={BTN.navy} onClick={() => { setError(null); setAttempt(a => a + 1) }}>Try again</button>
           <button type="button" className={BTN.white} onClick={() => { void signOut() }}>Sign out</button>

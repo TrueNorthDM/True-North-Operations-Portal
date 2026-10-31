@@ -27,7 +27,8 @@ import { dayLabel, longDateLabel } from '@/lib/timeclock/format'
 import type { Result, TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
 import type { AnchorPreview } from '@/lib/timeclock/clocky-periods-data'
 import { FIELD_LABEL, PeriodsDialog, useToast } from './ui'
-import { SECTION_TITLE } from '@/lib/ui/type'
+import { SECTION_TITLE, CARD as SHARED_CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 // The Edit / Done button (Timesheet Periods.dc.html 5A): Edit navy 11px 20px with
 // its shadow, Done white 10px 18px; 8px gap, no letter spacing.
@@ -40,8 +41,8 @@ export interface PeriodsActions {
 }
 const SERVER: PeriodsActions = { previewAnchorMove, setPayPeriodAnchor }
 
-const CARD = 'bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col'
-const TAG = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-[3px]'
+const CARD = `${SHARED_CARD} px-[22px] py-5 flex flex-col`
+const TAG = PILL
 const READ_BOX = 'h-10 flex items-center px-3 rounded-[10px] bg-subtle font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink'
 const ALERT = 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'
 

@@ -176,11 +176,11 @@ export function BookingPage({ host, slots, api }: { host: BookingHost; slots: Re
                   placeholder={guests.length >= MAX_BOOKING_GUESTS ? `Up to ${MAX_BOOKING_GUESTS} guests` : 'Add an email, then Enter'}
                   className="flex-1 min-w-[160px] border-0 outline-none bg-transparent text-[13px] text-tn-ink placeholder:text-muted py-1.5" />
               </div>
-              <span className={`text-[12.5px] ${gErr ? 'text-[#b2412f] font-bold' : 'text-muted'}`}>{gErr || `They get the Google invitation too, with the Meet link. Up to ${MAX_BOOKING_GUESTS}.`}</span>
+              <span className={`text-[12.5px] ${gErr ? 'text-[#c8323d] font-bold' : 'text-muted'}`}>{gErr || `They get the Google invitation too, with the Meet link. Up to ${MAX_BOOKING_GUESTS}.`}</span>
             </div>
             <label className="flex flex-col gap-[5px]"><span className={LBL}>Anything to share before the meeting? <span className="normal-case tracking-normal font-semibold">(optional)</span></span>
               <textarea className={AREA} rows={3} value={note} onChange={e => setNote(e.target.value)} maxLength={2000} /></label>
-            {err && <p role="alert" className="m-0 text-[13px] font-bold text-[#b2412f]">{err}</p>}
+            {err && <p role="alert" className="m-0 text-[13px] font-bold text-[#c8323d]">{err}</p>}
             <div className="flex justify-end"><button type="submit" className={BTN_MAIN} disabled={!detailsOk || busy}>{busy ? 'Sending…' : 'Continue'}</button></div>
           </form>
         </div>

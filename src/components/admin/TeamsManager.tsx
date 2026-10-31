@@ -22,7 +22,8 @@ import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/colo
 import { Select } from '@/components/ui/Select'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
-import { FIELD_LABEL } from '@/lib/ui/type'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
+import { PILL } from '@/components/ui/Pill'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
@@ -107,10 +108,10 @@ export function TeamsManager({ cards, people, canEdit }: { cards: TeamCard[]; pe
         </Link>
       </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {error && <p className="text-sm text-[#c8323d] mb-3">{error}</p>}
 
       {cards.length === 0 ? (
-        <div className="rounded-[16px] border border-dashed border-slate-300 bg-white/50 px-5 py-12 text-center text-sm text-muted">No teams yet, create the first one.</div>
+        <div className="rounded-[14px] border border-dashed border-slate-300 bg-white/50 px-5 py-12 text-center text-sm text-muted">No teams yet, create the first one.</div>
       ) : (
         // At most 4 across (wider cards); steps down for tablet → mobile:
         // 1 col on phones, 2 on tablets, 3 on desktops, 4 only on wide screens.
@@ -147,7 +148,7 @@ function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }:
   const addable = people.filter(p => !memberIds.has(p.id)).sort((a, b) => a.full_name.localeCompare(b.full_name))
 
   return (
-    <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col h-[560px]">
+    <div className={`${CARD} overflow-hidden flex flex-col h-[560px]`}>
       <div className="h-[5px] shrink-0" style={{ background: team.color }} />
       <div className="px-[22px] pt-5 pb-[22px] flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between gap-2.5 shrink-0">
@@ -159,7 +160,7 @@ function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }:
             <button type="button" onClick={onEdit} disabled={pending} aria-label="Rename team" className="inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted transition-colors hover:bg-subtle hover:text-tn-ink disabled:opacity-50">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
             </button>
-            <button type="button" onClick={onDelete} disabled={pending} aria-label="Delete team" className="inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+            <button type="button" onClick={onDelete} disabled={pending} aria-label="Delete team" className="inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted transition-colors hover:bg-[#fdeeef] hover:text-[#c8323d] disabled:opacity-50">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
             </button>
           </div>}
@@ -191,13 +192,13 @@ function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }:
                       {access.label}
                     </span>
                   )}
-                  <span className={`${canEdit ? 'group-hover/mem:hidden group-focus-within/mem:hidden ' : ''}font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
+                  <span className={`${canEdit ? 'group-hover/mem:hidden group-focus-within/mem:hidden ' : ''}${PILL} ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
                   {canEdit && <span className="sr-only group-hover/mem:not-sr-only group-focus-within/mem:not-sr-only group-hover/mem:flex group-focus-within/mem:flex items-center gap-1">
                     {/* Quick switch between Lead and Member. */}
                     <button type="button" title={isLeader ? 'Make Member' : 'Make Lead'} aria-label={`${isLeader ? 'Make Member' : 'Make Lead'}: ${m.name}`} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'member' : 'lead'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                     </button>
-                    <button type="button" title="Remove from team" aria-label={`Remove ${m.name} from ${team.name}`} disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+                    <button type="button" title="Remove from team" aria-label={`Remove ${m.name} from ${team.name}`} disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-[#fdeeef] hover:text-[#c8323d] disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
                   </span>}

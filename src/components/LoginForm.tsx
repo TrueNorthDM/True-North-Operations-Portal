@@ -15,6 +15,7 @@ import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { sendMagicLink, verifyCode } from '@/app/auth/actions'
 import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { ERROR_BOX } from '@/lib/ui/feedback'
 
 const LOGIN_ERRORS: Record<string, string> = {
   link: 'That sign-in link has expired or was already used. Ask for a new one below.',
@@ -99,7 +100,7 @@ export function LoginForm() {
           />
         </div>
         {error && (
-          <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+          <div role="alert" className={ERROR_BOX}>
             {error}
           </div>
         )}
@@ -154,7 +155,7 @@ export function LoginForm() {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className={ERROR_BOX}>
           {error}
         </div>
       )}

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ROUTES } from '@/lib/nav/routes'
-import { PAGE_TITLE, SECTION_TITLE, CARD } from '@/lib/ui/type'
+import { PAGE_TITLE, SECTION_TITLE, CARD, TH_CELL } from '@/lib/ui/type'
 // How the i7 Budget Usage Report is built, a plain-language explainer linked
 // from the report (its Guide tab). Static content (the July 2026 numbers are an
 // illustrative worked example).
@@ -123,13 +123,13 @@ export default async function ReportGuidePage() {
         <div className={`${CARD} overflow-x-auto`}>
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <th className="text-left px-4 py-3">Project</th>
-                <th className="text-right px-4 py-3">Budget hrs<div className="font-normal normal-case text-slate-400">Settings</div></th>
-                <th className="text-right px-4 py-3">Hours used<div className="font-normal normal-case text-slate-400">TSheets</div></th>
-                <th className="text-right px-4 py-3">Hrs avail.<div className="font-normal normal-case text-slate-400">hrs − used</div></th>
-                <th className="text-right px-4 py-3">Budget avail.<div className="font-normal normal-case text-slate-400">avail × $95</div></th>
-                <th className="text-right px-4 py-3">Budget used<div className="font-normal normal-case text-slate-400">hrs × rate</div></th>
+              <tr>
+                <th className={`${TH_CELL} text-left px-4 py-2.5`}>Project</th>
+                <th className={`${TH_CELL} text-right px-4 py-2.5`}>Budget hrs<div className="font-sans font-normal normal-case tracking-normal text-muted">Settings</div></th>
+                <th className={`${TH_CELL} text-right px-4 py-2.5`}>Hours used<div className="font-sans font-normal normal-case tracking-normal text-muted">TSheets</div></th>
+                <th className={`${TH_CELL} text-right px-4 py-2.5`}>Hrs avail.<div className="font-sans font-normal normal-case tracking-normal text-muted">hrs − used</div></th>
+                <th className={`${TH_CELL} text-right px-4 py-2.5`}>Budget avail.<div className="font-sans font-normal normal-case tracking-normal text-muted">avail × $95</div></th>
+                <th className={`${TH_CELL} text-right px-4 py-2.5`}>Budget used<div className="font-sans font-normal normal-case tracking-normal text-muted">hrs × rate</div></th>
               </tr>
             </thead>
             <tbody>

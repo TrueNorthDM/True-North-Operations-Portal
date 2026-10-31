@@ -10,7 +10,8 @@
 import { useEffect, useState } from 'react'
 import { BEGINNINGS, BUILT, MOVE, NEXT, NUMBERS, PURPOSE, TIMELINE, UPDATED, WHY } from '@/lib/history/portal'
 import { MONTH_SHORT } from '@/lib/format/months'
-import { CARD } from '@/lib/ui/type'
+import { CARD, TH } from '@/lib/ui/type'
+import { Pill } from '@/components/ui/Pill'
 
 const CHAPTERS = [
   { id: 'how-it-started', label: '1 · How it started' },
@@ -187,7 +188,7 @@ export function PortalHistory() {
           <div className={`${card} overflow-x-auto`}>
             <table className="w-full min-w-[640px] text-[14px] border-collapse">
               <thead>
-                <tr>{['When', 'What', 'How it helps'].map(h => <th key={h} className="text-left bg-subtle font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.1em] text-muted px-4 py-2.5 border-b border-slate-200">{h}</th>)}</tr>
+                <tr>{['When', 'What', 'How it helps'].map(h => <th key={h} className={TH}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {BUILT.map((r, i) => (
@@ -195,7 +196,7 @@ export function PortalHistory() {
                     <td className="px-4 py-3 align-top whitespace-nowrap text-muted font-semibold">{r.when}</td>
                     <td className="px-4 py-3 align-top whitespace-nowrap font-(family-name:--font-display) font-extrabold text-tn-ink">
                       {r.what}
-                      {r.isNew && <span className="ml-2 align-[2px] font-(family-name:--font-display) font-extrabold text-[10px] uppercase tracking-[.08em] text-[#8a6703] bg-[#fbf1cf] rounded-full px-2 py-0.5">New</span>}
+                      {r.isNew && <Pill tone="blue" className="ml-2 align-[2px]">New</Pill>}
                     </td>
                     <td className="px-4 py-3 align-top text-foreground leading-relaxed">{r.how}</td>
                   </tr>
@@ -239,7 +240,7 @@ export function PortalHistory() {
           <div className={`${card} overflow-x-auto`}>
             <table className="w-full min-w-[640px] text-[14px] border-collapse">
               <thead>
-                <tr>{['Piece', 'Before', 'Now'].map(h => <th key={h} className="text-left bg-subtle font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.1em] text-muted px-4 py-2.5 border-b border-slate-200">{h}</th>)}</tr>
+                <tr>{['Piece', 'Before', 'Now'].map(h => <th key={h} className={TH}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {MOVE.moved.map((r, i) => (
