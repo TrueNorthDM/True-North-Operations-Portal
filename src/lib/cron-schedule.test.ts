@@ -20,9 +20,9 @@ function jobs(): Map<string, string> {
 }
 
 describe('the server crontab', () => {
-  it('lists the seven jobs', () => {
+  it('lists the eight jobs', () => {
     expect([...jobs().keys()].sort()).toEqual([
-      '/api/cron/clocky-delta', '/api/cron/clocky-safety', '/api/cron/daily-summary', '/api/cron/health', '/api/cron/ingest',
+      '/api/cron/agenda-google-sync', '/api/cron/clocky-delta', '/api/cron/clocky-safety', '/api/cron/daily-summary', '/api/cron/health', '/api/cron/ingest',
       '/api/cron/monday-worklist', '/api/cron/tsheets-sync',
     ])
   })
@@ -35,7 +35,7 @@ describe('the server crontab', () => {
 
   it('runs the syncs six times a day, every 4 hours', () => {
     for (const [job, when] of jobs()) {
-      if (job !== '/api/cron/health' && job !== '/api/cron/daily-summary' && job !== '/api/cron/clocky-safety') expect(when.split(' ')[1], job).toBe('1,5,9,13,17,21')
+      if (job !== '/api/cron/health' && job !== '/api/cron/daily-summary' && job !== '/api/cron/clocky-safety' && job !== '/api/cron/agenda-google-sync') expect(when.split(' ')[1], job).toBe('1,5,9,13,17,21')
     }
   })
 

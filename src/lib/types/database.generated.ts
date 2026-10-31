@@ -271,6 +271,8 @@ export type Database = {
           google_sub: string | null
           refresh_token: string
           scopes: string[]
+          sync_token: string | null
+          synced_at: string | null
           updated_at: string
         }
         Insert: {
@@ -283,6 +285,8 @@ export type Database = {
           google_sub?: string | null
           refresh_token: string
           scopes?: string[]
+          sync_token?: string | null
+          synced_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -295,6 +299,8 @@ export type Database = {
           google_sub?: string | null
           refresh_token?: string
           scopes?: string[]
+          sync_token?: string | null
+          synced_at?: string | null
           updated_at?: string
         }
         Relationships: [

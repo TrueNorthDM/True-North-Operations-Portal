@@ -27,3 +27,5 @@ PORTAL_DIR=/opt/tnportal/app
 # Clocky part 2, every hour: the timesheet reminders (9:00 AM in each person's
 # zone) and the allowance lines. Off until Clocky part 2 is in production.
 # 5 * * * *                $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-reminders
+# The Agenda's two-way Google Calendar sync (owner, 30 October 2026), every 5 minutes.
+*/5 * * * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/agenda-google-sync

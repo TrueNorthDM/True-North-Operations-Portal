@@ -18,3 +18,5 @@ SHELL=/bin/bash
 */5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-outbox
 # The timesheet reminders, the allowance lines and the change to employee on its day, every hour.
 5 * * * *    portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-reminders
+# The Agenda's two-way Google Calendar sync, every 5 minutes (staging has its own Google connections since 30 October 2026).
+*/5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/agenda-google-sync
