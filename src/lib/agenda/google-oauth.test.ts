@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { authUrl, connectNotice, idTokenClaims, missingScopes, onApprovedDomain, readStateCookie, SCOPES, stateCookie } from './google-oauth'
+import { TEAM_SCOPES, authUrl, connectNotice, idTokenClaims, missingScopes, onApprovedDomain, readStateCookie, SCOPES, stateCookie } from './google-oauth'
 
 const PERSON = '0b6f3c1e-2a4d-4e8f-9b10-1c2d3e4f5a6b'
 const jwt = (claims: object) => `x.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.y`
 
 describe('the Google sign-in address', () => {
   it('asks for every scope, offline, with consent so a refresh token comes back', () => {
-    const u = new URL(authUrl({ clientId: 'abc.apps.googleusercontent.com' }, 'https://staging.truenorthportal.online/api/agenda/google/callback', 'S'.repeat(32)))
+    const u = new URL(authUrl({ clientId: 'abc.apps.googleusercontent.com' }, 'https://staging.truenorthportal.online/api/agenda/google/callback', 'S'.repeat(32), 'me'))
     expect(u.origin + u.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth')
     expect(u.searchParams.get('scope')).toBe(SCOPES.join(' '))
     expect(u.searchParams.get('access_type')).toBe('offline')
@@ -16,8 +16,14 @@ describe('the Google sign-in address', () => {
   })
 
   it('suggests office@ for the team calendar', () => {
-    const u = new URL(authUrl({ clientId: 'abc' }, 'https://x/cb', 'S'.repeat(32), 'office@truenorthdigitalmarketing.com'))
+    const u = new URL(authUrl({ clientId: 'abc' }, 'https://x/cb', 'S'.repeat(32), 'team', 'office@truenorthdigitalmarketing.com'))
     expect(u.searchParams.get('login_hint')).toBe('office@truenorthdigitalmarketing.com')
+    expect(u.searchParams.get('scope')).toBe(TEAM_SCOPES.join(' '))
+  })
+
+  it('asks a person\'s own account for the calendar only, never Drive', () => {
+    const u = new URL(authUrl({ clientId: 'abc' }, 'https://x/cb', 'S'.repeat(32), 'me'))
+    expect(u.searchParams.get('scope')).not.toContain('drive')
   })
 })
 

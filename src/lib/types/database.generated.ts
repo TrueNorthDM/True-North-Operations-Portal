@@ -265,6 +265,9 @@ export type Database = {
           access_expires_at: string | null
           access_token: string | null
           account_id: number
+          busy_from: string | null
+          busy_read_at: string | null
+          busy_to: string | null
           google_sub: string | null
           refresh_token: string
           scopes: string[]
@@ -274,6 +277,9 @@ export type Database = {
           access_expires_at?: string | null
           access_token?: string | null
           account_id: number
+          busy_from?: string | null
+          busy_read_at?: string | null
+          busy_to?: string | null
           google_sub?: string | null
           refresh_token: string
           scopes?: string[]
@@ -283,6 +289,9 @@ export type Database = {
           access_expires_at?: string | null
           access_token?: string | null
           account_id?: number
+          busy_from?: string | null
+          busy_read_at?: string | null
+          busy_to?: string | null
           google_sub?: string | null
           refresh_token?: string
           scopes?: string[]

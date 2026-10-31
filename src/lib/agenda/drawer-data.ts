@@ -19,6 +19,7 @@ import { loadDirectory, type Directory } from '@/lib/timeclock/clocky-context'
 import { usHolidays } from '@/lib/notifications/calendar'
 import { audiencesFor, teamsFor, typesFor, type Audience, type EventType, type Person } from './event-rules'
 import type { Avail } from './find-time'
+import { refreshGoogleBusy } from './google-busy'
 import { DC, instantOf, zoneLabel } from './time'
 import { readHours, workingIntervals } from './working-hours'
 
@@ -102,7 +103,8 @@ const ms = (iso: string) => Date.parse(iso)
 
 /**
  * Working and busy times for Find a time, from a Washington day for some days.
- * Busy: every connected account, the timed portal events the person is in,
+ * Busy: every connected account (Google's own busy times for the ones signed
+ * in with Google), the timed portal events the person is in,
  * approved time off (whole days in their zone) and the US holidays.
  */
 export async function loadAvailability(personIds: string[], fromDay: string, days: number): Promise<{ id: string; name: string; place: string; avail: Avail }[]> {
@@ -113,7 +115,7 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
   const lo = instantOf(fromDay, 0, DC), hi = lo + days * 864e5
   const loIso = new Date(lo).toISOString(), hiIso = new Date(hi).toISOString()
   const [acc, set, off, guests, created] = await Promise.all([
-    c.from('agenda_accounts').select('id, person_id').in('person_id', ids),
+    c.from('agenda_accounts').select('id, person_id, source').in('person_id', ids),
     c.from('agenda_person_settings').select('person_id, working_hours').in('person_id', ids),
     c.from('tc_absence_requests').select('person_id, start_date, end_date').eq('state', 'approved').in('person_id', ids)
       .lte('start_date', new Date(hi).toISOString().slice(0, 10)).gte('end_date', fromDay),
@@ -121,7 +123,9 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
     c.from('agenda_events').select('created_by, starts_at, ends_at').in('created_by', ids).not('starts_at', 'is', null).lt('starts_at', hiIso).gt('ends_at', loIso),
   ])
   for (const r of [acc, set, off, created]) if (r.error) throw new Error(`Availability could not be read: ${r.error.message}`)
-  const accounts = (acc.data ?? []) as { id: number; person_id: string }[]
+  const accounts = (acc.data ?? []) as { id: number; person_id: string; source: string }[]
+  // Accounts connected by Google sign-in: their busy times come from Google, refreshed when the copy is old.
+  await refreshGoogleBusy(accounts.filter(a => a.source === 'google').map(a => a.id), lo, hi)
   const busyRes = accounts.length
     ? await c.from('agenda_busy').select('account_id, starts_at, ends_at').in('account_id', accounts.map(a => a.id)).lt('starts_at', hiIso).gt('ends_at', loIso).limit(20000)
     : { data: [], error: null }

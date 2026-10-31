@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   if (!app) return back('no_app')
 
   const state = randomBytes(24).toString('base64url')
-  const res = NextResponse.redirect(authUrl(app, `${base}${CALLBACK_PATH}`, state, purpose === 'team' ? `office@${APPROVED_DOMAIN}` : undefined))
+  const res = NextResponse.redirect(authUrl(app, `${base}${CALLBACK_PATH}`, state, purpose, purpose === 'team' ? `office@${APPROVED_DOMAIN}` : undefined))
   res.cookies.set(STATE_COOKIE, stateCookie(state, purpose, access.personId), {
     httpOnly: true, secure: base.startsWith('https:'), sameSite: 'lax', path: '/api/agenda/google', maxAge: 600,
   })

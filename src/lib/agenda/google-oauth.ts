@@ -9,14 +9,16 @@
 
 import { APPROVED_DOMAIN } from './accounts'
 
-/** What the portal asks for: who the account is, its events, when it is busy, and only the Drive files it makes. */
+/** What the portal asks for: who the account is, its events and when it is busy. */
 export const SCOPES = [
   'openid',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.freebusy',
-  'https://www.googleapis.com/auth/drive.file',
 ] as const
+
+/** Only the team calendar (office@) also saves receipts and invoices, and sees only the Drive files the portal makes. */
+export const TEAM_SCOPES = [...SCOPES, 'https://www.googleapis.com/auth/drive.file'] as const
 
 /** Without these the account is no use to the Agenda; Drive is only for office@. */
 const NEEDED = ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.freebusy']
@@ -29,12 +31,12 @@ export type ConnectFor = 'me' | 'team'
 export interface GoogleApp { clientId: string; clientSecret: string }
 
 /** The Google page the person signs in on. Asking for consent every time is what gives a refresh token again on a reconnect. */
-export function authUrl(app: Pick<GoogleApp, 'clientId'>, redirectUri: string, state: string, loginHint?: string): string {
+export function authUrl(app: Pick<GoogleApp, 'clientId'>, redirectUri: string, state: string, purpose: ConnectFor, loginHint?: string): string {
   const q = new URLSearchParams({
     client_id: app.clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: SCOPES.join(' '),
+    scope: (purpose === 'team' ? TEAM_SCOPES : SCOPES).join(' '),
     access_type: 'offline',
     prompt: 'consent select_account',
     include_granted_scopes: 'true',
