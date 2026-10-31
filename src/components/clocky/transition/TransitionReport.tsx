@@ -30,6 +30,7 @@ import { dateLabel, dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, personProblems, type TransitionRow } from '@/lib/timeclock/transition-check'
 import type { TransitionData, TransitionQuery } from '@/lib/timeclock/transition-data'
+import { DateField } from '@/components/ui/DateField'
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const H1 = 'm-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink'
@@ -230,9 +231,9 @@ export function TransitionReport({ data, go, remind }: { data: TransitionData; g
 
       <div className="flex flex-wrap gap-2.5 items-end">
         <label className="flex flex-col gap-[5px]"><FieldLabel>From</FieldLabel>
-          <input type="date" value={range.from} min={data.switchDate} max={range.to || undefined} onChange={e => pick({ from: e.target.value })} className={DATE_INPUT} /></label>
+          <DateField value={range.from} min={data.switchDate} max={range.to || undefined} onChange={v => pick({ from: v })} className={DATE_INPUT} /></label>
         <label className="flex flex-col gap-[5px]"><FieldLabel>To</FieldLabel>
-          <input type="date" value={range.to} min={range.from} onChange={e => pick({ to: e.target.value })} className={DATE_INPUT} /></label>
+          <DateField value={range.to} min={range.from} onChange={v => pick({ to: v })} className={DATE_INPUT} /></label>
         <div className="w-full md:w-[200px]">
           <LabeledSelect label="Person" value={data.personId ?? ''} search options={people} onChange={v => go({ ...q, person: v || null })} />
         </div>

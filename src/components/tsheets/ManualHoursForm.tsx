@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { MAX_HOURS_PER_ENTRY } from '@/lib/timeclock/manual-entry'
 import { monthName } from '@/lib/timeclock/periods'
 import { shouldWarnRate, type ManualForm, type ManualOptions } from './manual-hours'
+import { DateField } from '@/components/ui/DateField'
 
 // The answers read heavier than the labels, because the answers are what
 // somebody scans back over to check the line before sending it. Placeholders
@@ -73,7 +74,7 @@ export function ManualHoursForm({ options, month, form, patch, onStage, busy }: 
 
         <div>
           <label htmlFor="manual-day" className={LABEL}>Day</label>
-          <input id="manual-day" type="date" value={entryDate} onChange={e => patch({ entryDate: e.target.value })} className={FIELD} />
+          <DateField id="manual-day" value={entryDate} onChange={v => patch({ entryDate: v })} className={FIELD} />
         </div>
 
         <div>

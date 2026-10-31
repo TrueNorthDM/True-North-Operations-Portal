@@ -13,9 +13,10 @@
 import { useState } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { EVENT_ZONES } from '@/lib/agenda/zones'
-import { fday, hourLabel } from '@/lib/agenda/model'
+import { hourLabel } from '@/lib/agenda/model'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN } from '@/components/clocky/entries/ui'
 import type { EventEdit, EventInput } from '@/lib/agenda/events'
+import { DateField } from '@/components/ui/DateField'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export type CreateEvent = (i: EventInput) => Promise<Done>
@@ -51,18 +52,13 @@ const TIMES = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].flatMap(h => [h, h +
   .map(h => ({ value: `${String(Math.floor(h)).padStart(2, '0')}:${h % 1 ? '30' : '00'}`, label: hourLabel(h) }))
 const EVERYONE = '__everyone'
 
-/** A day field that reads "Fri, Dec 11, 2026" whatever the browser's language; the browser's own picker opens on it. */
+/** A day field: the portal's date field (ui/DateField), under its label. */
 function DayField({ label, value, min, onChange }: { label: string; value: string; min?: string; onChange: (v: string) => void }) {
   return (
-    <label className="flex flex-col gap-[5px] min-w-0">
+    <div className="flex flex-col gap-[5px] min-w-0">
       <FieldLabel>{label}</FieldLabel>
-      <span className={`${INPUT} relative flex items-center ${value ? '' : 'text-muted'}`}>
-        {value ? `${fday(value)}, ${value.slice(0, 4)}` : 'Pick a day'}
-        <input type="date" value={value} min={min} onChange={e => onChange(e.target.value)} aria-label={label}
-          onClick={e => { try { e.currentTarget.showPicker() } catch { /* the browser opens it itself */ } }}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-      </span>
-    </label>
+      <DateField value={value} min={min} onChange={onChange} ariaLabel={label} className={INPUT} />
+    </div>
   )
 }
 

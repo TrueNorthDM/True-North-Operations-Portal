@@ -16,6 +16,7 @@ import type { ReportPage } from '@/lib/timeclock/reports-data'
 import { reportSearch as search, type ReportQuery, type ReportView } from '@/lib/timeclock/reports'
 import { fitOnePage, pagePx, sheetPages } from '@/lib/timeclock/receipt-pages'
 import { ReportSheet } from './ReportSheet'
+import { DateField } from '@/components/ui/DateField'
 
 const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
@@ -96,9 +97,9 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
         {q.kind === 'custom' ? (
           <div className="flex items-end gap-2">
             <label className="flex flex-col gap-[5px]"><FieldLabel>From</FieldLabel>
-              <input type="date" value={range.from} max={range.to} onChange={e => pickDay({ from: e.target.value })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <DateField value={range.from} max={range.to} onChange={v => pickDay({ from: v })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
             <label className="flex flex-col gap-[5px]"><FieldLabel>To</FieldLabel>
-              <input type="date" value={range.to} min={range.from} onChange={e => pickDay({ to: e.target.value })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <DateField value={range.to} min={range.from} onChange={v => pickDay({ to: v })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
           </div>
         ) : (
           <span className="max-md:basis-full font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink px-1.5 max-md:px-0.5 pb-2.5 max-md:pb-0 whitespace-nowrap leading-[normal]">{v.label}</span>

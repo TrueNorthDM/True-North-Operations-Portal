@@ -32,6 +32,7 @@ import {
   type Pill,
 } from '@/lib/directory/people-types'
 import type { TeamOption } from './DirectoryTabs'
+import { DateField } from '@/components/ui/DateField'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -289,8 +290,8 @@ function EditBody({
         <div className="break-inside-avoid mb-6">
           <SectionTitle>Dates</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Joined on', <input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} />)}
-            {field('Left on', <input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} />)}
+            {field('Joined on', <DateField value={draft.hireDate} onChange={v => set('hireDate', v)} className={fieldCls} clearable />)}
+            {field('Left on', <DateField value={draft.leftOn} onChange={v => set('leftOn', v)} className={fieldCls} clearable />)}
           </div>
         </div>
       </div>
@@ -306,7 +307,7 @@ function EditBody({
                 <Select fullWidth value={row.kind} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)) }))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={fieldCls} ariaLabel="Milestone type" />
               </div>
               <div className="shrink-0 w-[150px]">
-                <input type="date" value={row.date} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, date: e.target.value } : m)) }))} className={fieldCls} />
+                <DateField value={row.date} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)) }))} className={fieldCls} ariaLabel="Milestone date" />
               </div>
               <div className="flex-1 min-w-0">
                 <input type="text" value={row.note} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)) }))} className={fieldCls} placeholder="What changed…" />

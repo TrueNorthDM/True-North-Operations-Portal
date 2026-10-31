@@ -19,6 +19,7 @@ import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
 import type { Cadence } from '@/lib/timeclock/periods'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import type { CadencePreview } from '@/lib/timeclock/clocky-periods-data'
+import { DateField } from '@/components/ui/DateField'
 
 /** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
 export interface CadenceActions {
@@ -96,7 +97,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
         </Section>
         <Section title="About">
           <div className="flex flex-col gap-3.5 pt-2">
-            <Field label="Date of birth"><input id="pp-dob" type="date" value={d.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Field>
+            <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={fieldCls} clearable /></Field>
             <Field label="Location"><input id="pp-loc" value={d.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Field>
             <div className="flex flex-col gap-1.5">
               <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Full address</span>
@@ -205,8 +206,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
             <div className="flex flex-col gap-3.5 pt-2">
               <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
               <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
-              <Field label="Joined on"><input id="pw-joined" type="date" value={d.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Field>
-              <Field label="Left on"><input id="pw-left" type="date" value={d.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} /></Field>
+              <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={fieldCls} clearable /></Field>
+              <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={fieldCls} clearable /></Field>
             </div>
           </Section>
         </div>
@@ -216,7 +217,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
           {d.milestones.map((row, i) => (
             <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={fieldCls} ariaLabel="Milestone type" /></div>
-              <div className="w-[150px] shrink-0"><input type="date" value={row.date} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: e.target.value } : m)))} className={fieldCls} aria-label="Milestone date" /></div>
+              <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={fieldCls} aria-label="Milestone date" /></div>
               <div className="flex-1 min-w-[160px]"><input value={row.note} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)))} className={fieldCls} placeholder="What changed…" aria-label="Milestone note" /></div>
               <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-red-50 hover:text-red-600">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>

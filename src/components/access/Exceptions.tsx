@@ -6,6 +6,7 @@ import { CATALOGUE, ITEM, LEVEL_LABEL, type ItemKind } from '@/lib/access/catalo
 
 import { addException, endException } from '@/app/(app)/admin/access-levels/actions'
 import { type AccessPageData, type Person, Tag, btn, btnNavy, card, Modal, when, addDays, endOfMonth } from './parts'
+import { DateField } from '@/components/ui/DateField'
 
 export function Exceptions({ data, people, onDone }: { data: AccessPageData; people: Person[]; onDone: () => void }) {
   const [adding, setAdding] = useState(false)
@@ -103,7 +104,7 @@ function AddException({ people, today, onClose, onDone }: { people: Person[]; to
             {([['1 week', addDays(today, 7)], ['End of the month', endOfMonth(today)], ['Until removed', null]] as const).map(([l, v]) => <button key={l} type="button" aria-pressed={!custom && until === v} onClick={() => { setCustom(false); setUntil(v) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${!custom && until === v ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{l}</button>)}
             <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setUntil(addDays(today, 14)) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${custom ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>A date…</button>
           </div>
-          {custom && <input type="date" value={until ?? ''} min={today} onChange={e => setUntil(e.target.value || null)} className="rounded-[9px] border border-[var(--panel-border)] px-2 py-1.5 text-[13px] text-tn-ink" />}
+          {custom && <DateField value={until ?? ''} min={today} onChange={v => setUntil(v || null)} className="rounded-[9px] border border-[var(--panel-border)] px-2 py-1.5 text-[13px] text-tn-ink" clearable />}
         </div></div>
       {p && item && (
         <div className="rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[12.5px]">

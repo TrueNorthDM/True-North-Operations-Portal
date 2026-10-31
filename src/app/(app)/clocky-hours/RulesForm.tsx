@@ -12,6 +12,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { saveRules } from './actions'
+import { DateField } from '@/components/ui/DateField'
 
 // Only what Clocky and the import read (audit of 20 October 2026). Rounding,
 // the auto clock-out and overtime are Clocky's own fixed rules, and how often
@@ -85,8 +86,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
 
       <div className="border-t border-slate-100 pt-4 space-y-1">
         <label className={label} htmlFor="cut">Import cutoff</label>
-        <input id="cut" type="date" value={r.import_cutoff_date ?? ''}
-          onChange={e => set('import_cutoff_date', e.target.value || null)} className={input} />
+        <DateField id="cut" value={r.import_cutoff_date ?? ''} onChange={v => set('import_cutoff_date', v || null)} className={input} clearable />
         {/* The one setting here that can lose data if it is set carelessly. */}
         <p className="text-xs text-[#b45309] m-0 max-w-none">
           Set this only on the day you switch over. It stops the import reaching past that date,

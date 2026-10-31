@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ConfirmModal } from './ConfirmModal'
 import { saveTrBudget } from '@/lib/tsheets/settings-actions'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { DateField } from '@/components/ui/DateField'
 
 interface CurrentBudget {
   hoursAllocated: number | null
@@ -137,11 +138,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
             </div>
             <div>
               <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
-              <input type="date" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
+              <DateField value={budgetStart} onChange={v => setBudgetStart(v)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
-              <input type="date" value={budgetEnd} min={budgetStart || undefined} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
+              <DateField value={budgetEnd} min={budgetStart || undefined} onChange={v => setBudgetEnd(v)} className={inputCls} clearable />
             </div>
           </div>
         </fieldset>
@@ -159,11 +160,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
               <label className={labelCls}>
                 Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-muted font-normal">(when extra is set)</span>}
               </label>
-              <input type="date" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
+              <DateField value={extraStart} onChange={v => setExtraStart(v)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
             </div>
             <div>
               <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
-              <input type="date" value={extraEnd} min={extraStart || undefined} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
+              <DateField value={extraEnd} min={extraStart || undefined} onChange={v => setExtraEnd(v)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} clearable />
             </div>
           </div>
           {!hasExtra && (

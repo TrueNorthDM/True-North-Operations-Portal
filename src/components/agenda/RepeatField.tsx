@@ -9,6 +9,7 @@
 
 import { Select } from '@/components/ui/Select'
 import { describe, nthOf, type Freq, type Repeat } from '@/lib/agenda/recurrence'
+import { DateField } from '@/components/ui/DateField'
 
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
 const SELECT = 'h-11 px-3.5 bg-white border border-[var(--panel-border)] rounded-[12px] font-semibold text-[14px]'
@@ -85,7 +86,7 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
               </div>
             </div>
             {value.ends === 'until' && (
-              <input type="date" aria-label="Last day" min={date} value={value.until ?? ''} onChange={e => e.target.value && set({ until: e.target.value })} className={`${INPUT} w-[170px]`} />
+              <DateField ariaLabel="Last day" min={date} value={value.until ?? ''} onChange={v => v && set({ until: v })} className={`${INPUT} w-[170px]`} />
             )}
             {value.ends === 'count' && (
               <label className="flex items-center gap-2 text-[13.5px] text-foreground">

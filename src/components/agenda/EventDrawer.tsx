@@ -25,6 +25,7 @@ import { FindTimePanel, type FindTimeApi } from './FindTimePanel'
 import { RepeatField } from './RepeatField'
 import { ScopeChoice } from './ScopeChoice'
 import type { Repeat, Scope } from '@/lib/agenda/recurrence'
+import { DateField } from '@/components/ui/DateField'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
@@ -67,16 +68,10 @@ interface Guest { personId: string | null; email: string }
 
 function DayField({ label, value, min, onChange }: { label: string; value: string; min?: string; onChange: (v: string) => void }) {
   return (
-    <label className="flex flex-col gap-2 min-w-0 flex-1 basis-[150px]">
+    <div className="flex flex-col gap-2 min-w-0 flex-1 basis-[150px]">
       <span className={LBL}>{label}</span>
-      <span className={`${INPUT} relative flex items-center justify-between`}>
-        {fdate(value)}
-        <Icon d="M6 9l6 6 6-6" size={14} color="#8593a4" width={2} />
-        <input type="date" value={value} min={min} onChange={e => e.target.value && onChange(e.target.value)} aria-label={label}
-          onClick={e => { try { e.currentTarget.showPicker() } catch { /* the browser opens it itself */ } }}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-      </span>
-    </label>
+      <DateField value={value} min={min} onChange={v => v && onChange(v)} ariaLabel={label} className={INPUT} />
+    </div>
   )
 }
 
