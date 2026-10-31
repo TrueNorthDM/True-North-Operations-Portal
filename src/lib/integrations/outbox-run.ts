@@ -4,7 +4,11 @@
  * screens say "Sent to Rippling" or "Rippling refused it" with Try again.
  *
  *   gcal_upsert, gcal_delete   the team calendar (google-calendar.ts): time
- *                              off, and Agenda events and milestones
+ *                              off, and Agenda events and milestones; on
+ *                              office@'s own calendar through its Google
+ *                              sign-in (Agenda settings, since 31 October
+ *                              2026), the old service account only if office@
+ *                              is not connected
  *   rippling_*                 not sent yet: what the portal must call in
  *                              Rippling is an open question for the owner, so
  *                              these fail with that sentence instead of
@@ -16,6 +20,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accessToken, deleteEvent, insertAllDay, insertTimed, parseServiceAccount } from './google-calendar'
+import { accessTokenFor } from '@/lib/agenda/google-app'
 import { notifyClockyTimeOffRefused } from '@/lib/notifications/run'
 import { dayLabel } from '@/lib/timeclock/format'
 
@@ -38,13 +43,22 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
   if (error) throw new Error(`The outbox could not be read: ${error.message}`)
   const jobs = (data ?? []) as Job[]
   if (!jobs.length) return report
-  const { data: s } = await c.from('app_settings').select('google_service_account, google_team_calendar_id').eq('singleton_id', 1).maybeSingle()
-  let token: string | null = null
+  const [{ data: s }, { data: team }] = await Promise.all([
+    c.from('app_settings').select('google_service_account, google_team_calendar_id').eq('singleton_id', 1).maybeSingle(),
+    c.from('agenda_accounts').select('id').eq('team_calendar', true).eq('source', 'google').eq('status', 'connected').maybeSingle(),
+  ])
+  let target: { token: string; calendar: string } | null = null
   const google = async () => {
-    if (!s?.google_service_account) throw new Final('Google Calendar is not connected.')
+    if (target) return target
+    // The team calendar connected by Google sign-in (office@): its own calendar.
+    if (team) {
+      const t = await accessTokenFor(team.id as number)
+      if (!t) throw new Final('The team calendar (office@) needs to be connected again in Agenda settings.')
+      return (target = { token: t, calendar: 'primary' })
+    }
+    if (!s?.google_service_account) throw new Final('The team calendar is not connected. A Super Admin connects office@ in Agenda settings.')
     if (!s.google_team_calendar_id) throw new Final('No team calendar is set in Company settings, Integrations.')
-    token ??= await accessToken(parseServiceAccount(s.google_service_account))
-    return { token, calendar: s.google_team_calendar_id }
+    return (target = { token: await accessToken(parseServiceAccount(s.google_service_account)), calendar: s.google_team_calendar_id })
   }
 
   for (const j of jobs) {

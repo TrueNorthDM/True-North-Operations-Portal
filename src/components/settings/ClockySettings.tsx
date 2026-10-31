@@ -80,7 +80,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
   }
   const cards = [
     { key: 'rippling' as const, mark: 'R', icBg: '#fbf1e6', icFg: '#92400E', name: 'Rippling', on: data.rippling.tokenSaved, onLabel: 'Token saved', d: data.rippling },
-    { key: 'google' as const, mark: 'G', icBg: '#eaf4f4', icFg: '#1E7D7F', name: 'Google Calendar', on: data.google.connected, onLabel: 'Connected', d: data.google },
+    { key: 'google' as const, mark: 'G', icBg: '#eaf4f4', icFg: '#1E7D7F', name: data.google.viaOffice ? 'Team calendar (Google)' : 'Google Calendar', on: data.google.connected, onLabel: 'Connected', d: data.google },
   ]
   return (
     <div className="flex flex-col gap-[18px]">
@@ -96,12 +96,15 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
               </div>
               <span className="text-[12.5px] text-muted">{g.d.who}</span>
             </div>
-            {g.key === 'google' && data.google.saved && (
+            {g.key === 'google' && data.google.viaOffice && (
+              <Link href="/agenda/settings" className={`${BTN_W} no-underline`}>Agenda settings</Link>
+            )}
+            {g.key === 'google' && !data.google.viaOffice && data.google.saved && (
               <button type="button" disabled={busy} onClick={() => void run(api.testGoogle())} className={BTN_W}>
                 <Icon d={REFRESH} size={14} color={BTN_ICON.white} width={2.2} />Test connection
               </button>
             )}
-            {canEdit && (
+            {canEdit && (g.key === 'rippling' || data.google.saved) && (
               <button type="button" disabled={busy} onClick={() => setModal(g.key)} className={BTN_W}>
                 {g.key === 'rippling' ? (data.rippling.tokenSaved ? 'Replace token' : 'Connect') : data.google.saved ? 'Replace key' : 'Connect'}
               </button>
@@ -115,7 +118,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
               </div>
             ))}
           </div>
-          {g.key === 'google' && (
+          {g.key === 'google' && !data.google.viaOffice && data.google.saved && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label className="flex flex-col gap-[5px]">
                 <span className={LABEL}>Team calendar</span>

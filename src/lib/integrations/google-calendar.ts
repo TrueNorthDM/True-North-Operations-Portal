@@ -42,8 +42,10 @@ type Extra = { location?: string | null; description?: string | null }
 const extra = (e: Extra) => ({ ...(e.location ? { location: e.location } : {}), ...(e.description ? { description: e.description } : {}) })
 
 async function insert(token: string, calendarId: string, event: Record<string, unknown>): Promise<string> {
+  // Marked as the portal's own, so the Agenda's Google sync never brings it back as a new team event.
+  const marked = { ...event, extendedProperties: { private: { tnPortalOutbox: '1' } } }
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(event),
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(marked),
   })
   const body = await res.json().catch(() => null) as { id?: string; error?: { message?: string } } | null
   if (!res.ok || !body?.id) throw new Error(`Google Calendar refused the event: ${body?.error?.message ?? res.status}`)

@@ -25,7 +25,8 @@ export interface IntegrationError { id: number; when: string; what: string; text
 
 export interface IntegrationsData {
   rippling: { tokenSaved: boolean; tokenEnd: string | null; who: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
-  google: { connected: boolean; saved: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
+  /** `viaOffice`: the team calendar is office@ connected by Google sign-in in Agenda settings (since 31 October 2026); the service account key is then not used. */
+  google: { connected: boolean; saved: boolean; viaOffice: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
   googleApp: { saved: boolean; clientId: string; secretEnd: string | null; pickerEnd: string | null; who: string }
 }
@@ -79,8 +80,10 @@ export async function countRetryable(now = new Date()): Promise<number> {
 }
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
-  const [conn, dir, list, appRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
-    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at').eq('singleton_id', 1).maybeSingle()])
+  const [conn, dir, list, appRes, teamRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
+    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at').eq('singleton_id', 1).maybeSingle(),
+    createAdminClient().from('agenda_accounts').select('email, status, connected_by, connected_at').eq('team_calendar', true).eq('source', 'google').maybeSingle()])
+  const office = teamRes.data
   if (appRes.error) throw new Error(`The Google app could not be read: ${appRes.error.message}`)
   const app = appRes.data
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
@@ -110,9 +113,19 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
       ],
       errors: errorsOf(RIPPLING_KINDS),
     },
-    google: {
-      connected: conn.google.connected, saved: !!conn.google.account, account: conn.google.account,
-      who: conn.google.connected ? `Connected as ${conn.google.account ?? 'the service account'}${by(conn.google.connectedBy, conn.google.connectedAt)}.` : conn.google.account ? `Service account ${conn.google.account} saved. Add the team calendar to connect it.` : 'Not connected. Paste the Google service account key to connect it.',
+    google: office ? {
+      connected: office.status === 'connected', saved: false, viaOffice: true, account: office.email, teamCalendarId: '',
+      who: office.status === 'connected'
+        ? `${office.email}, connected${by(office.connected_by, office.connected_at)} in Agenda settings. Approved time off and team events go to its Google Calendar.`
+        : `${office.email} needs to be connected again in Agenda settings.`,
+      facts: [
+        { k: 'Last sync', v: lastGcal?.done_at ? `${at(lastGcal.done_at)}${gcalToday.length ? `: ${gcalToday.length} PTO event${gcalToday.length === 1 ? '' : 's'} written today` : ''}` : 'Nothing written yet' },
+        { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' },
+      ],
+      errors: errorsOf(GOOGLE_KINDS),
+    } : {
+      connected: conn.google.connected, saved: !!conn.google.account, viaOffice: false, account: conn.google.account,
+      who: conn.google.connected ? `Connected as ${conn.google.account ?? 'the service account'}${by(conn.google.connectedBy, conn.google.connectedAt)}.` : conn.google.account ? `Service account ${conn.google.account} saved. Add the team calendar to connect it.` : 'Not connected. A Super Admin connects office@ as the team calendar in Agenda settings.',
       teamCalendarId: conn.google.teamCalendarId ?? '',
       facts: [
         { k: 'Last sync', v: lastGcal?.done_at ? `${at(lastGcal.done_at)}${gcalToday.length ? `: ${gcalToday.length} PTO event${gcalToday.length === 1 ? '' : 's'} written today` : ''}` : 'Nothing written yet' },

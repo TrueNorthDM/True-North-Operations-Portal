@@ -124,7 +124,8 @@ export async function syncFromGoogle(): Promise<SyncReport> {
           continue
         }
         // New in Google: only the team calendar's events join the Agenda, never one the portal made and deleted, and not the backlog of the first read.
-        if (!a.team_calendar || g.extendedProperties?.private?.tnPortalEventId || first) continue
+        const ours = Object.keys(g.extendedProperties?.private ?? {}).some(k => k.startsWith('tnPortal'))
+        if (!a.team_calendar || ours || first) continue
         const { data: made, error: insErr } = await c.from('agenda_events').insert({
           kind: 'event', type: 'company', audience: 'all', title: f.title, start_date: f.start_date, end_date: f.end_date,
           starts_at: f.starts_at, ends_at: f.ends_at, time_zone: f.time_zone, how: f.how, place: f.how === 'in_person' ? f.place : null,

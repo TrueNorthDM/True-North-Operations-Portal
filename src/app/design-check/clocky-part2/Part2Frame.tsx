@@ -66,7 +66,7 @@ export function Part2Frame({ frame }: { frame: string }) {
       rippling: { tokenSaved: true, tokenEnd: '9f2c', who: "Token saved by Arnaldo Oliveira, Sep 30, 2026. Nothing is sent until the portal's Rippling calls are written.",
         facts: [{ k: 'Sends', v: 'Approved PTO, and approved employee hours by day' }, { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' }, { k: 'Waiting to send', v: '2 items, sent by themselves once it works' }],
         errors: [{ id: 1, when: 'Nov 2, 11:18 AM', what: 'Time off', text: 'Dave Sharpe, Sick, Thu, Oct 29: "Sick balance is 0h."', failed: true, doneText: null }, { id: 2, when: 'Oct 19, 9:58 AM', what: 'Hours', text: 'Wendy Cacka, Oct 4 to 17: "No pay schedule for Oct 4 to 17."', failed: false, doneText: 'Sent Oct 19, 10:02 AM' }] },
-      google: { connected: true, saved: true, account: 'calendar@truenorthdm.org', who: 'Connected as calendar@truenorthdm.org by Arnaldo Oliveira, Sep 30, 2026.',
+      google: { connected: true, saved: true, viaOffice: false, account: 'calendar@truenorthdm.org', who: 'Connected as calendar@truenorthdm.org by Arnaldo Oliveira, Sep 30, 2026.',
         teamCalendarId: 'c_truenorth.team@group.calendar.google.com',
         facts: [{ k: 'Last sync', v: 'Nov 3, 9:15 AM: 3 PTO events written today' }, { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' }], errors: [] },
       googleApp: { saved: false, clientId: '', secretEnd: null, pickerEnd: null, who: 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.' },
