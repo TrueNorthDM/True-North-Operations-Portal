@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
 import { saveProjectBudget } from '@/lib/tsheets/settings-actions'
+import { MonthField } from '@/components/ui/DateField'
 
 export interface ProjectBudget {
   project: string
@@ -97,7 +98,7 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
                   </td>
                   <td className="px-4 py-2">
                     {isEd
-                      ? <input type="month" value={month} onChange={e => setMonth(e.target.value)} className={cellInput} />
+                      ? <MonthField value={month} onChange={setMonth} ariaLabel="Budget month" className={cellInput} />
                       : <span className="text-slate-400">-</span>}
                   </td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">

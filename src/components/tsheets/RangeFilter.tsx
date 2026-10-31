@@ -29,6 +29,7 @@ import {
   type RangeChoice, type RangeMode,
 } from '@/lib/tsheets/range'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { MonthField } from '@/components/ui/DateField'
 
 const FIELD = 'w-full rounded-[9px] border border-slate-200 bg-white px-3 py-2 text-[13px] text-tn-ink font-semibold'
 
@@ -131,9 +132,9 @@ export function RangeFilter(
         {/* The clamped months, as in the popover: the fields say what the report reads. */}
         {value.mode === 'custom' && (
           <span className="inline-flex items-center gap-2">
-            <input type="month" aria-label="From" value={range.from} min={floor} max={currentMonth} onChange={e => set({ from: e.target.value })} className={INLINE_FIELD} />
+            <MonthField ariaLabel="From" value={range.from} min={floor} max={currentMonth} onChange={v => set({ from: v })} className={`${INLINE_FIELD} w-[140px]`} />
             <span className="text-[12px] text-muted">to</span>
-            <input type="month" aria-label="To" value={range.to} min={floor} max={currentMonth} onChange={e => set({ to: e.target.value })} className={INLINE_FIELD} />
+            <MonthField ariaLabel="To" value={range.to} min={floor} max={currentMonth} onChange={v => set({ to: v })} className={`${INLINE_FIELD} w-[140px]`} />
           </span>
         )}
         {!valid && (
@@ -206,11 +207,11 @@ export function RangeFilter(
             <div className="pt-2.5 grid grid-cols-2 gap-2">
               <label className="block">
                 <span className="block text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted mb-1">From</span>
-                <input type="month" value={range.from} min={floor} max={currentMonth} onChange={e => set({ from: e.target.value })} className={FIELD} />
+                <MonthField ariaLabel="From" value={range.from} min={floor} max={currentMonth} onChange={v => set({ from: v })} className={FIELD} />
               </label>
               <label className="block">
                 <span className="block text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted mb-1">To</span>
-                <input type="month" value={range.to} min={floor} max={currentMonth} onChange={e => set({ to: e.target.value })} className={FIELD} />
+                <MonthField ariaLabel="To" value={range.to} min={floor} max={currentMonth} onChange={v => set({ to: v })} className={FIELD} />
               </label>
             </div>
           )}

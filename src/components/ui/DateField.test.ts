@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dateLabel, monthGrid } from './DateField'
+import { dateLabel, monthGrid, monthLabel } from './DateField'
 
 describe('the date field', () => {
   it('writes the day out', () => {
@@ -11,5 +11,11 @@ describe('the date field', () => {
     expect(g.length % 7).toBe(0)
     expect(g.at(-1)).toBe('2026-12-05')
     expect(monthGrid('2026-12-01')[0]).toBe('2026-11-29')
+  })
+})
+
+describe('the month field', () => {
+  it('names the month', () => {
+    expect(monthLabel('2026-11')).toBe('Nov 2026')
   })
 })

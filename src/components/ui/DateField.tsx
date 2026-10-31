@@ -44,6 +44,35 @@ export function monthGrid(day: string): string[] {
   return out
 }
 
+/**
+ * Where an open popover sits: under its field, or above it when there is no
+ * room below; it follows scrolling and closes on a click outside.
+ */
+function usePlaced(open: boolean, btn: React.RefObject<HTMLButtonElement | null>, pop: React.RefObject<HTMLDivElement | null>, close: () => void, height: number) {
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const place = () => {
+      const r = btn.current?.getBoundingClientRect()
+      if (!r) return
+      const below = window.innerHeight - r.bottom, flip = below < height + 12 && r.top > below
+      setPos({ ...(flip ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }), left: Math.max(8, Math.min(r.left, window.innerWidth - 288)) })
+    }
+    place()
+    const onDown = (e: MouseEvent) => { const t = e.target as Node; if (!btn.current?.contains(t) && !pop.current?.contains(t)) close() }
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    document.addEventListener('mousedown', onDown)
+    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); document.removeEventListener('mousedown', onDown) }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  return open ? pos : null
+}
+
+const POPOVER = 'z-[9999] w-[280px] box-border bg-white border border-[var(--panel-border)] rounded-[14px] p-3 shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)]'
+const ARROW = 'w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle'
+const Chevron = ({ d }: { d: string }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
+const CalIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-[#5b6b82]"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
+
 /** The official closed look: the menus' height, border and corners. */
 export const DATE_FIELD = 'h-11 w-full px-3.5 bg-white border border-[var(--panel-border)] rounded-[12px] text-[14px]'
 
@@ -63,7 +92,6 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
 }) {
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(value || localToday())
-  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
   const btn = useRef<HTMLButtonElement>(null)
   const pop = useRef<HTMLDivElement>(null)
   const today = localToday()
@@ -72,21 +100,7 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
   const show = () => { if (disabled) return; setCursor(value || (ok(today) ? today : min ?? max ?? today)); setOpen(true) }
   const pick = (d: string) => { if (!ok(d)) return; onChange(d); setOpen(false); btn.current?.focus() }
 
-  useEffect(() => {
-    if (!open) return
-    const place = () => {
-      const r = btn.current?.getBoundingClientRect()
-      if (!r) return
-      const H = 330, below = window.innerHeight - r.bottom, flip = below < H + 12 && r.top > below
-      setPos({ ...(flip ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }), left: Math.max(8, Math.min(r.left, window.innerWidth - 288)) })
-    }
-    place()
-    const onDown = (e: MouseEvent) => { const t = e.target as Node; if (!btn.current?.contains(t) && !pop.current?.contains(t)) setOpen(false) }
-    window.addEventListener('scroll', place, true)
-    window.addEventListener('resize', place)
-    document.addEventListener('mousedown', onDown)
-    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); document.removeEventListener('mousedown', onDown) }
-  }, [open])
+  const pos = usePlaced(open, btn, pop, () => setOpen(false), 330)
 
   // The focused day follows the cursor, so the arrow keys read out where they are.
   useEffect(() => {
@@ -107,7 +121,7 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
   const popover = open && pos ? createPortal(
     <div ref={pop} role="dialog" aria-label={ariaLabel ? `${ariaLabel}: pick a day` : 'Pick a day'} onKeyDown={onKey}
       style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
-      className="z-[9999] w-[280px] box-border bg-white border border-[var(--panel-border)] rounded-[14px] p-3 shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)]">
+      className={POPOVER}>
       <div className="flex items-center justify-between mb-1.5">
         <button type="button" aria-label="Previous month" onClick={() => setCursor(addMonths(cursor, -1))} className="w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
@@ -151,7 +165,81 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
         onKeyDown={e => { if (!open && e.key === 'ArrowDown') { e.preventDefault(); show() } }}
         className={`${className} box-border inline-flex items-center gap-2.5 text-left cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${open ? '!border-tn-teal shadow-[0_0_0_3px_rgba(30,125,127,.15)]' : 'hover:border-tn-teal'}`}>
         <span className={`flex-1 min-w-0 truncate tabular-nums lining-nums ${value ? 'text-tn-ink font-semibold' : 'text-muted'}`}>{value ? dateLabel(value) : placeholder}</span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-[#5b6b82]"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
+        <CalIcon />
+      </button>
+      {popover}
+    </>
+  )
+}
+
+/** "Nov 2026" for "2026-11". */
+export function monthLabel(month: string): string {
+  return `${MON[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`
+}
+
+/**
+ * The month field, the date field's sibling (owner, 31 October 2026): the
+ * same closed look, and a year of months when open (the chosen one navy, this
+ * month ringed, the ones outside min/max struck through). Values "YYYY-MM".
+ */
+export function MonthField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a month', disabled = false, className = DATE_FIELD }: {
+  value: string
+  onChange: (value: string) => void
+  min?: string
+  max?: string
+  ariaLabel?: string
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const now = localToday().slice(0, 7)
+  const [year, setYear] = useState(Number((value || now).slice(0, 4)))
+  const btn = useRef<HTMLButtonElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
+  const pos = usePlaced(open, btn, pop, () => setOpen(false), 240)
+  const ok = (m: string) => (!min || m >= min) && (!max || m <= max)
+  const pick = (m: string) => { if (!ok(m)) return; onChange(m); setOpen(false); btn.current?.focus() }
+  useEffect(() => {
+    if (open && pos) pop.current?.querySelector<HTMLElement>('[aria-pressed="true"], [aria-current="date"]')?.focus({ preventScroll: true })
+  }, [open, pos])
+
+  const popover = open && pos ? createPortal(
+    <div ref={pop} role="dialog" aria-label={ariaLabel ? `${ariaLabel}: pick a month` : 'Pick a month'} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false); btn.current?.focus() } }}
+      style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }} className={POPOVER}>
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" aria-label="Previous year" onClick={() => setYear(y => y - 1)} className={ARROW}><Chevron d="M15 18l-6-6 6-6" /></button>
+        <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums lining-nums" aria-live="polite">{year}</span>
+        <button type="button" aria-label="Next year" onClick={() => setYear(y => y + 1)} className={ARROW}><Chevron d="M9 6l6 6-6 6" /></button>
+      </div>
+      <div className="grid grid-cols-3 gap-1">
+        {MON.map((name, i) => {
+          const m = `${year}-${String(i + 1).padStart(2, '0')}`, can = ok(m), sel = m === value, cur = m === now
+          return (
+            <button key={m} type="button" disabled={!can} aria-pressed={sel} aria-current={cur ? 'date' : undefined} aria-label={`${MONTHS[i]} ${year}`} onClick={() => pick(m)}
+              className={`h-9 border-0 rounded-[9px] text-[12.5px] font-bold cursor-pointer disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal ${
+                sel ? 'bg-tn-primary text-[#ffffff]'
+                : !can ? 'bg-transparent text-[#cbd2da] line-through'
+                : cur ? 'bg-transparent text-tn-teal shadow-[inset_0_0_0_1.5px_var(--color-tn-teal)] hover:bg-tn-teal-soft'
+                : 'bg-transparent text-tn-ink hover:bg-tn-teal-soft'}`}>{name}</button>
+          )
+        })}
+      </div>
+      <div className="flex items-center border-t border-[#f1f3f6] mt-2 pt-2.5">
+        <button type="button" disabled={!ok(now)} onClick={() => pick(now)} className="border-0 bg-transparent p-0 cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline">This month</button>
+      </div>
+    </div>,
+    document.body,
+  ) : null
+
+  return (
+    <>
+      <button ref={btn} type="button" disabled={disabled} aria-label={ariaLabel ? `${ariaLabel}${value ? `, ${monthLabel(value)}` : ''}` : undefined}
+        aria-haspopup="dialog" aria-expanded={open}
+        onClick={() => { if (open) { setOpen(false); return } if (!disabled) { setYear(Number((value || now).slice(0, 4))); setOpen(true) } }}
+        className={`${className} box-border inline-flex items-center gap-2.5 text-left cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${open ? '!border-tn-teal shadow-[0_0_0_3px_rgba(30,125,127,.15)]' : 'hover:border-tn-teal'}`}>
+        <span className={`flex-1 min-w-0 truncate tabular-nums lining-nums ${value ? 'text-tn-ink font-semibold' : 'text-muted'}`}>{value ? monthLabel(value) : placeholder}</span>
+        <CalIcon />
       </button>
       {popover}
     </>
