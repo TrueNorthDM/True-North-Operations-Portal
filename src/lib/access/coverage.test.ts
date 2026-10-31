@@ -50,6 +50,8 @@ describe('every page asks the access rule', () => {
     'app/(app)/profile/page.tsx': "sends the person to their own page in the Directory, which checks",
     'app/meet/[slug]/page.tsx': 'the public booking page: open to anyone while the link is on',
     'app/meet/confirm/[token]/page.tsx': 'the public booking page: the link from the confirmation email',
+    'app/legal/privacy/page.tsx': 'the public privacy policy (static, for Google\'s review)',
+    'app/legal/terms/page.tsx': 'the public terms of use (static, for Google\'s review)',
   }
   const redirectsOnly = (s: string) => /export default (async )?function \w+\(\)\s*\{\s*redirect\((await previewHref\()?/.test(s)
 

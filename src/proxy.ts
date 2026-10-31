@@ -28,7 +28,9 @@ import { switchOverAction } from '@/lib/switch-over'
 //   /meet: the public booking page (Agenda booking links), for people with
 //          no portal login; its actions check the link and the limits
 //          themselves (app/meet/actions.ts).
-const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron', '/meet']
+//   /legal: the privacy policy and terms, static pages Google's review of the
+//           portal's Google sign-in reads without a login.
+const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron', '/meet', '/legal']
 
 
 // Design checks run without a login, and only ever in development: the page
