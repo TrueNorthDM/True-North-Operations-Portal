@@ -150,7 +150,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 ${view === 'month' ? 'items-stretch' : 'items-start'}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 items-stretch">
         <div className="min-w-0">
           {view === 'month' && (phone
             ? <MonthPhone items={items} anchor={anchor} today={data.today} seesType={seesType} pick={pick} onPick={setPick} onOpen={setCard} />
@@ -160,11 +160,14 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} hours={data.me.hours} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
-        {/* Month: Coming up runs the calendar's height. Week and list: the small
-            month on top to pick a week, and a shorter Coming up (owner, 31 October 2026). */}
-        <div className="flex flex-col gap-4 min-w-0">
-          {view !== 'month' && !phone && <MiniMonth anchor={anchor} today={data.today} onPick={d => go(view, d)} />}
-          <ComingUp items={items} today={data.today} onOpen={setCard} limit={view === 'month' ? 10 : 5} fill={view === 'month'} onAll={() => go('list', data.today)} />
+        {/* The side column is as tall as the calendar and never taller: Coming up
+            fills what is left under the small month (week and list) and shows
+            the items that fit (owner, 31 October 2026). */}
+        <div className="relative min-w-0 lg:min-h-[600px]">
+          <div className="flex flex-col gap-4 lg:absolute lg:inset-0">
+            {view !== 'month' && !phone && <MiniMonth anchor={anchor} today={data.today} onPick={d => go(view, d)} />}
+            <ComingUp items={items} today={data.today} onOpen={setCard} />
+          </div>
         </div>
       </div>
 
@@ -482,39 +485,38 @@ function MiniMonth({ anchor, today, onPick }: { anchor: string; today: string; o
   )
 }
 
-/** The next two weeks, a few at a time with room between them; "See all" opens the list. */
-function ComingUp({ items, today, onOpen, limit, fill, onAll }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void; limit: number; fill: boolean; onAll: () => void }) {
-  const all = comingUp(items, today)
-  // The first `limit` items, in the groups' order.
-  const before = all.map((_, i) => all.slice(0, i).reduce((n, g) => n + g.items.length, 0))
-  const groups = all.map((g, i) => ({ ...g, items: g.items.slice(0, Math.max(0, limit - before[i])) })).filter(g => g.items.length)
-  const more = all.reduce((n, g) => n + g.items.length, 0) - limit
+/**
+ * The next two weeks, as many as fit. The rows wrap into a second column that
+ * is cut off, so a row never shows in half; a group's title travels with its
+ * first row. On a phone the column has no height and everything shows.
+ */
+function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void }) {
+  const groups = comingUp(items, today)
+  const row = (it: (typeof groups)[number]['items'][number]) => (
+    <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="w-full flex items-center gap-2.5 border-0 bg-transparent py-[7px] px-0 cursor-pointer text-left leading-[normal]">
+      {it.yrs ? <Anni yrs={it.yrs} size={22} compact />
+        : it.d ? <span className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={12} width={2.4} /></span>
+        : <span className="w-[22px] h-[22px] flex items-center justify-center flex-none"><span className="w-2 h-2 rounded-full" style={{ background: it.c }} /></span>}
+      <span className="flex-1 min-w-0 text-[13px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
+      <span className="text-[11.5px] text-muted whitespace-nowrap">{it.when}</span>
+    </button>
+  )
   return (
-    <div className={`bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col gap-4 ${fill ? 'flex-1' : ''}`}>
+    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col gap-3 lg:flex-1 lg:min-h-0">
       <div className="flex items-baseline justify-between leading-[normal]">
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Coming up</span>
         <span className="text-[11.5px] text-muted">Next 14 days</span>
       </div>
-      {groups.map(g => (
-        <div key={g.title} className="flex flex-col gap-1">
-          <span className={`leading-[normal] mb-0.5 ${LABEL}`}>{g.title}</span>
-          {g.items.map(it => (
-            <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="flex items-center gap-2.5 border-0 bg-transparent py-[7px] px-0 cursor-pointer text-left leading-[normal]">
-              {it.yrs ? <Anni yrs={it.yrs} size={22} compact />
-                : it.d ? <span className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={12} width={2.4} /></span>
-                : <span className="w-[22px] h-[22px] flex items-center justify-center flex-none"><span className="w-2 h-2 rounded-full" style={{ background: it.c }} /></span>}
-              <span className="flex-1 min-w-0 text-[13px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
-              <span className="text-[11.5px] text-muted whitespace-nowrap">{it.when}</span>
-            </button>
-          ))}
-        </div>
-      ))}
-      {!groups.length && <span className="text-[12.5px] text-muted">Nothing in the next two weeks.</span>}
-      {more > 0 && (
-        <button type="button" onClick={onAll} className={`self-start border-0 bg-transparent p-0 cursor-pointer text-tn-teal font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] hover:underline ${fill ? 'mt-auto' : ''}`}>
-          See all ({more} more)
-        </button>
-      )}
+      <div className="flex flex-col flex-wrap content-start gap-x-8 overflow-hidden min-h-0 flex-1">
+        {groups.flatMap((g, gi) => [
+          <div key={g.title} className={`w-full flex flex-col ${gi ? 'pt-3' : ''}`}>
+            <span className={`leading-[normal] mb-1 ${LABEL}`}>{g.title}</span>
+            {row(g.items[0])}
+          </div>,
+          ...g.items.slice(1).map(row),
+        ])}
+        {!groups.length && <span className="text-[12.5px] text-muted">Nothing in the next two weeks.</span>}
+      </div>
     </div>
   )
 }
