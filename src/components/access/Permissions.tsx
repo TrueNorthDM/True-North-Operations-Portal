@@ -6,6 +6,7 @@ import { CATALOGUE, ITEM, LEVELS, LEVEL_LABEL, isConfigurable, type AccessLevel,
 import { decide, impact, overlay, ruleKey, ticked, type Audience, type Rules, type ToolScope } from '@/lib/access/decide'
 import { saveAccessChanges } from '@/app/(app)/admin/access-levels/actions'
 import { type AccessPageData, type Person, KIND_TAG, KIND_COUNT, Tag, Glyph, btn, btnNavy, card, Modal, descendants, teamSummary } from './parts'
+import { SEG_BOX, SEG_OFF, SEG_ON, SEG_OPT, segClass } from '@/lib/ui/segmented'
 
 export function Permissions({
   base, current, counts, teams, people, today, stagedLevels, setStagedLevels, stagedTools, setStagedTools, onPreview, onSaved,
@@ -287,9 +288,9 @@ function TeamRule({ item, scope, teams, people, rules, today, onClose, onApply }
     <Modal kicker="Teams for a tool" title={item.label} onClose={onClose}
       foot={<><span className="text-[12px] text-muted">Added to your unsaved changes; nothing changes until you save.</span><span className="flex gap-2"><button type="button" className={btn} onClick={onClose}>Cancel</button><button type="button" className={btnNavy} onClick={() => onApply(draft)}>Apply</button></span></>}>
       <p className="text-[12.5px] text-muted m-0">Which teams may use it. The level ticks still apply: a team on this list only helps people whose level has the tool.</p>
-      <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
+      <div className={SEG_BOX}>
         {([[true, 'Every team'], [false, 'Only these teams']] as const).map(([v, label]) => (
-          <button key={label} type="button" aria-pressed={every === v} onClick={() => setEvery(v)} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${every === v ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{label}</button>
+          <button key={label} type="button" aria-pressed={every === v} onClick={() => setEvery(v)} className={segClass(every === v)}>{label}</button>
         ))}
       </div>
       {!every && (
@@ -303,11 +304,11 @@ function TeamRule({ item, scope, teams, people, rules, today, onClose, onApply }
                   <b className="text-[13px] text-tn-ink inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] inline-block" style={{ background: t.color ?? '#8593a4' }} />{t.name}</b>
                   <span className="text-[11.5px] text-muted ml-2">{`Lead${leads.length === 1 ? '' : 's'}: ${leads.join(', ') || 'none'}`}</span>
                 </span>
-                <span className="inline-flex rounded-[9px] border border-[var(--panel-border)] p-0.5 gap-0.5">
+                <span className={SEG_BOX}>
                   {(['off', 'lead', 'team'] as const).map(v => (
                     <button key={v} type="button" aria-pressed={a === v}
                       onClick={() => setList(m => { const n = new Map(m); if (v === 'off') n.delete(t.id); else n.set(t.id, v); return n })}
-                      className={`px-2.5 py-1 rounded-[7px] text-[12px] font-bold ${a === v ? (v === 'lead' ? 'bg-[#5b4bc4] text-[#ffffff]' : v === 'team' ? 'bg-tn-teal text-[#ffffff]' : 'bg-tn-primary text-[#ffffff]') : 'text-muted'}`}>
+                      className={`${SEG_OPT} ${a === v ? (v === 'lead' ? 'bg-[#5b4bc4] text-[#ffffff]' : v === 'team' ? 'bg-tn-teal text-[#ffffff]' : SEG_ON) : SEG_OFF}`}>
                       {v === 'off' ? 'Off' : v === 'lead' ? 'Leads only' : 'Whole team'}
                     </button>
                   ))}

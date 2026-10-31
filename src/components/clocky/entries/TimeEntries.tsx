@@ -48,6 +48,7 @@ import { BTN_PAGE_NAVY, BTN_PAGE_WHITE, BTN_SMALL, ICON_BTN, Icon, ICON, MENU, T
 import { WeekGrid } from './WeekGrid'
 import { addDays } from '@/lib/timeclock/periods'
 import { structureOn } from '@/lib/timeclock/entry-rules'
+import { Tabs } from '@/components/ui/Tabs'
 
 export type ModalState =
   | { kind: 'edit'; form: FormState }
@@ -522,7 +523,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           <Icon d={ICON.send} size={15} color={BTN_ICON.white} width={2.2} />{submitLabel}
         </button>
         <span className="w-px h-[26px] bg-[var(--panel-border)] mx-1" />
-        <Segmented label="Period" display="px-3 py-1.5 text-[12.5px]" options={periods} value={ui.period}
+        <Segmented label="Period" options={periods} value={ui.period}
           onChange={k => go({ period: k, tab: tabFor(k, ui.tab) })} />
         <button type="button" onClick={() => go({ anchor: today })} className={BTN_SMALL}>Today</button>
         <div className="flex items-center gap-0.5 text-tn-ink">
@@ -548,7 +549,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         <span className="flex-1" />
         {viewer.who && (
           <>
-            <Segmented label="Whose hours" display="px-3 py-1.5 text-[12.5px]" options={[{ key: 'my', label: 'My' }, { key: 'all', label: viewer.who === 'team' ? 'My team' : 'All' }]}
+            <Segmented label="Whose hours" options={[{ key: 'my', label: 'My' }, { key: 'all', label: viewer.who === 'team' ? 'My team' : 'All' }]}
               value={ui.who} onChange={k => go({ who: k, member: k === 'my' ? null : ui.member })} />
             <div className="relative" ref={memberRef}>
               <button type="button" aria-expanded={ui.memberOpen} onClick={() => setUi(u => ({ ...u, memberOpen: !u.memberOpen }))}
@@ -589,15 +590,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-2.5 border-b border-[var(--panel-border)]">
-        <div role="tablist" aria-label="Views" className="flex gap-1">
-          {([['list', 'List'], ['grid', 'Week grid'], ['timeline', 'Day timeline']] as const).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={ui.tab === k}
-              onClick={() => go({ tab: k, period: k === 'timeline' ? 'day' : k === 'grid' ? 'week' : ui.period, drag: null })}
-              className={`border-0 bg-transparent whitespace-nowrap px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] border-b-[2.5px] -mb-px ${ui.tab === k ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <Tabs label="Views" className="-mb-px shadow-none" value={ui.tab}
+          items={[{ key: 'list', label: 'List' }, { key: 'grid', label: 'Week grid' }, { key: 'timeline', label: 'Day timeline' }] as const}
+          onChange={k => go({ tab: k, period: k === 'timeline' ? 'day' : k === 'grid' ? 'week' : ui.period, drag: null })} />
         <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums lining-nums whitespace-nowrap">
           <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}</span>
           <span className="text-[var(--faint)]">·</span>

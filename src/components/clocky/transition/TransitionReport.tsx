@@ -240,7 +240,7 @@ export function TransitionReport({ data, go, remind }: { data: TransitionData; g
         </div>
         <div className="flex flex-col gap-[5px]">
           <FieldLabel>Show</FieldLabel>
-          <Segmented label="Show" display="px-3 py-1.5 text-[12.5px]" value={data.onlyProblems ? 'problems' : 'all'}
+          <Segmented label="Show" value={data.onlyProblems ? 'problems' : 'all'}
             options={[{ key: 'all', label: 'Every entry' }, { key: 'problems', label: 'Only problems' }]}
             onChange={k => go({ ...q, problems: k === 'problems' })} />
         </div>

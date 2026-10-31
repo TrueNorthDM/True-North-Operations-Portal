@@ -12,7 +12,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { personHref } from '@/lib/directory/page-rights'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { tabKeys } from '@/components/ui/tab-keys'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
@@ -24,6 +23,7 @@ import { useColumnChoices } from '@/components/ui/ColumnsMenu'
 import { saveHiddenColumns } from '@/app/(app)/settings/actions'
 import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
 import { BTN } from '@/lib/ui/buttons'
+import { Tabs } from '@/components/ui/Tabs'
 
 type Tab = 'people' | 'emails' | 'teams' | 'access' | 'portal'
 
@@ -144,30 +144,7 @@ export function DirectoryTabs({
       </div>
 
       {/* tabs */}
-      <div role="tablist" aria-label="Directory" onKeyDown={tabKeys(tabs.map(t => t.key), tab, setTab)} className="flex gap-1 border-b border-slate-200">
-        {tabs.map(t => {
-          const active = tab === t.key
-          return (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              id={`dir-tab-${t.key}`}
-              data-tab={t.key}
-              aria-selected={active}
-              aria-controls="dir-panel"
-              tabIndex={active ? 0 : -1}
-              onClick={() => setTab(t.key)}
-              className={`relative inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-sm px-1.5 py-3 mr-5 -mb-px transition-colors ${
-                active ? 'text-tn-ink border-b-[2.5px] border-tn-teal' : 'text-muted border-b-[2.5px] border-transparent hover:text-tn-ink'
-              }`}
-            >
-              {t.label}
-              {t.count !== undefined && <span className={`font-(family-name:--font-display) font-extrabold text-[11px] rounded-full px-2 py-0.5 ${active ? 'text-tn-teal bg-tn-teal-soft' : 'text-muted bg-subtle'}`}>{t.count}</span>}
-            </button>
-          )
-        })}
-      </div>
+      <Tabs label="Directory" items={tabs} value={tab} onChange={setTab} idPrefix="dir-tab" controls="dir-panel" />
 
       <div role="tabpanel" id="dir-panel" aria-labelledby={`dir-tab-${tab}`}>
       {tab === 'people' && (

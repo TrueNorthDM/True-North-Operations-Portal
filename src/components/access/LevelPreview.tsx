@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/Select'
 import { CATALOGUE, CHILDREN, CONFIGURABLE, LEVEL_LABEL, type ConfigurableLevel } from '@/lib/access/catalogue'
 import { decide, type Decision, type Rules, type Subject } from '@/lib/access/decide'
 import { type AccessPageData, btn, btnNavy, Modal } from './parts'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 // ── The level preview ──────────────────────────────────────────────────────
 
@@ -42,16 +43,16 @@ export function LevelPreview({ state, setState, rules, teams, teamName, today, s
       foot={<><span className="text-[12px] text-muted">Navigation, pages, tabs and actions from the rules on this page. To click through the real pages, use View Stage.</span><span className="flex gap-2"><Link href="/admin/view-stage" target="_blank" rel="noopener" className={btn} title="Opens in a new tab: this page keeps your unsaved changes. View Stage shows what is saved.">Open View Stage →</Link><button type="button" className={btnNavy} onClick={onClose}>Close</button></span></>}>
       <div className="flex flex-wrap items-end gap-4">
         <div><div className="text-[11.5px] font-bold text-muted mb-1">Level</div>
-          <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
-            {CONFIGURABLE.map(l => <button key={l} type="button" aria-pressed={!state.person && state.level === l} onClick={() => setState({ ...state, person: undefined, level: l, lead: l === 'team_leader' ? true : l === 'user' ? false : state.lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${state.level === l ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{LEVEL_LABEL[l]}</button>)}
+          <div className={SEG_BOX}>
+            {CONFIGURABLE.map(l => <button key={l} type="button" aria-pressed={!state.person && state.level === l} onClick={() => setState({ ...state, person: undefined, level: l, lead: l === 'team_leader' ? true : l === 'user' ? false : state.lead })} className={segClass(state.level === l)}>{LEVEL_LABEL[l]}</button>)}
           </div></div>
         <div className="min-w-[220px]"><div className="text-[11.5px] font-bold text-muted mb-1">Team</div>
           <Select value={state.team} onChange={v => setState({ ...state, person: undefined, team: v })} options={[...teams.map(t => ({ value: t.id, label: t.name })), { value: '', label: 'No team' }]} searchable ariaLabel="Team" fullWidth /></div>
         <div><div className="text-[11.5px] font-bold text-muted mb-1">Position</div>
-          <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
+          <div className={SEG_BOX}>
             {([true, false] as const).map(lead => {
               const disabled = (state.level === 'team_leader' && !lead) || (state.level === 'user' && lead)
-              return <button key={String(lead)} type="button" aria-pressed={state.lead === lead} disabled={disabled} title={disabled ? 'A Team Leader is Lead of a team; a User is a Member' : undefined} onClick={() => setState({ ...state, person: undefined, lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold disabled:opacity-35 ${state.lead === lead ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{lead ? 'Lead' : 'Member'}</button>
+              return <button key={String(lead)} type="button" aria-pressed={state.lead === lead} disabled={disabled} title={disabled ? 'A Team Leader is Lead of a team; a User is a Member' : undefined} onClick={() => setState({ ...state, person: undefined, lead })} className={segClass(state.lead === lead)}>{lead ? 'Lead' : 'Member'}</button>
             })}
           </div></div>
       </div>

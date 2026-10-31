@@ -16,9 +16,9 @@ import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
 import { CATEGORY_LABEL, timingIsChoice, type NotificationType } from '@/lib/notifications/catalogue'
 import { barColor } from '@/lib/email/summary'
-import { tabKeys } from '@/components/ui/tab-keys'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { Tabs } from '@/components/ui/Tabs'
 
 type Result = { ok: boolean; error?: string }
 export type SendTest = (key: string, channel: 'app' | 'email') => Promise<Result>
@@ -72,15 +72,7 @@ export function NotificationPreview({ t, hour, sendTest, onClose }: { t: Notific
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-tn-teal">Preview</span>
           <h3 id="notif-preview-title" className={`${MODAL_TITLE} mt-0.5`}>{t.title}</h3>
         </div>
-        <div role="tablist" aria-label="Where it shows" onKeyDown={tabKeys(TABS, tab, pick)} className="flex gap-0.5 px-5 mt-3 border-b border-[var(--panel-border)]">
-          {TABS.map(k => (
-            <button key={k} type="button" role="tab" id={`notif-preview-tab-${k}`} data-tab={k} aria-selected={tab === k}
-              aria-controls="notif-preview-panel" tabIndex={tab === k ? 0 : -1} onClick={() => pick(k)}
-              className={`px-3 py-2.5 -mb-px border-b-2 text-[13px] font-bold transition-colors ${tab === k ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}>
-              {TAB_LABEL[k]}
-            </button>
-          ))}
-        </div>
+        <Tabs label="Where it shows" items={TABS.map(k => ({ key: k, label: TAB_LABEL[k] }))} value={tab} onChange={pick} idPrefix="notif-preview-tab" controls="notif-preview-panel" className="px-5 mt-3" />
         <div id="notif-preview-panel" role="tabpanel" aria-labelledby={`notif-preview-tab-${tab}`} className="bg-subtle px-5 py-[18px] space-y-2.5">
           {tab === 'app' ? (
             <>

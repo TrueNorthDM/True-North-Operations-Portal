@@ -17,6 +17,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { initialsOf, roleTypePill } from '@/lib/directory/people-types'
 import Link from 'next/link'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import { Tabs } from '@/components/ui/Tabs'
 
 // The pill shape the handoff uses for both role and status: 9px, uppercase,
 // fully round, and never allowed to grow with its row.
@@ -113,20 +114,7 @@ export function TeamPeople({
   return (
     <div>
       {showTeams && (
-        <div className="flex items-center gap-0.5 border-b border-[var(--panel-border)] mb-5">
-          {(['people', 'teams'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              aria-current={tab === t ? 'page' : undefined}
-              className={`px-4 py-2.5 text-[13.5px] font-semibold -mb-px border-b-2 capitalize transition-colors ${
-                tab === t ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <Tabs label="Team" className="mb-5" items={[{ key: 'people', label: 'People' }, { key: 'teams', label: 'Teams' }]} value={tab} onChange={setTab} />
       )}
 
       {showTeams && tab === 'teams' && (

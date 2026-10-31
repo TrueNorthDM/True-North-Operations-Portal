@@ -17,6 +17,7 @@ import { decidedText, REASON_FOR_ALLOWANCE, splitDecided, type DecideInput } fro
 import { dateLabel, timeLabel } from '@/lib/timeclock/format'
 import { FieldLabel, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, BTN_MODAL_WHITE, BTN_MODAL_NAVY, type ToastState } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
+import { Tabs } from '@/components/ui/Tabs'
 
 const hours = (s: number) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
@@ -96,15 +97,8 @@ export function SkippedList({ entries, zone, abbr, canDecide, decide }: {
 
   return (
     <div className="flex flex-col gap-[14px]">
-      <div className="flex gap-2" role="tablist" aria-label="Entries set aside">
-        {([['todo', 'To decide', todo.length], ['decided', 'Decided', decided.length]] as const).map(([k, label, count]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`inline-flex items-center gap-2 rounded-[10px] px-3.5 py-2 font-(family-name:--font-display) font-extrabold text-[13px] border cursor-pointer ${tab === k ? 'bg-tn-teal-soft text-tn-teal border-transparent' : 'bg-white text-foreground border-slate-200 hover:border-tn-teal'}`}>
-            {label}
-            <span className={`rounded-full px-[7px] py-px text-[11px] tabular-nums lining-nums ${k === 'todo' && count > 0 ? 'bg-[#F2C40A] text-tn-ink' : 'bg-subtle text-muted'}`}>{count}</span>
-          </button>
-        ))}
-      </div>
+      <Tabs label="Entries set aside" value={tab} onChange={setTab}
+        items={[{ key: 'todo', label: 'To decide', count: todo.length }, { key: 'decided', label: 'Decided', count: decided.length }]} />
 
       {list.length === 0
         ? <p className="text-[14px] text-muted m-0">{tab === 'todo' ? 'Nothing to decide. When someone clocks in TSheets on or after their North Time start date, the entry shows here.' : 'Nothing decided yet.'}</p>

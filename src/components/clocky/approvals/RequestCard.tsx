@@ -17,6 +17,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-cards'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
+import { SEG_BOX, SEG_OFF, SEG_ON, SEG_OPT } from '@/lib/ui/segmented'
 
 const TYPE: Record<Card['kind'], { bg: string; fg: string }> = {
   off: { bg: '#eef1fb', fg: '#3b4fa8' }, 'off-cancel': { bg: '#eef1fb', fg: '#3b4fa8' }, rmb: { bg: '#fbf3e4', fg: '#8a5a12' }, 'rmb-report': { bg: '#fbf3e4', fg: '#8a5a12' }, xh: { bg: '#f0edfb', fg: '#5847c9' },
@@ -182,10 +183,10 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
         </div>
         <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{it.amount}</span>
         {waiting && canDecide ? (
-          <div className="flex bg-white border border-[var(--panel-border)] rounded-[9px] p-[2px] gap-0.5" role="group" aria-label={`Decide ${it.purpose}`}>
+          <div className={SEG_BOX} role="group" aria-label={`Decide ${it.purpose}`}>
             {([[false, 'Approve'], [true, 'Deny']] as const).map(([d, label]) => (
               <button key={label} type="button" disabled={disabled} aria-pressed={pick.deny === d} onClick={() => onPick({ deny: d })}
-                className={`border-0 rounded-[7px] px-2.5 py-[5px] font-(family-name:--font-display) font-bold text-[12px] cursor-pointer disabled:opacity-50 disabled:cursor-default ${pick.deny === d ? (d ? 'bg-[#c8323d] text-[#ffffff]' : 'bg-tn-primary text-[#ffffff]') : 'bg-transparent text-foreground'}`}>{label}</button>
+                className={`${SEG_OPT} ${pick.deny === d ? (d ? 'bg-[#c8323d] text-[#ffffff]' : SEG_ON) : SEG_OFF}`}>{label}</button>
             ))}
           </div>
         ) : done ? (

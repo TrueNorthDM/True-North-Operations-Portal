@@ -19,6 +19,7 @@ import { alpha } from '@/components/clocky/clock/clock-model'
 import { ActivitiesSection, Bill, TH } from '@/components/clocky/WhichJob2026View'
 import type { ActivityRow, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal } from '@/components/clocky/entries/ui'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 export type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 type Level = 'client' | 'division' | 'project'
@@ -104,10 +105,10 @@ export function Catalogue2026({ rows, activities, canEdit, api, run, onFields }:
       <div className="flex flex-wrap gap-2.5 items-center">
         <input value={q} onChange={e => setQ(e.target.value)} aria-label="Search" placeholder="Search anything: a client, division, project or activity, e.g. translation"
           className={`w-[460px] max-w-full ${INPUT}`} />
-        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 flex-wrap" role="group" aria-label="Client">
+        <div className={`${SEG_BOX} flex-wrap`} role="group" aria-label="Client">
           {([['all', 'All clients'], ...clients.map(c => [c.id, c.name])] as [number | 'all', string][]).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={client === k} onClick={() => setClient(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${client === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+              className={segClass(client === k)}>{l}</button>
           ))}
         </div>
         {canEdit && (

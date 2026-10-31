@@ -27,6 +27,8 @@ import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, TEXTAREA_WARN, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import { usePhone } from '@/components/clocky/clock/hooks'
 import { PhoneSheet } from './PhoneSheet'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { Tabs } from '@/components/ui/Tabs'
 
 export interface TimeOffApi {
   askTimeOff(i: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>>
@@ -103,12 +105,7 @@ export function TimeOffView({ data, api, initial }: {
       <Header onNew={data.employee ? () => { setDrawer(null); setModal('ask') } : null} />
 
       {data.canAll && (
-        <div role="tablist" aria-label="Whose time off" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-start justify-self-start">
-          {([['mine', 'Mine'], ['all', 'Everyone']] as const).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
-          ))}
-        </div>
+        <Tabs label="Whose time off" items={[{ key: 'mine', label: 'Mine' }, { key: 'all', label: 'Everyone' }]} value={tab} onChange={setTab} />
       )}
 
       {tab === 'mine' && data.employee && (
@@ -423,10 +420,10 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         </div>
         <div className="flex flex-col gap-1.5">
           <FieldLabel>Each day</FieldLabel>
-          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
+          <div className={SEG_BOX}>
             {modes.map(([k, label]) => (
               <button key={k} type="button" aria-pressed={f.mode === k} onClick={() => set({ mode: k })}
-                className={`flex-1 h-10 border-0 cursor-pointer rounded-[8px] font-(family-name:--font-display) font-bold text-[13px] ${f.mode === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+                className={`${segClass(f.mode === k)} flex-1 h-10 justify-center`}>{label}</button>
             ))}
           </div>
         </div>
@@ -455,10 +452,10 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex flex-col gap-1.5">
               <FieldLabel>Each day</FieldLabel>
-              <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
+              <div className={SEG_BOX}>
                 {modes.map(([k, label]) => (
                   <button key={k} type="button" aria-pressed={f.mode === k} onClick={() => set({ mode: k })}
-                    className={`border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] ${f.mode === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+                    className={segClass(f.mode === k)}>{label}</button>
                 ))}
               </div>
             </div>

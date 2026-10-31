@@ -68,7 +68,7 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
         <dl className="m-0">
           <Row label="Submits hours">
             {choosing
-              ? <Segmented label="Submits hours" display="px-3 py-1.5 text-[12.5px]" options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]} value={shown} onChange={c => onDraft?.(c)} />
+              ? <Segmented label="Submits hours" options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]} value={shown} onChange={c => onDraft?.(c)} />
               : t.until && t.cadence ? <span>{CADENCE[t.until.cadence]}, {CADENCE[t.cadence].toLowerCase()} from {shortDay(t.until.from)}</span>
               : <PillBadge pill={t.cadence === null ? { kind: 'amber', label: 'Not set' } : t.cadence === 'biweekly' ? { kind: 'teal', label: CADENCE.biweekly } : { kind: 'grey', label: CADENCE.monthly }} />}
           </Row>

@@ -12,6 +12,7 @@ import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Icon } from '@/components/clocky/entries/ui'
 import type { GuideGroup } from '@/lib/timeclock/job-catalogue'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const BRANDS: [string, (c: string) => boolean][] = [
@@ -45,10 +46,10 @@ export function WhichJobView({ groups, codes, switcher }: { groups: GuideGroup[]
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search jobs and lines, e.g. Wagner" aria-label="Search jobs"
             className={`w-full ${INPUT} pl-[33px]`} />
         </div>
-        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Billable">
+        <div className={SEG_BOX} role="group" aria-label="Billable">
           {([['all', 'All'], ['yes', 'Billable'], ['no', 'Not billable']] as const).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={bill === k} onClick={() => setBill(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${bill === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+              className={segClass(bill === k)}>{l}</button>
           ))}
         </div>
       </div>

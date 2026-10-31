@@ -12,6 +12,7 @@ import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { alpha } from '@/components/clocky/clock/clock-model'
 import type { ActivityRow } from '@/lib/timeclock/job-catalogue'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 export type { ActivityRow }
 export interface ProjectRow { client: string; division: string; project: string; use: string; billable: boolean }
@@ -43,10 +44,10 @@ export function WhichJob2026View({ projects, activities, switcher }: { projects:
       <div className="flex flex-wrap gap-2.5 items-center">
         <input value={q} onChange={e => setQ(e.target.value)} aria-label="Search" placeholder="Search anything: a client, division, project or activity, e.g. translation"
           className={`w-[460px] max-w-full ${INPUT}`} />
-        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 flex-wrap" role="group" aria-label="Client">
+        <div className={`${SEG_BOX} flex-wrap`} role="group" aria-label="Client">
           {[['all', 'All clients'], ...clients.map(x => [x, x])].map(([k, l]) => (
             <button key={k} type="button" aria-pressed={client === k} onClick={() => setClient(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${client === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+              className={segClass(client === k)}>{l}</button>
           ))}
         </div>
       </div>

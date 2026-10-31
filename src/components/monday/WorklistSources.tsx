@@ -14,13 +14,13 @@ import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import { Segmented } from '@/components/ui/Segmented'
-import { tabKeys } from '@/components/ui/tab-keys'
 import {
   setBoardIncluded, setWorkspaceIncluded, setUserHidden, setBoardPriority, setWorkspacePriority,
 } from '@/app/(app)/admin/settings/monday/actions'
 import { StaleRuleToggle } from '@/components/monday/StaleRuleToggle'
 import { STALE_MONTHS } from '@/lib/monday/worklist/stale'
 import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
+import { Tabs } from '@/components/ui/Tabs'
 
 const PRIORITIES = [
   { key: 'high', label: 'High' },
@@ -31,7 +31,6 @@ const PRIORITIES = [
 const n = (v: number) => v.toLocaleString('en-US')
 
 const TABS = [['boards', 'Workspaces & boards'], ['people', 'People']] as const
-const TAB_KEYS = TABS.map(([k]) => k)
 
 /**
  * Three choices rather than a dropdown, because the whole set is three items
@@ -148,31 +147,7 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
       ) : null}
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div
-          role="tablist"
-          aria-label="What My Work shows"
-          onKeyDown={tabKeys(TAB_KEYS, tab, setTab)}
-          className="flex items-center gap-1 border-b border-slate-200"
-        >
-          {TABS.map(([t, label]) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              id={`${uid}-tab-${t}`}
-              data-tab={t}
-              aria-selected={tab === t}
-              aria-controls={`${uid}-panel`}
-              tabIndex={tab === t ? 0 : -1}
-              onClick={() => setTab(t)}
-              className={`px-3.5 py-2 text-sm font-semibold -mb-px border-b-2 transition-colors ${
-                tab === t ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Tabs label="What My Work shows" items={TABS.map(([key, label]) => ({ key, label }))} value={tab} onChange={setTab} idPrefix={`${uid}-tab`} controls={`${uid}-panel`} />
         <SearchField value={q} onChange={setQ} placeholder="Search…" className="w-full sm:w-[300px]" />
         <span className="text-sm text-muted ml-auto">
           {tab === 'boards' ? `${n(hiddenBoards)} boards not shown` : `${n(hiddenUsers)} people not shown`}

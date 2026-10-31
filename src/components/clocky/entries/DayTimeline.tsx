@@ -206,7 +206,7 @@ export function DayTimeline({
     <>
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{dayLabel(day)}{all ? ` · everyone, drawn in your time (${zoneCity(viewer.zone)})` : ''}</span>
-        <Segmented label="Hours shown" display="px-[11px] py-[5px] text-[12px]" options={[{ key: 'day', label: '6 AM to 10 PM' }, { key: 'full', label: '24 h' }]} value={full ? 'full' : 'day'} onChange={k => setFull(k === 'full')} />
+        <Segmented label="Hours shown" options={[{ key: 'day', label: '6 AM to 10 PM' }, { key: 'full', label: '24 h' }]} value={full ? 'full' : 'day'} onChange={k => setFull(k === 'full')} />
         <span className="flex-1" />
         {LEGEND.map(l => (
           <span key={l.label} className="flex items-center gap-1.5 text-[12px] text-foreground whitespace-nowrap">

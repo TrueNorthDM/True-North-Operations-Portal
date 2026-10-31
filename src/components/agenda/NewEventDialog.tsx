@@ -18,6 +18,7 @@ import { hourLabel } from '@/lib/agenda/model'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN } from '@/components/clocky/entries/ui'
 import type { EventEdit, EventInput } from '@/lib/agenda/events'
 import { DateField } from '@/components/ui/DateField'
+import { Segmented } from '@/components/ui/Segmented'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export type CreateEvent = (i: EventInput) => Promise<Done>
@@ -43,9 +44,9 @@ interface Form {
   from: string; to: string; zone: string; place: string; teams: string[]; client: string; desc: string; google: boolean
 }
 
-const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
-const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-[13px] py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
-const pill = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground')
+const KINDS_LEAD = [{ key: 'event', label: 'Team event' }] as const
+const KINDS = [{ key: 'event', label: 'Event' }, { key: 'milestone', label: 'Milestone' }] as const
+const WHENS = [{ key: 'time', label: 'At a time' }, { key: 'day', label: 'All day' }, { key: 'range', label: 'A few days' }] as const
 
 /** 7:00 AM to 6:30 PM, every half hour, as drawn. */
 const TIMES = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].flatMap(h => [h, h + 0.5])
@@ -123,19 +124,11 @@ export function NewEventDialog({ setup, api, editing, onClose, onDone }: {
       <div className="flex gap-3.5 flex-wrap items-end">
         <div className="flex flex-col gap-1.5">
           <FieldLabel>Kind</FieldLabel>
-          <div className={SEG} role="group" aria-label="Kind">
-            {(lead ? [['event', 'Team event']] as const : [['event', 'Event'], ['milestone', 'Milestone']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={f.kind === k} onClick={() => set('kind', k)} className={`${SEG_BTN} ${pill(f.kind === k)}`}>{l}</button>
-            ))}
-          </div>
+          <Segmented<Form['kind']> label="Kind" options={lead ? KINDS_LEAD : KINDS} value={f.kind} onChange={k => set('kind', k)} />
         </div>
         <div className="flex flex-col gap-1.5">
           <FieldLabel>When</FieldLabel>
-          <div className={SEG} role="group" aria-label="When">
-            {([['time', 'At a time'], ['day', 'All day'], ['range', 'A few days']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={f.when === k} onClick={() => set('when', k)} className={`${SEG_BTN} ${pill(f.when === k)}`}>{l}</button>
-            ))}
-          </div>
+          <Segmented<Form['when']> label="When" options={WHENS} value={f.when} onChange={k => set('when', k)} />
         </div>
       </div>
       {/* On a phone the date takes its own line, From and To side by side under it. */}

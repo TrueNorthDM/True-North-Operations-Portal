@@ -16,7 +16,6 @@
 // allowance; only Grants Pass Church and School buy hours in advance, at $90.
 
 import { useState, useTransition } from 'react'
-import { tabKeys } from '@/components/ui/tab-keys'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
@@ -24,6 +23,7 @@ import { money, moneySigned } from '@/lib/tsheets/format'
 import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 import { peopleView } from '@/lib/timeclock/project-people'
+import { Tabs } from '@/components/ui/Tabs'
 
 // Two header rows: what a block of columns is about, then what each one holds.
 //
@@ -187,25 +187,8 @@ export function ProjectHoursReport(
           line. On a phone the filter drops to its own line under the tabs, so
           the underline moves from the row to the tabs themselves: otherwise it
           would run under the filter and leave the tabs floating above it. */}
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:border-b sm:border-slate-200">
-        <div role="tablist" aria-label="Report view" onKeyDown={view ? tabKeys(views, view, setView) : undefined} className="flex gap-1 w-full sm:w-auto border-b border-slate-200 sm:border-b-0">
-          {views.map(v => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              data-tab={v}
-              aria-selected={view === v}
-              tabIndex={view === v ? 0 : -1}
-              onClick={() => setView(v)}
-              className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${
-                view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'
-              }`}
-            >
-              {v === 'costs' ? 'Costs' : 'People'}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:shadow-[inset_0_-1px_0_var(--panel-border)]">
+        <Tabs label="Report view" items={views.map(v => ({ key: v, label: v === 'costs' ? 'Costs' : 'People' }))} value={view} onChange={setView} className="w-full sm:w-auto sm:shadow-none" />
         {view === 'people' && teams.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 sm:ml-auto sm:pb-1.5">
             <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Team</span>

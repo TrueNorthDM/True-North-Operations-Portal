@@ -29,6 +29,7 @@ import type { Repeat, Scope } from '@/lib/agenda/recurrence'
 import { DateField } from '@/components/ui/DateField'
 import { MODAL_BACKDROP } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
+import { Segmented } from '@/components/ui/Segmented'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
@@ -56,9 +57,6 @@ const TYPE_TILE: Record<EventType, [string, string]> = {
 
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
 const OPT = 'normal-case tracking-normal font-sans font-semibold'
-const SEG = 'inline-flex flex-wrap border border-[var(--panel-border)] rounded-[14px] p-1 gap-0.5 bg-white'
-const SEG_BTN = 'border-0 rounded-[10px] px-3.5 py-2 font-(family-name:--font-display) font-extrabold text-[13.5px] cursor-pointer'
-const segOn = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-tn-ink hover:bg-subtle')
 const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13.5px] text-tn-teal hover:underline'
 const SELECT = `${SELECT_FIELD} font-semibold tabular-nums`
 const TIMES = Array.from({ length: 48 }, (_, i) => i * 30).map(m => ({ value: String(m), label: clockLabel(m) }))
@@ -252,11 +250,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
             </div>
             <div className="flex flex-col gap-2">
               <span className={LBL}>When</span>
-              <div className={SEG} role="group" aria-label="When">
-                {([['time', 'At a time'], ['day', 'All day'], ['range', 'A few days']] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={when === k} onClick={() => setWhen(k)} className={`${SEG_BTN} ${segOn(when === k)}`}>{l}</button>
-                ))}
-              </div>
+              <Segmented label="When" options={[{ key: 'time', label: 'At a time' }, { key: 'day', label: 'All day' }, { key: 'range', label: 'A few days' }] as const} value={when} onChange={k => setWhen(k)} />
             </div>
           </div>
 
@@ -299,11 +293,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
             <div className="flex flex-wrap gap-3.5 items-end">
               <div className="flex flex-col gap-2">
                 <span className={LBL}>How</span>
-                <div className={SEG} role="group" aria-label="How">
-                  {([['online', 'Online'], ['in_person', 'In person']] as const).map(([k, l]) => (
-                    <button key={k} type="button" aria-pressed={how === k} onClick={() => setHow(k)} className={`${SEG_BTN} ${segOn(how === k)}`}>{l}</button>
-                  ))}
-                </div>
+                <Segmented label="How" options={[{ key: 'online', label: 'Online' }, { key: 'in_person', label: 'In person' }] as const} value={how} onChange={k => setHow(k)} />
               </div>
               {how === 'online' && when === 'time' && (
                 <div className="flex flex-col gap-2 flex-1 basis-[240px]">
@@ -325,11 +315,9 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
             <div className="flex items-center"><span className={LBL}>Who it&apos;s for</span>
               {count > 0 && <span className="ml-auto text-[12px] font-bold text-tn-teal">{count} invitation{count === 1 ? '' : 's'}</span>}</div>
             {setup.audiences.length > 1 && (
-              <div className={`${SEG} self-start`} role="group" aria-label="Who it's for">
-                {(['guests', 'teams', 'all'] as const).filter(a => setup.audiences.includes(a)).map(a => (
-                  <button key={a} type="button" aria-pressed={audience === a} onClick={() => { setAudience(a); setAlso(false); setTeamOpen(a === 'teams' && !teams.length) }}
-                    className={`${SEG_BTN} ${segOn(audience === a)}`}>{a === 'guests' ? 'Guests' : a === 'teams' ? 'Teams' : 'True North'}</button>
-                ))}
+              <div className="self-start">
+                <Segmented label="Who it's for" value={audience} onChange={a => { setAudience(a); setAlso(false); setTeamOpen(a === 'teams' && !teams.length) }}
+                  options={(['guests', 'teams', 'all'] as const).filter(a => setup.audiences.includes(a)).map(a => ({ key: a, label: a === 'guests' ? 'Guests' : a === 'teams' ? 'Teams' : 'True North' }))} />
               </div>
             )}
             {audience !== 'guests' && (

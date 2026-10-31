@@ -14,6 +14,7 @@
 import Link from 'next/link'
 import { reportHref, type ReportState } from '@/lib/report/scope'
 import { visibleTabs, type ReportTabKey, type TabRights } from '@/lib/report/tabs'
+import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 
 export { REPORT_TABS, resolveTab, rightsForLevel, tabRights, visibleTabs } from '@/lib/report/tabs'
 export type { ReportTabKey, TabRights } from '@/lib/report/tabs'
@@ -30,21 +31,17 @@ export function ReportTabs(
 ) {
 
   return (
-    <div className="flex items-center gap-0.5 border-b border-[var(--panel-border)] mb-5">
+    <nav aria-label="Report sections" className={`${TAB_LIST} mb-5`}>
       {visibleTabs(rights).filter(t => !ready || ready.includes(t.key)).map(t => (
         <Link
           key={t.key}
           href={reportHref(base, state, { tab: t.key })}
           aria-current={t.key === active ? 'page' : undefined}
-          className={`px-4 py-2.5 text-[13.5px] font-semibold -mb-px border-b-2 transition-colors ${
-            t.key === active
-              ? 'text-tn-ink border-tn-teal'
-              : 'text-muted border-transparent hover:text-tn-ink'
-          }`}
+          className={tabClass(t.key === active)}
         >
           {t.label}
         </Link>
       ))}
-    </div>
+    </nav>
   )
 }

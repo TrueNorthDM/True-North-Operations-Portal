@@ -5,6 +5,7 @@
 
 import Link from 'next/link'
 import { ROUTES } from '@/lib/nav/routes'
+import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 
 const TABS = [
   { tool: 'i7-budget', label: 'i7', href: ROUTES.i7 },
@@ -20,15 +21,13 @@ export function ClientReportTabs({ active, canTool }: { active: 'i7-budget' | 'g
   const tabs = clientReportTabs(canTool)
   if (tabs.length < 2) return null
   return (
-    <nav aria-label="Client reports" className="flex items-center gap-0.5 border-b border-[var(--panel-border)]">
+    <nav aria-label="Client reports" className={TAB_LIST}>
       {tabs.map(t => (
         <Link
           key={t.tool}
           href={t.href}
           aria-current={t.tool === active ? 'page' : undefined}
-          className={`px-4 py-2.5 text-[13.5px] font-semibold -mb-px border-b-2 transition-colors ${
-            t.tool === active ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'
-          }`}
+          className={tabClass(t.tool === active)}
         >
           {t.label}
         </Link>

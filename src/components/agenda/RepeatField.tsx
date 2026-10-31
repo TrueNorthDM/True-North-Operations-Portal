@@ -11,12 +11,11 @@ import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD } from '@/lib/ui/fields'
 import { Select } from '@/components/ui/Select'
 import { describe, nthOf, type Freq, type Repeat } from '@/lib/agenda/recurrence'
 import { DateField } from '@/components/ui/DateField'
+import { Segmented } from '@/components/ui/Segmented'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
 const SELECT = `${SELECT_FIELD} font-semibold`
-const SEG = 'inline-flex flex-wrap border border-[var(--panel-border)] rounded-[14px] p-1 gap-0.5 bg-white'
-const SEG_BTN = 'border-0 rounded-[10px] px-3 py-1.5 font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer'
-const segOn = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-tn-ink hover:bg-subtle')
 
 const DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -78,9 +77,9 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
           <>
             <div className="flex flex-col gap-2">
               <span className={LBL}>Ends</span>
-              <div className={`${SEG} h-10 box-border items-center`} role="group" aria-label="Ends">
+              <div className={`${SEG_BOX} h-10 box-border`} role="group" aria-label="Ends">
                 {([['never', 'Never'], ['until', 'On a day'], ['count', 'After']] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={value.ends === k} className={`${SEG_BTN} ${segOn(value.ends === k)}`}
+                  <button key={k} type="button" aria-pressed={value.ends === k} className={segClass(value.ends === k)}
                     onClick={() => set(k === 'until' ? { ends: k, until: value.until && value.until >= date ? value.until : new Date(Date.parse(`${date}T00:00:00Z`) + 90 * 864e5).toISOString().slice(0, 10) } : k === 'count' ? { ends: k, count: value.count ?? 10 } : { ends: k })}>{l}</button>
                 ))}
               </div>
@@ -123,9 +122,9 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
             </div>
           )}
           {value.freq === 'monthly' && (
-            <div className={SEG} role="group" aria-label="Monthly on">
-              <button type="button" aria-pressed={value.monthBy === 'day'} onClick={() => set({ monthBy: 'day' })} className={`${SEG_BTN} ${segOn(value.monthBy === 'day')}`}>On day {d.getUTCDate()}</button>
-              <button type="button" aria-pressed={value.monthBy === 'nth'} onClick={() => set({ monthBy: 'nth' })} className={`${SEG_BTN} ${segOn(value.monthBy === 'nth')}`}>On the {last && n >= 4 ? 'last' : NTH[n - 1]} {DAY[wd]}</button>
+            <div className="self-start">
+              <Segmented<'day' | 'nth'> label="Monthly on" value={value.monthBy} onChange={k => set({ monthBy: k })}
+                options={[{ key: 'day', label: `On day ${d.getUTCDate()}` }, { key: 'nth', label: `On the ${last && n >= 4 ? 'last' : NTH[n - 1]} ${DAY[wd]}` }]} />
             </div>
           )}
         </div>

@@ -6,7 +6,6 @@
 // is computed server-side and passed in.
 
 import Link from 'next/link'
-import { tabKeys } from '@/components/ui/tab-keys'
 import { hoursByPerson, totalBudgetHours as sumBudgetHours } from '@/lib/tsheets/i7-view'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useState, useTransition } from 'react'
@@ -23,6 +22,7 @@ import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
+import { Tabs } from '@/components/ui/Tabs'
 
 interface Props {
   data: I7Report
@@ -221,22 +221,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         )}
 
         {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
-        <div role="tablist" aria-label="Report view" onKeyDown={view ? tabKeys(views, view, setView) : undefined} className="flex gap-1 border-b border-slate-200">
-          {views.map(v => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              data-tab={v}
-              aria-selected={view === v}
-              tabIndex={view === v ? 0 : -1}
-              onClick={() => setView(v)}
-              className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'}`}
-            >
-              {v === 'numbers' ? 'In Numbers' : 'In Graphics'}
-            </button>
-          ))}
-        </div>
+        <Tabs label="Report view" items={views.map(v => ({ key: v, label: v === 'numbers' ? 'In Numbers' : 'In Graphics' }))} value={view} onChange={setView} />
 
         {!view ? (
           <p className="text-sm text-muted">Neither view of this report is open to your access level.</p>

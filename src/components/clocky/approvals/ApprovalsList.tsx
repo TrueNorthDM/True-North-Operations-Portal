@@ -30,6 +30,7 @@ import { CorrectionReview } from '../entries/Dialogs'
 import { RequestCard, type ItemDecision } from './RequestCard'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
+import { Tabs } from '@/components/ui/Tabs'
 
 export interface QueueApi {
   getQueue(): Promise<Result<{ data: QueueData }>>
@@ -188,13 +189,9 @@ export function ApprovalsList({ initialData, api, initial }: {
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{data.subtitle}</p>
       </div>
 
+      <Tabs<Tab> label="Approvals" value={tab} onChange={k => { setTab(k); setFilter('all') }}
+        items={[{ key: 'wait', label: 'Waiting for you', count: data.wait.length }, { key: 'others', label: 'With others', count: data.others.length }, { key: 'done', label: 'Decided', count: data.done.length }]} />
       <div className="flex items-center gap-3 flex-wrap">
-        <div role="tablist" aria-label="Approvals" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
-          {([['wait', `Waiting for you · ${data.wait.length}`], ['others', `With others · ${data.others.length}`], ['done', `Decided · ${data.done.length}`]] as [Tab, string][]).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setFilter('all') }}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] tabular-nums lining-nums ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
-          ))}
-        </div>
         <div className="flex flex-wrap gap-1.5">
           {FILTERS.map(([k, label]) => {
             const on = filter === k

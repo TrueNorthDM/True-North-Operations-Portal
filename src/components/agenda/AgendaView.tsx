@@ -18,6 +18,7 @@ import { createPortal } from 'react-dom'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Select } from '@/components/ui/Select'
+import { Segmented } from '@/components/ui/Segmented'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MeetIcon } from '@/components/ui/MeetIcon'
@@ -74,7 +75,8 @@ const WEEK_TAG = 'rounded-[6px] px-2 py-[3px] bg-tn-teal-soft text-tn-teal font-
 /** A work anniversary's HR badge (TenureBadge), compact in the small chips. */
 const Anni = ({ yrs, size, compact = false }: { yrs: number; size: number; compact?: boolean }) =>
   <TenureBadge milestone={{ kind: 'year', value: yrs, color: yearColor(yrs) }} size={size} compact={compact} />
-const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
+
+const VIEW_OPTS = [{ key: 'month', label: 'Month' }, { key: 'week', label: 'Week' }, { key: 'list', label: 'List' }] as const
 
 export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data: AgendaData; api: CreateEvent; edit?: EventEditApi; drawerApi?: DrawerApi; linked?: boolean }) {
   const router = useRouter()
@@ -120,12 +122,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
 
       {/* The view, the days and the filters on one line (owner, 31 October 2026). */}
       <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="View">
-          {(['month', 'week', 'list'] as const).map(k => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => go(k, anchor)}
-              className={`${SEG_BTN} ${view === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{k[0].toUpperCase() + k.slice(1)}</button>
-          ))}
-        </div>
+        <Segmented label="View" options={VIEW_OPTS} value={view} onChange={k => go(k, anchor)} />
         <button type="button" onClick={() => go(view, data.today)} className={BTN.smallWhite}>Today</button>
         <div className="flex items-center gap-0.5">
           <button type="button" aria-label="Previous" onClick={() => go(view, stepAnchor(view, anchor, -1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M15 18l-6-6 6-6" size={17} width={2.2} /></button>

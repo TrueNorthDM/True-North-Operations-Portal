@@ -34,6 +34,10 @@ import { BTN } from '@/lib/ui/buttons'
 import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
 import { keepGoing as keepGoingAction } from '@/app/(app)/clocky-hours/clock-actions'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { Segmented } from '@/components/ui/Segmented'
+import { TAB_COUNT, TAB_COUNT_OFF, TAB_COUNT_ON, tabClass } from '@/lib/ui/tabs'
+
+const SHOW = [{ key: 'all', label: 'All' }, { key: 'unread', label: 'Unread' }] as const
 
 export type DrawerKind = 'bell' | 'inbox'
 
@@ -151,7 +155,6 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
     onTab(next.key)
     requestAnimationFrame(() => box.current?.querySelector<HTMLElement>(`#drawer-tab-${next.key}`)?.focus())
   }
-  const pill = (on: boolean) => `rounded-full px-[11px] py-1 text-[12px] font-semibold transition-colors ${on ? 'bg-subtle text-tn-ink' : 'text-muted hover:text-tn-ink'}`
 
   return (
     <>
@@ -178,10 +181,10 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                   aria-controls="drawer-panel"
                   tabIndex={on ? 0 : -1}
                   onClick={() => onTab(t.key)}
-                  className={`flex items-center gap-[7px] px-3 py-2 -mb-px border-b-[2.5px] font-(family-name:--font-display) font-extrabold text-[13px] whitespace-nowrap transition-colors ${on ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}
+                  className={`${tabClass(on)} -mb-px`}
                 >
                   {t.label}
-                  <span className={`min-w-[18px] h-[18px] rounded-full px-[5px] inline-flex items-center justify-center text-[10.5px] font-bold ${on ? 'bg-tn-primary text-[#ffffff]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>{count}</span>
+                  <span className={`${TAB_COUNT} ${on ? TAB_COUNT_ON : TAB_COUNT_OFF}`}>{count}</span>
                 </button>
               )
             })}
@@ -189,10 +192,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
         </div>
 
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-[var(--row-rule)]">
-          <div className="flex gap-1">
-            <button type="button" onClick={() => setOnlyUnread(false)} aria-pressed={!onlyUnread} className={pill(!onlyUnread)}>All</button>
-            <button type="button" onClick={() => setOnlyUnread(true)} aria-pressed={onlyUnread} className={pill(onlyUnread)}>Unread</button>
-          </div>
+          <Segmented label="Show" options={SHOW} value={onlyUnread ? 'unread' : 'all'} onChange={k => setOnlyUnread(k === 'unread')} />
           <button
             type="button"
             disabled={!(items[current.key] ?? []).some(isUnread)}

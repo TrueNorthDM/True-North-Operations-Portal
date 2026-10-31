@@ -37,6 +37,7 @@ import type { PaymentsData } from '@/lib/timeclock/payments-view'
 import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { BTN } from '@/lib/ui/buttons'
+import { TAB_COUNT, TAB_COUNT_OFF, TAB_COUNT_ON, TAB_LIST, tabClass } from '@/lib/ui/tabs'
 
 type Editable = 'personal' | 'work' | 'hr'
 type PaymentsProp = { data: PaymentsData; api: PaymentsApi; initial?: Parameters<typeof PaymentsTab>[0]['initial'] }
@@ -72,9 +73,8 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
     <div className="space-y-[22px]">
       <Cover data={data} />
       {pay?.typeChange?.scheduled && pay.typeApi && <TypeChangeBanner view={pay.typeChange} api={pay.typeApi} />}
-      {/* The rule under the tabs is a shadow, not a border the active tab overlaps:
-          an overlap inside a sideways-scrolling row shows a scroll bar. */}
-      <nav aria-label="Profile" className="flex gap-1 overflow-x-auto [scrollbar-width:none] leading-[normal] shadow-[inset_0_-1px_0_var(--panel-border)]">
+      {/* The portal's tab look (lib/ui/tabs.ts); links, so the URL keeps the tab. */}
+      <nav aria-label="Profile" className={TAB_LIST}>
         {PAGE_TABS.filter(t => data.rights[t.key]).map(t => {
           const on = t.key === tab
           return (
@@ -83,12 +83,12 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
               href={personHref(data.id, t.key)}
               scroll={false}
               aria-current={on ? 'page' : undefined}
-              className={`inline-flex items-center gap-2 whitespace-nowrap font-(family-name:--font-display) font-extrabold text-[14px] px-1.5 py-3 mr-4 border-b-[2.5px] transition-colors ${on ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}
+              className={tabClass(on)}
             >
               {t.key === 'hr' && <span className="text-[#8a6d1a]">{LOCK}</span>}
               {t.label}
               {t.key === 'reports' && data.reports && (
-                <span className={`text-[11px] rounded-full px-2 py-0.5 ${on ? 'bg-tn-teal-soft text-tn-teal' : 'bg-subtle text-muted'}`}>{data.reports.length}</span>
+                <span className={`${TAB_COUNT} ${on ? TAB_COUNT_ON : TAB_COUNT_OFF}`}>{data.reports.length}</span>
               )}
             </Link>
           )

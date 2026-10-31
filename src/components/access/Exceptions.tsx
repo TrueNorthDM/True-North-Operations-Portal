@@ -8,6 +8,7 @@ import { CATALOGUE, ITEM, LEVEL_LABEL, type ItemKind } from '@/lib/access/catalo
 import { addException, endException } from '@/app/(app)/admin/access-levels/actions'
 import { type AccessPageData, type Person, Tag, btn, btnNavy, card, Modal, when, addDays, endOfMonth } from './parts'
 import { DateField } from '@/components/ui/DateField'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 export function Exceptions({ data, people, onDone }: { data: AccessPageData; people: Person[]; onDone: () => void }) {
   const [adding, setAdding] = useState(false)
@@ -96,14 +97,14 @@ function AddException({ people, today, onClose, onDone }: { people: Person[]; to
       <div className="space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Item</span>
         <Select value={key} onChange={setKey} options={options} searchable fullWidth placeholder="Choose a page, tool, tab or action…" ariaLabel="Item" /></div>
       <div className="space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Effect</span>
-        <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
-          {([['grant', 'Can open'], ['deny', 'Cannot open']] as const).map(([v, l]) => <button key={v} type="button" aria-pressed={effect === v} onClick={() => setEffect(v)} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${effect === v ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{l}</button>)}
+        <div className={SEG_BOX}>
+          {([['grant', 'Can open'], ['deny', 'Cannot open']] as const).map(([v, l]) => <button key={v} type="button" aria-pressed={effect === v} onClick={() => setEffect(v)} className={segClass(effect === v)}>{l}</button>)}
         </div></div>
       <div className="space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Until</span>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5 flex-wrap">
-            {([['1 week', addDays(today, 7)], ['End of the month', endOfMonth(today)], ['Until removed', null]] as const).map(([l, v]) => <button key={l} type="button" aria-pressed={!custom && until === v} onClick={() => { setCustom(false); setUntil(v) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${!custom && until === v ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{l}</button>)}
-            <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setUntil(addDays(today, 14)) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${custom ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>A date…</button>
+          <div className={SEG_BOX}>
+            {([['1 week', addDays(today, 7)], ['End of the month', endOfMonth(today)], ['Until removed', null]] as const).map(([l, v]) => <button key={l} type="button" aria-pressed={!custom && until === v} onClick={() => { setCustom(false); setUntil(v) }} className={segClass(!custom && until === v)}>{l}</button>)}
+            <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setUntil(addDays(today, 14)) }} className={segClass(custom)}>A date…</button>
           </div>
           {custom && <DateField value={until ?? ''} min={today} onChange={v => setUntil(v || null)} className={DATE_FIELD_SM} clearable />}
         </div></div>

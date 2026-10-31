@@ -158,7 +158,7 @@ export function PayHoursSection({ view, save, startEditing = false, after }: {
               <div className="flex flex-col gap-1.5">
                 <span className={LABEL}>Pays as</span>
                 <div className="self-start">
-                  <Segmented label="Pays as" display="px-[13px] py-[7px] text-[12.5px]" value={pays}
+                  <Segmented label="Pays as" value={pays}
                     options={[{ key: 'hourly', label: 'Hourly' }, { key: 'fixed_monthly', label: 'Fixed monthly' }, { key: 'fixed_no_timesheet', label: 'Fixed, no timesheet' }]}
                     onChange={k => { setPays(k); const a = amountFor(k); setAmount(a != null ? a.toFixed(2) : '') }} />
                 </div>
@@ -173,7 +173,7 @@ export function PayHoursSection({ view, save, startEditing = false, after }: {
           <div className="flex flex-col gap-1.5">
             <span className={LABEL}>Hours allowance</span>
             <div className="flex gap-2.5 items-center flex-wrap">
-              <Segmented label="Hours allowance" display="px-3 py-[7px] text-[12.5px]" value={alKind}
+              <Segmented label="Hours allowance" value={alKind}
                 options={[{ key: 'none', label: 'None' }, { key: 'week', label: 'A week' }, { key: 'month', label: 'A month' }]} onChange={setAlKind} />
               {alKind !== 'none' && (
                 <span className="flex items-center gap-2">

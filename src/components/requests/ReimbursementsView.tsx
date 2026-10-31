@@ -31,6 +31,8 @@ import { PhoneSheet } from './PhoneSheet'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { RmbDocsList, type DocFilter, type MarkRmbPaid } from './RmbDocsList'
 import { CATEGORIES, MEAL_HINT, MEALS_TRAVEL, MILEAGE, mileageAmount, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { Tabs } from '@/components/ui/Tabs'
 
 export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
@@ -128,12 +130,8 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
       )}
 
       {data.everyone && (
-        <div role="tablist" aria-label="Whose reimbursements" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-start justify-self-start">
-          {([['mine', 'Mine'], ['all', 'Everyone'], ...(data.documents ? [['docs', 'Documents']] as const : [])] as const).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => pick(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
-          ))}
-        </div>
+        <Tabs label="Whose reimbursements" value={tab} onChange={pick}
+          items={[{ key: 'mine', label: 'Mine' }, { key: 'all', label: 'Everyone' }, ...(data.documents ? [{ key: 'docs', label: 'Documents' }] as const : [])]} />
       )}
 
       {docs ? (
@@ -335,10 +333,10 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
     </>
   )
   const billableSeg = (value: 'yes' | 'no', onChange: (v: 'yes' | 'no') => void, off: boolean, wide = false) => (
-    <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
+    <div className={SEG_BOX}>
       {([['yes', 'Yes'], ['no', 'No']] as const).map(([k, label]) => (
         <button key={k} type="button" disabled={off} aria-pressed={value === k} onClick={() => onChange(k)}
-          className={`border-0 rounded-[8px] font-(family-name:--font-display) font-bold disabled:cursor-default cursor-pointer ${wide ? 'flex-1 h-10 text-[13px]' : 'px-3.5 py-[7px] text-[12.5px]'} ${value === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+          className={`${segClass(value === k)} ${wide ? 'flex-1 h-10 justify-center' : ''}`}>{label}</button>
       ))}
     </div>
   )

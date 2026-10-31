@@ -128,7 +128,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
 
       <div className="flex items-center gap-2.5">
         <FieldLabel>Type</FieldLabel>
-        <Segmented label="Type" display="px-3 py-1.5 text-[12.5px]" options={types} value={f.type} onChange={k => setForm({ type: k, error: null, fix: null, fixNote: null })} />
+        <Segmented label="Type" options={types} value={f.type} onChange={k => setForm({ type: k, error: null, fix: null, fixNote: null })} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">

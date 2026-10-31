@@ -15,6 +15,7 @@ import { firstOfNextMonth } from '@/lib/tsheets/report'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { Section, fieldCls } from './PersonParts'
 import { BTN } from '@/lib/ui/buttons'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 type Rates = NonNullable<PersonPageData['rates']>
 type Key = 'client' | 'cost' | 'be' | 'salary'
@@ -100,10 +101,10 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
           {clientChanged && (
             <div className="flex flex-col gap-1.5">
               <span className="text-[12.5px] text-muted">A client rate applies to a whole month. When does the new one start?</span>
-              <div className="flex flex-wrap gap-2">
+              <div className={`${SEG_BOX} self-start`} role="group" aria-label="New client rate starts">
                 {([[true, `1 ${monthName(next)}`], [false, `1 ${monthName(thisMonth)} (reprices ${monthName(thisMonth)})`]] as const).map(([k, l]) => (
                   <button key={String(k)} type="button" aria-pressed={nextMonth === k} onClick={() => setNextMonth(k)}
-                    className={`rounded-[9px] px-3 py-1.5 text-[12.5px] font-bold border ${nextMonth === k ? 'bg-tn-primary text-[#ffffff] border-tn-primary' : 'bg-white text-tn-ink border-slate-200'}`}>{l}</button>
+                    className={segClass(nextMonth === k)}>{l}</button>
                 ))}
               </div>
             </div>

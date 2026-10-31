@@ -159,7 +159,7 @@ export function WhosWorkingPanel({
             )}
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            <Segmented label="Show" display="px-[11px] py-1.5 text-[12.5px]" value={ui.filter} onChange={k => set({ filter: k })}
+            <Segmented label="Show" value={ui.filter} onChange={k => set({ filter: k })}
               options={[{ key: 'on', label: 'On the clock' }, { key: 'all', label: 'Everyone today' }]} />
             <div className="w-[150px]">
               <ClockField value={ui.sort} options={[...SORTS]} onChange={v => set({ sort: v as WorkingSort })} compact ariaLabel="Sort" />

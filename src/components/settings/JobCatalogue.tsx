@@ -22,6 +22,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Catalogue2026, SMALL_BTN, Switch } from './JobCatalogue2026'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 /** A call that never answered (the connection dropped) reads as a refusal, so busy resets and the toast says so. */
@@ -76,20 +77,20 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Part of the catalogue">
+        <div className={SEG_BOX} role="group" aria-label="Part of the catalogue">
           {([['jobs', 'Jobs'], ['fields', 'Fields and options'], ['clients', 'Clients']] as const).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)}
-              className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+              className={segClass(tab === k)}>{l}</button>
           ))}
         </div>
         {!canEdit && <span className="text-[12px] text-[#5b6b82] bg-[#f1f3f6] rounded-full px-[11px] py-[5px] leading-[normal]">Read only at the Admin level. Super Admins edit the catalogue.</span>}
       </div>
       {has2026 && (
         <div className="flex items-center gap-2.5 flex-wrap -mt-1">
-          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Which structure">
+          <div className={SEG_BOX} role="group" aria-label="Which structure">
             {([[2, '2026 structure'], [1, 'TSheets']] as const).map(([k, l]) => (
               <button key={k} type="button" aria-pressed={which === k} onClick={() => setWhich(k)}
-                className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${which === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+                className={segClass(which === k)}>{l}</button>
             ))}
           </div>
           <span className="text-[12px] text-muted leading-[1.5]">{line}</span>

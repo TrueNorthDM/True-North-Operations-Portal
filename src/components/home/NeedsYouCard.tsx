@@ -28,6 +28,7 @@ import { HomeSidePanel } from './HomeSidePanel'
 import { runPanelOp, type Runner } from './needs-you-actions'
 import { DUE_FG, TypeChip } from './needs-you-ui'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { Tabs } from '@/components/ui/Tabs'
 
 const LABEL: Record<TabKey, string> = { needs: 'Needs you', work: 'My Work', mine: 'Requests' }
 
@@ -90,24 +91,8 @@ export function NeedsYouCard({ data, run, className = '' }: {
 
   return (
     <div ref={card} className={`flex flex-col bg-white rounded-[18px] border border-[var(--panel-border)] px-[22px] py-2 max-lg:max-h-[420px] ${className}`}>
-      <div role="tablist" aria-label="What needs you" className="flex gap-1 border-b border-[var(--row-rule)] max-sm:overflow-x-auto max-sm:[scrollbar-width:none]">
-        {tabs.map(([k, t]) => {
-          const on = k === current[0]
-          return (
-            <button
-              key={k} type="button" role="tab" id={`home-tab-${k}`} aria-selected={on} aria-controls="home-tab-list"
-              onClick={() => setTab(k)}
-              className="border-0 bg-transparent cursor-pointer pt-[14px] px-3 max-sm:px-2 pb-3 -mb-px flex flex-none items-center gap-2 whitespace-nowrap font-(family-name:--font-display) font-extrabold text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 rounded-t-md"
-              style={{ color: on ? '#012358' : '#8593a4', borderBottom: `2.5px solid ${on ? '#F2C40A' : 'transparent'}` }}
-            >
-              {LABEL[k]}
-              <span className="min-w-5 h-5 box-border px-1.5 rounded-full text-[11px] flex items-center justify-center" style={{ background: on ? '#012358' : '#f1f3f6', color: on ? '#F2C40A' : '#5b6b82' }}>
-                {tabCount(k, rowsOf(k, t), done)}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <Tabs label="What needs you" idPrefix="home-tab" controls="home-tab-list" value={current[0]} onChange={setTab}
+        items={tabs.map(([k, t]) => ({ key: k, label: LABEL[k], count: tabCount(k, rowsOf(k, t), done) }))} />
 
       <div
         id="home-tab-list" role="tabpanel" aria-labelledby={`home-tab-${current[0]}`}

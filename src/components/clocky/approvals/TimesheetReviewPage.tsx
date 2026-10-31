@@ -20,6 +20,7 @@ import type { ReviewTone, TimesheetReview } from '@/lib/timeclock/timesheet-revi
 import { InvoiceDoc } from '../invoices/InvoiceDoc'
 import { InvoicePdfModal } from '../invoices/InvoicePdfModal'
 import { Toast, type ToastState } from '../entries/ui'
+import { Tabs } from '@/components/ui/Tabs'
 
 type Res = { ok: true; toast: string } | { ok: false; error: string }
 export interface ReviewApi {
@@ -202,14 +203,10 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
       )}
 
       {hasTabs && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div role="tablist" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
-            {([['sum', 'Summary'], ['entries', `Time entries · ${r.entryCount}`], ['both', 'Combined']] as [Tab, string][]).map(([k, label]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-                className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] tabular-nums lining-nums ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
-            ))}
-          </div>
-          <span className="flex-1 min-w-[260px] text-[12.5px] text-muted">{tab === 'sum' ? 'Click a day to see its entries.' : `Every entry as ${first} logged it, in ${first}'s time zone (${r.zoneCity}). Read only here.`}</span>
+        <div className="flex flex-col gap-2.5">
+          <Tabs<Tab> label="Timesheet view" value={tab} onChange={setTab}
+            items={[{ key: 'sum', label: 'Summary' }, { key: 'entries', label: 'Time entries', count: r.entryCount }, { key: 'both', label: 'Combined' }]} />
+          <span className="text-[12.5px] text-muted">{tab === 'sum' ? 'Click a day to see its entries.' : `Every entry as ${first} logged it, in ${first}'s time zone (${r.zoneCity}). Read only here.`}</span>
         </div>
       )}
 

@@ -19,10 +19,8 @@ import { fitOnePage, pagePx, sheetPages } from '@/lib/timeclock/receipt-pages'
 import { ReportSheet } from './ReportSheet'
 import { DateField } from '@/components/ui/DateField'
 import { BTN } from '@/lib/ui/buttons'
+import { Segmented } from '@/components/ui/Segmented'
 
-const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
-const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
-const pill = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground')
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
 const WHITE_BTN = BTN.white
 const TONE = { ink: 'text-tn-ink', ok: 'text-[#0d7a4f]', bad: 'text-[#c8323d]' } as const
@@ -90,11 +88,7 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
       <div className="flex flex-wrap gap-2.5 items-end">
         <div className="flex flex-col gap-[5px]">
           <span className={LABEL}>Period</span>
-          <div className={SEG} role="group" aria-label="Period">
-            {([['month', 'Month'], ['pp', 'Pay period'], ['quarter', 'Quarter'], ['custom', 'Custom']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={q.kind === k} onClick={() => go({ kind: k, from: undefined, to: undefined })} className={`${SEG_BTN} ${pill(q.kind === k)}`}>{l}</button>
-            ))}
-          </div>
+          <Segmented label="Period" options={[{ key: 'month', label: 'Month' }, { key: 'pp', label: 'Pay period' }, { key: 'quarter', label: 'Quarter' }, { key: 'custom', label: 'Custom' }] as const} value={q.kind} onChange={k => go({ kind: k, from: undefined, to: undefined })} />
         </div>
         {q.kind === 'custom' ? (
           <div className="flex items-end gap-2">
@@ -111,11 +105,7 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
         <div className="w-full md:w-[200px]"><LabeledSelect label="Client" value={q.client} onChange={c => go({ client: c })} options={page.options.clients} /></div>
         <div className="flex flex-col gap-[5px]">
           <span className={LABEL}>Billable</span>
-          <div className={SEG} role="group" aria-label="Billable">
-            {([['all', 'All'], ['yes', 'Billable'], ['no', 'Not billable']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={q.bill === k} onClick={() => go({ bill: k })} className={`${SEG_BTN} ${pill(q.bill === k)}`}>{l}</button>
-            ))}
-          </div>
+          <Segmented label="Billable" options={[{ key: 'all', label: 'All' }, { key: 'yes', label: 'Billable' }, { key: 'no', label: 'Not billable' }] as const} value={q.bill} onChange={k => go({ bill: k })} />
         </div>
       </div>
 

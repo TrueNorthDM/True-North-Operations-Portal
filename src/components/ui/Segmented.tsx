@@ -6,9 +6,13 @@
  * picked one is in the Tab order, and the arrow keys move and pick (audit,
  * 9 October 2026). One control for the Settings page and the notification
  * table, which each had their own.
+ *
+ * Its look is the portal's one segmented look (owner, 31 October 2026), kept
+ * in lib/ui/segmented.ts for the places that draw their own markup.
  */
 
 import { useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { SEG_ON, SEG_OFF } from '@/lib/ui/segmented'
 
 export interface SegmentedOption<K> { key: K; label: string; glyph?: ReactNode }
 
@@ -24,9 +28,9 @@ export function Segmented<K extends string | number>({ options, value, onChange,
   compact?: boolean
   /** An amber edge: a changed value not saved yet. */
   warn?: boolean
-  /** Clocky's look (design handoff of 16 October 2026): Raleway, 8px corners, the
-   *  unpicked ones in body colour; the value is the padding and size, which the
-   *  prototype sets per screen ('px-3 py-1.5 text-[12.5px]'). */
+  /** Overrides the padding and size of the options ('px-3 py-1.5 text-[12.5px]').
+   *  Left out everywhere since the 31 October 2026 sweep: every control is the
+   *  same size now. */
   display?: string
 }) {
   const box = useRef<HTMLDivElement>(null)
@@ -47,7 +51,7 @@ export function Segmented<K extends string | number>({ options, value, onChange,
         return (
           <button key={String(o.key)} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} disabled={disabled}
             onClick={() => onChange(o.key)}
-            className={`inline-flex items-center gap-1.5 ${display ? `${display} ${compact ? 'rounded-[7px]' : 'rounded-[8px]'} leading-[normal] font-(family-name:--font-display)` : `px-2.5 py-[5px] rounded-[7px] ${compact ? 'text-[12px]' : 'text-[12.5px]'}`} font-bold whitespace-nowrap transition-colors ${on ? 'bg-tn-primary text-[#ffffff]' : display ? 'text-foreground hover:text-tn-ink' : 'text-muted hover:text-tn-ink'}`}>
+            className={`inline-flex items-center gap-1.5 border-0 cursor-pointer leading-[normal] font-(family-name:--font-display) font-bold whitespace-nowrap transition-colors ${compact ? 'rounded-[7px]' : 'rounded-[8px]'} ${display ?? (compact ? 'px-2.5 py-[5px] text-[12px]' : 'px-3.5 py-[7px] text-[12.5px]')} ${on ? SEG_ON : SEG_OFF}`}>
             {o.glyph}{o.label}
           </button>
         )

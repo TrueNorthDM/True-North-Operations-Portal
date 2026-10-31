@@ -5,6 +5,7 @@
 
 import Link from 'next/link'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
+import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 
 export type ManualTab = 'portal' | 'runs'
 
@@ -26,15 +27,13 @@ export function ManualHeader({ active, tabs = ['portal', 'runs'], canOpenAdmin =
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">System manual</h1>
         <p className="mt-1.5 text-muted">{INTRO[active]}</p>
       </div>
-      <nav aria-label="System manual" className="flex items-center gap-0.5 border-b border-[var(--panel-border)]">
+      <nav aria-label="System manual" className={TAB_LIST}>
         {TABS.filter(t => tabs.includes(t.key)).map(t => (
           <Link
             key={t.key}
             href={t.href}
             aria-current={t.key === active ? 'page' : undefined}
-            className={`px-4 py-2.5 text-[13.5px] font-semibold -mb-px border-b-2 transition-colors ${
-              t.key === active ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'
-            }`}
+            className={tabClass(t.key === active)}
           >
             {t.label}
           </Link>

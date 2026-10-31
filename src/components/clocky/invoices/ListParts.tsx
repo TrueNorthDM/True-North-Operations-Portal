@@ -9,6 +9,7 @@
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import { STATE_PILL } from './InvoiceParts'
+import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 
 export const LIST_HEAD = 'px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted whitespace-nowrap'
 const DOWN = 'M12 3v12M7 10l5 5 5-5M5 21h14'
@@ -48,10 +49,10 @@ export function ListStrip<C extends StripCard>({ cards, active, onPick, cols = '
 /** All, Waiting, Approved...: one pressed at a time. */
 export function StateSwitch<K extends string>({ options, value, onChange }: { options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) => void }) {
   return (
-    <div role="group" aria-label="State" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-end">
+    <div role="group" aria-label="State" className={`${SEG_BOX} self-end`}>
       {options.map(([k, label]) => (
         <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}
-          className={`border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] ${value === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+          className={segClass(value === k)}>{label}</button>
       ))}
     </div>
   )

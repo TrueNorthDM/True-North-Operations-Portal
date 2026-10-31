@@ -126,7 +126,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       </div>
 
       <div className="flex flex-wrap gap-2.5 items-center">
-        <Segmented label="Period" display="px-3 py-1.5 text-[12.5px]" options={PERIODS} value={period} onChange={setPeriod} />
+        <Segmented label="Period" options={PERIODS} value={period} onChange={setPeriod} />
         <div className="w-[240px]"><SearchInput value={q} onChange={setQ} placeholder="Search people" height={38} iconTop={11} iconLeft={11} iconSize={15} padLeft={33} fontSize={13} /></div>
         {data.access === 'read' && (
           <span className="text-[12px] text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[11px] py-[5px]">Read only at the Admin level</span>

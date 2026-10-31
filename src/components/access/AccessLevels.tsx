@@ -32,6 +32,7 @@ import { type PreviewState, LevelPreview } from './LevelPreview'
 import { PeopleLevels, CheckPerson } from './PeopleLevels'
 import { Exceptions } from './Exceptions'
 import { ChangeLog } from './ChangeLog'
+import { Tabs } from '@/components/ui/Tabs'
 
 // ── The page ───────────────────────────────────────────────────────────────
 
@@ -111,15 +112,7 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
   return (
     <div className="space-y-5">
       {confirmDialog}
-      <nav aria-label="Access levels" role="tablist" className="flex items-center gap-0.5 border-b border-[var(--panel-border)] flex-wrap">
-        {tabs.map(t => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 -mb-px border-b-2 text-[13.5px] font-semibold inline-flex items-center gap-2 transition-colors ${tab === t.key ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}>
-            {t.label}
-            {t.count !== undefined && <span className="text-[11px] bg-subtle rounded-full px-2 text-muted">{t.count}</span>}
-          </button>
-        ))}
-      </nav>
+      <Tabs label="Access levels" items={tabs} value={tab} onChange={setTab} />
 
       {tab === 'permissions' && (
         <Permissions
