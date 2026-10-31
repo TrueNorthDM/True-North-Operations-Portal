@@ -139,13 +139,14 @@ export interface AgendaItem {
   detail?: EventDetail
 }
 
-export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {
-  pto: { label: 'PTO', swatch: '#A99BD4' },
-  bday: { label: 'Birthdays', swatch: '#F2C40A' },
-  anni: { label: 'Anniversaries', swatch: '#1E7D7F' },
-  event: { label: 'Events', swatch: '#012358' },
-  ms: { label: 'Milestones', swatch: '#1E9E6A' },
-  hol: { label: 'Holidays', swatch: '#a3aebb' },
+/** Each kind's chip in the filters: its colour and the icon its cards carry (owner, 31 October 2026). */
+export const KIND: Record<AgendaKind, { label: string; swatch: string; d: string }> = {
+  pto: { label: 'PTO', swatch: '#8f7dc9', d: 'M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z' },
+  bday: { label: 'Birthdays', swatch: '#c99a00', d: 'M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z' },
+  anni: { label: 'Anniversaries', swatch: '#1E7D7F', d: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z' },
+  event: { label: 'Events', swatch: '#012358', d: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4' },
+  ms: { label: 'Milestones', swatch: '#1E9E6A', d: 'M4 22V4M4 4h13l-2 4 2 4H4' },
+  hol: { label: 'Holidays', swatch: '#7b8899', d: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18' },
 }
 export const KINDS = Object.keys(KIND) as AgendaKind[]
 

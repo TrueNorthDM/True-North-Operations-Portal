@@ -28,7 +28,8 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
   const v = await agendaViewer(access)
   if (!v) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Your login is not linked to anyone in the Directory.</p>
   const sp = await searchParams
-  const view: View = sp.view === 'week' || sp.view === 'list' ? sp.view : 'month'
+  // Week by default, on today (owner, 31 October 2026).
+  const view: View = sp.view === 'month' || sp.view === 'list' ? sp.view : 'week'
   const today = localDate(new Date(), v.zone)
   const anchor = sp.d && ISO.test(sp.d) ? sp.d : today
   // The days on screen and the next two weeks ("Coming up").

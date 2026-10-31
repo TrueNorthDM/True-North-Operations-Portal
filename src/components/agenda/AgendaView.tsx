@@ -25,7 +25,7 @@ import { DetailFoot, DetailTop } from './EventDetail'
 import { ScopeChoice } from './ScopeChoice'
 import type { Scope } from '@/lib/agenda/recurrence'
 import type { WorkingHours } from '@/lib/agenda/working-hours'
-import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
+import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, nowLine, offHours, rangeTitle, WEEK_ROW, WEEK_SHOWN_HOURS, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
@@ -110,42 +110,40 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
           <Breadcrumb self="/agenda" />
           <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Agenda</h1>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="View">
-            {(['month', 'week', 'list'] as const).map(k => (
-              <button key={k} type="button" aria-pressed={view === k} onClick={() => go(k, anchor)}
-                className={`${SEG_BTN} ${view === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{k[0].toUpperCase() + k.slice(1)}</button>
-            ))}
-          </div>
-          <button type="button" onClick={() => go(view, data.today)} className="border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] cursor-pointer hover:border-tn-teal">Today</button>
-          <div className="flex items-center gap-0.5">
-            <button type="button" aria-label="Previous" onClick={() => go(view, stepAnchor(view, anchor, -1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M15 18l-6-6 6-6" size={17} width={2.2} /></button>
-            <button type="button" aria-label="Next" onClick={() => go(view, stepAnchor(view, anchor, 1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M9 6l6 6-6 6" size={17} width={2.2} /></button>
-          </div>
-          <span className="font-(family-name:--font-display) font-extrabold text-[16px] leading-[normal] text-tn-ink min-w-[150px] whitespace-nowrap">{rangeTitle(view, anchor)}</span>
-          {view === 'week' && <span className={WEEK_TAG}>Week {weekNumber(anchor)}</span>}
-          {(drawer || data.create) && (
-            <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b]">
-              <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{!drawer && data.create?.mode === 'team' ? 'New team event' : 'New event'}
-            </button>
-          )}
-        </div>
+        {(drawer || data.create) && (
+          <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b]">
+            <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{!drawer && data.create?.mode === 'team' ? 'New team event' : 'New event'}
+          </button>
+        )}
       </div>
 
-      <div className="flex items-end gap-2.5 flex-wrap">
-        <div className="flex gap-1.5 flex-1 min-w-0 overflow-x-auto md:flex-wrap md:overflow-visible [scrollbar-width:none]">
+      {/* The view, the days and the filters on one line (owner, 31 October 2026). */}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="View">
+          {(['month', 'week', 'list'] as const).map(k => (
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => go(k, anchor)}
+              className={`${SEG_BTN} ${view === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{k[0].toUpperCase() + k.slice(1)}</button>
+          ))}
+        </div>
+        <button type="button" onClick={() => go(view, data.today)} className="border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] cursor-pointer hover:border-tn-teal">Today</button>
+        <div className="flex items-center gap-0.5">
+          <button type="button" aria-label="Previous" onClick={() => go(view, stepAnchor(view, anchor, -1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M15 18l-6-6 6-6" size={17} width={2.2} /></button>
+          <button type="button" aria-label="Next" onClick={() => go(view, stepAnchor(view, anchor, 1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M9 6l6 6-6 6" size={17} width={2.2} /></button>
+        </div>
+        <span className="font-(family-name:--font-display) font-extrabold text-[16px] leading-[normal] text-tn-ink min-w-[150px] whitespace-nowrap">{rangeTitle(view, anchor)}</span>
+        {view === 'week' && <span className={WEEK_TAG}>Week {weekNumber(anchor)}</span>}
+        <div className="flex gap-1.5 min-w-0 max-w-full overflow-x-auto md:flex-wrap md:overflow-visible [scrollbar-width:none] xl:ml-auto" role="group" aria-label="Show">
           {KINDS.map(k => {
             const isOn = on.has(k)
             return (
               <button key={k} type="button" aria-pressed={isOn} onClick={() => setOn(s => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n })}
                 className={`flex-none whitespace-nowrap inline-flex items-center gap-[7px] border rounded-full px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12px] leading-[normal] cursor-pointer ${isOn ? 'border-[#cbd2da] bg-white text-tn-ink' : 'border-[var(--panel-border)] bg-transparent text-muted'}`}>
-                <span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: KIND[k].swatch, opacity: isOn ? 1 : 0.35 }} />{KIND[k].label}
+                <Icon d={KIND[k].d} size={13} width={2.3} color={isOn ? KIND[k].swatch : '#a3aebb'} className="flex-none" />{KIND[k].label}
               </button>
             )
           })}
         </div>
-        <div className="w-full md:w-[200px] flex flex-col gap-[5px]">
-          <FieldLabel>Team</FieldLabel>
+        <div className="w-full md:w-[180px]">
           <Select value={team} onChange={setTeam} searchable fullWidth ariaLabel="Team"
             options={[{ value: ALL_TEAMS, label: 'All teams' }, ...data.teams.map(t => ({ value: t.id, label: t.name }))]}
             className="h-[34px] px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
