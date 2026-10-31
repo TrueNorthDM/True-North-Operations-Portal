@@ -68,10 +68,35 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
   const set = (patch: Partial<Repeat>) => value && onChange({ ...value, ...patch })
   return (
     <div className="flex flex-col gap-2.5">
-      <label className="flex flex-col gap-2 w-full sm:w-[360px]">
-        <span className={LBL}>Repeat</span>
-        <Select value={preset} options={options} fullWidth ariaLabel="Repeat" className={SELECT} onChange={v => onChange(make(v as Preset))} />
-      </label>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-2 w-full sm:w-[360px]">
+          <span className={LBL}>Repeat</span>
+          <Select value={preset} options={options} fullWidth ariaLabel="Repeat" className={SELECT} onChange={v => onChange(make(v as Preset))} />
+        </label>
+        {value && (
+          <>
+            <div className="flex flex-col gap-2">
+              <span className={LBL}>Ends</span>
+              <div className={`${SEG} h-11 box-border items-center`} role="group" aria-label="Ends">
+                {([['never', 'Never'], ['until', 'On a day'], ['count', 'After']] as const).map(([k, l]) => (
+                  <button key={k} type="button" aria-pressed={value.ends === k} className={`${SEG_BTN} ${segOn(value.ends === k)}`}
+                    onClick={() => set(k === 'until' ? { ends: k, until: value.until && value.until >= date ? value.until : new Date(Date.parse(`${date}T00:00:00Z`) + 90 * 864e5).toISOString().slice(0, 10) } : k === 'count' ? { ends: k, count: value.count ?? 10 } : { ends: k })}>{l}</button>
+                ))}
+              </div>
+            </div>
+            {value.ends === 'until' && (
+              <input type="date" aria-label="Last day" min={date} value={value.until ?? ''} onChange={e => e.target.value && set({ until: e.target.value })} className={`${INPUT} w-[170px]`} />
+            )}
+            {value.ends === 'count' && (
+              <label className="flex items-center gap-2 text-[13.5px] text-foreground">
+                <input type="number" min={1} max={730} value={value.count ?? 10} aria-label="How many times"
+                  onChange={e => set({ count: Math.min(730, Math.max(1, Number(e.target.value) || 1)) })} className={`${INPUT} w-[84px]`} />
+                times
+              </label>
+            )}
+          </>
+        )}
+      </div>
       {value && preset === 'custom' && (
         <div className="flex flex-col gap-2.5 bg-subtle rounded-[12px] px-3.5 py-3">
           <div className="flex flex-wrap items-center gap-2 text-[13.5px] text-foreground">
@@ -101,29 +126,6 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
               <button type="button" aria-pressed={value.monthBy === 'day'} onClick={() => set({ monthBy: 'day' })} className={`${SEG_BTN} ${segOn(value.monthBy === 'day')}`}>On day {d.getUTCDate()}</button>
               <button type="button" aria-pressed={value.monthBy === 'nth'} onClick={() => set({ monthBy: 'nth' })} className={`${SEG_BTN} ${segOn(value.monthBy === 'nth')}`}>On the {last && n >= 4 ? 'last' : NTH[n - 1]} {DAY[wd]}</button>
             </div>
-          )}
-        </div>
-      )}
-      {value && (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-2">
-            <span className={LBL}>Ends</span>
-            <div className={SEG} role="group" aria-label="Ends">
-              {([['never', 'Never'], ['until', 'On a day'], ['count', 'After']] as const).map(([k, l]) => (
-                <button key={k} type="button" aria-pressed={value.ends === k} className={`${SEG_BTN} ${segOn(value.ends === k)}`}
-                  onClick={() => set(k === 'until' ? { ends: k, until: value.until && value.until >= date ? value.until : new Date(Date.parse(`${date}T00:00:00Z`) + 90 * 864e5).toISOString().slice(0, 10) } : k === 'count' ? { ends: k, count: value.count ?? 10 } : { ends: k })}>{l}</button>
-              ))}
-            </div>
-          </div>
-          {value.ends === 'until' && (
-            <input type="date" aria-label="Last day" min={date} value={value.until ?? ''} onChange={e => e.target.value && set({ until: e.target.value })} className={`${INPUT} w-[170px]`} />
-          )}
-          {value.ends === 'count' && (
-            <label className="flex items-center gap-2 text-[13.5px] text-foreground">
-              <input type="number" min={1} max={730} value={value.count ?? 10} aria-label="How many times"
-                onChange={e => set({ count: Math.min(730, Math.max(1, Number(e.target.value) || 1)) })} className={`${INPUT} w-[84px]`} />
-              times
-            </label>
           )}
         </div>
       )}
