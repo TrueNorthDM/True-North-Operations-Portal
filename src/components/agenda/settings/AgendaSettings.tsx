@@ -118,6 +118,7 @@ function TeamCalendarCard({ data, busy, run, api }: { data: AgendaSettingsData; 
           {t ? (
             <div className="flex flex-wrap items-center gap-3 border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3">
               <AccountWho a={t} line={`Connected${t.by ? ` by ${t.by}` : ''}, ${when(t.connectedAt)}`} />
+              {t.sample && <span className={PILL_SAMPLE} title={data.googleReady ? 'Added before Google sign-in was set up: click Reconnect and sign in as this account to use the real Google calendar.' : 'Google sign-in is not set up yet: this calendar works with sample data in the portal.'}>Sample</span>}
               {t.needsReconnect ? <span className={PILL_WARN}>Needs reconnect</span> : <span className={PILL_OK}>Connected</span>}
               {data.googleReady ? <a href={CONNECT_TEAM} className={LINK}>Reconnect</a>
                 : <button type="button" className={LINK} disabled={busy} onClick={() => setAsking(true)}>Reconnect</button>}

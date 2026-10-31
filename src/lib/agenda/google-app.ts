@@ -23,11 +23,12 @@ export async function loadGoogleApp(): Promise<(GoogleApp & { pickerKey: string 
  */
 export async function saveConnection(i: {
   purpose: 'me' | 'team'; personId: string; email: string; sub: string; answer: TokenAnswer
-}): Promise<{ ok: true; accountId: number } | { ok: false; reason: 'taken' | 'personal' | 'no_refresh' }> {
+}): Promise<{ ok: true; accountId: number } | { ok: false; reason: 'taken' | 'is_team' | 'personal' | 'no_refresh' }> {
   const c = createAdminClient()
   const { data: existing, error: readErr } = await c.from('agenda_accounts').select('id, person_id, team_calendar').ilike('email', i.email).maybeSingle()
   if (readErr) throw new Error(readErr.message)
   if (existing) {
+    if (i.purpose === 'me' && existing.team_calendar) return { ok: false, reason: 'is_team' }
     if (i.purpose === 'me' && existing.person_id !== i.personId) return { ok: false, reason: 'taken' }
     if (i.purpose === 'team' && !existing.team_calendar) return { ok: false, reason: 'personal' }
   }

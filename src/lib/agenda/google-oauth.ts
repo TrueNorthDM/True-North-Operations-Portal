@@ -129,6 +129,7 @@ export function connectNotice(code: string | null | undefined, email?: string | 
     case 'domain': return bad(`${who} was not connected. For now only @${APPROVED_DOMAIN} accounts connect; others can once Google approves the portal.`)
     case 'scopes': return bad(`${who} was not connected: on Google's page, leave the calendar boxes ticked so the portal can create events and see when you are busy.`)
     case 'taken': return bad(`${who} is already connected by someone else.`)
+    case 'is_team': return bad(`${who} is the team calendar, so it connects from the Team calendar box above (Reconnect), not as your own account.`)
     case 'personal': return bad(`${who} is connected as someone's own account, so it cannot be the team calendar.`)
     case 'no_refresh': return bad('Google did not give the portal lasting access. Click Connect again.')
     case 'failed': return bad('Google did not finish the sign-in. Try again in a moment.')
