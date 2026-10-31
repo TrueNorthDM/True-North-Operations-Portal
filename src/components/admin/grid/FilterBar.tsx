@@ -10,6 +10,7 @@ import type { FilterCond, GridColumn, Operator } from './types'
 import { chipText, isValuelessOp, operatorsFor } from './utils'
 import { Select } from '@/components/ui/Select'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { DateField } from '@/components/ui/DateField'
 
 const inputCls = 'w-full text-[13px] text-tn-ink bg-white border border-slate-200 rounded-[9px] px-2.5 py-2 focus:outline-none focus:border-tn-teal'
 const labelCls = 'font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.07em] uppercase text-muted mb-1 block'
@@ -132,9 +133,11 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                             className={`${inputCls} cursor-pointer`}
                           />
                         </div>
+                      ) : draftCol.type === 'date' ? (
+                        <div className="mb-3.5"><DateField value={value} onChange={setValue} ariaLabel="Filter value" className={inputCls} /></div>
                       ) : (
                         <input
-                          type={draftCol.type === 'number' ? 'number' : draftCol.type === 'date' ? 'date' : 'text'}
+                          type={draftCol.type === 'number' ? 'number' : 'text'}
                           value={value}
                           onChange={e => setValue(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && canAdd) add() }}

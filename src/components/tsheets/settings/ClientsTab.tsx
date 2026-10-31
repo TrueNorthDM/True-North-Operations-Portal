@@ -53,7 +53,7 @@ function periodLabel(start: string | null | undefined, end: string | null | unde
   return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
 }
 
-const Dash = () => <span className="text-slate-300">&mdash;</span>
+const Dash = () => <span className="text-slate-300">-</span>
 const TH = 'text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3.5'
 
 export function ClientsTab({ clients, estimateRate }: Props) {
