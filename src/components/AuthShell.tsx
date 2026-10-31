@@ -3,12 +3,13 @@
 // /login and /auth/confirm.
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { Sunrise } from '@/components/Sunrise'
 
 /** The sign-in pages' frame: the brand panel on the left, the logo and a form on the right. */
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+    <div className="relative min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-4 sm:p-6">
       <div className="flex w-full max-w-[1120px] min-h-[620px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)],0,0,.65)]">
         {/* Left brand panel, hidden on small screens */}
         <div
@@ -40,6 +41,11 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+      {/* The home page Google's review of the portal's sign-in reads: what the portal is, and its policies. */}
+      <p className="m-0 max-w-[1120px] text-center text-[12px] text-muted leading-[1.6]">
+        The True North Operations Portal is True North Digital Marketing&apos;s internal work tool: hours, time off, pay documents, reports and the team calendar.
+        {' '}<Link href="/legal/privacy" className="font-bold text-tn-teal">Privacy policy</Link>{' · '}<Link href="/legal/terms" className="font-bold text-tn-teal">Terms of use</Link>
+      </p>
     </div>
   )
 }
