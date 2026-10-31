@@ -368,6 +368,21 @@ export interface WeekModel {
   bars: WeekBar[]
   hours: string[]
   cols: { weekend: boolean; events: WeekEvent[] }[]
+  /** The week's days and the first and last hour drawn, for the line at the current time. */
+  days: string[]
+  first: number
+  last: number
+}
+
+/**
+ * Where the line at the current time goes in the week (owner, 31 October 2026):
+ * the column of today and the height of this minute, or null when today is
+ * not in the week or the hour is not drawn. `now` is in the viewer's zone. Pure.
+ */
+export function nowLine(wk: Pick<WeekModel, 'days' | 'first' | 'last'>, now: { date: string; minutes: number }): { col: number; top: number } | null {
+  const col = wk.days.indexOf(now.date), h = now.minutes / 60
+  if (col < 0 || h < wk.first || h > wk.last + 1) return null
+  return { col, top: (h - wk.first) * WEEK_ROW }
 }
 
 export const WEEK_ROW = 48
@@ -375,9 +390,10 @@ export const WEEK_ROW = 48
 export function weekModel(items: readonly AgendaItem[], anchor: string, today: string, seesType: (x: AgendaItem) => boolean): WeekModel {
   const { from } = viewDays('week', anchor), days = [...Array(7)].map((_, i) => addDays(from, i))
   const timed = items.filter(x => x.k === 'event' && x.s != null && x.a >= days[0] && x.a <= days[6])
-  // 8 AM to 5 PM, as drawn; wider when an event starts earlier or ends later.
-  const first = Math.min(8, ...timed.map(x => Math.floor(x.s!)))
-  const last = Math.max(17, ...timed.map(x => Math.ceil(x.e ?? x.s! + 1) - 1))
+  // The whole day, as Google Calendar draws it, in a box that scrolls and opens
+  // on the morning or the current hour (owner, 31 October 2026): 8 AM to 5 PM
+  // only left nothing to scroll to.
+  const first = 0, last = 23
   const hours = [...Array(last - first + 1)].map((_, i) => hourLabel(first + i).replace(':00', ''))
   const allDay = items.filter(x => x.s == null && x.a <= days[6] && x.b >= days[0])
     .sort((p, q) => ((p.k === 'pto' ? 0 : 1) - (q.k === 'pto' ? 0 : 1)) || p.a.localeCompare(q.a))
@@ -393,7 +409,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
   })
   return {
     heads: days.map(d => ({ d: WD[dow(d)], n: Number(d.slice(8)), today: d === today })),
-    bars, hours,
+    bars, hours, days, first, last,
     cols: days.map(d => ({
       weekend: isWeekend(d),
       events: (() => {

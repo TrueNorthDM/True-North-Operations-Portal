@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, nowLine, rangeTitle, stepAnchor, thisWeek, weekModel, WEEK_ROW, type AgendaItem } from './model'
 import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -64,9 +64,9 @@ describe('8B week', () => {
   })
   it('places an event by its hours, as drawn', () => {
     const e = wk.cols[2].events[0]
-    expect([e.title, e.time, e.top, e.height]).toEqual(['Thanksgiving gratitude call', '1:00 PM to 1:45 PM', 242, 32])
-    expect(wk.hours[0]).toBe('8 AM')
-    expect(wk.hours.at(-1)).toBe('5 PM')
+    expect([e.title, e.time, e.top, e.height]).toEqual(['Thanksgiving gratitude call', '1:00 PM to 1:45 PM', 13 * 48 + 2, 32])
+    expect(wk.hours[0]).toBe('12 AM')
+    expect(wk.hours.at(-1)).toBe('11 PM')
   })
 })
 
@@ -183,5 +183,18 @@ describe('events at the same time in the week', () => {
   })
   it('reuses a lane that came free', () => {
     expect(lanesOf([{ s: 9, e: 12 }, { s: 9, e: 10 }, { s: 10, e: 11 }])).toEqual([{ lane: 0, lanes: 2 }, { lane: 1, lanes: 2 }, { lane: 1, lanes: 2 }])
+  })
+})
+
+describe('the line at the current time in the week', () => {
+  const wk = { days: ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'], first: 8, last: 17 }
+  it('sits in today\'s column at the minute', () => {
+    expect(nowLine(wk, { date: '2026-11-03', minutes: 14 * 60 + 30 })).toEqual({ col: 2, top: 6.5 * WEEK_ROW })
+  })
+  it('is left out off the week or off the hours drawn', () => {
+    expect(nowLine(wk, { date: '2026-11-08', minutes: 600 })).toBeNull()
+    expect(nowLine(wk, { date: '2026-11-03', minutes: 7 * 60 })).toBeNull()
+    expect(nowLine(wk, { date: '2026-11-03', minutes: 17 * 60 + 59 })).not.toBeNull()
+    expect(nowLine(wk, { date: '2026-11-03', minutes: 18 * 60 + 1 })).toBeNull()
   })
 })

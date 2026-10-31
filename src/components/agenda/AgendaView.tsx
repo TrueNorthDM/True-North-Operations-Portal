@@ -26,11 +26,12 @@ import { ScopeChoice } from './ScopeChoice'
 import type { Scope } from '@/lib/agenda/recurrence'
 import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, nowLine, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
 import { addDays } from '@/lib/timeclock/periods'
+import { localOf } from '@/lib/agenda/time'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { EventEdit } from '@/lib/agenda/events'
@@ -156,7 +157,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             : <Month items={items} anchor={anchor} today={data.today} onOpen={setCard} onMore={d => go('list', d)} />)}
           {view === 'week' && (phone
             ? <WeekPhone items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />
-            : <Week items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />)}
+            : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
         <ComingUp items={items} today={data.today} onOpen={setCard} />
@@ -241,8 +242,33 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
 
 // ── 8B ──────────────────────────────────────────────────────────────────────
 
-function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[]; anchor: string; today: string; seesType: (x: AgendaItem) => boolean; onOpen: (id: string) => void }) {
+/** The current minute in a zone, moving every 30 seconds; null until mounted, so the server never draws a time. */
+function useNow(zone: string): { date: string; minutes: number } | null {
+  const [now, setNow] = useState<{ date: string; minutes: number } | null>(null)
+  useEffect(() => {
+    const tick = () => setNow(localOf(Date.now(), zone))
+    const first = setTimeout(tick, 0), t = setInterval(tick, 30_000)
+    return () => { clearTimeout(first); clearInterval(t) }
+  }, [zone])
+  return now
+}
+
+function Week({ items, anchor, today, zone, seesType, onOpen }: { items: AgendaItem[]; anchor: string; today: string; zone: string; seesType: (x: AgendaItem) => boolean; onOpen: (id: string) => void }) {
   const wk = weekModel(items, anchor, today, seesType)
+  const now = useNow(zone)
+  const line = now ? nowLine(wk, now) : null
+  // Opens on 7 AM, or two hours before now when today is in the week; once per
+  // week shown, so the time line moving never scrolls the box under the mouse.
+  const box = useRef<HTMLDivElement>(null)
+  const nowHour = line ? Math.floor(now!.minutes / 60) : null
+  const openAt = nowHour == null ? 7 : Math.max(0, nowHour - 2)
+  const opened = useRef('')
+  useEffect(() => {
+    const k = `${anchor}:${nowHour != null}`
+    if (!box.current || opened.current === k) return
+    opened.current = k
+    box.current.scrollTop = openAt * WEEK_ROW
+  }, [anchor, nowHour, openAt])
   return (
     <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
       <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] bg-subtle border-b border-[var(--panel-border)]">
@@ -265,6 +291,7 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
           </button>
         ))}
       </div>
+      <div ref={box} className="max-h-[max(420px,calc(100vh-300px))] overflow-y-auto overscroll-contain">
       <div className="relative grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
         <div className="flex flex-col">
           {wk.hours.map(h => <div key={h} className="h-12 box-border px-2 py-0.5 text-[10.5px] text-muted leading-[normal] tabular-nums lining-nums border-t border-[#f1f3f6]">{h}</div>)}
@@ -272,6 +299,11 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
         {wk.cols.map((c, i) => (
           <div key={i} className={`relative border-l border-[var(--row-rule)] ${c.weekend ? 'bg-[#faf9f5]' : 'bg-white'}`}>
             {wk.hours.map(h => <div key={h} className="h-12 box-border border-t border-[#f1f3f6]" />)}
+            {line?.col === i && (
+              <div aria-hidden="true" className="absolute left-0 right-0 z-[2] h-0.5 -mt-px bg-[#c8323d] pointer-events-none" style={{ top: line.top }}>
+                <span className="absolute -left-[5px] -top-1 w-2.5 h-2.5 rounded-full bg-[#c8323d]" />
+              </div>
+            )}
             {c.events.map(e => (
               <button key={e.id} type="button" title={`${e.title}, ${e.time}`} onClick={() => onOpen(e.id)}
                 className={`absolute border-0 border-l-2 border-white rounded-[8px] px-[7px] text-left cursor-pointer flex overflow-hidden whitespace-nowrap ${e.short ? 'flex-row items-center gap-1.5 py-0' : 'flex-col gap-0.5 py-[5px]'} ${e.meet ? 'pr-6' : ''}`}
@@ -283,6 +315,7 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
             ))}
           </div>
         ))}
+      </div>
       </div>
     </div>
   )
