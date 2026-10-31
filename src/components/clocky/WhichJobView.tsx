@@ -7,6 +7,7 @@
  * Codes by brand.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Icon } from '@/components/clocky/entries/ui'
@@ -40,9 +41,9 @@ export function WhichJobView({ groups, codes, switcher }: { groups: GuideGroup[]
       </div>
       <div className="flex gap-2.5 items-center flex-wrap">
         <div className="relative w-[300px] max-w-full">
-          <Icon d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5" size={15} color="#8593a4" width={2} className="absolute left-[11px] top-[11px] pointer-events-none" />
+          <Icon d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5" size={15} color="#8593a4" width={2} className="absolute left-[11px] top-[12.5px] pointer-events-none" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search jobs and lines, e.g. Wagner" aria-label="Search jobs"
-            className="w-full box-border h-[38px] pl-[33px] pr-2.5 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
+            className={`w-full ${INPUT} pl-[33px]`} />
         </div>
         <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Billable">
           {([['all', 'All'], ['yes', 'Billable'], ['no', 'Not billable']] as const).map(([k, l]) => (

@@ -22,6 +22,7 @@
  * would have meant a third copy.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useEditing } from './editing-context'
@@ -181,7 +182,7 @@ export function SecretField({
                 aria-label={title}
                 autoComplete="off"
                 spellCheck={false}
-                className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className={`w-full ${INPUT} pr-10 font-mono`}
               />
               <button
                 type="button"

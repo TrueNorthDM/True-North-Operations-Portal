@@ -14,6 +14,7 @@
  * figure and want to fix that figure.
  */
 
+import { INPUT_SM } from '@/lib/ui/fields'
 import { staleOr } from '@/lib/ui/action-error'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -38,7 +39,7 @@ function when(iso: string): string {
 
 const TH = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 whitespace-nowrap'
 const TD = 'px-3 py-2.5 text-[14px] text-tn-ink align-top'
-const FIELD = 'rounded-[10px] border border-[var(--panel-border)] bg-white px-2.5 py-1.5 text-[14px] text-tn-ink'
+const FIELD = INPUT_SM
 
 export function DonationRecords(
   { entries, log, years, year, logMissing, canEdit }: {
@@ -299,7 +300,7 @@ function Row(
       <td className={`${TD} text-right`}>
         <input
           value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
-          aria-label="Amount" className={`${FIELD} w-[110px] text-right tabular-nums font-semibold`}
+          aria-label="Amount" className={`${FIELD} w-[110px] text-right tabular-nums`}
         />
       </td>
       <td className={TD} colSpan={2}>

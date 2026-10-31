@@ -8,6 +8,7 @@
  * panel (ClockPanel.tsx) holds the state and calls the server.
  */
 
+import { INPUT, INPUT_SHAPE, TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
@@ -20,7 +21,7 @@ import {
   FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf, sortedOptions,
   overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, timerStart, valueOf, type Draft,
 } from './clock-model'
-import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
+import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
 
 // ── Alerts at the top of the body ───────────────────────────────────────────
@@ -284,7 +285,7 @@ export function DraftFields({ data, draft, onField, onNotes }: { data: Pick<Cloc
       <div className="flex flex-col gap-[5px]">
         <SectionLabel>{notesReq ? 'Notes (required for this Activity)' : 'Notes'}</SectionLabel>
         <textarea value={draft.notes} onChange={e => onNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
-          className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+          className={`w-full ${TEXTAREA}`} />
       </div>
     </>
   )
@@ -451,7 +452,7 @@ export function OnView({
           <div className="flex gap-2">
             <input value={notes} onChange={e => onNotes(e.target.value)} onBlur={commitNote} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
               placeholder="Add a note" aria-label="Notes" autoFocus={noteEditing}
-              className={`flex-1 min-w-0 box-border h-9 px-[11px] border border-[var(--row-rule)] rounded-[9px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
+              className={`flex-1 min-w-0 ${INPUT}`} />
             {notes.trim() && (
               <button type="button" onMouseDown={e => e.preventDefault()} onClick={commitNote} disabled={noteStatus === 'saving'}
                 className={`${BTN.smallNavy} h-9 disabled:opacity-60 ${FOCUS}`}>Save note</button>
@@ -480,7 +481,7 @@ export function OnView({
           {missing.includes('notes') && (
             <input value={notes} onChange={e => onNotes(e.target.value)} onBlur={onNotesCommit} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
               placeholder="Notes (required for this Activity)" aria-label="Notes (required for this Activity)"
-              className={`w-full box-border h-10 px-[11px] border border-[#e9d48a] rounded-[10px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
+              className={`w-full ${INPUT_SHAPE} bg-white border-[#e9d48a]`} />
           )}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onGateCancel} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>

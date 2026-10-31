@@ -1,5 +1,6 @@
 'use client'
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useMemo, useState, useTransition, useEffect } from 'react'
 import { CATALOGUE, ITEM, LEVELS, LEVEL_LABEL, isConfigurable, type AccessLevel, type CatalogueItem, type ConfigurableLevel, type ItemKind } from '@/lib/access/catalogue'
 import { decide, impact, overlay, ruleKey, ticked, type Audience, type Rules, type ToolScope } from '@/lib/access/decide'
@@ -388,7 +389,7 @@ function Review({ base, current, stagedLevels, stagedTools, people, teams, today
       <label className="block space-y-1">
         <span className="text-[12.5px] font-bold text-tn-ink">Why? Required, and kept in the change log</span>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="For example: Team Leaders need the Workload tab to plan the week's assignments."
-          className="w-full rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[13.5px] text-tn-ink outline-none focus:border-tn-teal" />
+          className={`w-full ${TEXTAREA}`} />
       </label>
       {error && <p className="text-[12.5px] font-semibold text-[#b3271f] m-0">{error}</p>}
     </Modal>

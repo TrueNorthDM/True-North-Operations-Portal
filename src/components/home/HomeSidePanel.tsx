@@ -26,6 +26,7 @@
  * when that button is gone).
  */
 
+import { INPUT, TEXTAREA } from '@/lib/ui/fields'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
@@ -39,8 +40,6 @@ import { BTN } from '@/lib/ui/buttons'
 const SYMBOL = { check: 'M5 12l5 5 9-10', arrow: 'M9 6l6 6-6 6' }
 const PRIMARY = `${BTN.navy} flex-1 justify-center disabled:opacity-60 disabled:cursor-wait`
 const SECONDARY = `${BTN.white} justify-center disabled:opacity-60 disabled:cursor-wait`
-// The Mark paid dialog's input (InvoiceParts.tsx INPUT).
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   row: HomeRow
@@ -163,7 +162,7 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
               <textarea
                 ref={noteRef} value={note} onChange={e => setNote(e.target.value)} rows={3}
                 placeholder={asking ? 'They see it with the decision.' : 'Why the hours over the allowance are approved.'}
-                className="rounded-[10px] border border-[#d9dee6] px-3 py-2.5 text-[13.5px] text-tn-ink leading-[1.5] resize-y focus:outline-none focus:border-tn-teal"
+                className={`${TEXTAREA} leading-[1.5]`}
               />
             </label>
           )}

@@ -7,6 +7,7 @@
  * the same table style. One search at the top filters both.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { alpha } from '@/components/clocky/clock/clock-model'
@@ -41,7 +42,7 @@ export function WhichJob2026View({ projects, activities, switcher }: { projects:
 
       <div className="flex flex-wrap gap-2.5 items-center">
         <input value={q} onChange={e => setQ(e.target.value)} aria-label="Search" placeholder="Search anything: a client, division, project or activity, e.g. translation"
-          className="w-[460px] max-w-full box-border h-[40px] px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
+          className={`w-[460px] max-w-full ${INPUT}`} />
         <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 flex-wrap" role="group" aria-label="Client">
           {[['all', 'All clients'], ...clients.map(x => [x, x])].map(([k, l]) => (
             <button key={k} type="button" aria-pressed={client === k} onClick={() => setClient(k)}

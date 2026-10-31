@@ -11,6 +11,7 @@
  * which day and hour each one shows under.
  */
 
+import { INPUT as FIELD, TEXTAREA } from '@/lib/ui/fields'
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { Select } from '@/components/ui/Select'
 import { BOOKING_ZONES, bookingZoneLabel, HOLD_MINUTES, MAX_BOOKING_GUESTS, whenLine } from '@/lib/agenda/booking'
@@ -19,7 +20,8 @@ import type { Held, HoldPreview } from '@/app/meet/actions'
 import { BookingFrame, HostSide, Steps, MAIN, H4, BTN_MAIN, LINK, Mark } from './BookingFrame'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const INPUT = 'w-full box-border bg-white border border-[var(--panel-border)] rounded-[12px] px-[13px] py-[11px] text-[14px] text-tn-ink outline-none focus:border-tn-teal'
+const INPUT = `w-full ${FIELD}`
+const AREA = `w-full min-h-[84px] ${TEXTAREA}`
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-muted'
 
 export interface BookingHost { name: string; initials: string; slug: string; lengths: number[] }
@@ -161,7 +163,7 @@ export function BookingPage({ host, slots, api }: { host: BookingHost; slots: Re
               <span className="text-[12.5px] text-muted">We send a link here to confirm the meeting, then the Google invitation.</span></label>
             <div className="flex flex-col gap-[5px]">
               <span className={LBL}>Guests <span className="normal-case tracking-normal font-semibold">(optional)</span></span>
-              <div className="flex flex-wrap gap-1.5 items-center bg-white border border-[var(--panel-border)] rounded-[12px] px-2 py-1.5 focus-within:border-tn-teal">
+              <div className="flex flex-wrap gap-1.5 items-center min-h-10 box-border bg-white border border-[var(--panel-border)] rounded-[10px] px-2 py-1 focus-within:border-tn-teal focus-within:shadow-[0_0_0_3px_rgba(30,125,127,.15)]">
                 {guests.map((g, i) => (
                   <button key={g} type="button" onClick={() => setGuests(x => x.filter((_, j) => j !== i))} aria-label={`Remove ${g}`}
                     className="inline-flex items-center gap-1.5 border-0 rounded-[8px] bg-subtle px-2 py-1 text-[13px] text-tn-ink cursor-pointer">{g} <span className="text-muted">×</span></button>
@@ -171,12 +173,12 @@ export function BookingPage({ host, slots, api }: { host: BookingHost; slots: Re
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); addGuest() } }}
                   onBlur={() => { if (gq.trim()) addGuest() }}
                   placeholder={guests.length >= MAX_BOOKING_GUESTS ? `Up to ${MAX_BOOKING_GUESTS} guests` : 'Add an email, then Enter'}
-                  className="flex-1 min-w-[160px] border-0 outline-none bg-transparent text-[14px] text-tn-ink py-1.5" />
+                  className="flex-1 min-w-[160px] border-0 outline-none bg-transparent text-[13px] text-tn-ink placeholder:text-muted py-1.5" />
               </div>
               <span className={`text-[12.5px] ${gErr ? 'text-[#b2412f] font-bold' : 'text-muted'}`}>{gErr || `They get the Google invitation too, with the Meet link. Up to ${MAX_BOOKING_GUESTS}.`}</span>
             </div>
             <label className="flex flex-col gap-[5px]"><span className={LBL}>Anything to share before the meeting? <span className="normal-case tracking-normal font-semibold">(optional)</span></span>
-              <textarea className={INPUT} rows={3} value={note} onChange={e => setNote(e.target.value)} maxLength={2000} /></label>
+              <textarea className={AREA} rows={3} value={note} onChange={e => setNote(e.target.value)} maxLength={2000} /></label>
             {err && <p role="alert" className="m-0 text-[13px] font-bold text-[#b2412f]">{err}</p>}
             <div className="flex justify-end"><button type="submit" className={BTN_MAIN} disabled={!detailsOk || busy}>{busy ? 'Sending…' : 'Continue'}</button></div>
           </form>

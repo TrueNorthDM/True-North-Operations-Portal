@@ -5,6 +5,7 @@
  * Mark paid dialog (6G) and the History card.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
@@ -27,7 +28,6 @@ export interface PayTarget { id: number; number: string; who: string; line: stri
 /** "Nov 3, 2026" for a day. */
 const shown = (d: Date) => `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 /** 6G: Mark <number> paid? The day, a reference, a note; paid once. */
 export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder = 'e.g. WISE-88412', notePlaceholder = 'Anything the contractor should know', note }: {

@@ -7,13 +7,13 @@
  * when it ends (never, on a day, after a number of times).
  */
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD } from '@/lib/ui/fields'
 import { Select } from '@/components/ui/Select'
 import { describe, nthOf, type Freq, type Repeat } from '@/lib/agenda/recurrence'
 import { DateField } from '@/components/ui/DateField'
 
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
-const SELECT = 'h-11 px-3.5 bg-white border border-[var(--panel-border)] rounded-[12px] font-semibold text-[14px]'
-const INPUT = 'h-11 box-border px-3 border border-[var(--panel-border)] rounded-[12px] font-sans text-[14px] text-tn-ink bg-white outline-none focus:border-tn-teal'
+const SELECT = `${SELECT_FIELD} font-semibold`
 const SEG = 'inline-flex flex-wrap border border-[var(--panel-border)] rounded-[14px] p-1 gap-0.5 bg-white'
 const SEG_BTN = 'border-0 rounded-[10px] px-3 py-1.5 font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer'
 const segOn = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-tn-ink hover:bg-subtle')
@@ -78,7 +78,7 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
           <>
             <div className="flex flex-col gap-2">
               <span className={LBL}>Ends</span>
-              <div className={`${SEG} h-11 box-border items-center`} role="group" aria-label="Ends">
+              <div className={`${SEG} h-10 box-border items-center`} role="group" aria-label="Ends">
                 {([['never', 'Never'], ['until', 'On a day'], ['count', 'After']] as const).map(([k, l]) => (
                   <button key={k} type="button" aria-pressed={value.ends === k} className={`${SEG_BTN} ${segOn(value.ends === k)}`}
                     onClick={() => set(k === 'until' ? { ends: k, until: value.until && value.until >= date ? value.until : new Date(Date.parse(`${date}T00:00:00Z`) + 90 * 864e5).toISOString().slice(0, 10) } : k === 'count' ? { ends: k, count: value.count ?? 10 } : { ends: k })}>{l}</button>
@@ -86,7 +86,7 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
               </div>
             </div>
             {value.ends === 'until' && (
-              <DateField ariaLabel="Last day" min={date} value={value.until ?? ''} onChange={v => v && set({ until: v })} className={`${INPUT} w-[170px]`} />
+              <DateField ariaLabel="Last day" min={date} value={value.until ?? ''} onChange={v => v && set({ until: v })} className={`${DATE_FIELD_CLASS} w-[170px]`} />
             )}
             {value.ends === 'count' && (
               <label className="flex items-center gap-2 text-[13.5px] text-foreground">

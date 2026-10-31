@@ -13,6 +13,7 @@
  *                  Finance; changed by whoever keeps Rates & Costs (d-rates).
  */
 
+import { INPUT as FIELD } from '@/lib/ui/fields'
 import { useState, type ReactNode } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
@@ -51,7 +52,7 @@ const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigi
 const PAYS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
 const UNIT = { week: 'a week', month: 'a month' } as const
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white outline-none tabular-nums lining-nums focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
+const INPUT = `${FIELD} tabular-nums lining-nums`
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

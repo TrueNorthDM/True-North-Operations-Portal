@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { DATE_FIELD_CLASS } from '@/lib/ui/fields'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -73,8 +74,8 @@ const ARROW = 'w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text
 const Chevron = ({ d }: { d: string }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 const CalIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-[#5b6b82]"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
 
-/** The official closed look: the menus' height, border and corners. */
-export const DATE_FIELD = 'h-11 w-full px-3.5 bg-white border border-[var(--panel-border)] rounded-[12px] text-[14px]'
+/** The official closed look: the portal's field (lib/ui/fields.ts), full width. */
+export const DATE_FIELD = `${DATE_FIELD_CLASS} w-full`
 
 export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a day', clearable = false, disabled = false, className = DATE_FIELD, id }: {
   value: string

@@ -19,6 +19,7 @@
  * `api` handed in); the rules are the server's, and this only draws them.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useEffect, useRef, useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { BTN_ICON } from '@/lib/ui/buttons'
@@ -557,7 +558,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               {ui.memberOpen && (
                 <div className={`${MENU} top-[42px] right-0 w-[308px] p-2 gap-1.5`}>
                   <input value={ui.memberQ} onChange={e => setUi(u => ({ ...u, memberQ: e.target.value }))} autoFocus placeholder="Search people" aria-label="Search people"
-                    className="h-9 border border-[var(--panel-border)] rounded-[9px] px-2.5 font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
+                    className={INPUT} />
                   <div className="flex flex-wrap gap-1">
                     {[{ id: null as string | null, name: 'All teams', color: 'var(--faint)' }, ...data.teams.map(t => ({ id: t.id as string | null, name: t.name, color: t.color ?? 'var(--faint)' }))].map(t => {
                       const on = ui.teamF === t.id

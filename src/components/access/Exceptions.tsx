@@ -1,5 +1,6 @@
 'use client'
 
+import { DATE_FIELD_SM, INPUT_SM, TEXTAREA } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { Select } from '@/components/ui/Select'
 import { CATALOGUE, ITEM, LEVEL_LABEL, type ItemKind } from '@/lib/access/catalogue'
@@ -45,7 +46,7 @@ export function Exceptions({ data, people, onDone }: { data: AccessPageData; peo
                   <td className="px-3 py-2.5">
                     {ending === e.id ? (
                       <div className="space-y-1.5 min-w-[220px]">
-                        <input value={reason} onChange={x => setReason(x.target.value)} placeholder="Why end it now?" className="w-full rounded-[8px] border border-[var(--panel-border)] px-2 py-1 text-[12.5px]" />
+                        <input value={reason} onChange={x => setReason(x.target.value)} placeholder="Why end it now?" className={`w-full ${INPUT_SM}`} />
                         <div className="flex gap-1.5"><button type="button" className={btnNavy} disabled={reason.trim().length < 8 || pending} onClick={() => end(e.id)}>End it</button><button type="button" className={btn} onClick={() => setEnding(null)}>Cancel</button></div>
                         {error && <p className="text-[12px] text-[#b3271f] m-0">{error}</p>}
                       </div>
@@ -104,7 +105,7 @@ function AddException({ people, today, onClose, onDone }: { people: Person[]; to
             {([['1 week', addDays(today, 7)], ['End of the month', endOfMonth(today)], ['Until removed', null]] as const).map(([l, v]) => <button key={l} type="button" aria-pressed={!custom && until === v} onClick={() => { setCustom(false); setUntil(v) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${!custom && until === v ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{l}</button>)}
             <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setUntil(addDays(today, 14)) }} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${custom ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>A date…</button>
           </div>
-          {custom && <DateField value={until ?? ''} min={today} onChange={v => setUntil(v || null)} className="rounded-[9px] border border-[var(--panel-border)] px-2 py-1.5 text-[13px] text-tn-ink" clearable />}
+          {custom && <DateField value={until ?? ''} min={today} onChange={v => setUntil(v || null)} className={DATE_FIELD_SM} clearable />}
         </div></div>
       {p && item && (
         <div className="rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[12.5px]">
@@ -112,7 +113,7 @@ function AddException({ people, today, onClose, onDone }: { people: Person[]; to
         </div>
       )}
       <label className="block space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Why? Required</span>
-        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className="w-full rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[13.5px] text-tn-ink outline-none focus:border-tn-teal" /></label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className={`w-full ${TEXTAREA}`} /></label>
       {error && <p className="text-[12.5px] font-semibold text-[#b3271f] m-0">{error}</p>}
     </Modal>
   )

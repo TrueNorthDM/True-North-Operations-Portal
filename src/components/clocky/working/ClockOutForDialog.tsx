@@ -7,9 +7,10 @@
  * marked "Clocked out by" the viewer.
  */
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import type { WorkingPerson } from '@/lib/timeclock/clocky-types'
-import { BTN_DANGER, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, SectionLabel, StopIcon } from '../clock/ClockParts'
+import { BTN_DANGER, ClockField, FOCUS, HeadButton, ICON, Icon, SectionLabel, StopIcon } from '../clock/ClockParts'
 import { ClockWindow } from '../clock/ComboModals'
 import { BTN_MODAL_WHITE } from '../entries/ui'
 import { currentEntryLine, endTimeOptions } from './working-model'
@@ -46,7 +47,7 @@ export function ClockOutForDialog({ person, meName, viewerZone, nowMs, busy, con
         <label className="flex flex-col gap-[5px]">
           <SectionLabel>Reason (required)</SectionLabel>
           <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Why are you stopping this clock?"
-            className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+            className={`w-full ${TEXTAREA}`} />
         </label>
         <div className="text-[12px] text-muted leading-[1.5]">{`The entry is marked "Clocked out by ${meName}". The reason is kept in its history, and ${first} gets a notification.`}</div>
         <div className="flex justify-end gap-2">

@@ -9,6 +9,7 @@
  *   - NoteCard: the editable month narrative (admins), shown + in the PDF.
  */
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import { useRouter } from 'next/navigation'
@@ -195,7 +196,7 @@ export function NoteCard({ month, note, canEdit }: { month: string; note: string
       </div>
       {editing ? (
         <div className="space-y-2">
-          <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} placeholder="A short summary for the client (optional)…" className="w-full rounded-[10px] border border-slate-200 bg-subtle px-3 py-2 text-sm text-tn-ink focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20 resize-none" />
+          <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} placeholder="A short summary for the client (optional)…" className={`w-full ${TEXTAREA}`} />
           {error && <p className="text-xs text-[var(--bdg-red-fg)]">{error}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-sm font-(family-name:--font-display) font-bold text-muted hover:text-tn-ink">Cancel</button>

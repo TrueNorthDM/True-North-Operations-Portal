@@ -12,6 +12,7 @@
  * drag here.
  */
 
+import { INPUT, TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { alpha } from '@/components/clocky/clock/clock-model'
@@ -28,7 +29,6 @@ export interface Api2026 {
 }
 
 export const SMALL_BTN = `${BTN.smallWhite} disabled:opacity-50`
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle'
 const PLUS = 'M12 5v14M5 12h14'
 const OFF = 'text-[10.5px] font-bold rounded-full px-2 py-[3px] bg-[#f1f3f6] text-muted whitespace-nowrap'
 
@@ -103,7 +103,7 @@ export function Catalogue2026({ rows, activities, canEdit, api, run, onFields }:
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex flex-wrap gap-2.5 items-center">
         <input value={q} onChange={e => setQ(e.target.value)} aria-label="Search" placeholder="Search anything: a client, division, project or activity, e.g. translation"
-          className="w-[460px] max-w-full box-border h-[40px] px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
+          className={`w-[460px] max-w-full ${INPUT}`} />
         <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 flex-wrap" role="group" aria-label="Client">
           {([['all', 'All clients'], ...clients.map(c => [c.id, c.name])] as [number | 'all', string][]).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={client === k} onClick={() => setClient(k)}
@@ -261,7 +261,7 @@ function RowWindow({ win, rows, startClient, canEdit, api, run, onClose }: {
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>When to use</FieldLabel>
         <textarea value={use} disabled={!canEdit} rows={3} maxLength={400} onChange={e => setUse(e.target.value)}
-          className="w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] leading-[1.5] text-tn-ink bg-white outline-none focus:border-tn-teal disabled:bg-subtle" />
+          className={`w-full ${TEXTAREA} leading-[1.5]`} />
         <span className="text-[11.5px] text-muted leading-[normal]">One plain line. It shows in the clock panel, in Add time and on &quot;Which job?&quot;.</span>
       </label>
       {level === 'project' && (

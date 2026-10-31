@@ -12,6 +12,7 @@
  * until someone chooses (owner, 20 October 2026: there is no company default).
  */
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA } from '@/lib/ui/fields'
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { personHref } from '@/lib/directory/page-rights'
@@ -165,7 +166,9 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
 }
 
 // ── The form for adding someone ──
-const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
+const fieldCls = `${INPUT} w-full`
+const dateFieldCls = `${DATE_FIELD_CLASS} w-full`
+const selectFieldCls = `${SELECT_FIELD} w-full text-tn-ink`
 
 function EditBody({
   draft, set, setDraft, managerOptions, teamOptions, canTeams, cadence, setCadence,
@@ -196,7 +199,7 @@ function EditBody({
       value={value}
       onChange={onChange}
       options={[{ value: '', label: 'None' }, ...managerOptions.map(o => ({ value: o.id, label: `${o.full_name}${o.teamName ? ` · ${o.teamName}` : ''}` }))]}
-      className={fieldCls}
+      className={selectFieldCls}
       ariaLabel="Manager"
     />
   )
@@ -262,10 +265,10 @@ function EditBody({
             {draft.teams.map((row, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
-                  <Select fullWidth value={row.teamId} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))} options={teamOptions.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={fieldCls} ariaLabel="Team" />
+                  <Select fullWidth value={row.teamId} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))} options={teamOptions.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={selectFieldCls} ariaLabel="Team" />
                 </div>
                 <div className="shrink-0 w-[150px]">
-                  <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={fieldCls} ariaLabel="Team position" />
+                  <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={selectFieldCls} ariaLabel="Team position" />
                 </div>
                 <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => ({ ...t, primary: j === i })) }))} aria-label={row.primary ? 'Primary department' : 'Set as primary department'} title={row.primary ? 'Primary department' : 'Set as primary department'} className={`shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] transition-colors ${row.primary ? 'text-tn-primary bg-tn-teal-soft' : 'text-slate-300 hover:text-tn-teal hover:bg-tn-teal-soft'}`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill={row.primary ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
@@ -291,8 +294,8 @@ function EditBody({
         <div className="break-inside-avoid mb-6">
           <SectionTitle>Dates</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Joined on', <DateField value={draft.hireDate} onChange={v => set('hireDate', v)} className={fieldCls} clearable />)}
-            {field('Left on', <DateField value={draft.leftOn} onChange={v => set('leftOn', v)} className={fieldCls} clearable />)}
+            {field('Joined on', <DateField value={draft.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable />)}
+            {field('Left on', <DateField value={draft.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable />)}
           </div>
         </div>
       </div>
@@ -305,10 +308,10 @@ function EditBody({
           {draft.milestones.map((row, i) => (
             <div key={i} className="flex items-center gap-2">
               <div className="shrink-0 w-[150px]">
-                <Select fullWidth value={row.kind} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)) }))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={fieldCls} ariaLabel="Milestone type" />
+                <Select fullWidth value={row.kind} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)) }))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={selectFieldCls} ariaLabel="Milestone type" />
               </div>
               <div className="shrink-0 w-[150px]">
-                <DateField value={row.date} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)) }))} className={fieldCls} ariaLabel="Milestone date" />
+                <DateField value={row.date} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)) }))} className={dateFieldCls} ariaLabel="Milestone date" />
               </div>
               <div className="flex-1 min-w-0">
                 <input type="text" value={row.note} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)) }))} className={fieldCls} placeholder="What changed…" />
@@ -326,7 +329,7 @@ function EditBody({
       </div>
       <div className="mt-6">
         <SectionTitle>Employment history</SectionTitle>
-        <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Free-text summary (the timeline above is the structured version)…" className={`${fieldCls} min-h-[80px] resize-y leading-relaxed`} />
+        <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Free-text summary (the timeline above is the structured version)…" className={`${TEXTAREA} w-full min-h-[80px] leading-relaxed`} />
       </div>
 
     </>

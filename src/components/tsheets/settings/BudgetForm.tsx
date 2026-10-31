@@ -1,5 +1,6 @@
 'use client'
 
+import { DATE_FIELD_CLASS, INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { ConfirmModal } from './ConfirmModal'
 import { saveTrBudget } from '@/lib/tsheets/settings-actions'
@@ -114,7 +115,8 @@ export function BudgetForm({ client, current, onClose }: Props) {
     }
   }
 
-  const inputCls = 'w-full rounded-[10px] border border-slate-200 bg-subtle px-3.5 py-2.5 text-sm text-tn-ink focus:outline-none focus:border-tn-teal transition-colors'
+  const inputCls = `w-full ${INPUT}`
+  const dateCls = `w-full ${DATE_FIELD_CLASS}`
   const labelCls = 'block text-[13px] font-(family-name:--font-display) font-bold text-tn-ink mb-1.5'
   const legendCls = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-3'
 
@@ -140,11 +142,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
             </div>
             <div>
               <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
-              <DateField value={budgetStart} onChange={v => setBudgetStart(v)} className={inputCls} />
+              <DateField value={budgetStart} onChange={v => setBudgetStart(v)} className={dateCls} />
             </div>
             <div>
               <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
-              <DateField value={budgetEnd} min={budgetStart || undefined} onChange={v => setBudgetEnd(v)} className={inputCls} clearable />
+              <DateField value={budgetEnd} min={budgetStart || undefined} onChange={v => setBudgetEnd(v)} className={dateCls} clearable />
             </div>
           </div>
         </fieldset>
@@ -162,11 +164,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
               <label className={labelCls}>
                 Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-muted font-normal">(when extra is set)</span>}
               </label>
-              <DateField value={extraStart} onChange={v => setExtraStart(v)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
+              <DateField value={extraStart} onChange={v => setExtraStart(v)} disabled={!hasExtra} className={dateCls} />
             </div>
             <div>
               <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
-              <DateField value={extraEnd} min={extraStart || undefined} onChange={v => setExtraEnd(v)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} clearable />
+              <DateField value={extraEnd} min={extraStart || undefined} onChange={v => setExtraEnd(v)} disabled={!hasExtra} className={dateCls} clearable />
             </div>
           </div>
           {!hasExtra && (

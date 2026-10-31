@@ -14,7 +14,7 @@ import { allCountries } from '@/lib/countries'
 import { MILESTONE_KINDS, MILESTONE_LABEL, toMilestoneForms, type MilestoneForm } from '@/lib/milestones'
 import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS } from '@/lib/directory/people-types'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
-import { Section, TeamsList, fieldCls } from './PersonParts'
+import { Section, TeamsList, areaFieldCls, dateFieldCls, fieldCls, selectFieldCls } from './PersonParts'
 import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
 import type { Cadence } from '@/lib/timeclock/periods'
 import type { Result } from '@/lib/timeclock/clocky-types'
@@ -97,11 +97,11 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
         </Section>
         <Section title="About">
           <div className="flex flex-col gap-3.5 pt-2">
-            <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={fieldCls} clearable /></Field>
+            <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={dateFieldCls} clearable /></Field>
             <Field label="Location"><input id="pp-loc" value={d.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Field>
             <div className="flex flex-col gap-1.5">
               <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Full address</span>
-              <Select fullWidth searchable value={d.address.country} onChange={v => setAddr('country', v)} options={countries} placeholder="Select a country…" className={fieldCls} ariaLabel="Country" />
+              <Select fullWidth searchable value={d.address.country} onChange={v => setAddr('country', v)} options={countries} placeholder="Select a country…" className={selectFieldCls} ariaLabel="Country" />
               {d.address.country && (
                 <div className="flex flex-col gap-2">
                   <input value={d.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" aria-label="ZIP" />
@@ -155,7 +155,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
   })
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(x => ({ ...x, [k]: v }))
   const personSelect = (value: string, onChange: (v: string) => void, label: string) => (
-    <Select fullWidth searchable value={value} onChange={onChange} options={[{ value: '', label: 'None' }, ...people]} className={fieldCls} ariaLabel={label} />
+    <Select fullWidth searchable value={value} onChange={onChange} options={[{ value: '', label: 'None' }, ...people]} className={selectFieldCls} ariaLabel={label} />
   )
 
   return (
@@ -187,8 +187,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
               {d.teams.length === 0 && <p className="text-[12.5px] text-muted italic m-0">No teams yet, add one below.</p>}
               {d.teams.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0"><Select fullWidth value={row.teamId} onChange={v => set('teams', d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)))} options={teams.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={fieldCls} ariaLabel="Team" /></div>
-                  <div className="shrink-0 w-[120px]"><Select fullWidth value={row.position} onChange={v => set('teams', d.teams.map((t, j) => (j === i ? { ...t, position: v as 'lead' | 'member' } : t)))} options={[{ value: 'lead', label: 'Lead' }, { value: 'member', label: 'Member' }]} className={fieldCls} ariaLabel="Position" /></div>
+                  <div className="flex-1 min-w-0"><Select fullWidth value={row.teamId} onChange={v => set('teams', d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)))} options={teams.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={selectFieldCls} ariaLabel="Team" /></div>
+                  <div className="shrink-0 w-[120px]"><Select fullWidth value={row.position} onChange={v => set('teams', d.teams.map((t, j) => (j === i ? { ...t, position: v as 'lead' | 'member' } : t)))} options={[{ value: 'lead', label: 'Lead' }, { value: 'member', label: 'Member' }]} className={selectFieldCls} ariaLabel="Position" /></div>
                   <button type="button" onClick={() => set('teams', d.teams.map((t, j) => ({ ...t, primary: j === i })))} aria-label={row.primary ? 'Primary department' : 'Set as primary department'} title={row.primary ? 'Primary department' : 'Set as primary department'} className={`shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] ${row.primary ? 'text-tn-primary bg-tn-teal-soft' : 'text-slate-300 hover:text-tn-teal hover:bg-tn-teal-soft'}`}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={row.primary ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                   </button>
@@ -206,8 +206,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
             <div className="flex flex-col gap-3.5 pt-2">
               <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
               <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
-              <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={fieldCls} clearable /></Field>
-              <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={fieldCls} clearable /></Field>
+              <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable /></Field>
+              <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable /></Field>
             </div>
           </Section>
         </div>
@@ -216,8 +216,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
         <div className="flex flex-col gap-2 pt-2">
           {d.milestones.map((row, i) => (
             <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={fieldCls} ariaLabel="Milestone type" /></div>
-              <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={fieldCls} aria-label="Milestone date" /></div>
+              <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={selectFieldCls} ariaLabel="Milestone type" /></div>
+              <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={dateFieldCls} aria-label="Milestone date" /></div>
               <div className="flex-1 min-w-[160px]"><input value={row.note} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)))} className={fieldCls} placeholder="What changed…" aria-label="Milestone note" /></div>
               <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-red-50 hover:text-red-600">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -228,7 +228,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
         </div>
       </Section>
       <Section title="Employment history">
-        <textarea id="pw-history" value={d.history} onChange={e => set('history', e.target.value)} className={`${fieldCls} min-h-[90px] resize-y leading-relaxed mt-2`} placeholder="A short summary of their time here…" />
+        <textarea id="pw-history" value={d.history} onChange={e => set('history', e.target.value)} className={`${areaFieldCls} min-h-[90px] leading-relaxed mt-2`} placeholder="A short summary of their time here…" />
       </Section>
       <SaveBar
         what="Work" pending={pending} error={error} onCancel={onCancel} onSave={() => save(d)}

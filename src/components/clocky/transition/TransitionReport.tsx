@@ -17,6 +17,7 @@
  * the bell what to change (actions.ts). An admin's gaps are never sent.
  */
 
+import { DATE_FIELD_CLASS } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -35,7 +36,7 @@ import { DateField } from '@/components/ui/DateField'
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const H1 = 'm-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink'
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[14px]'
-const DATE_INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white'
+const DATE_INPUT = DATE_FIELD_CLASS
 // Problem | Date, Person, Job and fields, Hours | Client, Division, Project, Activity, Billable
 const GRID = 'grid grid-cols-[190px_110px_150px_minmax(300px,1.6fr)_80px_130px_140px_170px_190px_80px]'
 /** A whole day: a typed year passes through 0002 and 0202 before 2026, so those wait. */

@@ -433,7 +433,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         {hoursSelect}
         <label className="flex flex-col gap-[5px]">
           <FieldLabel>Note (optional)</FieldLabel>
-          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder="Anything your Team Leader should know" className={`${TEXTAREA_PLAIN} text-[14px]`} />
+          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder="Anything your Team Leader should know" className={`${TEXTAREA_PLAIN} !text-[14px]`} />
         </label>
       </PhoneSheet>
     )

@@ -6,11 +6,16 @@
  * between sections, and Raleway 10.5px uppercase pills.
  */
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA } from '@/lib/ui/fields'
 import type { ReactNode } from 'react'
 import { PILL_CLASS, type Pill } from '@/lib/directory/people-types'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 
-export const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[10px] w-full transition-all focus:outline-none focus:border-tn-teal'
+/** The person forms' fields: the portal's field (lib/ui/fields.ts), full width, with the date, menu and textarea beside it. */
+export const fieldCls = `${INPUT} w-full`
+export const dateFieldCls = `${DATE_FIELD_CLASS} w-full`
+export const selectFieldCls = `${SELECT_FIELD} w-full text-tn-ink`
+export const areaFieldCls = `${TEXTAREA} w-full`
 
 export function Section({ title, right, tag, flush, children }: {
   title: string

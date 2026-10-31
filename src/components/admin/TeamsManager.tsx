@@ -9,6 +9,7 @@
  * levels; the cards no longer carry it.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useEffect, useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
@@ -267,7 +268,7 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
               onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') submit() }}
               placeholder="e.g. Clinical Ops"
-              className="mt-1.5 w-full text-[14px] text-foreground bg-white border border-slate-300 rounded-[10px] px-3 py-2.5 focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20"
+              className={`mt-1.5 w-full ${INPUT}`}
             />
           </label>
 

@@ -6,6 +6,7 @@
  * the address and the server reads the report again (lib/timeclock/reports-data.ts).
  */
 
+import { DATE_FIELD_CLASS } from '@/lib/ui/fields'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -98,9 +99,9 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
         {q.kind === 'custom' ? (
           <div className="flex items-end gap-2">
             <label className="flex flex-col gap-[5px]"><FieldLabel>From</FieldLabel>
-              <DateField value={range.from} max={range.to} onChange={v => pickDay({ from: v })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <DateField value={range.from} max={range.to} onChange={v => pickDay({ from: v })} className={DATE_FIELD_CLASS} /></label>
             <label className="flex flex-col gap-[5px]"><FieldLabel>To</FieldLabel>
-              <DateField value={range.to} min={range.from} onChange={v => pickDay({ to: v })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <DateField value={range.to} min={range.from} onChange={v => pickDay({ to: v })} className={DATE_FIELD_CLASS} /></label>
           </div>
         ) : (
           <span className="max-md:basis-full font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink px-1.5 max-md:px-0.5 pb-2.5 max-md:pb-0 whitespace-nowrap leading-[normal]">{v.label}</span>

@@ -8,6 +8,7 @@
 // leaving them frozen would mean the settings page describes a system nobody
 // can adjust.
 
+import { DATE_FIELD_CLASS, SELECT_FIELD } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
@@ -25,7 +26,6 @@ export interface Rules {
 }
 
 const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
-const input = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
 
 // The zones anybody here actually works in. A list of 400 is a list nobody
 // reads, and a free text box is a way to save 'Amrica/New_York' by accident.
@@ -74,20 +74,20 @@ export function RulesForm({ rules }: { rules: Rules }) {
           <label className={label} htmlFor="tz">Timezone</label>
           <Select id="tz" value={r.timezone} onChange={v => set('timezone', v)}
             options={ZONES.map(z => ({ value: z, label: z.replace('_', ' ') }))}
-            ariaLabel="Timezone" className={input} />
+            ariaLabel="Timezone" className={SELECT_FIELD} />
           <span className="text-xs text-muted">Decides which day an entry belongs to.</span>
         </div>
         <div className="flex flex-col gap-1 min-w-[150px]">
           <label className={label} htmlFor="ws">Week starts</label>
           <Select id="ws" value={String(r.week_start)} onChange={v => set('week_start', Number(v))}
             options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
-            ariaLabel="Week starts" className={input} />
+            ariaLabel="Week starts" className={SELECT_FIELD} />
         </div>
       </div>
 
       <div className="border-t border-slate-100 pt-4 space-y-1">
         <label className={label} htmlFor="cut">Import cutoff</label>
-        <DateField id="cut" value={r.import_cutoff_date ?? ''} onChange={v => set('import_cutoff_date', v || null)} className={input} clearable />
+        <DateField id="cut" value={r.import_cutoff_date ?? ''} onChange={v => set('import_cutoff_date', v || null)} className={DATE_FIELD_CLASS} clearable />
         {/* The one setting here that can lose data if it is set carelessly. */}
         <p className="text-xs text-[#b45309] m-0 max-w-none">
           Set this only on the day you switch over. It stops the import reaching past that date,

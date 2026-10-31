@@ -28,6 +28,7 @@
  * (audit, 10 October 2026).
  */
 
+import { INPUT_SM } from '@/lib/ui/fields'
 import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent } from 'react'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
@@ -516,7 +517,7 @@ export function TeamPriorityEditor({
               }}
               onBlur={typePlace}
               aria-label={`New place for ${s.itemName}`}
-              className="w-full rounded-[7px] border border-tn-teal px-1.5 py-1 text-[13px] font-bold text-tn-ink outline-none"
+              className={`w-full ${INPUT_SM}`}
             />
           ) : (
             <button

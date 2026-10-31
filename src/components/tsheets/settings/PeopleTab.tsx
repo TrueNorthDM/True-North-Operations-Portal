@@ -23,6 +23,7 @@
  * leaves the grid, in Edit too; Save still saves every change.
  */
 
+import { INPUT_SM } from '@/lib/ui/fields'
 import { staleOr } from '@/lib/ui/action-error'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
@@ -484,12 +485,12 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
           value={val}
           onChange={e => onChange(e.target.value)}
           placeholder="-"
-          className={`${cadence ? 'w-[110px]' : 'w-48'} text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none`}
+          className={`${cadence ? 'w-[110px]' : 'w-48'} ${INPUT_SM} text-right tabular-nums font-semibold`}
           onFocus={e => { e.currentTarget.style.borderColor = focusColor }}
           onBlur={e => { e.currentTarget.style.borderColor = '' }}
         />
       ) : (
-        <span className={`${cadence ? 'w-[110px]' : 'w-48'} text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-3 py-1.5 bg-subtle`}>
+        <span className={`${cadence ? 'w-[110px]' : 'w-48'} h-8 box-border inline-flex items-center justify-end tabular-nums text-[12.5px] font-semibold text-tn-ink rounded-[8px] px-2.5 bg-subtle`}>
           {money(val) ?? <span className="text-slate-300">-</span>}
         </span>
       )}

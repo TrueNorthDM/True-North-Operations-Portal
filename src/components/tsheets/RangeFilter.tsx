@@ -21,6 +21,7 @@
  * What a choice MEANS lives in lib/tsheets/range.ts. This file only draws it.
  */
 
+import { DATE_FIELD_CLASS, DATE_FIELD_SM } from '@/lib/ui/fields'
 import { useEffect, useRef, useState } from 'react'
 import { Select } from '@/components/ui/Select'
 import { Segmented } from '@/components/ui/Segmented'
@@ -31,7 +32,7 @@ import {
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MonthField } from '@/components/ui/DateField'
 
-const FIELD = 'w-full rounded-[9px] border border-slate-200 bg-white px-3 py-2 text-[13px] text-tn-ink font-semibold'
+const FIELD = `w-full ${DATE_FIELD_CLASS} font-semibold`
 
 const WORDING: Record<RangeMode, string> = {
   month: 'A single month',
@@ -48,7 +49,7 @@ const SHORT: Record<RangeMode, string> = {
   custom: 'Choose months',
 }
 
-const INLINE_FIELD = 'rounded-[9px] border border-slate-200 bg-white px-3 py-[7px] text-[13px] text-tn-ink font-semibold'
+const INLINE_FIELD = `${DATE_FIELD_SM} font-semibold`
 
 export function RangeFilter(
   { value, onChange, currentMonth, modes = ['year', 'last12', 'custom'], months, floor = RANGE_FLOOR, label, align = 'left', heading = 'Months to show', layout = 'popover' }: {

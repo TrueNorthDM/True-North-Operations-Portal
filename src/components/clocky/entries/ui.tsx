@@ -15,6 +15,7 @@ import { Select, type SelectOption } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
+import { TEXTAREA as FIELD_TEXTAREA, TEXTAREA_SHAPE } from '@/lib/ui/fields'
 import { NAV_ICON } from '@/lib/nav/nav-icons'
 import type { PillTone } from '@/lib/timeclock/clocky-types'
 
@@ -135,8 +136,9 @@ export function ReadOnlyField({ label, value }: { label: string; value: string }
   )
 }
 
-export const TEXTAREA = 'w-full box-border resize-y px-3 py-2.5 border rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
-export const TEXTAREA_PLAIN = `${TEXTAREA} border-[var(--panel-border)] bg-white`
+/** The portal's textarea (lib/ui/fields.ts), full width; the warn one tinted for a required reason. */
+export const TEXTAREA = `w-full ${TEXTAREA_SHAPE}`
+export const TEXTAREA_PLAIN = `w-full ${FIELD_TEXTAREA}`
 export const TEXTAREA_WARN = `${TEXTAREA} border-[#e9d48a] bg-[var(--warn-bg)]`
 
 /** Why a Save or Send was refused, right above the buttons pressed (a tall form is scrolled to its foot). */

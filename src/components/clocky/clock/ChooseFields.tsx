@@ -10,13 +10,14 @@
  * choice as a combination.
  */
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { activityNeedsNotes } from '@/lib/timeclock/entry-rules'
 import type { ClockPanelData } from '@/lib/timeclock/clocky-types'
 import { clientsOf, divisionsOf, draftFor, fieldByKey, jobsOn, optionsOf, placeOf, projectsOf, stillToPick, type Draft } from './clock-model'
 import { BillableFromProject } from './ClockViews'
-import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, PlayIcon, SectionLabel } from './ClockParts'
+import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, ICON, Icon, PlayIcon, SectionLabel } from './ClockParts'
 
 /** A field that cannot be picked yet: drawn like Billable, with why. */
 function LockedField({ label, text }: { label: string; text: string }) {
@@ -121,7 +122,7 @@ export function ChooseFields({ data, busy, initial, hideNotes = false, onClockIn
         <label className="flex flex-col gap-[5px]">
           <SectionLabel>{notesRequired ? 'Notes (required for this Activity)' : 'Notes (optional)'}</SectionLabel>
           <textarea value={notes} onChange={e => typeNotes(e.target.value)} rows={2} placeholder="What are you working on?" aria-label="Notes"
-            className={`w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+            className={`w-full ${TEXTAREA}`} />
         </label>
       )}
 

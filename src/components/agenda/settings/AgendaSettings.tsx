@@ -8,6 +8,7 @@
  * else only reads sits in a beige block, with no "view only" badge.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -252,7 +253,7 @@ function ConnectDialog({ title, placeholder, busy, onClose, onConnect }: { title
         <FieldLabel>Google account</FieldLabel>
         <input autoFocus value={email} onChange={e => setEmail(e.target.value)} placeholder={placeholder} type="email"
           onKeyDown={e => { if (e.key === 'Enter' && email.trim()) onConnect(email) }}
-          className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13.5px] text-tn-ink outline-none bg-white focus:border-tn-teal" />
+          className={INPUT} />
       </label>
       <div className="flex justify-end gap-2">
         <button type="button" className={BTN_W} onClick={onClose}>Cancel</button>

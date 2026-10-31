@@ -20,6 +20,7 @@
  * change asks first, because it changes what every number on the card means.
  */
 
+import { INPUT, INPUT_SM } from '@/lib/ui/fields'
 import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -105,8 +106,8 @@ const iconCls = 'w-4 h-4'
 const Trash = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.9} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a1 1 0 001 1h6a1 1 0 001-1V7" /></svg>
 
 const iconBtn = 'inline-flex items-center justify-center p-1.5 rounded-md text-muted hover:text-tn-ink hover:bg-subtle transition-colors disabled:opacity-30'
-const paceInput = 'w-[68px] text-center tabular-nums font-semibold text-tn-ink bg-subtle border border-slate-200 rounded-[9px] px-2 py-1.5 text-sm focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20'
-const textInput = 'flex-1 min-w-[180px] font-(family-name:--font-display) font-semibold text-tn-ink text-sm bg-subtle border border-slate-200 rounded-[9px] px-3 py-2 focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20'
+const paceInput = `w-[68px] ${INPUT_SM} text-center tabular-nums font-semibold`
+const textInput = `flex-1 min-w-[180px] ${INPUT}`
 const fieldLabel = 'block text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-1'
 const errorText = 'mt-3 text-xs text-[var(--bdg-red-fg)]'
 

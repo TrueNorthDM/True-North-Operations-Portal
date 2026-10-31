@@ -16,6 +16,7 @@
  * request's name is its event or trip (reimbursement-rules.ts).
  */
 
+import { INPUT as FIELD } from '@/lib/ui/fields'
 import { Fragment, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -54,7 +55,7 @@ function Who({ who }: { who: NonNullable<ReimbursementsPage['rows'][number]['who
 const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
 const CAMERA = 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'
 const UPLOAD = 'M12 16V4M7 9l5-5 5 5M5 20h14'
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] tabular-nums lining-nums'
+const INPUT = `${FIELD} tabular-nums lining-nums`
 export { CATEGORIES }
 const CURRENCIES = ['USD', 'KES', 'RWF']
 
@@ -426,7 +427,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
 
   // 9A on a phone (Requests.dc.html 9Ap): the whole screen, the receipt from the camera or a file.
   if (phone) {
-    const PHONE_INPUT = `${INPUT} h-11 text-[14px]`
+    const PHONE_INPUT = `${INPUT} !h-11 !text-[14px]`
     return (
       <PhoneSheet crumb="Requests · Reimbursements" title="New reimbursement" onBack={onClose}
         footer={(
@@ -483,7 +484,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             {data.contractor
               ? <div className="text-[12px] text-muted leading-[1.45]">{usdNote}</div>
               : first.currency !== 'USD' && !isMileage(first) && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
-            <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={`${TEXTAREA_PLAIN} text-[14px]`} /></label>
+            <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={`${TEXTAREA_PLAIN} !text-[14px]`} /></label>
             <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />
             {/* Billable only matters once a client is picked; the phone design leaves it out until then. */}
             {client !== 'None' && <div className="flex flex-col gap-1.5"><FieldLabel>Billable to the client</FieldLabel>{billableSeg(billable, setBillable, false, true)}</div>}

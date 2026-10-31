@@ -9,6 +9,7 @@
  * turns red and stops Save. No "Copy last week" (removed 16 October 2026).
  */
 
+import { INPUT_SM_SHAPE } from '@/lib/ui/fields'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel, weekdayShort } from '@/lib/timeclock/format'
 import { formatClock } from '@/lib/timeclock/rounding'
@@ -124,7 +125,7 @@ export function WeekGrid({ who, days, today, model, editable, combos, onOpenAdd,
                     ) : (
                       <input value={c.text} onChange={e => onType(gridEditKey(r.key, c.date), e.target.value)}
                         aria-label={`${r.source.path}, ${dayLabel(c.date)}`} placeholder="0:00"
-                        className={`w-full box-border h-[34px] text-right px-2 border rounded-[8px] font-sans text-[13px] font-semibold text-tn-ink outline-none bg-white tabular-nums lining-nums focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] ${c.invalid || over ? 'border-[#c8323d]' : 'border-[var(--panel-border)]'}`} />
+                        className={`w-full ${INPUT_SM_SHAPE} bg-white text-right font-semibold tabular-nums lining-nums ${c.invalid || over ? 'border-[#c8323d]' : 'border-[var(--panel-border)]'}`} />
                     )}
                   </div>
                 )

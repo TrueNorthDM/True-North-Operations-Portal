@@ -9,6 +9,7 @@
  * window, since the panel's own banner sits under it.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useRef, useState, type ReactNode } from 'react'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
@@ -17,7 +18,7 @@ import type { FieldName } from '@/lib/timeclock/entry-rules'
 import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, optionsOf, sortedOptions, suggestName, valueOf, type SaveDraft } from './clock-model'
 import { ErrorBanner } from './ClockViews'
 import { ChooseFields } from './ChooseFields'
-import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
+import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
 /** Escape inside an open dropdown closes the dropdown, not the window under it. */
 const unlessMenuOpen = (close: () => void) => () => { if (!document.querySelector('[role="listbox"]')) close() }
@@ -94,7 +95,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
         <label className="flex flex-col gap-[5px]">
           <SectionLabel>Name</SectionLabel>
           <input value={save.name} onChange={e => onChange({ ...save, name: e.target.value })}
-            className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[14px] text-tn-ink ${INPUT_FOCUS}`} />
+            className={`w-full ${INPUT}`} />
         </label>
         {s2 ? (
           <ChooseFields data={data} busy={busy} hideNotes
@@ -130,7 +131,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
         <label className="flex flex-col gap-[5px]">
           <SectionLabel>Note (optional, used every time)</SectionLabel>
           <input value={save.notes} onChange={e => onChange({ ...save, notes: e.target.value })} placeholder="e.g. i7 LinkedIn Project"
-            className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
+            className={`w-full ${INPUT}`} />
         </label>
         {error && <ErrorBanner text={error} />}
         <div className="flex justify-end gap-2">

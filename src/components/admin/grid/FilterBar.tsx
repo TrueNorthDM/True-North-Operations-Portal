@@ -5,6 +5,7 @@
 // value. Each added condition shows as a removable chip (same pill language as
 // the team filters it replaces). Generic over the row type via GridColumn<T>.
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD } from '@/lib/ui/fields'
 import { useRef, useState } from 'react'
 import type { FilterCond, GridColumn, Operator } from './types'
 import { chipText, isValuelessOp, operatorsFor } from './utils'
@@ -12,7 +13,9 @@ import { Select } from '@/components/ui/Select'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { DateField } from '@/components/ui/DateField'
 
-const inputCls = 'w-full text-[13px] text-tn-ink bg-white border border-slate-200 rounded-[9px] px-2.5 py-2 focus:outline-none focus:border-tn-teal'
+const inputCls = `w-full ${INPUT}`
+const selectCls = `w-full ${SELECT_FIELD} text-tn-ink cursor-pointer`
+const dateCls = `w-full ${DATE_FIELD_CLASS}`
 const labelCls = 'font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.07em] uppercase text-muted mb-1 block'
 
 export function FilterBar<T>({ columns, conds, onChange }: {
@@ -100,7 +103,7 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                   options={[...columns].sort((a, b) => a.label.localeCompare(b.label)).map(c => ({ value: c.id, label: c.label }))}
                   placeholder="Choose a column…"
                   ariaLabel="Filter column"
-                  className={`${inputCls} cursor-pointer`}
+                  className={selectCls}
                 />
               </div>
 
@@ -114,7 +117,7 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                       onChange={v => setOp(v as Operator)}
                       options={ops.map(o => ({ value: o.op, label: o.label }))}
                       ariaLabel="Filter condition"
-                      className={`${inputCls} cursor-pointer`}
+                      className={selectCls}
                     />
                   </div>
 
@@ -130,11 +133,11 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                             options={draftCol.options}
                             placeholder="Choose…"
                             ariaLabel="Filter value"
-                            className={`${inputCls} cursor-pointer`}
+                            className={selectCls}
                           />
                         </div>
                       ) : draftCol.type === 'date' ? (
-                        <div className="mb-3.5"><DateField value={value} onChange={setValue} ariaLabel="Filter value" className={inputCls} /></div>
+                        <div className="mb-3.5"><DateField value={value} onChange={setValue} ariaLabel="Filter value" className={dateCls} /></div>
                       ) : (
                         <input
                           type={draftCol.type === 'number' ? 'number' : 'text'}

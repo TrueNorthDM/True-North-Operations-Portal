@@ -18,6 +18,7 @@
  *     flags the page, so the new tags get pasted
  */
 
+import { INPUT_SHAPE } from '@/lib/ui/fields'
 import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HreflangCodeBlock } from '@/components/HreflangCodeBlock'
@@ -259,8 +260,8 @@ export function PageDetail({
                     placeholder={host ? `https://${host}/…` : 'https://…'}
                     aria-invalid={fieldError ? true : undefined}
                     aria-describedby={fieldError ? `${errId} ${helpId}` : helpId}
-                    className={`flex-1 min-w-0 px-3 py-2 rounded-[9px] border text-sm bg-white focus:outline-none focus:ring-2 ${a.ring} ${
-                      fieldError ? 'border-red-400' : 'border-slate-200'
+                    className={`flex-1 min-w-0 ${INPUT_SHAPE} bg-white ${
+                      fieldError ? 'border-red-400' : 'border-[var(--panel-border)]'
                     }`}
                   />
                   {/* Opens the SAVED link (the field may hold unsaved typing),

@@ -10,6 +10,7 @@
  * invitation, and the DB trigger re-validates both.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { sendMagicLink, verifyCode } from '@/app/auth/actions'
@@ -143,7 +144,7 @@ export function LoginForm() {
           autoFocus
           aria-invalid={looksLikeEmail && !domainOk ? true : undefined}
           aria-describedby={looksLikeEmail && !domainOk ? 'email-hint' : undefined}
-          className="w-full rounded-xl border-[1.5px] border-slate-300 bg-card px-4 py-3 text-center text-[15px] text-tn-ink transition-colors focus:border-tn-teal focus:outline-none focus:ring-[3px] focus:ring-tn-teal/20"
+          className={`w-full ${INPUT} text-center`}
         />
         {looksLikeEmail && !domainOk && (
           <p id="email-hint" className="mt-2 text-center text-xs text-amber-700">

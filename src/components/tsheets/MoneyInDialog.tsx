@@ -21,6 +21,7 @@
  * more clicks and six more chances to leave half of it done.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { staleOr } from '@/lib/ui/action-error'
 import { Fragment, useRef, useState, useTransition } from 'react'
 import { useModal } from '@/components/ui/useModal'
@@ -31,7 +32,7 @@ import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 
-const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal text-right tabular-nums'
+const FIELD = `w-full ${INPUT} text-right tabular-nums`
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
 function monthName(ym: string): string {

@@ -1,5 +1,6 @@
 'use client'
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
@@ -39,7 +40,7 @@ export function ConfirmModal({ open, title, lines, onConfirm, onCancel, loading 
             Justification <span className="text-red-500">*</span>
           </label>
           <textarea
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+            className={`w-full ${TEXTAREA}`}
             rows={3}
             placeholder="Why is this change being made?"
             value={justification}

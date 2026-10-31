@@ -12,6 +12,7 @@
  * lib/ui/buttons; the intro runs the full width.
  */
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useEffect, useMemo, useState } from 'react'
 import { TEST_AREAS } from '@/lib/tests/data'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
@@ -248,7 +249,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                                 placeholder="Add a note: what broke, the steps to repeat it…"
                                 aria-label={`Note for ${c.id}`}
                                 rows={2}
-                                className="w-full mt-2.5 resize-y rounded-[9px] border border-slate-200 px-3 py-2 text-[13px] text-foreground bg-subtle outline-none leading-relaxed focus:ring-2 focus:ring-tn-teal/30"
+                                className={`w-full mt-2.5 ${TEXTAREA} leading-relaxed`}
                               />
                             )}
                           </div>

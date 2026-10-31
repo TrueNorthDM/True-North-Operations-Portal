@@ -9,6 +9,7 @@
  * (lib/timeclock/timesheet-review.ts); this draws it and sends the decision.
  */
 
+import { TEXTAREA_SHAPE } from '@/lib/ui/fields'
 import { useEffect, useRef, useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
@@ -436,7 +437,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
               <label className="flex flex-col gap-[5px]">
                 <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d1a]">Note to approve (required)</span>
                 <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Why these hours are fine to pay"
-                  className="w-full box-border resize-y px-3 py-2.5 border border-[#e9d48a] bg-[#fffdf6] rounded-[10px] text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
+                  className={`w-full ${TEXTAREA_SHAPE} border-[#e9d48a] bg-[#fffdf6]`} />
               </label>
             </>
           )}
@@ -486,7 +487,7 @@ function ReasonDialog({ title, text, action, warn = null, reason, setReason, bus
         <label className="flex flex-col gap-[5px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d1a]">Reason (required)</span>
           <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="What needs fixing before it comes back"
-            className="w-full box-border resize-y px-3 py-2.5 border border-[#e9d48a] bg-[#fdf8e7] rounded-[10px] text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
+            className={`w-full ${TEXTAREA_SHAPE} border-[#e9d48a] bg-[#fdf8e7]`} />
         </label>
         <div className="flex justify-end gap-2 mt-1">
           <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>

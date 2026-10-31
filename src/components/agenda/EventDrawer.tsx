@@ -10,6 +10,7 @@
  * opens the panel beside it (FindTimePanel).
  */
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA } from '@/lib/ui/fields'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
@@ -55,12 +56,11 @@ const TYPE_TILE: Record<EventType, [string, string]> = {
 
 const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
 const OPT = 'normal-case tracking-normal font-sans font-semibold'
-const INPUT = 'h-11 box-border px-3.5 border border-[var(--panel-border)] rounded-[12px] font-sans text-[14px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 const SEG = 'inline-flex flex-wrap border border-[var(--panel-border)] rounded-[14px] p-1 gap-0.5 bg-white'
 const SEG_BTN = 'border-0 rounded-[10px] px-3.5 py-2 font-(family-name:--font-display) font-extrabold text-[13.5px] cursor-pointer'
 const segOn = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-tn-ink hover:bg-subtle')
 const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13.5px] text-tn-teal hover:underline'
-const SELECT = 'h-11 px-3.5 bg-white border border-[var(--panel-border)] rounded-[12px] font-semibold text-[14px] tabular-nums'
+const SELECT = `${SELECT_FIELD} font-semibold tabular-nums`
 const TIMES = Array.from({ length: 48 }, (_, i) => i * 30).map(m => ({ value: String(m), label: clockLabel(m) }))
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const fdate = (iso: string, year = false) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' })
@@ -72,7 +72,7 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   return (
     <div className="flex flex-col gap-2 min-w-0 flex-1 basis-[150px]">
       <span className={LBL}>{label}</span>
-      <DateField value={value} min={min} onChange={v => v && onChange(v)} ariaLabel={label} className={INPUT} />
+      <DateField value={value} min={min} onChange={v => v && onChange(v)} ariaLabel={label} className={DATE_FIELD_CLASS} />
     </div>
   )
 }
@@ -308,7 +308,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
               {how === 'online' && when === 'time' && (
                 <div className="flex flex-col gap-2 flex-1 basis-[240px]">
                   <span className={LBL}>Video call</span>
-                  <div className="h-11 flex items-center gap-2.5 px-3 rounded-[12px] bg-subtle text-[13.5px] text-foreground">
+                  <div className="h-10 flex items-center gap-2.5 px-3 rounded-[10px] bg-subtle text-[13px] text-foreground">
                     <span className="w-7 h-7 rounded-[8px] bg-white flex items-center justify-center"><Icon d={TYPE_ICON.meeting} size={16} color="#1E7D7F" width={2} /></span>
                     Google Meet link, created when you save
                   </div>
@@ -357,7 +357,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
             )}
             {(typing || shownGuests.length > 0) && <span className={`${LBL} mt-1`}>{audience === 'guests' ? 'Guests' : <>Also invite <span className={OPT}>(optional)</span></>}</span>}
             {(typing || shownGuests.length > 0) && (
-              <div className={`flex flex-wrap gap-1.5 items-center ${typing ? 'border border-[var(--panel-border)] rounded-[12px] p-2 min-h-11' : ''}`}>
+              <div className={`flex flex-wrap gap-1.5 items-center ${typing ? 'border border-[var(--panel-border)] rounded-[10px] p-1.5 min-h-10 focus-within:border-tn-teal focus-within:shadow-[0_0_0_3px_rgba(30,125,127,.15)]' : ''}`}>
                 {shownGuests.map(g => (
                   <button key={g.email} type="button" title={g.email} onClick={() => setGuests(gs => gs.filter(x => x.email !== g.email))}
                     className="inline-flex items-center gap-1.5 max-w-full rounded-[8px] px-2.5 py-1 bg-subtle text-[13px] font-semibold text-tn-ink border-0 cursor-pointer truncate">
@@ -366,7 +366,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
                 {typing && (
                   <input value={q} onChange={e => { setQ(e.target.value); setGErr('') }} placeholder="Type a name or an email address" aria-label="Add a guest"
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTyped() } if (e.key === 'Backspace' && !q && guests.length) setGuests(gs => gs.slice(0, -1)) }}
-                    className="flex-1 basis-[200px] min-w-0 border-0 outline-none bg-transparent text-[14px] text-tn-ink px-1.5 py-1" />
+                    className="flex-1 basis-[200px] min-w-0 border-0 outline-none bg-transparent text-[13px] text-tn-ink placeholder:text-muted px-1.5 py-1" />
                 )}
               </div>
             )}
@@ -393,7 +393,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
           {showDesc ? (
             <label className="flex flex-col gap-2"><span className={LBL}>Description <span className={OPT}>(optional)</span></span>
               <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} maxLength={2000} placeholder="Agenda, notes for the guests"
-                className="w-full box-border resize-y px-3.5 py-2.5 border border-[var(--panel-border)] rounded-[12px] text-[14px] text-tn-ink bg-white outline-none focus:border-tn-teal" /></label>
+                className={`w-full ${TEXTAREA}`} /></label>
           ) : <button type="button" className={`${LINK} self-start`} onClick={() => setShowDesc(true)}>+ Add a description</button>}
 
           <div className="flex flex-col gap-2">

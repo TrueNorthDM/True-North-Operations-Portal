@@ -9,6 +9,7 @@
  *         or month, the client and why; what the allowance becomes
  */
 
+import { INPUT as FIELD } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -23,7 +24,7 @@ export interface ExtraApi {
 }
 
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] tabular-nums lining-nums'
+const INPUT = `${FIELD} tabular-nums lining-nums`
 
 export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: ExtraApi; initial?: { form?: boolean; draft?: Partial<Draft> } }) {
   const router = useRouter()

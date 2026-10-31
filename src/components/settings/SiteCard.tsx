@@ -16,6 +16,7 @@
  * field has a <label>, and the buttons are the portal's two (lib/ui/buttons).
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { useId, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateSiteLanguages, setLanguagePaused, saveMondayBoardId, saveSiteWpUrls } from '@/app/actions'
@@ -48,7 +49,7 @@ const BRAND: Record<'aaaf' | 'hfa', string> = {
 const PencilIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
 const CheckIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
 
-const textField = 'flex-1 min-w-0 text-sm font-semibold text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3 py-2.5 focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20 read-only:cursor-default'
+const textField = `flex-1 min-w-0 ${INPUT} read-only:bg-subtle read-only:cursor-default`
 const caption = 'block text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.09em] text-muted'
 const envLabel = 'w-[52px] text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-foreground bg-subtle rounded-[8px] py-[7px] shrink-0'
 
@@ -214,7 +215,7 @@ export function SiteCard({ site }: SiteCardProps) {
               onChange={(e) => setNewLang(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), startAdd())}
               placeholder="Language name (e.g. French)"
-              className="flex-1 min-w-[150px] text-sm font-semibold text-tn-ink bg-subtle border border-slate-200 rounded-[9px] px-3 py-2 focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20"
+              className={`flex-1 min-w-[150px] ${INPUT}`}
             />
             <button type="button" onClick={startAdd} disabled={pending} className={`${BTN.navy} disabled:opacity-50`}>Add</button>
             <button type="button" onClick={() => { setAdding(false); setNewLang(''); setError(null) }} className={BTN.white}>Cancel</button>

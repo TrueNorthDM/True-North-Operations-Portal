@@ -14,6 +14,7 @@
  * Super Admins change it; Admins read it.
  */
 
+import { INPUT, INPUT_SM, TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
@@ -39,7 +40,6 @@ export interface CatalogueApi {
 // The options table: narrower number columns on a phone, so a code (i7-WEBDVT) stays on one line.
 const OPT_COLS = 'grid-cols-[minmax(0,1fr)_92px_54px_68px] md:grid-cols-[minmax(0,1fr)_120px_110px_90px]'
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle'
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const NO_FOLDER = 'top'
 
@@ -212,7 +212,7 @@ function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }:
           <label className="flex flex-col gap-[5px]">
             <FieldLabel>When to use</FieldLabel>
             <textarea value={ed.use} disabled={!edit} rows={3} maxLength={400} onChange={e => set('use', e.target.value)}
-              className="w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] leading-[1.5] text-tn-ink bg-white outline-none focus:border-tn-teal disabled:bg-subtle" />
+              className={`w-full ${TEXTAREA} leading-[1.5]`} />
             <span className="text-[11.5px] text-muted leading-[normal]">One plain line. It shows under the job in the clock panel, in Add time and on &quot;Which job?&quot;.</span>
           </label>
           <div className="flex flex-col gap-1.5">
@@ -286,7 +286,7 @@ function Fields({ data, structure, canEdit, api, startField, say }: { data: Cata
               <div className="px-3 md:px-4 py-[7px] min-w-0">
                 {renaming === o.id
                   ? <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit(o.id, o.label)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null) }} aria-label={`Rename ${o.label}`}
-                    className="w-full h-8 box-border px-2.5 border border-tn-teal rounded-[8px] font-sans text-[13px] text-tn-ink outline-none shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
+                    className={`w-full ${INPUT_SM}`} />
                   : <span className={`text-tn-ink font-semibold ${mono ? 'font-mono' : ''}`}>{o.label}</span>}
               </div>
               <div className="px-2 md:px-3 py-[7px] text-right text-foreground tabular-nums lining-nums whitespace-nowrap">{`${o.used.toLocaleString('en-US')} entries`}</div>
@@ -305,7 +305,7 @@ function Fields({ data, structure, canEdit, api, startField, say }: { data: Cata
         {canEdit && (
           <form className="flex gap-2 px-4 py-3 border-t border-[var(--panel-border)] bg-[#faf9f5]" onSubmit={async e => { e.preventDefault(); const v = fresh.trim(); if (!v) return; const r = await settle(api.addOption({ fieldId: Number(f.id), label: v })); if (r.ok) setFresh(''); say(r) }}>
             <input value={fresh} onChange={e => setFresh(e.target.value)} placeholder="New option" maxLength={120} aria-label="New option"
-              className="flex-1 h-[38px] box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink bg-white outline-none focus:border-tn-teal" />
+              className={`flex-1 ${INPUT}`} />
             <button type="submit" className={BTN.smallWhite}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Add</button>
           </form>
         )}

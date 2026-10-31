@@ -10,6 +10,7 @@
  * with the same checks.
  */
 
+import { DATE_FIELD_CLASS, INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { EVENT_ZONES } from '@/lib/agenda/zones'
@@ -42,7 +43,6 @@ interface Form {
   from: string; to: string; zone: string; place: string; teams: string[]; client: string; desc: string; google: boolean
 }
 
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-[13px] py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
 const pill = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground')
@@ -57,7 +57,7 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   return (
     <div className="flex flex-col gap-[5px] min-w-0">
       <FieldLabel>{label}</FieldLabel>
-      <DateField value={value} min={min} onChange={onChange} ariaLabel={label} className={INPUT} />
+      <DateField value={value} min={min} onChange={onChange} ariaLabel={label} className={DATE_FIELD_CLASS} />
     </div>
   )
 }
@@ -118,7 +118,7 @@ export function NewEventDialog({ setup, api, editing, onClose, onDone }: {
       </div>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>Title</FieldLabel>
-        <input value={f.title} onChange={e => set('title', e.target.value)} placeholder="e.g. i7 site launch" maxLength={160} className={`${INPUT} text-[13.5px]`} />
+        <input value={f.title} onChange={e => set('title', e.target.value)} placeholder="e.g. i7 site launch" maxLength={160} className={INPUT} />
       </label>
       <div className="flex gap-3.5 flex-wrap items-end">
         <div className="flex flex-col gap-1.5">

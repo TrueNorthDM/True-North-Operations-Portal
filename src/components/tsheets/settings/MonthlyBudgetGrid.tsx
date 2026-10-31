@@ -5,6 +5,7 @@
 // 6-month window (current month + next 5). Opens read-only; "Edit" turns the
 // section editable with its own Review → Save.
 
+import { INPUT_SM } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
@@ -82,7 +83,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
     else { setError(res.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'num-cell w-full rounded-[8px] border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-right tabular-nums text-tn-ink focus:outline-none focus:border-tn-teal'
+  const cellInput = `num-cell w-full ${INPUT_SM} text-right tabular-nums`
   const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal px-3 py-3 whitespace-nowrap'
   const rowLabel = 'text-left text-[12px] font-(family-name:--font-display) font-bold text-tn-ink px-3 py-2.5 sticky left-0 whitespace-nowrap'
   const changeCount = diff().changes.length

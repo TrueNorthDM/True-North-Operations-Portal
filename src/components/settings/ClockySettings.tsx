@@ -15,6 +15,7 @@
  * Read only below Super Admin ("Read only at the Admin level.").
  */
 
+import { DATE_FIELD_CLASS, INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import Link from 'next/link'
@@ -33,7 +34,6 @@ import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type Toast
 import { DateField } from '@/components/ui/DateField'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
-const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink outline-none bg-white focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle disabled:text-muted'
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
 const BTN_W = `${BTN.smallWhite} disabled:opacity-50`
 const BTN_N = `${BTN.navy} disabled:opacity-50`
@@ -126,7 +126,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label className="flex flex-col gap-[5px]">
                 <span className={LABEL}>Team calendar</span>
-                <input value={team} onChange={e => setTeam(e.target.value)} disabled={!canEdit} placeholder="c_xxx@group.calendar.google.com" className={`${INPUT} font-mono text-[12.5px]`} />
+                <input value={team} onChange={e => setTeam(e.target.value)} disabled={!canEdit} placeholder="c_xxx@group.calendar.google.com" className={`${INPUT} font-mono`} />
                 <span className="text-[11.5px] text-muted">The calendar the team already uses. The portal adds PTO to it.</span>
               </label>
               {canEdit && team !== data.google.teamCalendarId && (
@@ -221,7 +221,7 @@ function GoogleAppDialog({ app, busy, onClose, onSave, onRemove }: {
       <p className="m-0 text-[13px] text-foreground leading-[1.55]">From the Google Cloud project &quot;True North Operations Portal&quot;: Google Auth Platform &gt; Clients &gt; Portal web, and the Picker key under Credentials.{app.saved ? ' Leave a secret blank to keep the one saved.' : ''}</p>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>Client ID</FieldLabel>
-        <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="000000000000-xxxx.apps.googleusercontent.com" spellCheck={false} autoComplete="off" className={`${INPUT} font-mono text-[12.5px]`} />
+        <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="000000000000-xxxx.apps.googleusercontent.com" spellCheck={false} autoComplete="off" className={`${INPUT} font-mono`} />
       </label>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>Client secret</FieldLabel>
@@ -253,7 +253,7 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>{multiline ? 'Key' : 'Token'}</FieldLabel>
         {multiline
-          ? <textarea value={v} onChange={e => setV(e.target.value)} rows={6} placeholder={placeholder} spellCheck={false} autoComplete="off" className={`${TEXTAREA_PLAIN} font-mono text-[12px]`} />
+          ? <textarea value={v} onChange={e => setV(e.target.value)} rows={6} placeholder={placeholder} spellCheck={false} autoComplete="off" className={`${TEXTAREA_PLAIN} font-mono !text-[12px]`} />
           : <input value={v} onChange={e => setV(e.target.value)} type="password" placeholder={placeholder} autoComplete="off" className={`${INPUT} font-mono`} />}
       </label>
       <div className="text-[12px] text-muted">Kept on the server only, never shown again and never sent to a browser.</div>
@@ -548,7 +548,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
           {([[1, d1, setD1, 'Wave 1: Team Leaders and above'], [2, d2, setD2, 'Wave 2: everyone else']] as const).map(([w, v, setV, label]) => (
             <label key={w} className="flex flex-col gap-[5px]">
               <span className={LABEL}>{label}</span>
-              <DateField value={v} onChange={setV} clearable ariaLabel={label} disabled={!canEdit || busy || !data.ready} className={`${INPUT} tabular-nums lining-nums`} />
+              <DateField value={v} onChange={setV} clearable ariaLabel={label} disabled={!canEdit || busy || !data.ready} className={`${DATE_FIELD_CLASS} tabular-nums lining-nums`} />
               <span className="text-[12px] text-muted">{v ? `Starts on ${startDayLabel(v)}, in each person's own time zone.` : 'Not set: nothing changes for these people yet.'}</span>
             </label>
           ))}

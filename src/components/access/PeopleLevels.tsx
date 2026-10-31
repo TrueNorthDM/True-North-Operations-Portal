@@ -1,5 +1,6 @@
 'use client'
 
+import { TEXTAREA } from '@/lib/ui/fields'
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Select } from '@/components/ui/Select'
@@ -113,7 +114,7 @@ function LevelChange({ people, base, today, initial, onClose, onDone }: {
               </div>
             )}
           <label className="block space-y-1"><span className="text-[12.5px] font-bold text-tn-ink">Why? Required</span>
-            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className="w-full rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[13.5px] text-tn-ink outline-none focus:border-tn-teal" /></label>
+            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className={`w-full ${TEXTAREA}`} /></label>
           {error && <p className="text-[12.5px] font-semibold text-[#b3271f] m-0">{error}</p>}
         </>
       )}

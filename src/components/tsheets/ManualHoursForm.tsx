@@ -6,6 +6,7 @@
  * comes in as one value and every change goes back out through `patch`.
  */
 
+import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD } from '@/lib/ui/fields'
 import { Select } from '@/components/ui/Select'
 import { MAX_HOURS_PER_ENTRY } from '@/lib/timeclock/manual-entry'
 import { monthName } from '@/lib/timeclock/periods'
@@ -15,12 +16,12 @@ import { DateField } from '@/components/ui/DateField'
 // The answers read heavier than the labels, because the answers are what
 // somebody scans back over to check the line before sending it. Placeholders
 // stay light: an absent answer should not weigh the same as a given one.
-const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal'
+const FIELD = `w-full ${INPUT}`
 // The same box for the dropdowns. Six of the ten fields were bare text with a
 // chevron while four had a white box, so more than half of them did not look
 // like fields at all, and the panel read as flat. No text colour here: the
 // Select paints its own value and placeholder.
-const FIELD_SELECT = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px]'
+const FIELD_SELECT = `w-full ${SELECT_FIELD}`
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
 export function ManualHoursForm({ options, month, form, patch, onStage, busy }: {
@@ -74,7 +75,7 @@ export function ManualHoursForm({ options, month, form, patch, onStage, busy }: 
 
         <div>
           <label htmlFor="manual-day" className={LABEL}>Day</label>
-          <DateField id="manual-day" value={entryDate} onChange={v => patch({ entryDate: v })} className={FIELD} />
+          <DateField id="manual-day" value={entryDate} onChange={v => patch({ entryDate: v })} className={`w-full ${DATE_FIELD_CLASS}`} />
         </div>
 
         <div>

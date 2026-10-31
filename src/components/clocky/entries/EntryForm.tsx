@@ -11,6 +11,7 @@
  * and an overlap the server finds opens 3F.
  */
 
+import { INPUT } from '@/lib/ui/fields'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
@@ -145,7 +146,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
           <label className="flex flex-col gap-[5px] min-w-0">
             <span className="flex items-center min-h-4"><FieldLabel>Duration</FieldLabel></span>
             <input value={f.dur} onChange={e => setForm({ dur: e.target.value, error: null })} placeholder="2h 30m"
-              className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
+              className={INPUT} />
           </label>
         )}
       </div>

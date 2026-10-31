@@ -4,6 +4,7 @@
 // expanded, below its high-level $ budget. Each change goes through the same
 // justification modal and audit trail as the rest.
 
+import { DATE_FIELD_SM, INPUT_SM } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
@@ -70,7 +71,8 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
     else { setError(res.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const cellInput = `w-full ${INPUT_SM}`
+  const cellMonth = `w-full ${DATE_FIELD_SM}`
 
   return (
     <div className="mt-4">
@@ -98,7 +100,7 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
                   </td>
                   <td className="px-4 py-2">
                     {isEd
-                      ? <MonthField value={month} onChange={setMonth} ariaLabel="Budget month" className={cellInput} />
+                      ? <MonthField value={month} onChange={setMonth} ariaLabel="Budget month" className={cellMonth} />
                       : <span className="text-slate-400">-</span>}
                   </td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">

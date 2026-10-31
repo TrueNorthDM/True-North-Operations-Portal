@@ -88,7 +88,7 @@ export function PersonRates({ name, rates }: { name: string; rates: Rates }) {
               <dd className="m-0 text-right text-[13.5px] font-semibold text-foreground tabular-nums lining-nums">
                 {draft && (r.key !== 'client' || rates.canEditClient)
                   ? <input type="number" min="0" step="0.01" inputMode="decimal" value={draft[r.key]} aria-label={r.label}
-                      onChange={e => setDraft(d => (d ? { ...d, [r.key]: e.target.value } : d))} className={`${fieldCls} w-[140px] text-right py-[7px]`} />
+                      onChange={e => setDraft(d => (d ? { ...d, [r.key]: e.target.value } : d))} className={`${fieldCls} w-[140px] text-right`} />
                   : v != null ? `${money(v)}${r.unit}` : <span className="text-muted font-normal">-</span>}
               </dd>
             </div>
