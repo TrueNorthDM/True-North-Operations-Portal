@@ -95,8 +95,11 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
   const [when, setWhen] = useState<When>(start?.when ?? typeOf(firstType).when)
   const [date, setDate] = useState(start?.date ?? today)
   const [end, setEnd] = useState(start?.end && start.end > (start?.date ?? today) ? start.end : addDays(start?.date ?? today, 2))
-  const [from, setFrom] = useState(start?.from ?? 600)
-  const [to, setTo] = useState(start?.to ?? 660)
+  // A new event starts at the current hour in DC and lasts an hour: at 2:27 PM,
+  // 2:00 to 3:00 PM (owner, 31 October 2026).
+  const [hour] = useState(() => Math.floor(localOf(Date.now(), DC).minutes / 60) * 60)
+  const [from, setFrom] = useState(start?.from ?? hour)
+  const [to, setTo] = useState(start?.to ?? hour + 60)
   const [how, setHow] = useState<'online' | 'in_person'>(start?.how ?? 'online')
   const [place, setPlace] = useState(start?.place ?? '')
   const [audience, setAudience] = useState<Audience>(start?.audience && setup.audiences.includes(start.audience) ? start.audience : 'guests')

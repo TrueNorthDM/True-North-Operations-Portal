@@ -153,6 +153,17 @@ export function Select({
     }
   }, [open])
 
+  // The menu opens on the chosen option, centred, not at the top of the list:
+  // picking 9 PM in a list of half hours meant scrolling past the whole
+  // morning (owner, 31 October 2026). Once per opening, not on every re-place.
+  const placed = open && !!pos
+  useEffect(() => {
+    const m = menuRef.current
+    if (!placed || !m) return
+    const o = m.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (o) m.scrollTop = Math.max(0, o.offsetTop - (m.clientHeight - o.offsetHeight) / 2)
+  }, [placed])
+
   const menu = open && pos
     ? createPortal(
         <div
