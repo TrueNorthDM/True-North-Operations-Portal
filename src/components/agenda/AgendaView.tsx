@@ -28,7 +28,7 @@ import type { WorkingHours } from '@/lib/agenda/working-hours'
 import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, AGENDA_H, ALL_DAY_ROWS, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
-  type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
+  type AgendaItem, type AgendaKind, type WeekEvent, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
 import { addDays } from '@/lib/timeclock/periods'
@@ -250,6 +250,50 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
 
 // ── 8B ──────────────────────────────────────────────────────────────────────
 
+/**
+ * A timed event in the week (owner, 31 October 2026): the kind's icon, the
+ * title and the Meet icon come first; the time shows only where there is room,
+ * since the card's place on the grid already says when. The card measures its
+ * own width: too narrow for a title, it keeps the icon alone.
+ */
+function WeekCard({ e, onOpen }: { e: WeekEvent; onOpen: (id: string) => void }) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const [w, setW] = useState(200)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([x]) => setW(x.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const iconOnly = w < 40, meet = e.meet && w >= 80
+  const icon = e.look.d ? <Icon d={e.look.d} size={13} width={2.3} className="flex-none" /> : null
+  return (
+    <button ref={ref} type="button" title={`${e.title}, ${e.time}`} aria-label={`${e.title}, ${e.time}`} onClick={() => onOpen(e.id)}
+      className={`absolute border-0 border-l-2 border-white rounded-[8px] text-left cursor-pointer flex overflow-hidden ${iconOnly ? 'justify-center px-0 py-[5px]' : e.short ? 'items-center px-[7px] py-0' : 'flex-col gap-0.5 px-[7px] py-[5px]'}`}
+      style={{ top: e.top, height: e.height, left: `calc(${(e.lane / e.lanes) * 100}% + 2px)`, width: `calc(${100 / e.lanes}% - 4px)`, background: e.look.bg, color: e.look.fg }}>
+      {iconOnly ? icon : e.short ? (
+        <span className="flex items-center gap-1.5 min-w-0 w-full">
+          {icon}
+          <span className="flex-1 min-w-0 text-[11.5px] font-bold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis">{e.title}</span>
+          {w >= 170 && <span className="flex-none text-[10.5px] leading-[normal] opacity-85 whitespace-nowrap">{e.start}</span>}
+          {meet && <MeetIcon size={14} className="flex-none" />}
+        </span>
+      ) : (
+        <>
+          <span className="flex items-start gap-1.5 min-w-0">
+            {icon && <span className="flex-none mt-px">{icon}</span>}
+            <span className="flex-1 min-w-0 text-[11.5px] font-bold leading-[1.25] line-clamp-2 break-words">{e.title}</span>
+            {meet && e.height < 90 && <MeetIcon size={15} className="flex-none" />}
+          </span>
+          {e.lanes === 1 && w >= 90 && <span className="text-[10.5px] leading-[normal] opacity-85 whitespace-nowrap overflow-hidden text-ellipsis">{e.time}</span>}
+          {meet && e.height >= 90 && <MeetIcon size={16} className="absolute right-[5px] bottom-[5px]" />}
+        </>
+      )}
+    </button>
+  )
+}
+
 /** The current minute in a zone, moving every 30 seconds; null until mounted, so the server never draws a time. */
 function useNow(zone: string): { date: string; minutes: number } | null {
   const [now, setNow] = useState<{ date: string; minutes: number } | null>(null)
@@ -337,15 +381,7 @@ function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: 
                 <span className="absolute -left-[5px] -top-1 w-2.5 h-2.5 rounded-full bg-[#c8323d]" />
               </div>
             )}
-            {c.events.map(e => (
-              <button key={e.id} type="button" title={`${e.title}, ${e.time}`} onClick={() => onOpen(e.id)}
-                className={`absolute border-0 border-l-2 border-white rounded-[8px] px-[7px] text-left cursor-pointer flex overflow-hidden whitespace-nowrap ${e.short ? 'flex-row items-center gap-1.5 py-0' : 'flex-col gap-0.5 py-[5px]'} ${e.meet ? 'pr-6' : ''}`}
-                style={{ top: e.top, height: e.height, left: `calc(${(e.lane / e.lanes) * 100}% + 2px)`, width: `calc(${100 / e.lanes}% - 4px)`, background: e.look.bg, color: e.look.fg }}>
-                <span className="min-w-0 shrink text-[11.5px] font-bold leading-[1.25] overflow-hidden text-ellipsis">{e.title}</span>
-                <span className={`flex-none text-[10.5px] leading-[normal] opacity-85 ${e.short ? '' : 'overflow-hidden text-ellipsis'}`}>{e.short ? e.start : e.time}</span>
-                {e.meet && <MeetIcon size={e.short ? 14 : 16} className={`absolute right-[5px] ${e.short ? 'top-1/2 -translate-y-1/2' : 'bottom-[5px]'}`} />}
-              </button>
-            ))}
+            {c.events.map(e => <WeekCard key={e.id} e={e} onOpen={onOpen} />)}
           </div>
         ))}
       </div>
