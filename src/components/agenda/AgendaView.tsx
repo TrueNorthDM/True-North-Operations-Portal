@@ -27,7 +27,7 @@ import type { Scope } from '@/lib/agenda/recurrence'
 import type { WorkingHours } from '@/lib/agenda/working-hours'
 import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, nowLine, offHours, rangeTitle, WEEK_ROW, WEEK_SHOWN_HOURS, stepAnchor, viewDays, weekModel, weekNumber,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, WEEK_SHOWN_HOURS, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -150,7 +150,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 items-start">
+      <div className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 ${view === 'month' ? 'items-stretch' : 'items-start'}`}>
         <div className="min-w-0">
           {view === 'month' && (phone
             ? <MonthPhone items={items} anchor={anchor} today={data.today} seesType={seesType} pick={pick} onPick={setPick} onOpen={setCard} />
@@ -160,7 +160,12 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} hours={data.me.hours} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
-        <ComingUp items={items} today={data.today} onOpen={setCard} />
+        {/* Month: Coming up runs the calendar's height. Week and list: the small
+            month on top to pick a week, and a shorter Coming up (owner, 31 October 2026). */}
+        <div className="flex flex-col gap-4 min-w-0">
+          {view !== 'month' && !phone && <MiniMonth anchor={anchor} today={data.today} onPick={d => go(view, d)} />}
+          <ComingUp items={items} today={data.today} onOpen={setCard} limit={view === 'month' ? 10 : 5} fill={view === 'month'} onAll={() => go('list', data.today)} />
+        </div>
       </div>
 
       {open && !editing && (
@@ -439,29 +444,77 @@ function WeekPhone({ items, anchor, today, seesType, onOpen }: { items: AgendaIt
 
 // ── Coming up ───────────────────────────────────────────────────────────────
 
-function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void }) {
-  const groups = comingUp(items, today)
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** The small month: the week shown and today marked; arrows move the month, a day opens its week. */
+function MiniMonth({ anchor, today, onPick }: { anchor: string; today: string; onPick: (day: string) => void }) {
+  const [month, setMonth] = useState(anchor.slice(0, 7) + '-01')
+  const [seen, setSeen] = useState(anchor)
+  // Following the big calendar: a week picked elsewhere brings its month here.
+  if (seen !== anchor) { setSeen(anchor); setMonth(anchor.slice(0, 7) + '-01') }
+  const weeks = miniMonth(month, anchor, today)
+  const step = (n: number) => { const [y, m] = month.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); setMonth(t.toISOString().slice(0, 10)) }
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col gap-3">
+    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between leading-[normal]">
+        <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{MONTHS[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}</span>
+        <div className="flex items-center gap-0.5">
+          <button type="button" aria-label="Previous month" onClick={() => step(-1)} className="w-7 h-7 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle"><Icon d="M15 18l-6-6 6-6" size={15} width={2.2} /></button>
+          <button type="button" aria-label="Next month" onClick={() => step(1)} className="w-7 h-7 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle"><Icon d="M9 6l6 6-6 6" size={15} width={2.2} /></button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 text-center">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className={`${LABEL} py-1`}>{d}</span>)}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {weeks.map(w => (
+          <div key={w.start} className={`grid grid-cols-7 rounded-[9px] ${w.shown ? 'bg-tn-teal-soft' : 'hover:bg-subtle'}`}>
+            {w.days.map(d => (
+              <button key={d.day} type="button" onClick={() => onPick(d.day)} aria-label={d.day} aria-current={d.today ? 'date' : undefined}
+                className="h-8 border-0 bg-transparent cursor-pointer flex items-center justify-center p-0">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[12.5px] font-bold leading-[normal] tabular-nums lining-nums ${d.today ? 'bg-tn-primary text-[#ffffff]' : w.shown ? 'text-tn-teal' : d.inMonth ? 'text-tn-ink' : 'text-[#cbd2da]'}`}>{d.n}</span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The next two weeks, a few at a time with room between them; "See all" opens the list. */
+function ComingUp({ items, today, onOpen, limit, fill, onAll }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void; limit: number; fill: boolean; onAll: () => void }) {
+  const all = comingUp(items, today)
+  // The first `limit` items, in the groups' order.
+  const before = all.map((_, i) => all.slice(0, i).reduce((n, g) => n + g.items.length, 0))
+  const groups = all.map((g, i) => ({ ...g, items: g.items.slice(0, Math.max(0, limit - before[i])) })).filter(g => g.items.length)
+  const more = all.reduce((n, g) => n + g.items.length, 0) - limit
+  return (
+    <div className={`bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col gap-4 ${fill ? 'flex-1' : ''}`}>
       <div className="flex items-baseline justify-between leading-[normal]">
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Coming up</span>
         <span className="text-[11.5px] text-muted">Next 14 days</span>
       </div>
       {groups.map(g => (
-        <div key={g.title} className="flex flex-col gap-1.5">
-          <span className={`leading-[normal] ${LABEL}`}>{g.title}</span>
+        <div key={g.title} className="flex flex-col gap-1">
+          <span className={`leading-[normal] mb-0.5 ${LABEL}`}>{g.title}</span>
           {g.items.map(it => (
-            <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="flex items-center gap-[9px] border-0 bg-transparent py-[3px] px-0 cursor-pointer text-left leading-[normal]">
-              {it.yrs ? <Anni yrs={it.yrs} size={20} compact />
-                : it.d ? <span className="w-5 h-5 rounded-[6px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={11} width={2.4} /></span>
-                : <span className="w-5 h-5 flex items-center justify-center flex-none"><span className="w-2 h-2 rounded-full" style={{ background: it.c }} /></span>}
-              <span className="flex-1 min-w-0 text-[12.5px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
+            <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="flex items-center gap-2.5 border-0 bg-transparent py-[7px] px-0 cursor-pointer text-left leading-[normal]">
+              {it.yrs ? <Anni yrs={it.yrs} size={22} compact />
+                : it.d ? <span className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={12} width={2.4} /></span>
+                : <span className="w-[22px] h-[22px] flex items-center justify-center flex-none"><span className="w-2 h-2 rounded-full" style={{ background: it.c }} /></span>}
+              <span className="flex-1 min-w-0 text-[13px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
               <span className="text-[11.5px] text-muted whitespace-nowrap">{it.when}</span>
             </button>
           ))}
         </div>
       ))}
       {!groups.length && <span className="text-[12.5px] text-muted">Nothing in the next two weeks.</span>}
+      {more > 0 && (
+        <button type="button" onClick={onAll} className={`self-start border-0 bg-transparent p-0 cursor-pointer text-tn-teal font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] hover:underline ${fill ? 'mt-auto' : ''}`}>
+          See all ({more} more)
+        </button>
+      )}
     </div>
   )
 }

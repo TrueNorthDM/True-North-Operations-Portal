@@ -210,6 +210,24 @@ export function viewDays(view: AgendaView, anchor: string): { from: string; to: 
   return { from: anchor, to: addDays(anchor, 13) }
 }
 
+/**
+ * The small month above Coming up in the week and list views (owner, 31
+ * October 2026): Sunday to Saturday rows, the week shown marked, today marked.
+ * `month` is any day of the month drawn. Pure.
+ */
+export interface MiniWeek { start: string; shown: boolean; days: { day: string; n: number; inMonth: boolean; today: boolean }[] }
+export function miniMonth(month: string, anchor: string, today: string): MiniWeek[] {
+  const { from, to } = viewDays('month', month), m = month.slice(0, 7), shownFrom = viewDays('week', anchor).from
+  const out: MiniWeek[] = []
+  for (let w = from; w <= to; w = addDays(w, 7)) {
+    out.push({
+      start: w, shown: w === shownFrom,
+      days: [...Array(7)].map((_, i) => { const d = addDays(w, i); return { day: d, n: Number(d.slice(8)), inMonth: d.startsWith(m), today: d === today } }),
+    })
+  }
+  return out
+}
+
 /** The week's number, US count (owner, 2026-10-23): weeks run Sunday to Saturday, and week 1 is the one with Jan 1. */
 export function weekNumber(iso: string): number {
   const sun = addDays(iso, -dow(iso)), sat = addDays(sun, 6)

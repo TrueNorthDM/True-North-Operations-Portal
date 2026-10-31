@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, nowLine, offHours, rangeTitle, stepAnchor, thisWeek, weekModel, WEEK_ROW, type AgendaItem } from './model'
+import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, miniMonth, nowLine, offHours, rangeTitle, stepAnchor, thisWeek, weekModel, WEEK_ROW, type AgendaItem } from './model'
 import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -206,5 +206,16 @@ describe('the hours outside work, shaded in the week', () => {
   })
   it('shades a day off whole', () => {
     expect(offHours('2026-11-01', hours)).toEqual([[0, 24 * WEEK_ROW]])
+  })
+})
+
+describe('the small month', () => {
+  it('draws the month Sunday to Saturday, with the week shown and today', () => {
+    const m = miniMonth('2026-11-20', '2026-11-04', '2026-11-03')
+    expect(m.length).toBe(5)
+    expect(m[0].days[0]).toEqual({ day: '2026-11-01', n: 1, inMonth: true, today: false })
+    expect(m.filter(w => w.shown).map(w => w.start)).toEqual(['2026-11-01'])
+    expect(m[0].days[2].today).toBe(true)
+    expect(m[4].days.at(-1)).toMatchObject({ day: '2026-12-05', inMonth: false })
   })
 })
