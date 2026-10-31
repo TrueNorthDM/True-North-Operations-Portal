@@ -390,7 +390,8 @@ export async function saveTrAssignment(input: {
 // with the Directory. Justified + audited, like the client rate.
 export async function savePersonCostRate(input: {
   personId: string
-  costRate: number
+  /** null clears it (owner, 31 October 2026: an emptied field came back). */
+  costRate: number | null
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin('d-rates')
@@ -429,7 +430,8 @@ export async function savePersonCostRate(input: {
 // answering a third question. Justified + audited like the other two.
 export async function savePersonBeRate(input: {
   personId: string
-  beRate: number
+  /** null clears it. */
+  beRate: number | null
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin('d-rates')
@@ -469,7 +471,8 @@ export async function savePersonBeRate(input: {
 // the cost rate. Edited in the Directory's Rates & Costs tab.
 export async function savePersonMonthlySalary(input: {
   personId: string
-  monthlySalary: number
+  /** null clears it. */
+  monthlySalary: number | null
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin('d-rates')

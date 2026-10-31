@@ -138,6 +138,15 @@ export function Sidebar({
     getRailCounts(countKeys.split('|')).then(c => { if (live) setCounts(prev => ({ ...prev, ...c })) }).catch(() => {})
     return () => { live = false }
   }, [countKeys, fixed, realPath, asked])
+  // A save that changes a count (Rates & Costs) asks for them again with a
+  // "rail-counts" event, and so does coming back to the tab.
+  useEffect(() => {
+    const again = () => setAsked(n => n + 1)
+    const onShow = () => { if (document.visibilityState === 'visible') again() }
+    window.addEventListener('rail-counts', again)
+    document.addEventListener('visibilitychange', onShow)
+    return () => { window.removeEventListener('rail-counts', again); document.removeEventListener('visibilitychange', onShow) }
+  }, [])
 
   const go = (key: string, href: string) => {
     setPendingKey(key)

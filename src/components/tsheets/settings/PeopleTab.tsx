@@ -409,15 +409,18 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       // Cost rate, only when it changed.
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)
       const newBe = d.be.trim() === '' ? null : Number(d.be)
-      if (newBe != null && newBe > 0 && newBe !== p.beRate) {
+      // An emptied field clears the value; before, it was skipped and the old
+      // value came back after Save (owner, 31 October 2026).
+      const changed = (v: number | null, was: number | null) => (v == null ? was != null : v > 0 && v !== was)
+      if (changed(newBe, p.beRate)) {
         ops.push(savePersonBeRate({ personId: p.id, beRate: newBe, justification: AUTO_REASON }))
       }
-      if (newCost != null && newCost > 0 && newCost !== p.costRate) {
+      if (changed(newCost, p.costRate)) {
         ops.push(savePersonCostRate({ personId: p.id, costRate: newCost, justification: AUTO_REASON }))
       }
       // Monthly salary, only when it changed.
       const newSalary = d.salary.trim() === '' ? null : Number(d.salary)
-      if (newSalary != null && newSalary > 0 && newSalary !== p.monthlySalary) {
+      if (changed(newSalary, p.monthlySalary)) {
         ops.push(savePersonMonthlySalary({ personId: p.id, monthlySalary: newSalary, justification: AUTO_REASON }))
       }
     }
@@ -446,6 +449,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
     setDrafts({})
     setPayDraft({})
     router.refresh()
+    // The rail's "Contractors with no rate" count follows at once (Sidebar.tsx).
+    window.dispatchEvent(new Event('rail-counts'))
   }
 
   if (people.length === 0) {
