@@ -270,12 +270,12 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
           <div key={i} className={`relative border-l border-[var(--row-rule)] ${c.weekend ? 'bg-[#faf9f5]' : 'bg-white'}`}>
             {wk.hours.map(h => <div key={h} className="h-12 box-border border-t border-[#f1f3f6]" />)}
             {c.events.map(e => (
-              <button key={e.id} type="button" onClick={() => onOpen(e.id)}
-                className="absolute left-1 right-1 border-0 rounded-[8px] px-[7px] py-[5px] text-left cursor-pointer flex flex-col gap-0.5 overflow-hidden whitespace-nowrap"
-                style={{ top: e.top, height: e.height, background: e.look.bg, color: e.look.fg }}>
-                <span className={`text-[11.5px] font-bold leading-[1.25] overflow-hidden text-ellipsis ${e.meet ? 'pr-5' : ''}`}>{e.title}</span>
-                <span className="text-[10.5px] leading-[normal] opacity-85">{e.time}</span>
-                {e.meet && <MeetIcon size={16} className="absolute right-[5px] bottom-[5px]" />}
+              <button key={e.id} type="button" title={`${e.title}, ${e.time}`} onClick={() => onOpen(e.id)}
+                className={`absolute border-0 border-l-2 border-white rounded-[8px] px-[7px] text-left cursor-pointer flex overflow-hidden whitespace-nowrap ${e.short ? 'flex-row items-center gap-1.5 py-0' : 'flex-col gap-0.5 py-[5px]'} ${e.meet ? 'pr-6' : ''}`}
+                style={{ top: e.top, height: e.height, left: `calc(${(e.lane / e.lanes) * 100}% + 2px)`, width: `calc(${100 / e.lanes}% - 4px)`, background: e.look.bg, color: e.look.fg }}>
+                <span className="min-w-0 shrink text-[11.5px] font-bold leading-[1.25] overflow-hidden text-ellipsis">{e.title}</span>
+                <span className={`flex-none text-[10.5px] leading-[normal] opacity-85 ${e.short ? '' : 'overflow-hidden text-ellipsis'}`}>{e.short ? e.start : e.time}</span>
+                {e.meet && <MeetIcon size={e.short ? 14 : 16} className={`absolute right-[5px] ${e.short ? 'top-1/2 -translate-y-1/2' : 'bottom-[5px]'}`} />}
               </button>
             ))}
           </div>

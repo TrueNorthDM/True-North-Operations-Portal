@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
 import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -174,5 +174,14 @@ describe('the open card of a drawer event', () => {
   it('reads Google answers', () => {
     expect(answerOf('accepted')).toBe('yes')
     expect(answerOf('needsAction')).toBe('waiting')
+  })
+})
+
+describe('events at the same time in the week', () => {
+  it('share the width side by side, and a lone event takes it all', () => {
+    expect(lanesOf([{ s: 10, e: 11 }, { s: 10.5, e: 11.5 }, { s: 12, e: 13 }])).toEqual([{ lane: 0, lanes: 2 }, { lane: 1, lanes: 2 }, { lane: 0, lanes: 1 }])
+  })
+  it('reuses a lane that came free', () => {
+    expect(lanesOf([{ s: 9, e: 12 }, { s: 9, e: 10 }, { s: 10, e: 11 }])).toEqual([{ lane: 0, lanes: 2 }, { lane: 1, lanes: 2 }, { lane: 1, lanes: 2 }])
   })
 })

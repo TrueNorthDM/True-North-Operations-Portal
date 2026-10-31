@@ -80,7 +80,7 @@ export function Select({
   id?: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null)
   const [query, setQuery] = useState(defaultQuery)
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -122,8 +122,11 @@ export function Select({
       const flip = below < Math.min(MAX_MENU_PX, above) && above > below
       const space = Math.max(MIN_MENU_PX, Math.min(MAX_MENU_PX, flip ? above : below))
 
+      // Opened upwards it hangs from just above the trigger, whatever its real
+      // height: placing it by its tallest possible height left a short list
+      // floating far above the field (owner, 31 October 2026).
       setPos({
-        top: flip ? Math.max(EDGE, r.top - GAP - space) : r.bottom + GAP,
+        ...(flip ? { bottom: window.innerHeight - r.top + GAP } : { top: r.bottom + GAP }),
         left: Math.max(8, left),
         width: r.width,
         maxHeight: space,
@@ -153,7 +156,7 @@ export function Select({
         <div
           ref={menuRef}
           role="listbox"
-          style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width, maxHeight: pos.maxHeight }}
+          style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left, minWidth: pos.width, maxHeight: pos.maxHeight }}
           className="z-[9999] w-max max-w-[min(84vw,360px)] overflow-auto bg-white border border-[var(--panel-border)] rounded-[11px] shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)] p-1.5"
         >
           {searchable && (

@@ -328,7 +328,31 @@ export function monthCells(items: readonly AgendaItem[], anchor: string, today: 
 // ── 8B Week ───────────────────────────────────────────────────────────────────
 
 export interface WeekBar { id: string; col: string; row: number; label: string; title: string; look: Look }
-export interface WeekEvent { id: string; title: string; time: string; top: number; height: number; look: Look; meet: boolean }
+/**
+ * A timed event in the week grid. `lane` of `lanes`: events at the same time
+ * share the day's width side by side, as Google Calendar does (owner, 31
+ * October 2026). `short`: too low for two lines, so title and start share one.
+ */
+export interface WeekEvent { id: string; title: string; time: string; start: string; top: number; height: number; look: Look; meet: boolean; lane: number; lanes: number; short: boolean }
+
+/** Side-by-side lanes for overlapping events: each takes the first lane free, and a group of overlapping events shares one lane count. */
+export function lanesOf(evs: readonly { s: number; e: number }[]): { lane: number; lanes: number }[] {
+  const order = evs.map((x, i) => i).sort((p, q) => evs[p].s - evs[q].s || evs[q].e - evs[p].e)
+  const out: { lane: number; lanes: number }[] = evs.map(() => ({ lane: 0, lanes: 1 }))
+  let group: number[] = [], groupEnd = -Infinity, ends: number[] = []
+  const close = () => { const n = Math.max(1, ends.length); for (const i of group) out[i].lanes = n; group = []; ends = [] }
+  for (const i of order) {
+    const { s, e } = evs[i]
+    if (s >= groupEnd) { close(); groupEnd = -Infinity }
+    let lane = ends.findIndex(end => end <= s)
+    if (lane < 0) { lane = ends.length; ends.push(e) } else ends[lane] = e
+    out[i].lane = lane
+    group.push(i)
+    groupEnd = Math.max(groupEnd, e)
+  }
+  close()
+  return out
+}
 export interface WeekModel {
   heads: { d: string; n: number; today: boolean }[]
   bars: WeekBar[]
@@ -362,10 +386,17 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
     bars, hours,
     cols: days.map(d => ({
       weekend: isWeekend(d),
-      events: timed.filter(x => x.a === d).map(x => ({
-        id: x.id, title: x.title ?? '', time: `${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`,
-        top: (x.s! - first) * WEEK_ROW + 2, height: Math.max(30, ((x.e ?? x.s! + 1) - x.s!) * WEEK_ROW - 4), look: look(x), meet: !!meetOf(x),
-      })),
+      events: (() => {
+        const day = timed.filter(x => x.a === d)
+        const ln = lanesOf(day.map(x => ({ s: x.s!, e: Math.max(x.e ?? x.s! + 1, x.s! + 0.5) })))
+        return day.map((x, i) => {
+          const height = Math.max(22, ((x.e ?? x.s! + 1) - x.s!) * WEEK_ROW - 4)
+          return {
+            id: x.id, title: x.title ?? '', time: `${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`, start: hourLabel(x.s!),
+            top: (x.s! - first) * WEEK_ROW + 2, height, look: look(x), meet: !!meetOf(x), ...ln[i], short: height < 44,
+          }
+        })
+      })(),
     })),
   }
 }

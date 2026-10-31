@@ -25,7 +25,8 @@ import { readHours, workingIntervals } from './working-hours'
 
 export interface GuestOption { personId: string; name: string; teamIds: string[]; emails: { email: string; tag: string }[] }
 export interface DrawerTeam { id: string; name: string; color: string; count: number }
-export interface DrawerAccount { id: number; email: string }
+/** `team`: the team calendar (office@), which anyone may send an event from (Agenda settings says so). */
+export interface DrawerAccount { id: number; email: string; team?: boolean }
 
 export interface DrawerSetup {
   /** `emails`: the creator's own addresses, so they can invite themselves at another one (owner, 31 October 2026). */
@@ -82,7 +83,8 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
   if (!access.personId) return null
   const me = access.personId, level = access.level as AccessLevel
   const dir = await loadDirectory()
-  const [{ people, accounts }, levels] = await Promise.all([addressBook(dir), allLevels()])
+  const [{ people, accounts }, levels, teamRes] = await Promise.all([addressBook(dir), allLevels(),
+    createAdminClient().from('agenda_accounts').select('id, email').eq('team_calendar', true).maybeSingle()])
   const led = dir.led.get(me) ?? new Set<string>()
   const allTeams = [...dir.teams.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
   const mine = new Set(teamsFor(level, led, allTeams.map(t => t.id)))
@@ -94,7 +96,8 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
     audiences: audiencesFor(level, led.size, levels),
     teams: allTeams.filter(t => mine.has(t.id)).map(t => ({ id: t.id, name: t.name, color: teamColour(t.color, t.name), count: count(t.id) })),
     people: people.filter(p => p.id !== me && p.emails.length).map(p => ({ personId: p.id, name: p.name, teamIds: p.teamIds, emails: p.emails })),
-    accounts: accounts.filter(a => a.person_id === me).map(a => ({ id: a.id, email: a.email })),
+    accounts: [...accounts.filter(a => a.person_id === me).map(a => ({ id: a.id, email: a.email })),
+      ...(teamRes.data ? [{ id: teamRes.data.id as number, email: teamRes.data.email as string, team: true }] : [])],
     allCount: people.filter(p => p.id !== me).length,
     clients,
   }

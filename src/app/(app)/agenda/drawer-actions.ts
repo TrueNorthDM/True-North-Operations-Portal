@@ -53,7 +53,8 @@ async function save(input: DrawerInput, id: number | null): Promise<Done> {
   const dir = await loadDirectory()
   const r = checkDrawer(input, { level: viewer.level, led: viewer.led, allLevels: await allLevels(), teamIds: [...dir.teams.keys()] })
   if (!r.ok) return no(r.error)
-  const { data: acct } = await c.from('agenda_accounts').select('id, source').eq('id', r.row.sent_from_account_id).eq('person_id', access.personId).maybeSingle()
+  // Their own account, or the team calendar (office@), which anyone may send from.
+  const { data: acct } = await c.from('agenda_accounts').select('id, source').eq('id', r.row.sent_from_account_id).or(`person_id.eq.${access.personId},team_calendar.eq.true`).maybeSingle()
   if (!acct) return no('That account is no longer connected. Select another one to send from.')
 
   const google = acct.source === 'google'

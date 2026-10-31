@@ -102,7 +102,9 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
   const [client, setClient] = useState(start?.client ?? '')
   const [desc, setDesc] = useState(start?.description ?? '')
   const [showDesc, setShowDesc] = useState(!!start?.description)
-  const [account, setAccount] = useState<number | null>(start?.accountId ?? (setup.accounts.length === 1 ? setup.accounts[0].id : null))
+  // One account of their own is picked for them; the team calendar is only ever chosen on purpose.
+  const own = setup.accounts.filter(a => !a.team)
+  const [account, setAccount] = useState<number | null>(start?.accountId ?? (own.length === 1 ? own[0].id : null))
   const [typeOpen, setTypeOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -387,7 +389,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
                 <Link href="/agenda/settings" className="inline-flex items-center rounded-[10px] px-3 py-2 bg-tn-teal text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px]">Connect a Google account</Link>
               </div>
             ) : (
-              <Select value={account == null ? '' : String(account)} placeholder="Select account" options={setup.accounts.map(a => ({ value: String(a.id), label: `From ${a.email}` }))}
+              <Select value={account == null ? '' : String(account)} placeholder="Select account" options={setup.accounts.map(a => ({ value: String(a.id), label: a.team ? `From ${a.email} (team calendar)` : `From ${a.email}` }))}
                 onChange={v => { setAccount(v ? Number(v) : null); setFromErr(false) }} fullWidth ariaLabel="Send from"
                 className={`${SELECT} ${fromErr ? '!border-[#d98c1f] shadow-[0_0_0_3px_rgba(217,140,31,.15)]' : ''}`} />
             )}
