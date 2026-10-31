@@ -12,11 +12,12 @@ import { chipText, isValuelessOp, operatorsFor } from './utils'
 import { Select } from '@/components/ui/Select'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { DateField } from '@/components/ui/DateField'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 const inputCls = `w-full ${INPUT}`
 const selectCls = `w-full ${SELECT_FIELD} text-tn-ink cursor-pointer`
 const dateCls = `w-full ${DATE_FIELD_CLASS}`
-const labelCls = 'font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.07em] uppercase text-muted mb-1 block'
+const labelCls = `${FIELD_LABEL} mb-1 block`
 
 export function FilterBar<T>({ columns, conds, onChange }: {
   columns: GridColumn<T>[]

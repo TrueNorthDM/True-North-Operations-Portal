@@ -23,6 +23,7 @@ import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Catalogue2026, SMALL_BTN, Switch } from './JobCatalogue2026'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 /** A call that never answered (the connection dropped) reads as a refusal, so busy resets and the toast says so. */
@@ -40,7 +41,7 @@ export interface CatalogueApi {
 
 // The options table: narrower number columns on a phone, so a code (i7-WEBDVT) stays on one line.
 const OPT_COLS = 'grid-cols-[minmax(0,1fr)_92px_54px_68px] md:grid-cols-[minmax(0,1fr)_120px_110px_90px]'
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
+const LABEL = FIELD_LABEL
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const NO_FOLDER = 'top'
 

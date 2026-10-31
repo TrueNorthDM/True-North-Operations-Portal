@@ -29,6 +29,7 @@ import { runPanelOp, type Runner } from './needs-you-actions'
 import { DUE_FG, TypeChip } from './needs-you-ui'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { Tabs } from '@/components/ui/Tabs'
+import { CARD } from '@/lib/ui/type'
 
 const LABEL: Record<TabKey, string> = { needs: 'Needs you', work: 'My Work', mine: 'Requests' }
 
@@ -90,7 +91,7 @@ export function NeedsYouCard({ data, run, className = '' }: {
   const ran = () => { if (!run) startTransition(() => router.refresh()) }
 
   return (
-    <div ref={card} className={`flex flex-col bg-white rounded-[18px] border border-[var(--panel-border)] px-[22px] py-2 max-lg:max-h-[420px] ${className}`}>
+    <div ref={card} className={`${CARD} flex flex-col px-[22px] py-2 max-lg:max-h-[420px] ${className}`}>
       <Tabs label="What needs you" idPrefix="home-tab" controls="home-tab-list" value={current[0]} onChange={setTab}
         items={tabs.map(([k, t]) => ({ key: k, label: LABEL[k], count: tabCount(k, rowsOf(k, t), done) }))} />
 

@@ -24,6 +24,7 @@ import { ROUTES } from '@/lib/nav/routes'
 import { SITE_BRAND } from './site-brand'
 import { HrefLinksReadError } from './ReadError'
 import { attempt } from './load'
+import { CARD } from '@/lib/ui/type'
 
 export async function SiteListPage({ code }: { code: SiteCode }) {
   const brand = SITE_BRAND[code]
@@ -52,7 +53,7 @@ export async function SiteListPage({ code }: { code: SiteCode }) {
         </div>
       </div>
 
-      <div className="rounded-xl bg-white border border-slate-200 p-5">
+      <div className={`${CARD} p-5`}>
         <div className="flex items-center justify-between text-sm mb-3">
           <span id={`${code}-progress`} className="font-bold text-tn-ink">Overall progress</span>
           <span className="text-muted">{done} / {rows.length} pages complete</span>

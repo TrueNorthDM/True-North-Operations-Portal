@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation'
 import { useEditing } from './editing-context'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN } from '@/lib/ui/buttons'
+import { SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 export interface SecretInfo {
   exists: boolean
@@ -123,10 +124,10 @@ export function SecretField({
   }
 
   return (
-    <section className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
+    <section className={`${CARD} p-6 space-y-4`}>
       {confirmDialog}
       <div>
-        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <h2 className={SECTION_TITLE}>{title}</h2>
         <p className="text-sm text-slate-500 mt-0.5">{description}</p>
       </div>
 

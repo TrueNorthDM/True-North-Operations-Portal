@@ -6,6 +6,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
 
 export const UPDATED = 'October 30, 2026'
 export const CONTACT = 'office@truenorthdigitalmarketing.com'
@@ -16,7 +17,7 @@ export function LegalPage({ title, children }: { title: string; children: React.
       <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} priority className="h-10 w-auto" />
       <article className="bg-white rounded-[20px] shadow-[0_10px_30px_rgba(1,35,88,.10)] w-full max-w-[860px] px-6 py-8 md:px-10 flex flex-col gap-4 text-[15px] leading-[1.6] text-foreground">
         <header className="flex flex-col gap-1">
-          <h1 className="m-0 font-(family-name:--font-display) font-black text-[28px] text-tn-ink">{title}</h1>
+          <h1 className={PAGE_TITLE}>{title}</h1>
           <p className="m-0 text-[13px] text-muted">True North Operations Portal. Last updated {UPDATED}.</p>
         </header>
         {children}
@@ -30,7 +31,7 @@ export function LegalPage({ title, children }: { title: string; children: React.
 }
 
 export function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="m-0 mt-3 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">{children}</h2>
+  return <h2 className={`${SECTION_TITLE} mt-3`}>{children}</h2>
 }
 
 export function List({ items }: { items: React.ReactNode[] }) {

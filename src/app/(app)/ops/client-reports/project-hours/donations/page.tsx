@@ -21,6 +21,7 @@ import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { ROUTES } from '@/lib/nav/routes'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const metadata = { title: 'Donation records' }
 export const dynamic = 'force-dynamic'
@@ -51,7 +52,7 @@ export default async function DonationRecordsPage(
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="min-w-0">
           <Breadcrumb parents={[ROUTES.clientReports, ROUTES.projectHours]} now="Donation records" />
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
+          <h1 className={PAGE_TITLE}>
             Donation records
           </h1>
           {/* One line on a normal screen. Nothing constrains its width, so it

@@ -1,3 +1,4 @@
+import { CARD } from '@/lib/ui/type'
 /**
  * What a page looks like before its data arrives.
  *
@@ -44,7 +45,7 @@ export function PageSkeleton() {
         </div>
       </div>
 
-      <div className="rounded-[14px] border border-slate-200 bg-white p-5 space-y-4" aria-hidden="true">
+      <div className={`${CARD} p-5 space-y-4`} aria-hidden="true">
         {[0, 1, 2, 3, 4, 5].map(i => (
           <div key={i} className="flex items-center gap-4">
             <div className={`${bar} h-4 w-1/4`} />

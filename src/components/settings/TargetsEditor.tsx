@@ -34,6 +34,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import { Segmented } from '@/components/ui/Segmented'
 import type { TargetsBoard as TargetsBoardInfo } from '@/lib/boards/targets-data'
 import { isCycled, shortDay, WEEKLY } from '@/lib/boards/publishing-cycles'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 // ── Language dots, flag colours, keyed by the Monday label text ─────────────
 const LANG_DOT: Record<string, string> = {
@@ -108,7 +109,7 @@ const Trash = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" str
 const iconBtn = 'inline-flex items-center justify-center p-1.5 rounded-md text-muted hover:text-tn-ink hover:bg-subtle transition-colors disabled:opacity-30'
 const paceInput = `w-[68px] ${INPUT_SM} text-center tabular-nums font-semibold`
 const textInput = `flex-1 min-w-[180px] ${INPUT}`
-const fieldLabel = 'block text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-1'
+const fieldLabel = `block ${FIELD_LABEL} mb-1`
 const errorText = 'mt-3 text-xs text-[var(--bdg-red-fg)]'
 
 export function TargetsEditor({
@@ -566,7 +567,7 @@ function AuditHistory({ audit }: { audit: AuditLogRow[] }) {
         {audit.length > 0 && <span className="text-[12.5px] text-muted">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>}
       </div>
       {audit.length === 0 ? (
-        <div className="rounded-[12px] border border-slate-200 bg-white p-8 text-center space-y-2">
+        <div className={`${CARD} p-8 text-center space-y-2`}>
           <p className="text-sm font-medium text-tn-ink">No changes recorded yet</p>
           <p className="text-xs text-muted">Every target change will appear here with who changed it and when.</p>
         </div>
@@ -576,7 +577,7 @@ function AuditHistory({ audit }: { audit: AuditLogRow[] }) {
             const actor = actorFrom(e.user_email)
             const { subject, change } = describeAudit(e)
             return (
-              <div key={e.id} className="rounded-[12px] border border-slate-200 bg-white px-4 py-3.5 flex items-start gap-3">
+              <div key={e.id} className={`${CARD} px-4 py-3.5 flex items-start gap-3`}>
                 <span className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[11px] mt-0.5">{initialsOf(actor)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13.5px] leading-snug">

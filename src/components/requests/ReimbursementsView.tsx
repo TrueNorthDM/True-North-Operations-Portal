@@ -33,6 +33,7 @@ import { RmbDocsList, type DocFilter, type MarkRmbPaid } from './RmbDocsList'
 import { CATEGORIES, MEAL_HINT, MEALS_TRAVEL, MILEAGE, mileageAmount, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
@@ -109,7 +110,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
       <div>
         <Breadcrumb parents={['/requests']} now="Reimbursements" />
         <div className="flex items-center justify-between gap-3.5 flex-wrap mt-1.5">
-          <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[1.15] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Reimbursements</h1>
+          <h1 className={PAGE_TITLE}>Reimbursements</h1>
           <button type="button" onClick={() => setForm(true)} className={BTN.navy}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New request
           </button>

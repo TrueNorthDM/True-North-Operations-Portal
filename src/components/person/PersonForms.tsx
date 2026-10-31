@@ -20,6 +20,7 @@ import type { Cadence } from '@/lib/timeclock/periods'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import type { CadencePreview } from '@/lib/timeclock/clocky-periods-data'
 import { DateField } from '@/components/ui/DateField'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 /** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
 export interface CadenceActions {
@@ -32,7 +33,7 @@ export interface CadenceActions {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5 min-w-0">
-      <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{label}</span>
+      <span className={FIELD_LABEL}>{label}</span>
       {children}
     </label>
   )
@@ -90,7 +91,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
               <span className="text-[11px] text-muted">Include the country code so the flag shows.</span>
             </Field>
             <div className="flex flex-col gap-1.5">
-              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">WhatsApp, same number?</span>
+              <span className={FIELD_LABEL}>WhatsApp, same number?</span>
               <Seg value={d.whatsappSame} options={[{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }]} onPick={v => set('whatsappSame', v)} />
             </div>
           </div>
@@ -100,7 +101,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
             <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={dateFieldCls} clearable /></Field>
             <Field label="Location"><input id="pp-loc" value={d.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Field>
             <div className="flex flex-col gap-1.5">
-              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Full address</span>
+              <span className={FIELD_LABEL}>Full address</span>
               <Select fullWidth searchable value={d.address.country} onChange={v => setAddr('country', v)} options={countries} placeholder="Select a country…" className={selectFieldCls} ariaLabel="Country" />
               {d.address.country && (
                 <div className="flex flex-col gap-2">
@@ -165,10 +166,10 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
           <div className="flex flex-col gap-3.5 pt-2">
             <Field label="Full name"><input id="pw-name" value={d.fullName} onChange={e => set('fullName', e.target.value)} className={fieldCls} /></Field>
             <Field label="Job title"><input id="pw-title" value={d.title} onChange={e => set('title', e.target.value)} className={fieldCls} /></Field>
-            <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
-            <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
+            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
+            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
             <Field label="Weekly hours"><input id="pw-hours" type="number" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} /></Field>
-            <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Status</span><Seg value={d.status} options={[{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }]} onPick={v => set('status', v as 'active' | 'inactive')} /></div>
+            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Status</span><Seg value={d.status} options={[{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }]} onPick={v => set('status', v as 'active' | 'inactive')} /></div>
             <Field label="True North email"><input id="pw-tn" type="email" value={d.emails.trueNorth} onChange={e => set('emails', { ...d.emails, trueNorth: e.target.value })} className={fieldCls} /></Field>
             <Field label="GoodNews email (they sign in with it)"><input id="pw-gna" type="email" value={d.emails.goodnews} onChange={e => set('emails', { ...d.emails, goodnews: e.target.value })} className={fieldCls} /></Field>
             <Field label="COE email"><input id="pw-coe" type="email" value={d.emails.coe} onChange={e => set('emails', { ...d.emails, coe: e.target.value })} className={fieldCls} /></Field>
@@ -204,8 +205,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
           </Section>
           <Section title="Reporting and dates">
             <div className="flex flex-col gap-3.5 pt-2">
-              <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
-              <div className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
               <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable /></Field>
               <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable /></Field>
             </div>

@@ -32,6 +32,7 @@ import {
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { zoneDate } from '@/lib/notifications/schedule'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -72,7 +73,7 @@ export default async function MyWorkPage(
           one control rather than as tabs down the page. */}
       <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
         <div>
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">
+          <h1 className={PAGE_TITLE}>
             {heading.title}
           </h1>
           <p className="text-[14.5px] text-muted mt-1.5 m-0">{heading.desc}</p>

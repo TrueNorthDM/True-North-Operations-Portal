@@ -20,8 +20,9 @@ import { ReportSheet } from './ReportSheet'
 import { DateField } from '@/components/ui/DateField'
 import { BTN } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
+import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
 
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
+const LABEL = FIELD_LABEL
 const WHITE_BTN = BTN.white
 const TONE = { ink: 'text-tn-ink', ok: 'text-[#0d7a4f]', bad: 'text-[#c8323d]' } as const
 /** A whole day the report can read: a typed year passes through 0002 and 0202 before 2026, so those wait. */
@@ -75,7 +76,7 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
       <div className="flex items-end justify-between gap-3.5 flex-wrap">
         <div>
           <Breadcrumb parents={['/clocky-hours']} now="Reports" />
-          <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Reports</h1>
+          <h1 className={PAGE_TITLE}>Reports</h1>
           <p className="m-0 mt-1 text-[13.5px] text-muted">{page.scopeLine}</p>
         </div>
         <div className="flex gap-2">

@@ -24,6 +24,7 @@ import { saveHiddenColumns } from '@/app/(app)/settings/actions'
 import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
 import { BTN } from '@/lib/ui/buttons'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 type Tab = 'people' | 'emails' | 'teams' | 'access' | 'portal'
 
@@ -86,7 +87,7 @@ export function DirectoryTabs({
       {/* heading row */}
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="max-w-[880px]">
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-[normal]" style={{ letterSpacing: '-.01em' }}>Directory</h1>
+          <h1 className={PAGE_TITLE}>Directory</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
             Add or edit people, and manage teams and who is in them.
           </p>

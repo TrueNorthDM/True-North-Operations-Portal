@@ -6,6 +6,7 @@
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { PortalHistory } from '@/components/history/PortalHistory'
 import { TAB, TAB_LIST, tabClass } from '@/lib/ui/tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const metadata = { title: 'History' }
 
@@ -15,7 +16,7 @@ export default function HistoryPage() {
       <div className="space-y-4">
         <div>
           <Breadcrumb self="/history" />
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">History</h1>
+          <h1 className={PAGE_TITLE}>History</h1>
           <p className="text-[14px] text-muted mt-1 m-0">How things came to be at True North, told with dates. The portal&apos;s story comes first; more histories will join it here.</p>
         </div>
         <nav aria-label="Histories" className={TAB_LIST}>

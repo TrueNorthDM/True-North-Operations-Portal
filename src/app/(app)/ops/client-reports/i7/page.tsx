@@ -32,6 +32,7 @@ import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ClientReportTabs } from '@/components/ClientReportTabs'
 import { ROUTES } from '@/lib/nav/routes'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -93,7 +94,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Breadcrumb parents={[ROUTES.clientReports]} self={ROUTES.i7} />
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Client Report · i7</h1>
+          <h1 className={PAGE_TITLE}>Client Report · i7</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
             Hours, cost and budget usage for i7 Marketing.
           </p>

@@ -42,6 +42,7 @@ import { EventDrawer, type DrawerApi } from './EventDrawer'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
 import type { Answer, DrawerEdit } from '@/lib/agenda/model'
 import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
+import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
 
 export interface AgendaData {
   view: View
@@ -69,7 +70,7 @@ export interface AgendaData {
 export interface EventEditApi { update: UpdateEvent; remove: DeleteEvent }
 
 const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const LABEL = FIELD_LABEL
 /** The week number (owner, 2026-10-23): not in the handoff. */
 const WEEK_TAG = 'rounded-[6px] px-2 py-[3px] bg-tn-teal-soft text-tn-teal font-(family-name:--font-display) font-extrabold text-[11.5px] leading-[normal] whitespace-nowrap tabular-nums lining-nums'
 /** A work anniversary's HR badge (TenureBadge), compact in the small chips. */
@@ -111,7 +112,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
       <div className="flex items-end justify-between gap-3.5 flex-wrap">
         <div>
           <Breadcrumb self="/agenda" />
-          <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Agenda</h1>
+          <h1 className={PAGE_TITLE}>Agenda</h1>
         </div>
         {(drawer || data.create) && (
           <button type="button" onClick={() => setCreating(true)} className={BTN.navy}>

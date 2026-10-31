@@ -17,6 +17,7 @@ import { previewHref } from '@/lib/auth/view-as-server'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { TransitionLive } from '@/components/clocky/transition/TransitionReport'
 import { loadTransition } from '@/lib/timeclock/transition-data'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'TSheets transition' }
@@ -31,7 +32,7 @@ export default async function TransitionPage({ searchParams }: { searchParams: P
     return (
       <div className="space-y-2">
         <Breadcrumb parents={['/clocky-hours']} now="TSheets transition" />
-        <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink">TSheets transition</h1>
+        <h1 className={PAGE_TITLE}>TSheets transition</h1>
         <p role="alert" className="m-0 text-[13.5px] text-[#c8323d]">The TSheets entries could not be read. Try again in a moment.</p>
       </div>
     )

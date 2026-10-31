@@ -24,6 +24,7 @@ import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-
 import { ROUTES } from '@/lib/nav/routes'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { BTN } from '@/lib/ui/buttons'
+import { SECTION_TITLE, FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 const monthLabel = (ym: string) => `${MONTH_SHORT[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 
@@ -60,7 +61,7 @@ export function DonationRecords(
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="text-[11.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Year</span>
+          <span className={FIELD_LABEL}>Year</span>
           {/* Offered from the years that exist, so it never lists an empty one. */}
           <div className="flex items-center gap-1.5">
             <YearChip label="All" active={year === null} href={`${ROUTES.projectHours}/donations`} />
@@ -77,11 +78,11 @@ export function DonationRecords(
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">Entries</h2>
+        <h2 className={SECTION_TITLE}>Entries</h2>
         {entries.length === 0 ? (
           <Empty>Nothing has been entered{year ? ` for ${year}` : ''} yet.</Empty>
         ) : (
-          <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+          <div className={`${CARD} overflow-x-auto`}>
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-subtle border-b border-slate-200">
@@ -113,7 +114,7 @@ export function DonationRecords(
 
       <section className="space-y-3">
         <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">Change log</h2>
+          <h2 className={SECTION_TITLE}>Change log</h2>
           <p className="text-[13.5px] text-muted mt-1 mb-0 leading-relaxed">
             Every entry, correction and removal, newest first. Nothing here can be edited.
           </p>
@@ -129,7 +130,7 @@ export function DonationRecords(
         ) : log.length === 0 ? (
           <Empty>No changes recorded{year ? ` for ${year}` : ''}.</Empty>
         ) : (
-          <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+          <div className={`${CARD} overflow-x-auto`}>
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-subtle border-b border-slate-200">

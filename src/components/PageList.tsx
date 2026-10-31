@@ -26,6 +26,7 @@ import {
   GROUP_ORDER, filterAndSort, parseLangs, splitIntoGroups, patchQuery, readView,
   sortPatch, statusCounts, toggledLangs, type GroupKey, type SortKey,
 } from './page-list-model'
+import { CARD } from '@/lib/ui/type'
 
 // The pure rules live in ./page-list-model; these two are re-exported so
 // importers keep reaching them here.
@@ -144,7 +145,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       />
 
       {/* Table */}
-      <div className="rounded-xl bg-white border border-slate-200 overflow-hidden">
+      <div className={`${CARD} overflow-hidden`}>
         {filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-slate-400 text-sm">
             {rows.length === 0

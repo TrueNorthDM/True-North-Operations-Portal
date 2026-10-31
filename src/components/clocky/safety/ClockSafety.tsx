@@ -25,6 +25,7 @@ import { dayLabel, initials } from '@/lib/timeclock/format'
 import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
 import type { ClockSafetyData, Result, SafetyOccurrence } from '@/lib/timeclock/clocky-types'
 import { STOP_REASON_LABEL } from '@/lib/timeclock/safety-stops'
+import { PAGE_TITLE, SECTION_TITLE, FIELD_LABEL } from '@/lib/ui/type'
 
 export type SafetyPeriod = 'month' | '3m' | 'all'
 export type SafetyLoad = (input: { period: SafetyPeriod; q: string }) => Promise<Result<{ data: ClockSafetyData }>>
@@ -36,7 +37,7 @@ const PERIODS: { key: SafetyPeriod; label: string }[] = [
 ]
 const CARD_PERIOD: Record<SafetyPeriod, string> = { month: 'this month', '3m': 'in 3 months', all: 'in total' }
 
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const LABEL = FIELD_LABEL
 const PERSON_GRID = 'grid grid-cols-[minmax(200px,1.4fr)_150px_150px_150px_180px_130px]'
 // The prototype's columns, with "Stopped by Clocky" and "Kept going earlier" at 150px:
 // at its 120px and 110px those headings ran into the next one. "Reason" (27
@@ -112,7 +113,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
     <div className="flex flex-col gap-[18px] leading-[normal]">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Clock safety" />
-        <h1 className="m-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink">Clock safety</h1>
+        <h1 className={`${PAGE_TITLE} mt-0.5`}>Clock safety</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a clock: a forgotten one at the 5-hour check, or one that reached its hours allowance. Times in your time zone ({zoneCity(data.zone)}).</p>
       </div>
 
@@ -143,7 +144,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       ) : (
         <>
           <section className="flex flex-col gap-2.5">
-            <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">By person</h2>
+            <h2 className={SECTION_TITLE}>By person</h2>
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
               <div className="min-w-[870px]">
                 <div className={`${PERSON_GRID} bg-subtle border-b border-[var(--panel-border)]`}>
@@ -192,7 +193,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
           </section>
 
           <section className="flex flex-col gap-2.5">
-            <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Every occurrence</h2>
+            <h2 className={SECTION_TITLE}>Every occurrence</h2>
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
               <div className="min-w-[1300px]">
                 <div className={`${OCC_GRID} bg-subtle border-b border-[var(--panel-border)]`}>

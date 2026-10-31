@@ -16,6 +16,7 @@ import { useModal } from '@/components/ui/useModal'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
 import { TEXTAREA as FIELD_TEXTAREA, TEXTAREA_SHAPE } from '@/lib/ui/fields'
+import { FIELD_LABEL_TYPE } from '@/lib/ui/type'
 import { NAV_ICON } from '@/lib/nav/nav-icons'
 import type { PillTone } from '@/lib/timeclock/clocky-types'
 
@@ -91,7 +92,8 @@ export const ICON_BTN = BTN.icon
 
 // ── Fields ──────────────────────────────────────────────────────────────────
 
-export const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase'
+/** The field label's type (lib/ui/type.ts), coloured by FieldLabel. */
+export const LABEL = FIELD_LABEL_TYPE
 
 export function FieldLabel({ children, warn = false }: { children: ReactNode; warn?: boolean }) {
   return <span className={`${LABEL} ${warn ? 'text-[var(--warn-fg)]' : 'text-muted'}`}>{children}</span>

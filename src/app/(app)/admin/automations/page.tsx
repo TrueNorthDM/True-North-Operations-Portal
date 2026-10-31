@@ -11,6 +11,7 @@ import { healthSummary, type HealthProblem } from '@/lib/health/summary'
 import { formatEt } from '@/lib/format/et'
 import { RunChecksButton } from './RunChecksButton'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
+import { PAGE_TITLE, SECTION_TITLE, CARD_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,7 +81,7 @@ export default async function AutomationsPage() {
     <div className="space-y-8">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Automations" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Automations</h1>
+        <h1 className={PAGE_TITLE}>Automations</h1>
         <p className="mt-1.5 text-muted">
           Every automated moving part in the portal, and whether it is working. This list is the source of truth: it is defined in code and updated whenever an automation is added or changed.
         </p>
@@ -92,7 +93,7 @@ export default async function AutomationsPage() {
           <div className="flex items-center gap-3">
             <StatusDot status={overall} />
             <div>
-              <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0">{overallText}</h2>
+              <h2 className={CARD_TITLE}>{overallText}</h2>
               <div className="text-[12.5px] text-muted">Last checked: {readError ? 'unknown' : when(summary.lastChecked)}. The checks run every 4 hours.</div>
             </div>
           </div>
@@ -138,7 +139,7 @@ export default async function AutomationsPage() {
             <div key={a.id} className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="font-(family-name:--font-display) font-extrabold text-[15.5px] text-tn-ink">{a.name}</h2>
+                  <h2 className={CARD_TITLE}>{a.name}</h2>
                   <span className={`inline-block mt-1.5 font-(family-name:--font-display) font-bold text-[10.5px] tracking-wide uppercase border rounded-full px-2 py-0.5 ${kind.cls}`}>{kind.label}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 rounded-full border border-slate-200 bg-subtle px-2.5 py-1">
@@ -174,7 +175,7 @@ export default async function AutomationsPage() {
       {/* All raw health signals (including ones not tied to a single card) */}
       {anyHealth && (
         <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink mb-3">Latest health signals</h2>
+          <h2 className={`${SECTION_TITLE} mb-3`}>Latest health signals</h2>
           <div className="rounded-[16px] border border-slate-200 bg-white overflow-hidden">
             {Object.values(health).sort((a, b) => a.service.localeCompare(b.service)).map((h, i) => (
               <div key={h.service} className={`flex items-center gap-3 px-5 py-3 ${i === 0 ? '' : 'border-t border-slate-100'}`}>

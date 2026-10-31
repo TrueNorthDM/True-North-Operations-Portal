@@ -37,6 +37,7 @@ import { DateField } from '@/components/ui/DateField'
 import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -182,7 +183,7 @@ function EditBody({
   managerOptions: PersonView[]
   teamOptions: TeamOption[]
 }) {
-  const label = (t: string) => <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{t}</span>
+  const label = (t: string) => <span className={FIELD_LABEL}>{t}</span>
 
 
   const seg = (value: string, opts: { v: string; l: string }[], onPick: (v: string) => void) => (

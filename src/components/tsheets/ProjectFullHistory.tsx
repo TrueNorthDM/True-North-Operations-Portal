@@ -18,6 +18,7 @@
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import { historyRowName, historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 const shortMonth = (ym: string) => MONTH_SHORT[Number(ym.slice(5, 7)) - 1]
 
@@ -42,7 +43,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
     <div className="space-y-4">
       <div>
         <div className="flex items-center gap-3">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">
+          <h2 className={SECTION_TITLE}>
             {year}, month by month
           </h2>
           <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal bg-tn-teal-soft border border-tn-teal/25 rounded-full px-2.5 py-0.5">
@@ -53,7 +54,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
         <span className="block w-[70%] mx-auto mt-3 h-0.5 rounded-full bg-tn-primary/85" />
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+      <div className={`${CARD} overflow-x-auto`}>
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-subtle border-b border-slate-200">

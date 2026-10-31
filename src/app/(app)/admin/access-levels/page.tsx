@@ -14,6 +14,7 @@ import { loadRules, loadSubjects } from '@/lib/access/store'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { loadPriorityGrants } from '@/lib/monday/worklist/team-priority-data'
 import type { Membership } from '@/lib/monday/worklist/team-priority'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Access levels' }
@@ -91,7 +92,7 @@ export default async function AccessLevelsPage({ searchParams }: { searchParams:
     <div className="space-y-5">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Access levels" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Access levels</h1>
+        <h1 className={PAGE_TITLE}>Access levels</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">
           Who can open what, in one place. Four levels, one list of every module, page, tool, tab and action, and for tools, which teams may use them. Only Super Admins see this page.
         </p>

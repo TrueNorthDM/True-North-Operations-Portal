@@ -36,6 +36,7 @@ import { ClientReportTabs } from '@/components/ClientReportTabs'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import Link from 'next/link'
 import { ROUTES } from '@/lib/nav/routes'
+import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
 
 export const metadata = { title: 'Client Report · Project Hours & Others' }
 export const dynamic = 'force-dynamic'
@@ -104,7 +105,7 @@ export default async function ProjectHoursPage({
     <div className="space-y-6">
       <div className="min-w-0">
         <Breadcrumb parents={[ROUTES.clientReports]} self={ROUTES.projectHours} />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
+        <h1 className={PAGE_TITLE}>
           Client Report · Project Hours &amp; Others
         </h1>
         <p className="mt-1.5 text-muted leading-relaxed">
@@ -128,7 +129,7 @@ export default async function ProjectHoursPage({
         </div>
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
+          <span className={FIELD_LABEL}>Period</span>
           <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} />
           {/* One group, right of the month, the way the i7 toolbar carries its
               own. justify-between had pushed these to opposite ends of the row. */}

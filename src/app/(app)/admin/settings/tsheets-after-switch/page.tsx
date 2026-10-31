@@ -17,6 +17,7 @@ import { zoneAbbr } from '@/lib/timeclock/format'
 import { splitDecided } from '@/lib/timeclock/skipped-decisions'
 import { SkippedList } from '@/components/settings/SkippedList'
 import { decideSkipped } from '../skipped-actions'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Clocked in TSheets after switching' }
@@ -34,7 +35,7 @@ export default async function TsheetsAfterSwitchPage() {
     <div className="space-y-[22px]">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin')), '/admin/settings']} now="Clocked in TSheets after switching" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal] flex flex-wrap items-center gap-x-3 gap-y-1" style={{ letterSpacing: '-.01em' }}>
+        <h1 className={`${PAGE_TITLE} flex flex-wrap items-center gap-x-3 gap-y-1`}>
           Clocked in TSheets after switching
           {undecided > 0 && (
             <span className="font-(family-name:--font-display) font-extrabold text-[13px] tracking-normal text-tn-ink bg-[#F2C40A] rounded-full px-2.5 py-0.5 tabular-nums lining-nums leading-[normal]">

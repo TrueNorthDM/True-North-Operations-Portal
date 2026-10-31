@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { roleTypePill, statusPill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface RestrictedTeamMember {
   id: string
@@ -91,7 +92,7 @@ export function RestrictedDirectory({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
+        <h1 className={PAGE_TITLE}>People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           {people.length > 1
             ? 'Your team, and your own page. A name with an arrow opens that person\u2019s page; everyone else shows name, role and team.'

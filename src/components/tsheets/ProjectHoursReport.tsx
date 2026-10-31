@@ -24,6 +24,7 @@ import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 import { peopleView } from '@/lib/timeclock/project-people'
 import { Tabs } from '@/components/ui/Tabs'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 // Two header rows: what a block of columns is about, then what each one holds.
 //
@@ -43,8 +44,8 @@ const thGroup = 'text-center text-[10px] font-(family-name:--font-display) font-
 const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2 pb-3 pt-1 whitespace-nowrap'
 /** The line that starts a block of columns, drawn in the head, body and foot alike. */
 const edge = 'border-l border-[rgba(1,35,88,0.1)]'
-const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
-const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
+const card = `${CARD} p-5`
+const label = FIELD_LABEL
 const big = 'mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight'
 const num = 'px-2 py-3 text-right tabular-nums whitespace-nowrap'
 const bal = 'bg-[rgba(30,125,127,0.06)]'
@@ -206,7 +207,7 @@ export function ProjectHoursReport(
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+      <div className={`${CARD} overflow-x-auto`}>
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-subtle">

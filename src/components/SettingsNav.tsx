@@ -12,6 +12,7 @@
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { CARD } from '@/lib/ui/type'
 
 export interface SettingsSection {
   id: string
@@ -59,7 +60,7 @@ export function SettingsNav({
       <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
         {/* sub-nav */}
         <nav className="flex flex-col gap-[3px] leading-[normal] lg:sticky lg:top-[81px]">
-          <div className="mb-5 px-[15px] py-3.5 border border-slate-200 rounded-[12px] bg-white">
+          <div className={`${CARD} mb-5 px-[15px] py-3.5`}>
             <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.09em] uppercase text-muted">Signed in as</div>
             <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mt-1.5 truncate">{signedIn.name}</div>
             <div className="text-[11.5px] text-muted mt-px">{signedIn.role}</div>

@@ -13,6 +13,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Icon } from '@/components/clocky/entries/ui'
 import type { GuideGroup } from '@/lib/timeclock/job-catalogue'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const BRANDS: [string, (c: string) => boolean][] = [
@@ -36,7 +37,7 @@ export function WhichJobView({ groups, codes, switcher }: { groups: GuideGroup[]
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Which job?" />
-        <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Which job?</h1>
+        <h1 className={PAGE_TITLE}>Which job?</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Every job, when to use it, and whether it is billable by default. The same lines show under each job when you clock in.</p>
         {switcher}
       </div>

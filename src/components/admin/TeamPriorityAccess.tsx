@@ -28,6 +28,7 @@ import {
 import type { PriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 import { setPriorityGrant } from '@/app/(app)/admin/access-levels/actions'
 import { BTN } from '@/lib/ui/buttons'
+import { SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 /** A person as this section needs them, with the access rule's answers already in. */
 export interface PriorityPerson {
@@ -52,7 +53,7 @@ export interface PriorityAccessData {
   grants: PriorityGrant[]
 }
 
-const card = 'rounded-2xl border border-slate-200 bg-white'
+const card = CARD
 const cardHead = 'font-(family-name:--font-display) font-extrabold text-[14.5px] text-tn-ink m-0'
 
 function LevelPill({ level }: { level: string }) {
@@ -155,7 +156,7 @@ export function TeamPriorityAccess({
   return (
     <section className="space-y-4">
       <div className="min-w-0">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Team priority on My Work</h2>
+        <h2 className={SECTION_TITLE}>Team priority on My Work</h2>
         <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
           Each team has one priority order for its open steps, and everyone on the team sees their own steps in it.
           This is who can change that order, and why.

@@ -29,6 +29,7 @@ import { usePhone } from '@/components/clocky/clock/hooks'
 import { PhoneSheet } from './PhoneSheet'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface TimeOffApi {
   askTimeOff(i: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>>
@@ -187,7 +188,7 @@ function Header({ onNew }: { onNew: (() => void) | null }) {
     <div>
       <Breadcrumb parents={['/requests']} now="Time off" />
       <div className="flex items-center justify-between gap-3.5 flex-wrap mt-1.5">
-        <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[1.15] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Time off</h1>
+        <h1 className={PAGE_TITLE}>Time off</h1>
         {onNew && (
           <button type="button" onClick={onNew} className={`${BTN_NAVY} shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)]`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Request time off

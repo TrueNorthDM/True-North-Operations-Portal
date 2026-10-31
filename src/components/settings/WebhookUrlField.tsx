@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation'
 import { useEditing } from './editing-context'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 export const WEBHOOK_PATH = '/api/monday/webhook/'
 
@@ -101,10 +102,10 @@ export function WebhookUrlField({
   }
 
   return (
-    <section className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
+    <section className={`${CARD} p-6 space-y-4`}>
       {confirmDialog}
       <div>
-        <h2 className="text-lg font-bold text-slate-900">Monday webhook URL</h2>
+        <h2 className={SECTION_TITLE}>Monday webhook URL</h2>
         <p className="text-sm text-slate-500 mt-0.5">
           The address Monday delivers events to. The random part at the end is what proves a delivery is really from your Monday account,
           so treat the whole URL as a password.

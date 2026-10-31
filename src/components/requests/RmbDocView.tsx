@@ -19,6 +19,7 @@ import { DocPdfModal } from '@/components/clocky/invoices/InvoicePdfModal'
 import { InvoiceHistory, MarkPaidDialog } from '@/components/clocky/invoices/InvoiceParts'
 import { Icon, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { REQ_TONE } from './ReimbursementsView'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface RmbDocApi {
   getPayDoc(i: { kind: 'rmb'; id: number }): Promise<Result<{ doc: DocSheetData }>>
@@ -50,7 +51,7 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
       <div>
         <Breadcrumb parents={['/requests', { href: '/requests/reimbursements', label: 'Reimbursements' }]} now={d.number} />
         <div className="flex items-center gap-3.5 flex-wrap mt-1.5">
-          <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[1.15] text-tn-ink" style={{ letterSpacing: '-.01em' }}>{d.number}</h1>
+          <h1 className={PAGE_TITLE}>{d.number}</h1>
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[11px] py-[5px]" style={{ background: tone.bg, color: tone.fg }}>{d.st.label}</span>
         </div>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{d.who} · {d.items.length} approved item{d.items.length === 1 ? '' : 's'} · made by the portal for Finance to pay.</p>

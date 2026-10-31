@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ROUTES } from '@/lib/nav/routes'
+import { PAGE_TITLE, SECTION_TITLE, CARD } from '@/lib/ui/type'
 // How the i7 Budget Usage Report is built, a plain-language explainer linked
 // from the report (its Guide tab). Static content (the July 2026 numbers are an
 // illustrative worked example).
@@ -60,7 +61,7 @@ export default async function ReportGuidePage() {
             <InfoMark className="w-6 h-6" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">How the i7 Budget Usage Report is built</h1>
+            <h1 className={PAGE_TITLE}>How the i7 Budget Usage Report is built</h1>
             <p className="mt-1 text-slate-500">
               The report never invents a number. It combines <strong className="text-slate-700">the hours from QuickBooks Time</strong> with{' '}
               <strong className="text-slate-700">three things you set</strong>, then only adds and subtracts.
@@ -71,7 +72,7 @@ export default async function ReportGuidePage() {
 
       {/* The four inputs */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">The four inputs</h2>
+        <h2 className={`${SECTION_TITLE} mb-3`}>The four inputs</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {SOURCES.map(s => (
             <div key={s.name} className={`rounded-2xl border p-5 ${s.cls}`}>
@@ -87,8 +88,8 @@ export default async function ReportGuidePage() {
 
       {/* How each column is calculated */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">How each column is calculated <span className="normal-case font-normal text-slate-400">(for the selected month)</span></h2>
-        <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 overflow-hidden">
+        <h2 className={`${SECTION_TITLE} mb-3`}>How each column is calculated <span className="font-semibold text-muted">(for the selected month)</span></h2>
+        <div className={`${CARD} divide-y divide-slate-100 overflow-hidden`}>
           {FORMULAS.map(f => (
             <div key={f.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3.5">
               <span className="w-40 shrink-0 text-sm font-semibold text-slate-800">{f.label}</span>
@@ -101,8 +102,8 @@ export default async function ReportGuidePage() {
 
       {/* Budget balance */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Budget Balance <span className="normal-case font-normal text-slate-400">(the running balance at the top)</span></h2>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+        <h2 className={`${SECTION_TITLE} mb-3`}>Budget Balance <span className="font-semibold text-muted">(the running balance at the top)</span></h2>
+        <div className={`${CARD} p-5 space-y-3`}>
           <p className="text-sm text-slate-600">It works like a bank account, running from January:</p>
           <ul className="space-y-2 text-sm text-slate-700">
             <li><strong className="text-slate-900">Carried in</strong> = (all monthly budgets since January) − (all actual cost since January), for the months <em>before</em> the one you’re viewing.</li>
@@ -118,8 +119,8 @@ export default async function ReportGuidePage() {
 
       {/* The proof */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">The proof - July 2026</h2>
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
+        <h2 className={`${SECTION_TITLE} mb-3`}>The proof - July 2026</h2>
+        <div className={`${CARD} overflow-x-auto`}>
           <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">

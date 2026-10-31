@@ -21,6 +21,7 @@ import { ClockOutForDialog } from './ClockOutForDialog'
 import type { WorkingApi } from './working-api'
 import { SORTS, emptyTitle, groupsOf, scopeText, viewerTime, type WorkingFilter, type WorkingRow, type WorkingSort } from './working-model'
 import { BTN } from '@/lib/ui/buttons'
+import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
 
 export const WHOS_WORKING_HREF = '/clocky-hours/whos-working'
 /** A person's entries on Time entries. */
@@ -141,7 +142,7 @@ export function WhosWorkingPanel({
         <div className="shrink-0 pt-4 pr-3.5 pl-[18px] flex flex-col gap-3">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
-              <h2 style={{ letterSpacing: 'normal' }} className={`m-0 font-(family-name:--font-display) font-extrabold text-tn-ink ${page ? 'text-[30px]' : 'text-[17px]'}`}>Who&apos;s working</h2>
+              <h2 className={page ? PAGE_TITLE : SECTION_TITLE}>Who&apos;s working</h2>
               <div className="text-[12.5px] text-muted mt-1 tabular-nums lining-nums">{data ? viewerTime(nowMs, data.viewer.zone) : ''}</div>
             </div>
             <HeadButton label="Refresh" title="Refresh" size={32} onClick={() => void reload().then(ok => { if (ok) say('Updated just now.') })}>

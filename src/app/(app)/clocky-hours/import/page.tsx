@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ImportRunner } from '../ImportRunner'
 import { RulesForm, type Rules } from '../RulesForm'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { PAGE_TITLE, SECTION_TITLE, FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Import' }
@@ -65,7 +66,7 @@ export default async function ClockyImportPage() {
   if (settingsRes.error) {
     return (
       <div className="space-y-4">
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Import</h1>
+        <h1 className={PAGE_TITLE}>Import</h1>
         <div className="rounded-[12px] border border-amber-300/60 bg-amber-50 p-5 text-sm text-[#8a6d1a] space-y-1">
           <p className="font-semibold m-0">Migration 057 has not been applied yet.</p>
           <p className="m-0">Run <code className="font-mono">supabase/migrations/057_time_clock_schema.sql</code> in the SQL editor, then reload this page.</p>
@@ -86,14 +87,16 @@ export default async function ClockyImportPage() {
   const sourceTotal = recon.reduce((s, r) => s + r.tsheets_entries, 0)
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-  const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
-  const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
+  const card = `${CARD} p-5`
+  const label = FIELD_LABEL
+  // Table headers keep their own look for now.
+  const head = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
 
   return (
     <div className="space-y-8">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Import" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Import</h1>
+        <h1 className={PAGE_TITLE}>Import</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The rules, the import from QuickBooks Time, and the reconciliation. QuickBooks Time is still
           the system of record, and nothing here writes back to it or to payroll.
@@ -106,7 +109,7 @@ export default async function ClockyImportPage() {
 
       {/* Phase 0: the rules, as imported. Read only until the clock exists. */}
       {can.rules && <section className="space-y-3">
-        <h2 id="rules" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Rules in force</h2>
+        <h2 id="rules" className={`${SECTION_TITLE} scroll-mt-24`}>Rules in force</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className={card}>
             <div className={label}>Timezone</div>
@@ -132,7 +135,7 @@ export default async function ClockyImportPage() {
 
       {/* Phase 1: the migration. */}
       {can.import && <section className="space-y-3">
-        <h2 id="import" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Migration</h2>
+        <h2 id="import" className={`${SECTION_TITLE} scroll-mt-24`}>Migration</h2>
         <div className="flex items-center gap-6 flex-wrap text-sm">
           <span><span className="text-muted">Entries here:</span> <strong className="tabular-nums">{(entriesRes.count ?? 0).toLocaleString()}</strong>{sourceTotal > 0 && <> of <span className="tabular-nums">{sourceTotal.toLocaleString()}</span> in QuickBooks Time</>}</span>
           <span><span className="text-muted">Job codes:</span> <strong className="tabular-nums">{(jobcodesRes.count ?? 0).toLocaleString()}</strong></span>
@@ -152,7 +155,7 @@ export default async function ClockyImportPage() {
 
       {/* The part that decides whether phase 1 is finished. */}
       {can.recon && <section className="space-y-3">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Reconciliation</h2>
+        <h2 className={SECTION_TITLE}>Reconciliation</h2>
         {recon.length === 0 ? (
           <p className="text-sm text-muted m-0">Nothing checked yet. It fills in as the import walks the months.</p>
         ) : (
@@ -162,16 +165,16 @@ export default async function ClockyImportPage() {
                 ? <span className="text-[#1f8a5b] font-semibold">Every one of the {recon.length} months checked matches, entry for entry and second for second.</span>
                 : <span className="text-[#c2410c] font-semibold">{mismatched.length} of {recon.length} months do not match.</span>}
             </p>
-            <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+            <div className={`${CARD} overflow-x-auto`}>
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-subtle border-b border-slate-200">
-                    <th className={`text-left ${label} px-4 py-3`}>Month</th>
-                    <th className={`text-right ${label} px-3 py-3`}>Entries there</th>
-                    <th className={`text-right ${label} px-3 py-3`}>Entries here</th>
-                    <th className={`text-right ${label} px-3 py-3`}>Hours there</th>
-                    <th className={`text-right ${label} px-3 py-3`}>Hours here</th>
-                    <th className={`text-left ${label} px-3 py-3`}>Match</th>
+                    <th className={`text-left ${head} px-4 py-3`}>Month</th>
+                    <th className={`text-right ${head} px-3 py-3`}>Entries there</th>
+                    <th className={`text-right ${head} px-3 py-3`}>Entries here</th>
+                    <th className={`text-right ${head} px-3 py-3`}>Hours there</th>
+                    <th className={`text-right ${head} px-3 py-3`}>Hours here</th>
+                    <th className={`text-left ${head} px-3 py-3`}>Match</th>
                   </tr>
                 </thead>
                 <tbody>

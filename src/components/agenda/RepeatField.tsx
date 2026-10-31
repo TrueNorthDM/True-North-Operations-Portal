@@ -13,8 +13,9 @@ import { describe, nthOf, type Freq, type Repeat } from '@/lib/agenda/recurrence
 import { DateField } from '@/components/ui/DateField'
 import { Segmented } from '@/components/ui/Segmented'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
-const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
+const LBL = FIELD_LABEL
 const SELECT = `${SELECT_FIELD} font-semibold`
 
 const DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

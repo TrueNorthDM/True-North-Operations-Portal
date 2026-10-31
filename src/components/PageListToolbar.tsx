@@ -11,6 +11,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { Popover, PopoverItem } from './PageListParts'
 import { languageName } from '@/lib/language-display'
 import { STATUS_LABEL, langFilterLabel, type StatusFilter } from './page-list-model'
+import { CARD } from '@/lib/ui/type'
 
 export function PageListToolbar({
   search, onSearch, onPatch, onToggleLang,
@@ -31,7 +32,7 @@ export function PageListToolbar({
   ring: string
 }) {
   return (
-    <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-wrap items-center gap-3">
+    <div className={`${CARD} p-4 flex flex-wrap items-center gap-3`}>
       <SearchField
         value={search}
         onChange={onSearch}

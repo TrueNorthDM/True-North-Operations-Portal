@@ -20,6 +20,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getClockPanel } from './clock-actions'
 import { getEntries } from './entries-actions'
 import { requireNorthTimeOpen } from '@/lib/timeclock/north-time-gate'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Time entries' }
@@ -47,7 +48,7 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
       <div className="flex flex-col gap-4">
         <div>
           <Breadcrumb parents={['/clocky-hours']} now="Time entries" />
-          <h1 className="m-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Time entries</h1>
+          <h1 className={`${PAGE_TITLE} mt-0.5`}>Time entries</h1>
         </div>
         <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">{error}</p>
       </div>

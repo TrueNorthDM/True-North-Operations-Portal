@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { findDay, nextFree, WINDOW, type Avail } from '@/lib/agenda/find-time'
 import { clockLabel, DC, instantOf } from '@/lib/agenda/time'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 type Person = { id: string; name: string; place: string; avail: Avail }
 export type FindTimeApi = (i: { personIds: string[]; from: string }) => Promise<{ ok: true; people: Person[] } | { ok: false; error: string }>
@@ -21,7 +22,7 @@ const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) 
 const dow = (d: string) => new Date(`${d}T12:00:00Z`).getUTCDay()
 const monday = (d: string) => { const w = dow(d); return addDays(d, w === 0 ? 1 : w === 6 ? 2 : 1 - w) }
 const month = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
-const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
+const LBL = FIELD_LABEL
 const [LO, HI] = WINDOW
 const pct = (m: number) => `${((Math.min(Math.max(m, LO), HI) - LO) / (HI - LO)) * 100}%`
 const wid = (a: number, b: number) => `${((Math.min(b, HI) - Math.max(a, LO)) / (HI - LO)) * 100}%`

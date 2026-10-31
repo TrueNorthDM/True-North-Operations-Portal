@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { summarizeResult, relativeTime, activityMoment, type ActivityTag } from '@/lib/activity'
 import type { ActivityRow } from '@/lib/href-links/data'
+import { CARD_TITLE, CARD } from '@/lib/ui/type'
 
 interface Props {
   rows: ActivityRow[]
@@ -51,9 +52,9 @@ export function ActivityLog({ rows }: Props) {
   }, [rows])
 
   return (
-    <section className="rounded-xl bg-white border border-slate-200 overflow-hidden" aria-labelledby="activity-log-title">
+    <section className={`${CARD} overflow-hidden`} aria-labelledby="activity-log-title">
       {/* The heading holds the button (a heading cannot sit inside one). */}
-      <h2 id="activity-log-title" className="m-0 text-sm font-semibold text-slate-700">
+      <h2 id="activity-log-title" className={CARD_TITLE}>
         <button
           type="button"
           onClick={() => setOpen(o => !o)}

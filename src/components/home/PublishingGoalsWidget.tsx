@@ -37,6 +37,7 @@ import { shortDay } from '@/lib/boards/publishing-cycles'
 import { addDays } from '@/lib/notifications/schedule'
 import { codeFromInput } from '@/lib/language-display'
 import { ROUTES } from '@/lib/nav/routes'
+import { CARD } from '@/lib/ui/type'
 
 /**
  * Text colours that reach 4.5:1 on white (audit, 10 October 2026). The old
@@ -360,7 +361,7 @@ function CycleRow({ b }: { b: PublishingBoardWeeks }) {
 
 // The prototype's text sits at the browser's normal line height, not the
 // portal's 1.5; measured against it, the card is 22px taller without this.
-const shell = 'block bg-white border border-[#e4e7ec] rounded-[18px] overflow-hidden leading-[normal]'
+const shell = `${CARD} block overflow-hidden leading-[normal]`
 
 function Header() {
   return (

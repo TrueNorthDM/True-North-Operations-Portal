@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/Select'
 import { saveRules } from './actions'
 import { DateField } from '@/components/ui/DateField'
 import { BTN } from '@/lib/ui/buttons'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 // Only what Clocky and the import read (audit of 20 October 2026). Rounding,
 // the auto clock-out and overtime are Clocky's own fixed rules, and how often
@@ -25,7 +26,7 @@ export interface Rules {
   import_cutoff_date: string | null
 }
 
-const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
+const label = FIELD_LABEL
 
 // The zones anybody here actually works in. A list of 400 is a list nobody
 // reads, and a free text box is a way to save 'Amrica/New_York' by accident.
@@ -68,7 +69,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
   }
 
   return (
-    <div className="rounded-[14px] border border-slate-200 bg-white p-5 space-y-5">
+    <div className={`${CARD} p-5 space-y-5`}>
       <div className="flex gap-4 flex-wrap">
         <div className="flex flex-col gap-1 min-w-[190px]">
           <label className={label} htmlFor="tz">Timezone</label>

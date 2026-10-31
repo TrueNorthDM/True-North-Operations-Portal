@@ -18,6 +18,7 @@ import type { ExtraPage } from '@/lib/timeclock/requests-data'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { REQ_TONE } from './ReimbursementsView'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface ExtraApi {
   askExtraHours(i: { personId: string; hours: number; when: string; client: string; why: string }): Promise<Result<{ toast: string }>>
@@ -41,7 +42,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
       <div>
         <Breadcrumb parents={['/requests']} now="Extra hours" />
         <div className="flex items-center justify-between gap-3.5 flex-wrap mt-1.5">
-          <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[1.15] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Extra hours</h1>
+          <h1 className={PAGE_TITLE}>Extra hours</h1>
           <button type="button" onClick={() => setForm(true)} className={BTN.navy}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Ask for extra hours
           </button>

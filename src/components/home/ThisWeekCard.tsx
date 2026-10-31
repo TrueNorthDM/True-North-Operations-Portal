@@ -7,8 +7,9 @@ import { Icon } from '@/components/clocky/entries/ui'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { ThisWeek } from '@/lib/agenda/model'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
+const LABEL = FIELD_LABEL
 
 export function ThisWeekCard({ week, linked = true }: { week: ThisWeek; linked?: boolean }) {
   return (

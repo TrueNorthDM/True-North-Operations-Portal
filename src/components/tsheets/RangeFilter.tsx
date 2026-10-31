@@ -31,6 +31,7 @@ import {
 } from '@/lib/tsheets/range'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { MonthField } from '@/components/ui/DateField'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 const FIELD = `w-full ${DATE_FIELD_CLASS} font-semibold`
 
@@ -207,11 +208,11 @@ export function RangeFilter(
           {value.mode === 'custom' && (
             <div className="pt-2.5 grid grid-cols-2 gap-2">
               <label className="block">
-                <span className="block text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted mb-1">From</span>
+                <span className={`block ${FIELD_LABEL} mb-1`}>From</span>
                 <MonthField ariaLabel="From" value={range.from} min={floor} max={currentMonth} onChange={v => set({ from: v })} className={FIELD} />
               </label>
               <label className="block">
-                <span className="block text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted mb-1">To</span>
+                <span className={`block ${FIELD_LABEL} mb-1`}>To</span>
                 <MonthField ariaLabel="To" value={range.to} min={floor} max={currentMonth} onChange={v => set({ to: v })} className={FIELD} />
               </label>
             </div>

@@ -22,6 +22,7 @@ import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/colo
 import { Select } from '@/components/ui/Select'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
@@ -261,7 +262,7 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
           <p className="text-[13px] text-muted mt-1">{mode === 'new' ? 'Name the team and pick a colour.' : 'Update the team name and colour.'}</p>
 
           <label className="block mt-5">
-            <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted">Team name</span>
+            <span className={FIELD_LABEL}>Team name</span>
             <input
               autoFocus
               value={name}
@@ -273,7 +274,7 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
           </label>
 
           <div className="mt-5">
-            <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted">Team colour</span>
+            <span className={FIELD_LABEL}>Team colour</span>
             <div className="grid grid-cols-7 gap-2 mt-2">
               {COLOR_PALETTE.map(c => {
                 const selected = c === color

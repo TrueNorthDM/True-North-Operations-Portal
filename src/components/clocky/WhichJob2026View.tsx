@@ -13,6 +13,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { alpha } from '@/components/clocky/clock/clock-model'
 import type { ActivityRow } from '@/lib/timeclock/job-catalogue'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
+import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
 
 export type { ActivityRow }
 export interface ProjectRow { client: string; division: string; project: string; use: string; billable: boolean }
@@ -36,7 +37,7 @@ export function WhichJob2026View({ projects, activities, switcher }: { projects:
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Which job?" />
-        <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Which job?</h1>
+        <h1 className={PAGE_TITLE}>Which job?</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Every client, division and project, with when to use it. Billable is set by the project. The same lines show when you clock in.</p>
         {switcher}
       </div>
@@ -92,7 +93,7 @@ export function ActivitiesSection({ activities, query, extra }: { activities: Ac
     <section className="flex flex-col gap-3 mt-4">
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink">Activities</h2>
+          <h2 className={SECTION_TITLE}>Activities</h2>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eaf4f4] text-tn-teal px-2.5 py-1 font-(family-name:--font-display) font-extrabold text-[11.5px]">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
             Shared by every client, division and project

@@ -16,6 +16,7 @@ import { PeopleTab, type CadenceColumn, type PayColumn, type PersonWithAssignmen
 import { useColumnChoices } from '@/components/ui/ColumnsMenu'
 import { saveHiddenColumns } from '@/app/(app)/settings/actions'
 import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export type CheckProps = Pick<ComponentProps<typeof PeopleTab>, 'cadenceActions' | 'startEditing' | 'startCadences' | 'startDialog'> & {
   /** Saves the Columns choice without the server. */
@@ -43,7 +44,7 @@ export function RatesCostsPage({ people, allClients, cadence = null, pay = null,
           {/* On a phone the words take the row and the buttons go under them. */}
           <div className="min-w-0 basis-full md:basis-auto md:flex-1">
             <Breadcrumb parents={['/directory']} now="Rates & Costs" />
-            <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink leading-[normal]" style={{ letterSpacing: '-.01em' }}>Rates &amp; Costs</h1>
+            <h1 className={PAGE_TITLE}>Rates &amp; Costs</h1>
           </div>
           <div className="ml-auto">{actions}</div>
         </div>

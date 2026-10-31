@@ -8,6 +8,7 @@ import { MONTH_SHORT } from '@/lib/format/months'
 import { DateField } from '@/components/ui/DateField'
 import { BTN } from '@/lib/ui/buttons'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 interface CurrentBudget {
   hoursAllocated: number | null
@@ -117,12 +118,12 @@ export function BudgetForm({ client, current, onClose }: Props) {
 
   const inputCls = `w-full ${INPUT}`
   const dateCls = `w-full ${DATE_FIELD_CLASS}`
-  const labelCls = 'block text-[13px] font-(family-name:--font-display) font-bold text-tn-ink mb-1.5'
+  const labelCls = `block ${FIELD_LABEL} mb-1.5`
   const legendCls = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-3'
 
   return (
     <>
-      <div className="rounded-[14px] border border-slate-200 bg-white p-5">
+      <div className={`${CARD} p-5`}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Budget for {client.name}</h3>
           <CloseButton onClick={onClose} />

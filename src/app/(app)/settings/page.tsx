@@ -26,6 +26,7 @@ import { pinnable, resolveFavourites } from '@/lib/settings/pages'
 import { saveNotificationPref, sendTestNotification } from '../notifications/actions'
 import { signOutEverywhere } from '@/app/auth/actions'
 import { saveSettings } from './actions'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Settings' }
@@ -51,7 +52,7 @@ export default async function SettingsPage() {
     <div className="space-y-5">
       <div>
         <Breadcrumb self="/settings" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
+        <h1 className={PAGE_TITLE}>Settings</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">
           How the portal works for you. Your choices follow you to any computer or phone.
           {access.can('settings') && <> Company settings are in <Link href="/admin/settings" className="text-tn-teal font-semibold">Admin &gt; Configuration</Link>.</>}

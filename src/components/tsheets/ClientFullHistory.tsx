@@ -10,6 +10,7 @@ import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7TrendPoint } from '@/lib/tsheets/types'
 import { HistoryExport } from '@/components/tsheets/HistoryExport'
 import { MONTH_LONG } from '@/lib/format/months'
+import { CARD } from '@/lib/ui/type'
 
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
@@ -52,30 +53,30 @@ export function ClientFullHistory(
       </div>
 
       {trend.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-muted">
+        <div className={`${CARD} p-8 text-center text-sm text-muted`}>
           No months recorded yet this year.
         </div>
       ) : (
         <>
           {/* Year-to-date summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <div className={`${CARD} px-5 py-4`}>
               <div className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget YTD</div>
               <div className="text-[28px] font-extrabold text-tn-ink tabular-nums mt-1.5">{money(ytdBudget)}</div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <div className={`${CARD} px-5 py-4`}>
               <div className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Used YTD</div>
               <div className="text-[28px] font-extrabold text-tn-ink tabular-nums mt-1.5">{money(ytdUsed)}</div>
               <div className="text-[12.5px] text-muted mt-1">{ytdPct}% of budget</div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <div className={`${CARD} px-5 py-4`}>
               <div className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Hours used YTD</div>
               <div className="text-[28px] font-extrabold text-tn-ink tabular-nums mt-1.5">{fmtHours(Math.round(ytdHours * 100) / 100)}</div>
             </div>
           </div>
 
           {/* Month by month */}
-          <div className="rounded-2xl border border-slate-200 overflow-hidden">
+          <div className={`${CARD} overflow-hidden`}>
             <div className="bg-tn-primary text-white px-5 py-3.5 flex items-center justify-between">
               <span className="font-(family-name:--font-display) font-extrabold text-[15px]">Month by month</span>
               <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[#9fb3d4]">{year}</span>

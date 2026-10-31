@@ -10,12 +10,13 @@ import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { Look } from '@/lib/agenda/model'
 import type { HomeAgenda } from '@/lib/agenda/home'
+import { CARD } from '@/lib/ui/type'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted'
 
 export function HomeAgendaCard({ agenda, linked = true }: { agenda: HomeAgenda | 'unavailable'; linked?: boolean }) {
   return (
-    <div className="bg-white border border-[var(--panel-border)] rounded-[18px] p-5 flex flex-col gap-3.5 leading-[normal]">
+    <div className={`${CARD} p-5 flex flex-col gap-3.5 leading-[normal]`}>
       <span className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">Agenda</span>
       {agenda === 'unavailable'
         ? <p role="status" className="m-0 text-[13.5px] text-muted">The Agenda could not be read just now. Open the Agenda to try again.</p>

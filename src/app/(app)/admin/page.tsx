@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { requireSurface } from '@/lib/access/resolve'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { PAGE_TITLE, SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 // Each card's icon is a system-style line SVG whose animated parts carry the
 // `tn-anim` class (so prefers-reduced-motion disables them via globals.css).
@@ -103,7 +104,7 @@ function CardGrid({ cards }: { cards: readonly AdminCard[] }) {
         <Link
           key={card.href}
           href={card.href}
-          className="group rounded-2xl border border-slate-200 bg-white p-[22px] shadow-sm transition-all hover:-translate-y-[3px] hover:border-tn-teal hover:shadow-md"
+          className={`${CARD} group p-[22px] transition-all hover:-translate-y-[3px] hover:border-tn-teal hover:shadow-md`}
         >
           <div className="flex items-start justify-between gap-2.5">
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal">
@@ -114,7 +115,7 @@ function CardGrid({ cards }: { cards: readonly AdminCard[] }) {
               <span className="transition-transform group-hover:translate-x-0.5">{OpenArrow}</span>
             </span>
           </div>
-          <h2 className="mt-4 font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink">{card.title}</h2>
+          <h2 className={`${SECTION_TITLE} mt-4`}>{card.title}</h2>
           <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{card.description}</p>
         </Link>
       ))}
@@ -132,7 +133,7 @@ export default async function AdminPage() {
       <SystemHealthBanner />
       <div>
         <Breadcrumb self="/admin" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Admin</h1>
+        <h1 className={PAGE_TITLE}>Admin</h1>
         <p className="mt-1.5 text-muted">Access, settings, notifications and the portal&apos;s own health.</p>
       </div>
 

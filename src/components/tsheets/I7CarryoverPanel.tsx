@@ -20,6 +20,7 @@ import { BUDGET_GRADIENT, BUDGET_PILL } from './budget-style'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
 import { MONTH_LONG } from '@/lib/format/months'
+import { CARD } from '@/lib/ui/type'
 
 const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 
@@ -50,7 +51,7 @@ export function BudgetBalanceCard(
   const neg = c.totalLeft < 0
   const pill = PILL[statusOf(c.monthUsed, c.totalAvailable)]
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className={`${CARD} overflow-hidden`}>
       {/* navy header */}
       <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3.5">
         <span className={`font-(family-name:--font-display) font-extrabold text-white ${large ? 'text-lg' : 'text-[13px]'}`}>{title}</span>
@@ -89,7 +90,7 @@ export function CarryoverPanel({ c, month, multi = false }: { c: I7Carryover; mo
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-stretch">
       {/* Left 20%, Carried in */}
-      <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
+      <div className={`${CARD} lg:w-1/5 p-5 flex flex-col justify-center`}>
         <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
         <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
         <div className="text-xs text-muted mt-1">{multi ? 'Balance brought into these months' : 'Balance brought from last month'}</div>

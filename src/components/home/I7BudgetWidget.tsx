@@ -17,16 +17,17 @@ import { money, moneySigned } from '@/lib/tsheets/format'
 import { budgetStatus } from '@/lib/tsheets/i7-view'
 import type { I7Carryover } from '@/lib/tsheets/types'
 import { ROUTES } from '@/lib/nav/routes'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
-const LABEL = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.04em] text-muted'
+const LABEL = FIELD_LABEL
 
 export function I7BudgetWidget({ month, carryover }: { month: string; carryover: I7Carryover | 'unavailable' }) {
   return (
     <Link
       href={ROUTES.i7}
       aria-label="i7 Budget, open the report"
-      className="block bg-white border border-[var(--panel-border)] rounded-[18px] overflow-hidden text-inherit leading-[normal] transition-[border-color,box-shadow] hover:border-tn-teal hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
+      className={`${CARD} block overflow-hidden text-inherit leading-[normal] transition-[border-color,box-shadow] hover:border-tn-teal hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]`}
     >
       <div className="flex items-center justify-between gap-2.5 bg-tn-primary px-[18px] py-3">
         <span className="font-(family-name:--font-display) font-extrabold text-[16px] text-[#ffffff]">i7 Budget</span>

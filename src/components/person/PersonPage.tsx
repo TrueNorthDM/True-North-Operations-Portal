@@ -38,6 +38,7 @@ import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { BTN } from '@/lib/ui/buttons'
 import { TAB_COUNT, TAB_COUNT_OFF, TAB_COUNT_ON, TAB_LIST, tabClass } from '@/lib/ui/tabs'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
 
 type Editable = 'personal' | 'work' | 'hr'
 type PaymentsProp = { data: PaymentsData; api: PaymentsApi; initial?: Parameters<typeof PaymentsTab>[0]['initial'] }
@@ -116,7 +117,7 @@ function Cover({ data }: { data: PersonPageData }) {
   }
 
   return (
-    <section className="bg-white border border-[var(--panel-border)] rounded-[18px] overflow-hidden leading-[normal]" aria-label={data.name}>
+    <section className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden leading-[normal]" aria-label={data.name}>
       <div className="relative h-[96px] bg-[radial-gradient(circle_at_88%_0%,rgba(242,196,10,.35),transparent_38%),linear-gradient(120deg,#012358,#0a2f6b)]">
         {medal && (
           <div className="absolute right-6 top-[18px] flex items-center gap-2.5 text-right">
@@ -135,7 +136,7 @@ function Cover({ data }: { data: PersonPageData }) {
           <span title={data.active ? 'Active' : 'Inactive'} className={`absolute right-1 bottom-1 w-[18px] h-[18px] rounded-full border-[3px] border-white ${data.active ? 'bg-[#1E9E6A]' : 'bg-[#c9cfd8]'}`} />
         </div>
         <div className="min-w-0">
-          <h1 className="m-0 font-(family-name:--font-display) font-black text-[26px] sm:text-[30px] text-tn-ink leading-[normal] [text-wrap:balance]" style={{ letterSpacing: '-.01em' }}>{data.name}</h1>
+          <h1 className={`${PAGE_TITLE} max-sm:text-[26px] [text-wrap:balance]`}>{data.name}</h1>
           {line && <p className="m-0 mt-1 text-muted font-semibold">{line}</p>}
           <div className="flex flex-wrap gap-2 mt-2.5">
             {cover.teams.map(t => (
@@ -271,7 +272,7 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActio
   const ruleCls = rule.kind === 'edit' ? 'bg-[var(--ok-bg)] text-[var(--ok-fg)]' : rule.kind === 'hidden' ? 'bg-[var(--warn-bg)] text-[var(--warn-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'
 
   return (
-    <section className="bg-white border border-[var(--panel-border)] rounded-[18px] px-5 sm:px-7 py-6 leading-[normal]">
+    <section className={`${CARD} px-5 sm:px-7 py-6 leading-[normal]`}>
       <div className={`flex items-center justify-between gap-3 flex-wrap rounded-[12px] px-4 py-2.5 mb-5 text-[13px] ${ruleCls}`}>
         <p className="m-0 flex items-center gap-2">{rule.kind === 'edit' ? PENCIL : rule.kind === 'hidden' ? LOCK : EYE}{rule.text}</p>
         {rule.edit && editing !== rule.edit.on && (

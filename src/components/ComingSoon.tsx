@@ -12,6 +12,7 @@ import { NavIcon } from '@/components/NavIcon'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import type { NavHref } from '@/lib/nav/labels'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
 
 export function ComingSoon({ icon, title, description, parents, self }: {
   icon: NavIconKey
@@ -25,12 +26,12 @@ export function ComingSoon({ icon, title, description, parents, self }: {
   return (
     <div className="space-y-6">
       {self ? <Breadcrumb parents={parents} self={self} /> : <Breadcrumb parents={parents} now={title} />}
-      <div className="max-w-[640px] mx-auto mt-14 rounded-2xl border border-[var(--panel-border)] bg-white px-11 py-10 flex flex-col items-center text-center gap-3.5">
+      <div className={`${CARD} max-w-[640px] mx-auto mt-14 px-11 py-10 flex flex-col items-center text-center gap-3.5`}>
         <span className="w-[68px] h-[68px] rounded-[18px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center">
           <NavIcon name={icon} size={32} strokeWidth={1.8} />
         </span>
         <span className="rounded-[5px] bg-[#fbf1cf] px-[9px] py-1 text-[10.5px] font-bold tracking-[.1em] text-[#8a6703]">COMING SOON</span>
-        <h1 className="font-(family-name:--font-display) font-black text-[26px] tracking-[-.01em] text-tn-ink m-0">{title}</h1>
+        <h1 className={PAGE_TITLE}>{title}</h1>
         <p className="text-[14px] leading-relaxed text-foreground m-0">{description}</p>
         <div className="flex gap-2.5 mt-2 flex-wrap justify-center">
           <Link href="/" className={BTN.navy}>

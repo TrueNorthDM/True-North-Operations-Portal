@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { PILL_CLASS, initialsOf, type PillKind } from '@/lib/directory/people-types'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { CARD } from '@/lib/ui/type'
 
 export interface AuditEntry {
   id: number
@@ -78,7 +79,7 @@ function AuditRow({ entry, isOpen, onToggle }: { entry: AuditEntry; isOpen: bool
   const c = describe(entry)
   const actor = entry.actorName ?? 'Someone'
   return (
-    <div className="rounded-[12px] border border-slate-200 bg-white overflow-hidden">
+    <div className={`${CARD} overflow-hidden`}>
       <button className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-subtle transition-colors" onClick={onToggle}>
         <span className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[11px] mt-0.5">{initialsOf(actor)}</span>
         <div className="flex-1 min-w-0">
@@ -149,7 +150,7 @@ export function ChangeHistory({ entries }: { entries: AuditEntry[] }) {
         {entries.length > 0 && <span className="text-[12.5px] text-muted">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>}
       </div>
       {entries.length === 0 ? (
-        <div className="rounded-[12px] border border-slate-200 bg-white p-8 text-center space-y-2">
+        <div className={`${CARD} p-8 text-center space-y-2`}>
           <p className="text-sm font-medium text-tn-ink">No changes recorded yet</p>
           <p className="text-xs text-muted">Every budget and rate change will appear here with its justification.</p>
         </div>

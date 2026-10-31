@@ -57,6 +57,7 @@ import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { anchorOptions } from '@/components/clocky/periods/anchor-options'
 import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
 import { localDate } from '@/lib/timeclock/format'
+import { PAGE_TITLE, SECTION_TITLE } from '@/lib/ui/type'
 
 interface SiteData {
   id: string
@@ -98,7 +99,7 @@ const RolloutIcon = <Icon paths={['M4 22V4', 'M4 4h12l-2 4 2 4H4']} />
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-[18px]">
-      <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">{title}</h2>
+      <h2 className={SECTION_TITLE}>{title}</h2>
       <p className="text-[13.5px] text-muted mt-1.5 leading-relaxed">{desc}</p>
     </div>
   )
@@ -484,7 +485,7 @@ export default async function SettingsPage() {
     <div className="space-y-[22px]">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} self="/admin/settings" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal]" style={{ letterSpacing: '-.01em' }}>Company settings</h1>
+        <h1 className={PAGE_TITLE}>Company settings</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-normal">
           Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.
         </p>

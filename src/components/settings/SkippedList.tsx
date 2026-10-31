@@ -18,9 +18,10 @@ import { dateLabel, timeLabel } from '@/lib/timeclock/format'
 import { FieldLabel, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, BTN_MODAL_WHITE, BTN_MODAL_NAVY, type ToastState } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
 import { Tabs } from '@/components/ui/Tabs'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 const hours = (s: number) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const LABEL = FIELD_LABEL
 const COLS = 'lg:grid-cols-[34px_minmax(0,1fr)_110px_120px_80px_minmax(0,1.6fr)_190px]'
 const ACT = `${BTN.smallWhite} disabled:opacity-50 disabled:cursor-default`
 const BOX = 'w-4 h-4 accent-[#1E7D7F] cursor-pointer'

@@ -23,6 +23,7 @@ import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
 import { Tabs } from '@/components/ui/Tabs'
+import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 
 interface Props {
   data: I7Report
@@ -164,7 +165,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
 
       {/* Period and team selectors */}
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
+        <span className={FIELD_LABEL}>Period</span>
         <RangeFilter
           value={chosen}
           onChange={pickRange}
@@ -175,7 +176,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         />
         {teams.length > 0 && (
           <>
-            <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>
+            <label htmlFor="team-select" className={`${FIELD_LABEL} ml-2`}>Team</label>
             <Select
               id="team-select"
               value={selectedTeam}
@@ -244,7 +245,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
           centimetres above it, so they added a second place for the same number
           to be read from, and one more thing to keep in step.
         */}
-        <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+        <div className={`${CARD} overflow-x-auto`}>
           <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-subtle border-b border-slate-200">

@@ -6,6 +6,7 @@
  */
 
 import type { ProjectDirectory } from '@/lib/tsheets/report-data'
+import { CARD } from '@/lib/ui/type'
 
 export function ClientsProjectsTab({ directory }: { directory: ProjectDirectory }) {
   const { clientName, rows } = directory
@@ -13,7 +14,7 @@ export function ClientsProjectsTab({ directory }: { directory: ProjectDirectory 
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className={`${CARD} overflow-hidden`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-subtle">
           <span className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] bg-tn-teal text-white">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>

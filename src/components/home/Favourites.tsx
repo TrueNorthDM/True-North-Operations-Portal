@@ -6,6 +6,7 @@
 import Link from 'next/link'
 import { NavIcon } from '@/components/NavIcon'
 import type { NavItem } from '@/lib/access/nav'
+import { CARD } from '@/lib/ui/type'
 
 export function Favourites({ items }: { items: readonly NavItem[] }) {
   if (!items.length) {
@@ -25,7 +26,7 @@ export function Favourites({ items }: { items: readonly NavItem[] }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {items.map(it => (
           <Link key={it.key} href={it.href}
-            className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 transition-all hover:border-tn-teal hover:-translate-y-px hover:shadow-[0_8px_20px_-12px_rgba(1,35,88,.35)]">
+            className={`${CARD} group flex items-center gap-3 px-4 py-3.5 transition-all hover:border-tn-teal hover:-translate-y-px hover:shadow-[0_8px_20px_-12px_rgba(1,35,88,.35)]`}>
             <span className="w-9 h-9 rounded-[10px] shrink-0 inline-flex items-center justify-center bg-[rgba(30,125,127,.1)] text-tn-teal group-hover:bg-tn-teal group-hover:text-[#ffffff] transition-colors">
               <NavIcon name={it.icon} size={18} />
             </span>

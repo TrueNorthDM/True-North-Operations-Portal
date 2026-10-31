@@ -12,11 +12,12 @@ import { useModal } from '@/components/ui/useModal'
 import { useIsClient } from '@/components/monday/shared'
 import type { Cadence } from '@/lib/timeclock/periods'
 import { BTN } from '@/lib/ui/buttons'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 export const CADENCE_LABEL: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }
 
 /** The small uppercase label above a value ("A pay period starts on", "Length"). */
-export const FIELD_LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+export { FIELD_LABEL }
 
 /** Monthly in neutral, Every 2 weeks in teal (5B, 5C); "Not set" in amber, for someone with no cadence of their own yet. */
 export function CadencePill({ cadence, size = 10 }: { cadence: Cadence | null; size?: 10 | 10.5 }) {

@@ -32,9 +32,10 @@ import { formatDuration } from '@/lib/timeclock/rounding'
 import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, personProblems, type TransitionRow } from '@/lib/timeclock/transition-check'
 import type { TransitionData, TransitionQuery } from '@/lib/timeclock/transition-data'
 import { DateField } from '@/components/ui/DateField'
+import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
 
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
-const H1 = 'm-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink'
+const LABEL = FIELD_LABEL
+const H1 = `${PAGE_TITLE} mt-0.5`
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[14px]'
 const DATE_INPUT = DATE_FIELD_CLASS
 // Problem | Date, Person, Job and fields, Hours | Client, Division, Project, Activity, Billable

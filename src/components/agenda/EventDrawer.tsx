@@ -30,6 +30,7 @@ import { DateField } from '@/components/ui/DateField'
 import { MODAL_BACKDROP } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
@@ -55,7 +56,7 @@ const TYPE_TILE: Record<EventType, [string, string]> = {
   milestone: ['#e6f6ee', '#0d7a4f'], company: ['#012358', '#ffffff'], celebration: ['#fdf3c4', '#7a5c00'],
 }
 
-const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.1em] uppercase text-muted'
+const LBL = FIELD_LABEL
 const OPT = 'normal-case tracking-normal font-sans font-semibold'
 const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13.5px] text-tn-teal hover:underline'
 const SELECT = `${SELECT_FIELD} font-semibold tabular-nums`

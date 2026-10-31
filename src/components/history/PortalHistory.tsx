@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { BEGINNINGS, BUILT, MOVE, NEXT, NUMBERS, PURPOSE, TIMELINE, UPDATED, WHY } from '@/lib/history/portal'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { CARD } from '@/lib/ui/type'
 
 const CHAPTERS = [
   { id: 'how-it-started', label: '1 · How it started' },
@@ -19,7 +20,7 @@ const CHAPTERS = [
   { id: 'what-comes-next', label: '5 · What comes next' },
 ]
 
-const card = 'rounded-2xl border border-slate-200 bg-white'
+const card = CARD
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <div className="font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-[.12em] text-tn-teal">{children}</div>
 )

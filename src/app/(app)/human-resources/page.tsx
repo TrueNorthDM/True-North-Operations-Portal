@@ -11,6 +11,7 @@ import { teamKeyFromName } from '@/lib/directory/people-types'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
 import { pageHrefs } from '@/lib/directory/page-rights'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,7 +74,7 @@ export default async function HumanResourcesPage() {
   return (
     <div className="space-y-9">
       <div>
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Human Resources</h1>
+        <h1 className={PAGE_TITLE}>Human Resources</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           Anniversary badges, every service milestone and who currently holds it. A name opens that person&apos;s page.
         </p>

@@ -31,9 +31,10 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 const FIELD = `w-full ${INPUT} text-right tabular-nums`
-const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
+const LABEL = `block ${FIELD_LABEL} mb-1.5`
 
 function monthName(ym: string): string {
   const [y, m] = ym.split('-').map(Number)

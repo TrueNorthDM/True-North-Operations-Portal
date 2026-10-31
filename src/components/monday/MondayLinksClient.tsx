@@ -10,12 +10,13 @@ import { linkAccount, markExternal, clearAccount } from '@/app/(app)/admin/monda
 import type { LinkBoard } from '@/lib/monday/worklist/links'
 import type { AccountProfile } from '@/lib/monday/worklist/account'
 import { dateLabel, n } from './shared'
+import { CARD_TITLE, CARD } from '@/lib/ui/type'
 
 interface Option { value: string; label: string }
 
-const card = 'rounded-[14px] border border-slate-200 bg-white overflow-hidden'
+const card = `${CARD} overflow-hidden`
 const head = 'px-5 py-3.5 border-b border-slate-200 flex items-center justify-between gap-3'
-const title = 'font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px] m-0'
+const title = CARD_TITLE
 const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
 const btn = 'text-xs font-bold px-2.5 py-1.5 rounded-[8px] border transition-colors whitespace-nowrap'
 

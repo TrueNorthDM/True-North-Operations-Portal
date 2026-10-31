@@ -26,6 +26,7 @@ import { LabeledSelect, Toast, type ToastState } from '../entries/ui'
 import { InvoicePdfModal } from './InvoicePdfModal'
 import { MarkPaidDialog, STATE_PILL, type PayTarget } from './InvoiceParts'
 import { ExportCsvButton, LIST_HEAD, ListStrip, PersonCell, RowMarkPaid, StatePill, StateSwitch, downloadCsv } from './ListParts'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface InvoicesApi {
   getInvoiceDoc(i: { id: number }): Promise<Result<{ doc: InvoiceDocView }>>
@@ -115,7 +116,7 @@ export function InvoicesList({ data, api, initial }: {
     <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-max content-start gap-4 leading-[normal]">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Invoices" />
-        <h1 className="m-0 mt-1.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink" style={{ letterSpacing: '-.01em' }}>{title}</h1>
+        <h1 className={`${PAGE_TITLE} mt-1.5`}>{title}</h1>
         {sub && <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{sub}</p>}
       </div>
 

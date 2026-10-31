@@ -18,6 +18,7 @@ import { TEST_AREAS } from '@/lib/tests/data'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { PAGE_TITLE, CARD } from '@/lib/ui/type'
 
 type Result = 'pass' | 'fail' | 'skip'
 type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
@@ -139,7 +140,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="flex-1 min-w-0">
           <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="Tests" />
-          <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tests</h1>
+          <h1 className={PAGE_TITLE}>Tests</h1>
           <p className="mt-1.5 text-muted">A pre-launch checklist to verify the whole system end-to-end. Walk each area, tick off what works, flag what doesn’t.</p>
         </div>
         <button
@@ -153,7 +154,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
       </div>
 
       {/* Progress */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+      <div className={`${CARD} p-5`}>
         <div className="flex items-baseline justify-between gap-4 mb-3">
           <div className="flex items-baseline gap-2.5">
             <span className="font-(family-name:--font-display) font-black text-2xl leading-none text-tn-ink">{pct}%</span>
@@ -193,7 +194,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
 
       {/* Sections */}
       {sections.length === 0 ? (
-        <div className="rounded-2xl bg-white border border-slate-200 p-14 text-center">
+        <div className={`${CARD} p-14 text-center`}>
           <div className="font-(family-name:--font-display) font-extrabold text-base text-foreground">No checks in this view</div>
           <div className="mt-1 text-sm text-muted">Nothing matches the current filter.</div>
         </div>
@@ -207,7 +208,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                 ? { background: 'rgba(18,122,62,.14)', color: '#127A3E' }
                 : undefined
             return (
-              <section key={area.area} className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+              <section key={area.area} className={`${CARD} overflow-hidden`}>
                 <button
                   type="button"
                   onClick={() => setCollapsed(prev => ({ ...prev, [area.area]: !prev[area.area] }))}

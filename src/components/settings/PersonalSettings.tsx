@@ -30,6 +30,7 @@ import type { PageGroup } from '@/lib/settings/pages'
 import { FAVOURITES_MAX, START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
 import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
 import { BTN } from '@/lib/ui/buttons'
+import { SECTION_TITLE } from '@/lib/ui/type'
 
 type Result = { ok: boolean; error?: string }
 type Save = (patch: SettingsPatch) => Promise<Result>
@@ -46,7 +47,7 @@ function Section({ id, title, intro, children }: { id: string; title: string; in
   return (
     <section id={id} className="scroll-mt-24 rounded-[14px] border border-[var(--panel-border)] bg-white overflow-hidden">
       <div className="px-5 py-4 border-b border-[var(--row-rule)] bg-subtle">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">{title}</h2>
+        <h2 className={SECTION_TITLE}>{title}</h2>
         <p className="text-[13px] text-muted m-0 mt-0.5 leading-relaxed">{intro}</p>
       </div>
       <div>{children}</div>

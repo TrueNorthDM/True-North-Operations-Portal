@@ -10,6 +10,7 @@ import { getOrgChart } from '@/lib/org/data'
 import { loadAccess } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Organization' }
@@ -21,7 +22,7 @@ export default async function OrganizationPage() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <Breadcrumb self="/organization" />
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">Organization</h1>
+          <h1 className={PAGE_TITLE}>Organization</h1>
           <p className="text-[14px] text-muted mt-1 m-0">
             {`Who reports to whom, across the whole company.${org.total > 0 ? ` ${org.total} people.` : ''}`}
           </p>

@@ -8,6 +8,7 @@
  * else only reads sits in a beige block, with no "view only" badge.
  */
 
+import { CARD as CARD_BOX } from '@/lib/ui/type'
 import { INPUT } from '@/lib/ui/fields'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -35,7 +36,7 @@ export interface AgendaSettingsApi {
   saveBookingLink(i: LinkInput): Promise<Done>
 }
 
-const CARD = 'bg-white border border-[var(--panel-border)] rounded-[18px] p-5 flex flex-col gap-3.5'
+const CARD = `${CARD_BOX} p-5 flex flex-col gap-3.5`
 const TITLE = 'font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink'
 const SUB = 'text-[13px] text-foreground leading-[1.5]'
 const BEIGE = 'bg-subtle rounded-[12px] px-3.5 py-3'

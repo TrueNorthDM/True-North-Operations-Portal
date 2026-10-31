@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLinkBoard } from '@/lib/monday/worklist/links'
 import { MondayLinksClient } from '@/components/monday/MondayLinksClient'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const metadata = { title: 'Monday accounts' }
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export default async function MondayLinksPage() {
     <div className="space-y-6">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Monday accounts" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Monday accounts</h1>
+        <h1 className={PAGE_TITLE}>Monday accounts</h1>
         <p className="text-muted mt-1.5 leading-relaxed">
           Every assignment in My Work carries a Monday account. Until that account is attached to somebody in
           the Directory, their work still shows but falls outside every team filter. Two answers finish the

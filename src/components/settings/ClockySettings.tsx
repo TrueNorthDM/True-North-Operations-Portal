@@ -32,12 +32,13 @@ import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { DateField } from '@/components/ui/DateField'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
 const BTN_W = `${BTN.smallWhite} disabled:opacity-50`
 const BTN_N = `${BTN.navy} disabled:opacity-50`
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const LABEL = FIELD_LABEL
 const REFRESH = 'M21 12a9 9 0 1 1-3-6.7M21 4v5h-5'
 
 function useToast() {
@@ -117,7 +118,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             {g.d.facts.map(f => (
               <div key={f.k} className="bg-subtle rounded-[12px] px-[13px] py-[11px] flex flex-col gap-1">
-                <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">{f.k}</span>
+                <span className={FIELD_LABEL}>{f.k}</span>
                 <span className="text-[13px] text-tn-ink font-semibold leading-[1.45]">{f.v}</span>
               </div>
             ))}
@@ -198,7 +199,7 @@ function GoogleAppCard({ app, canEdit, busy, onEdit }: { app: IntegrationsData['
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {facts.map(f => (
           <div key={f.k} className="bg-subtle rounded-[12px] px-[13px] py-[11px] flex flex-col gap-1 min-w-0">
-            <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">{f.k}</span>
+            <span className={FIELD_LABEL}>{f.k}</span>
             <span className="text-[13px] text-tn-ink font-semibold leading-[1.45] break-all">{f.v}</span>
           </div>
         ))}

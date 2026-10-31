@@ -6,6 +6,7 @@
 import Link from 'next/link'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export type ManualTab = 'portal' | 'runs'
 
@@ -24,7 +25,7 @@ export function ManualHeader({ active, tabs = ['portal', 'runs'], canOpenAdmin =
     <div className="space-y-4">
       <div>
         <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="System manual" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">System manual</h1>
+        <h1 className={PAGE_TITLE}>System manual</h1>
         <p className="mt-1.5 text-muted">{INTRO[active]}</p>
       </div>
       <nav aria-label="System manual" className={TAB_LIST}>

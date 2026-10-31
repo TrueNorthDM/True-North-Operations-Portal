@@ -36,6 +36,7 @@ import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson } from '@/lib/auth/session'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
@@ -74,7 +75,7 @@ export default async function ReportPage(
 
       <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
         <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">
+          <h2 className={PAGE_TITLE}>
             Report
           </h2>
           <p className="text-[14.5px] text-muted mt-1.5 m-0">

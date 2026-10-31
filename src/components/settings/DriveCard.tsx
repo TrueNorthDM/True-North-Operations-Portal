@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { BTN } from '@/lib/ui/buttons'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DriveApi {
@@ -105,11 +106,11 @@ export function DriveCard({ data, canEdit, api, say }: {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
         <div className="bg-subtle rounded-[12px] px-[13px] py-[11px] flex flex-col gap-1">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">Folder</span>
+          <span className={FIELD_LABEL}>Folder</span>
           <span className="text-[13px] text-tn-ink font-semibold leading-[1.45]">{data.folder ?? 'Not picked yet'}</span>
         </div>
         <div className="bg-subtle rounded-[12px] px-[13px] py-[11px] flex flex-col gap-1">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">The portal sees</span>
+          <span className={FIELD_LABEL}>The portal sees</span>
           <span className="text-[13px] text-tn-ink font-semibold leading-[1.45]">Only this folder and the files it writes there</span>
         </div>
       </div>

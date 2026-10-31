@@ -16,6 +16,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ROUTES, hrefLinksSite } from '@/lib/nav/routes'
 import { HrefLinksReadError } from '@/components/href-links/ReadError'
 import { attempt } from '@/components/href-links/load'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 // Each card carries its site's brand: colours, display font and real logo.
 const SITES = [
@@ -81,7 +82,7 @@ export default async function ProjectsPage() {
           site pages hang off it. */}
       <div>
         <Breadcrumb self={ROUTES.hrefLinks} />
-        <h1 className="text-2xl font-extrabold text-tn-ink">Href Links</h1>
+        <h1 className={PAGE_TITLE}>Href Links</h1>
         <p className="text-muted mt-1">
           Manage hreflang tag workflows for AAAF and HFA WordPress sites.
         </p>

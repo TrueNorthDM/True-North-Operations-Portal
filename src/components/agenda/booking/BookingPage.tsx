@@ -18,11 +18,12 @@ import { BOOKING_ZONES, bookingZoneLabel, HOLD_MINUTES, MAX_BOOKING_GUESTS, when
 import { localOf } from '@/lib/agenda/time'
 import type { Held, HoldPreview } from '@/app/meet/actions'
 import { BookingFrame, HostSide, Steps, MAIN, H4, BTN_MAIN, LINK, Mark } from './BookingFrame'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const INPUT = `w-full ${FIELD}`
 const AREA = `w-full min-h-[84px] ${TEXTAREA}`
-const LBL = 'font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-muted'
+const LBL = FIELD_LABEL
 
 export interface BookingHost { name: string; initials: string; slug: string; lengths: number[] }
 

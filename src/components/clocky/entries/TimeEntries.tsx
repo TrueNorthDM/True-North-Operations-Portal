@@ -49,6 +49,7 @@ import { WeekGrid } from './WeekGrid'
 import { addDays } from '@/lib/timeclock/periods'
 import { structureOn } from '@/lib/timeclock/entry-rules'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export type ModalState =
   | { kind: 'edit'; form: FormState }
@@ -506,7 +507,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     <div className="flex flex-col gap-4 leading-[normal]">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Time entries" />
-        <h1 className="m-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Time entries</h1>
+        <h1 className={`${PAGE_TITLE} mt-0.5`}>Time entries</h1>
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">

@@ -21,6 +21,7 @@ import { StaleRuleToggle } from '@/components/monday/StaleRuleToggle'
 import { STALE_MONTHS } from '@/lib/monday/worklist/stale'
 import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
 import { Tabs } from '@/components/ui/Tabs'
+import { CARD } from '@/lib/ui/type'
 
 const PRIORITIES = [
   { key: 'high', label: 'High' },
@@ -48,7 +49,7 @@ function PriorityPicker({ name, value, onChange, busy }: {
   )
 }
 
-const card = 'rounded-[14px] border border-slate-200 bg-white overflow-hidden'
+const card = `${CARD} overflow-hidden`
 
 /** How long ago a board was last used. Exported for its test. */
 export function ago(iso: string | null, now = Date.now()): { text: string; stale: boolean } {

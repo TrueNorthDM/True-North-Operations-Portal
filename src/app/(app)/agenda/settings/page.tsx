@@ -10,6 +10,7 @@ import { loadAgendaSettings } from '@/lib/agenda/settings-data'
 import { connectNotice } from '@/lib/agenda/google-oauth'
 import { AgendaSettings } from '@/components/agenda/settings/AgendaSettings'
 import { connectAccount, connectTeamCalendar, disconnectAccount, disconnectTeamCalendar, saveBookingLink, saveWorkingHours, setAllLevels, setInviteAccount } from './actions'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Agenda settings' }
@@ -28,7 +29,7 @@ export default async function AgendaSettingsRoute({ searchParams }: Props) {
   return (
     <div className="max-w-[880px] flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h1 className="m-0 font-(family-name:--font-display) font-extrabold text-[30px] leading-[normal] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Agenda settings</h1>
+        <h1 className={PAGE_TITLE}>Agenda settings</h1>
         <p className="m-0 text-[14px] text-foreground">Your Google accounts and how the portal uses them.</p>
       </div>
       <AgendaSettings data={data} notice={notice} api={{ connectAccount, disconnectAccount, setInviteAccount, saveWorkingHours, connectTeamCalendar, disconnectTeamCalendar, setAllLevels, saveBookingLink }} />

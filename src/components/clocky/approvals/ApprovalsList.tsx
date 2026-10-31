@@ -31,6 +31,7 @@ import { RequestCard, type ItemDecision } from './RequestCard'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
+import { PAGE_TITLE } from '@/lib/ui/type'
 
 export interface QueueApi {
   getQueue(): Promise<Result<{ data: QueueData }>>
@@ -185,7 +186,7 @@ export function ApprovalsList({ initialData, api, initial }: {
     <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-max content-start gap-4 leading-[normal]">
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Approvals" />
-        <h1 className="m-0 mt-1.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Approvals</h1>
+        <h1 className={`${PAGE_TITLE} mt-1.5`}>Approvals</h1>
         <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{data.subtitle}</p>
       </div>
 

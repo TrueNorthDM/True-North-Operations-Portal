@@ -32,6 +32,7 @@ import { reportDate } from '@/lib/report/clock'
 import { siteHost, type SiteCode } from '@/lib/href-links/rules'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { langChipStyle } from '@/components/href-links/lang-chip'
+import { PAGE_TITLE, CARD_TITLE, CARD } from '@/lib/ui/type'
 
 interface ConfirmationState {
   language_code: string
@@ -183,7 +184,7 @@ export function PageDetail({
         />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-2xl font-(family-name:--font-display) font-extrabold text-tn-ink">{pageName}</h1>
+            <h1 className={PAGE_TITLE}>{pageName}</h1>
           </div>
           <div className="flex gap-2 flex-wrap items-center">
             <span
@@ -223,9 +224,9 @@ export function PageDetail({
       )}
 
       {/* 1. The links */}
-      <section className="rounded-xl bg-white border border-slate-200 p-5 space-y-4">
+      <section className={`${CARD} p-5 space-y-4`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Language URLs</h2>
+          <h2 className={CARD_TITLE}>Language URLs</h2>
           <button type="button" onClick={handleSaveUrls} disabled={saving} className={`${BTN.navy} disabled:opacity-50`}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M20 6 9 17l-5-5" />
@@ -351,13 +352,13 @@ export function PageDetail({
 
       {/* 2. The hreflang tags */}
       <section className="space-y-2">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Generated hreflang tags</h2>
+        <h2 className={CARD_TITLE}>Generated hreflang tags</h2>
         <HreflangCodeBlock urls={persistedUrls} languages={languages} />
       </section>
 
       {/* 3. The confirmations */}
-      <section className="rounded-xl bg-white border border-slate-200 p-5 space-y-3">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Confirmations</h2>
+      <section className={`${CARD} p-5 space-y-3`}>
+        <h2 className={CARD_TITLE}>Confirmations</h2>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b border-slate-200">

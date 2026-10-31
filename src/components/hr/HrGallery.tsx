@@ -9,6 +9,7 @@ import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import type { TeamKey } from '@/lib/directory/people-types'
 import type { Milestone } from '@/lib/tenure'
+import { CARD_TITLE } from '@/lib/ui/type'
 
 export interface HrHolder {
   id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string
@@ -61,14 +62,14 @@ export function HrGallery({ quarters, years }: {
     <>
       <section>
         <div className="flex items-center gap-2.5 mb-3.5">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">First year</h2>
+          <h2 className={CARD_TITLE}>First year</h2>
           <span className="text-[12.5px] text-muted">quarterly milestones</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{quarters.map(card)}</div>
       </section>
 
       <section>
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mb-3.5">Years of service</h2>
+        <h2 className={`${CARD_TITLE} mb-3.5`}>Years of service</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">{years.map(card)}</div>
       </section>
 

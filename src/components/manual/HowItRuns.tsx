@@ -14,17 +14,18 @@
  */
 
 import { RunsToc } from './RunsToc'
+import { SECTION_TITLE, CARD } from '@/lib/ui/type'
 
 
 const ACTIONS = 'https://github.com/TrueNorthDM/True-North-Operations-Portal/actions'
 
 // ── Building blocks ──────────────────────────────────────────────────
-const card = 'rounded-2xl border border-slate-200 bg-white shadow-sm'
+const card = CARD
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <div className="font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-[.09em] text-tn-teal mb-2">{children}</div>
 )
 const Heading = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink mb-3">{children}</h2>
+  <h2 className={`${SECTION_TITLE} mb-3`}>{children}</h2>
 )
 const Sub = ({ children }: { children: React.ReactNode }) => (
   <h3 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink mt-5 mb-2">{children}</h3>

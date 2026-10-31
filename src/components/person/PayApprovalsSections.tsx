@@ -23,6 +23,7 @@ import { BTN_MODAL_NAVY, BTN_MODAL_WHITE } from '@/components/clocky/entries/ui'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { PaysAs } from '@/lib/timeclock/routing'
 import { Section } from './PersonParts'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 export interface ApprovalsView {
   rows: { k: string; v: string; sub: string }[]
@@ -51,7 +52,7 @@ export type SavePay = (input: {
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const PAYS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
 const UNIT = { week: 'a week', month: 'a month' } as const
-const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const LABEL = FIELD_LABEL
 const INPUT = `${FIELD} tabular-nums lining-nums`
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {

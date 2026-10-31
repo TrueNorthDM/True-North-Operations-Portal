@@ -12,6 +12,7 @@ import { MAX_HOURS_PER_ENTRY } from '@/lib/timeclock/manual-entry'
 import { monthName } from '@/lib/timeclock/periods'
 import { shouldWarnRate, type ManualForm, type ManualOptions } from './manual-hours'
 import { DateField } from '@/components/ui/DateField'
+import { FIELD_LABEL } from '@/lib/ui/type'
 
 // The answers read heavier than the labels, because the answers are what
 // somebody scans back over to check the line before sending it. Placeholders
@@ -22,7 +23,7 @@ const FIELD = `w-full ${INPUT}`
 // like fields at all, and the panel read as flat. No text colour here: the
 // Select paints its own value and placeholder.
 const FIELD_SELECT = `w-full ${SELECT_FIELD}`
-const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
+const LABEL = `block ${FIELD_LABEL} mb-1.5`
 
 export function ManualHoursForm({ options, month, form, patch, onStage, busy }: {
   options: ManualOptions

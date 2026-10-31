@@ -27,6 +27,7 @@ import { dayLabel, longDateLabel } from '@/lib/timeclock/format'
 import type { Result, TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
 import type { AnchorPreview } from '@/lib/timeclock/clocky-periods-data'
 import { FIELD_LABEL, PeriodsDialog, useToast } from './ui'
+import { SECTION_TITLE } from '@/lib/ui/type'
 
 // The Edit / Done button (Timesheet Periods.dc.html 5A): Edit navy 11px 20px with
 // its shadow, Done white 10px 18px; 8px gap, no letter spacing.
@@ -148,7 +149,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
   return (
     <div className="flex flex-col gap-[18px] leading-[normal]">
       <div>
-        <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Timesheet periods</h2>
+        <h2 className={SECTION_TITLE}>Timesheet periods</h2>
         <p className="text-[13.5px] text-muted mt-1.5 mb-0 leading-[1.55] max-w-[820px]">
           How often people submit their hours for approval. Each person submits either monthly or every 2 weeks, by pay period. Who does which is set on each person&apos;s page (Work tab) or in{' '}
           <Link href={withViewAs('/directory?tab=rates')} className="font-bold text-tn-teal hover:text-tn-ink">Directory › Rates &amp; Costs</Link>.
