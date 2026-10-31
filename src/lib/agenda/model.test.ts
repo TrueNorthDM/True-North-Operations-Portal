@@ -80,7 +80,7 @@ describe('8C list and Coming up', () => {
   })
   it('lists who is out, celebrations and events', () => {
     const g = comingUp(items, TODAY)
-    expect(g.map(x => x.title)).toEqual(['Who is out', 'Birthdays and anniversaries', 'Events and milestones'])
+    expect(g.map(x => x.title)).toEqual(['Who is out', 'Events and milestones', 'Birthdays and anniversaries'])
     expect(g[0].items.map(i => `${i.label} ${i.when}`)).toEqual(['Dave Sharpe Nov 6', 'Tina Gennette Nov 9 to Tue, Nov 10'])
   })
   it('names the range on screen', () => {

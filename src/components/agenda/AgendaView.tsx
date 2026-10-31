@@ -27,7 +27,7 @@ import type { Scope } from '@/lib/agenda/recurrence'
 import type { WorkingHours } from '@/lib/agenda/working-hours'
 import { BTN_MODAL_WHITE, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, AGENDA_H, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, AGENDA_H, ALL_DAY_ROWS, monthCells, miniMonth, nowLine, offHours, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -265,6 +265,13 @@ function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: 
   const wk = weekModel(items, anchor, today, seesType)
   const now = useNow(zone)
   const line = now ? nowLine(wk, now) : null
+  // The all-day band: three rows and "+N more" until opened; a new week closes it.
+  const [allOpen, setAllOpen] = useState(false)
+  const [weekSeen, setWeekSeen] = useState(anchor)
+  if (weekSeen !== anchor) { setWeekSeen(anchor); setAllOpen(false) }
+  const folds = wk.rows > ALL_DAY_ROWS
+  const bars = folds && !allOpen ? wk.bars.filter(b => b.row <= ALL_DAY_ROWS) : wk.bars
+  const lastRow = folds && !allOpen ? ALL_DAY_ROWS + 1 : Math.max(1, wk.rows)
   // Seven hours at a time, centred on the line at the current time (3.5 before,
   // 3.5 after) and following it as it moves, until the person scrolls; with
   // today not in the week, it opens where their working day starts (owner, 31
@@ -291,7 +298,21 @@ function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: 
       </div>
       <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] auto-rows-[26px] gap-y-1 py-2 border-b border-[var(--panel-border)]">
         <div className="col-start-1 row-start-1 text-[10.5px] text-muted px-2 py-[5px] font-bold leading-[normal]">ALL DAY</div>
-        {wk.bars.map(b => (
+        {folds && (
+          <button type="button" aria-expanded={allOpen} aria-label={allOpen ? 'Show fewer all-day items' : 'Show all all-day items'} onClick={() => setAllOpen(o => !o)}
+            className="col-start-1 mx-3.5 border-0 rounded-[7px] bg-subtle text-muted cursor-pointer flex items-center justify-center hover:text-tn-ink"
+            style={{ gridRow: lastRow }}>
+            <Icon d={allOpen ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} size={15} width={2.4} />
+          </button>
+        )}
+        {folds && !allOpen && wk.hidden.map((n, i) => n > 0 && (
+          <button key={`more${i}`} type="button" onClick={() => setAllOpen(true)}
+            className="mx-1 border-0 rounded-[7px] bg-transparent px-[9px] text-left text-[12px] font-bold leading-[normal] text-tn-teal cursor-pointer hover:bg-tn-teal-soft"
+            style={{ gridColumn: i + 2, gridRow: ALL_DAY_ROWS + 1 }}>
+            +{n} more
+          </button>
+        ))}
+        {bars.map(b => (
           <button key={b.id} type="button" title={b.title} onClick={() => onOpen(b.id)}
             className="mx-1 border-0 rounded-[7px] px-[9px] text-[12px] font-bold leading-[normal] flex items-center gap-1.5 cursor-pointer min-w-0 text-left"
             style={{ gridColumn: b.col, gridRow: b.row, background: b.look.bg, color: b.look.fg }}>

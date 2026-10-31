@@ -307,7 +307,9 @@ export function look(x: AgendaItem): Look {
   return { bg: '#f1f3f6', fg: '#5b6b82', d: '', c: '#a3aebb', flag: flagOf(x.country) }
 }
 
-const SORT: Record<AgendaKind, number> = { hol: 0, event: 1, ms: 2, bday: 3, anni: 4, pto: 9 }
+// The order of the kinds everywhere (owner, 31 October 2026): what changes who
+// works that day, then what needs doing, then the celebrations.
+const SORT: Record<AgendaKind, number> = { hol: 0, pto: 1, event: 2, ms: 3, bday: 4, anni: 5 }
 const byKind = (a: AgendaItem, b: AgendaItem) => (SORT[a.k] - SORT[b.k]) || ((a.s ?? 0) - (b.s ?? 0))
 
 // ── Filters ───────────────────────────────────────────────────────────────────
@@ -392,6 +394,9 @@ export interface WeekModel {
   cols: { weekend: boolean; events: WeekEvent[] }[]
   /** The week's days and the first and last hour drawn, for the line at the current time. */
   days: string[]
+  /** The all-day rows in all, and per day the bars below the ALL_DAY_ROWS shown while closed. */
+  rows: number
+  hidden: number[]
   first: number
   last: number
 }
@@ -427,6 +432,8 @@ export function nowLine(wk: Pick<WeekModel, 'days' | 'first' | 'last'>, now: { d
 
 /** One hour of the week, in pixels: about seven fit in AGENDA_H, so cards read larger (owner, 31 October 2026). */
 export const WEEK_ROW = 80
+/** The all-day band shows three rows, and "+N more" under them, until it is opened, as Google Calendar does. */
+export const ALL_DAY_ROWS = 3
 /** The month, the week and the side column end on one line, whatever the view (owner, 31 October 2026). */
 export const AGENDA_H = 680
 
@@ -439,7 +446,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
   const first = 0, last = 23
   const hours = [...Array(last - first + 1)].map((_, i) => hourLabel(first + i).replace(':00', ''))
   const allDay = items.filter(x => x.s == null && x.a <= days[6] && x.b >= days[0])
-    .sort((p, q) => ((p.k === 'pto' ? 0 : 1) - (q.k === 'pto' ? 0 : 1)) || p.a.localeCompare(q.a))
+    .sort((p, q) => (SORT[p.k] - SORT[q.k]) || p.a.localeCompare(q.a))
   // Each bar takes the first row free on all its days, so bars on different days share a row.
   const taken: boolean[][] = []
   const bars = allDay.map(x => {
@@ -450,9 +457,11 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
     for (let i = s0; i <= e0; i++) taken[r][i] = true
     return { id: x.id, col: `${s0 + 2} / ${e0 + 3}`, row: r + 1, label: label(x) + (x.k === 'pto' && x.type && seesType(x) ? ` (${x.type})` : ''), title: label(x), look: look(x) }
   })
+  // Closed, the band shows ALL_DAY_ROWS rows; each day counts the bars below them.
+  const hidden = days.map((_, i) => taken.slice(ALL_DAY_ROWS).filter(r => r[i]).length)
   return {
     heads: days.map(d => ({ d: WD[dow(d)], n: Number(d.slice(8)), today: d === today })),
-    bars, hours, days, first, last,
+    bars, hours, days, first, last, hidden, rows: taken.length,
     cols: days.map(d => ({
       weekend: isWeekend(d),
       events: (() => {
@@ -524,7 +533,7 @@ export function comingUp(items: readonly AgendaItem[], today: string): ComingGro
       }
     }),
   })
-  return [grp('Who is out', ['pto']), grp('Birthdays and anniversaries', ['bday', 'anni']), grp('Events and milestones', ['event', 'ms'])].filter(g => g.items.length)
+  return [grp('Who is out', ['pto']), grp('Events and milestones', ['event', 'ms']), grp('Birthdays and anniversaries', ['bday', 'anni'])].filter(g => g.items.length)
 }
 
 // ── 8D The card ───────────────────────────────────────────────────────────────
