@@ -17,6 +17,8 @@
  */
 
 import { useEffect, useState } from 'react'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export interface PdfRequest {
   /** Where to fetch it from. */
@@ -86,33 +88,26 @@ function PdfDialog({ request, onClose }: { request: PdfRequest; onClose: () => v
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8 bg-slate-900/45 backdrop-blur-sm"
+      className={`fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8 ${MODAL_BACKDROP}`}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={request.title}
-        className="w-full max-w-5xl h-full max-h-[88vh] flex flex-col rounded-2xl bg-white border border-slate-200 shadow-xl overflow-hidden"
+        className={`w-full max-w-5xl h-full max-h-[88vh] flex flex-col ${MODAL_PANEL} overflow-hidden`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200">
           <div className="min-w-0">
-            <h2 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink m-0 truncate">
+            <h2 className={`${MODAL_TITLE} truncate`}>
               {request.title}
             </h2>
             <p className="text-[12.5px] text-muted m-0 truncate">
               {error ? 'Could not be built' : blobUrl ? name : 'Building the PDF…'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 w-8 h-8 rounded-full text-muted hover:bg-[var(--row-hover)] hover:text-tn-ink transition-colors flex items-center justify-center"
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <div className="flex-1 min-h-0 bg-subtle">

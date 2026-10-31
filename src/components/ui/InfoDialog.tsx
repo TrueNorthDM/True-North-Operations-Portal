@@ -16,6 +16,8 @@
  */
 
 import { useEffect, useState } from 'react'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export function InfoDialog(
   { title, label = 'How this report works', children }: {
@@ -55,26 +57,19 @@ export function InfoDialog(
 
       {open && (
         <div
-          className="fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-slate-900/45 backdrop-blur-sm"
+          className={`fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-8 overflow-y-auto ${MODAL_BACKDROP}`}
           onClick={() => setOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-xl my-auto"
+            className={`w-full max-w-2xl ${MODAL_PANEL} my-auto`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
-              <h2 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink m-0">{title}</h2>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="shrink-0 w-8 h-8 rounded-full text-muted hover:bg-[var(--row-hover)] hover:text-tn-ink transition-colors flex items-center justify-center"
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
+              <h2 className={MODAL_TITLE}>{title}</h2>
+              <CloseButton onClick={() => setOpen(false)} />
             </div>
             {/* Spacing declared on the children rather than with space-y: the
                 paragraphs handed in carry m-0, which lands later in the cascade

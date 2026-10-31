@@ -23,6 +23,7 @@ import { languageName, languageDot, codeFromInput } from '@/lib/language-display
 import { Switch } from '@/components/ui/Switch'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 interface SiteCardProps {
   site: {
@@ -64,9 +65,9 @@ function AddLanguageDialog({ code, site, pending, onCancel, onConfirm }: {
   useModal(true, box, onCancel)
   const name = languageName(code)
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel() }}>
-      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] p-6 space-y-4">
-        <h3 id={titleId} className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[17px]">Add {name}?</h3>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${MODAL_BACKDROP} p-4`} onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel() }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={titleId} className={`w-full max-w-md ${MODAL_PANEL} p-6 space-y-4`}>
+        <h3 id={titleId} className={MODAL_TITLE}>Add {name}?</h3>
         <div className="text-[13.5px] text-foreground space-y-2">
           <p>Adds <b className="text-tn-ink">{name}</b> as a tracked publishing language for {site.name}.</p>
           {site.pagesWithUrlsCount > 0 ? (

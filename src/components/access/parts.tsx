@@ -5,6 +5,8 @@ import { type PriorityAccessData, type PriorityPerson } from '@/components/admin
 import { CATALOGUE, CHILDREN, type AccessLevel, type CatalogueItem, type ItemKind } from '@/lib/access/catalogue'
 import { type Audience, type Exception, type Subject, type ToolScope } from '@/lib/access/decide'
 import { initialsOf } from '@/lib/directory/people-types'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 // ── Data from the server ───────────────────────────────────────────────────
 
@@ -79,14 +81,14 @@ export function Modal({ title, kicker, wide, onClose, children, foot }: { title:
     return () => { document.removeEventListener('keydown', onKey); before?.focus?.() }
   }, [])
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(1,35,88,.38)] flex items-center justify-center p-4 overflow-y-auto" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={`outline-none w-full ${wide ? 'max-w-[1080px]' : 'max-w-[640px]'} max-h-[calc(100vh-32px)] bg-white rounded-[18px] shadow-[0_30px_60px_-20px_rgba(1,35,88,.55)] overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto]`}>
+    <div className={`fixed inset-0 z-50 ${MODAL_BACKDROP} flex items-center justify-center p-4 overflow-y-auto`} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={`outline-none w-full ${wide ? 'max-w-[1080px]' : 'max-w-[640px]'} max-h-[calc(100vh-32px)] ${MODAL_PANEL} overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto]`}>
         <div className="px-5 pt-4 pb-3 border-b border-[var(--row-rule)] flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-tn-teal">{kicker}</div>
-            <h3 className="font-(family-name:--font-display) font-black text-[18px] text-tn-ink m-0">{title}</h3>
+            <h3 className={MODAL_TITLE}>{title}</h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg text-muted hover:bg-subtle text-[20px] leading-none">×</button>
+          <CloseButton onClick={onClose} />
         </div>
         <div className="px-5 py-4 overflow-y-auto space-y-3.5">{children}</div>
         {foot && <div className="px-5 py-3 border-t border-[var(--row-rule)] flex items-center justify-between gap-3 flex-wrap">{foot}</div>}

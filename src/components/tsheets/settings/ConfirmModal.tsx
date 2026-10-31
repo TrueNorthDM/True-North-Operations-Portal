@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { BTN } from '@/lib/ui/buttons'
 
 interface Props {
   open: boolean
@@ -19,9 +21,9 @@ export function ConfirmModal({ open, title, lines, onConfirm, onCancel, loading 
   const valid = justification.trim().length >= 10
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl p-6 space-y-5">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${MODAL_BACKDROP} p-4`}>
+      <div className={`w-full max-w-md ${MODAL_PANEL} p-6 space-y-5`}>
+        <h2 className={MODAL_TITLE}>{title}</h2>
 
         <ul className="space-y-1 text-sm text-slate-700 bg-slate-50 rounded-lg px-4 py-3">
           {lines.map((l, i) => (
@@ -51,18 +53,18 @@ export function ConfirmModal({ open, title, lines, onConfirm, onCancel, loading 
           )}
         </div>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className={`${BTN.white} disabled:opacity-50`}
           >
             Cancel
           </button>
           <button
             onClick={() => { if (valid) onConfirm(justification.trim()) }}
             disabled={!valid || loading}
-            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {loading ? 'Saving...' : 'Confirm change'}
           </button>

@@ -20,6 +20,7 @@ import { StatusChip } from './StatusChip'
 import { HistorySteps, historyWhen } from './HistorySteps'
 import { EyeIcon } from './RowLinks'
 import { readDue, workToday } from './shared'
+import { MODAL_BACKDROP } from '@/lib/ui/modal'
 
 /** What the browser is told when Monday, or the way to it, did not answer. */
 export const UNREACHABLE = 'Monday could not be reached. Try again in a moment.'
@@ -86,7 +87,7 @@ export function HistoryPanel({ row, onClose, state, today }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Out of the Tab order: Escape closes the window for the keyboard. */}
-      <button className="absolute inset-0 bg-[rgba(1,35,88,.35)]" onClick={onClose} aria-label="Close" tabIndex={-1} />
+      <button className={`absolute inset-0 ${MODAL_BACKDROP}`} onClick={onClose} aria-label="Close" tabIndex={-1} />
 
       <div
         ref={box}

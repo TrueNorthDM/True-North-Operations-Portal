@@ -17,6 +17,8 @@ import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
 import { ManualHours, type ManualOptions, type ManualRow } from './ManualHours'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export function ManualHoursDialog(
   { rows, options, month, blurb, tone = 'primary' }: {
@@ -49,7 +51,7 @@ export function ManualHoursDialog(
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-slate-900/40 backdrop-blur-sm"
+          className={`fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto ${MODAL_BACKDROP}`}
           onClick={() => setOpen(false)}
         >
           <div
@@ -57,21 +59,14 @@ export function ManualHoursDialog(
             role="dialog"
             aria-modal="true"
             aria-label="Add hours by hand"
-            className="w-full max-w-4xl rounded-2xl bg-white border border-slate-200 shadow-xl px-6 pt-5 pb-6 my-auto"
+            className={`w-full max-w-4xl ${MODAL_PANEL} px-6 pt-5 pb-6 my-auto`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 mb-3">
-              <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">
+              <h2 className={MODAL_TITLE}>
                 Hours added by hand
               </h2>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="shrink-0 w-8 h-8 rounded-full text-muted hover:bg-[var(--row-hover)] hover:text-tn-ink transition-colors flex items-center justify-center"
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
+              <CloseButton onClick={() => setOpen(false)} />
             </div>
             <ManualHours rows={rows} options={options} month={month} blurb={blurb} />
           </div>

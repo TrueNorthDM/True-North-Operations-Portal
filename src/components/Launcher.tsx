@@ -19,6 +19,7 @@ import type { NavIconKey } from '@/lib/nav/nav-icons'
 import type { ResolvedEntry } from '@/lib/access/nav'
 import { pageGroups } from '@/lib/settings/pages'
 import { launcherPeople } from '@/app/(app)/launcher-actions'
+import { MODAL_BACKDROP } from '@/lib/ui/modal'
 
 /** href null: a person listed without a link, whose page does not open to the viewer. */
 interface Row { key: string; label: string; href: string | null; icon: NavIconKey; soon?: boolean }
@@ -120,7 +121,7 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-[rgba(1,35,88,.28)] flex items-start justify-center px-4 pt-[90px]" onMouseDown={e => { if (e.target === e.currentTarget) close() }}>
+        <div className={`fixed inset-0 z-50 ${MODAL_BACKDROP} flex items-start justify-center px-4 pt-[90px]`} onMouseDown={e => { if (e.target === e.currentTarget) close() }}>
           <div role="dialog" aria-modal="true" aria-label="Search the portal" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); close() } }} className="w-[560px] max-w-full bg-white rounded-[14px] shadow-[0_24px_60px_rgba(1,35,88,.25)] overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[var(--panel-border)]">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8593a4" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>

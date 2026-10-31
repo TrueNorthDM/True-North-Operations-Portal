@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { BTN } from '@/lib/ui/buttons'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 export interface ConfirmOptions {
   title: string
@@ -70,12 +71,12 @@ function ConfirmBox({ options, onAnswer }: { options: ConfirmOptions; onAnswer: 
   }, [])
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[rgba(1,35,88,.38)] flex items-center justify-center p-4" onMouseDown={e => { if (e.target === e.currentTarget) answer.current(false) }}>
+    <div className={`fixed inset-0 z-[60] ${MODAL_BACKDROP} flex items-center justify-center p-4`} onMouseDown={e => { if (e.target === e.currentTarget) answer.current(false) }}>
       <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby={options.body ? 'confirm-body' : undefined}
-        className="w-full max-w-[440px] bg-white rounded-[16px] shadow-[0_30px_60px_-20px_rgba(1,35,88,.55)] p-5 flex flex-col gap-3">
-        <h2 id="confirm-title" className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">{options.title}</h2>
+        className={`w-full max-w-[440px] ${MODAL_PANEL} p-[22px] flex flex-col gap-3`}>
+        <h2 id="confirm-title" className={MODAL_TITLE}>{options.title}</h2>
         {options.body && <div id="confirm-body" className="text-[13.5px] text-muted leading-relaxed">{options.body}</div>}
-        <div className="flex justify-end gap-2.5 pt-1">
+        <div className="flex justify-end gap-2 pt-1">
           <button ref={cancel} type="button" className={BTN.white} onClick={() => answer.current(false)}>Cancel</button>
           <button type="button" onClick={() => answer.current(true)}
             className={options.danger

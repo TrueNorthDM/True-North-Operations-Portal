@@ -50,6 +50,7 @@ import type { FilterCond, GridColumn, SortState } from '@/components/admin/grid/
 import { MONTH_LONG } from '@/lib/format/months'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, fixedTrack, flexTrack, layoutColumns } from '@/lib/settings/columns'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -747,9 +748,9 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         code always took that branch without asking.
       */}
       {pendingRates && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={() => setPendingRates(null)}>
-          <div ref={rateBox} role="dialog" aria-modal="true" aria-label="When does the new rate start?" className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900">When does the new rate start?</h3>
+        <div className={`fixed inset-0 z-50 ${MODAL_BACKDROP} flex items-center justify-center p-4`} onClick={() => setPendingRates(null)}>
+          <div ref={rateBox} role="dialog" aria-modal="true" aria-label="When does the new rate start?" className={`${MODAL_PANEL} max-w-lg w-full p-6 space-y-4`} onClick={e => e.stopPropagation()}>
+            <h3 className={MODAL_TITLE}>When does the new rate start?</h3>
 
             <ul className="text-sm text-slate-700 space-y-1">
               {pendingRates.map(r => (

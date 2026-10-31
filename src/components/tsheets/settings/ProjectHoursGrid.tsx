@@ -11,6 +11,7 @@ import { ConfirmModal } from './ConfirmModal'
 import { editableMonths } from '@/lib/tsheets/retention'
 import { saveProjectMonthHours } from '@/lib/tsheets/settings-actions'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 export interface ProjectMonthHours { project: string; month: string; hours: number }  // month = 'YYYY-MM'
 
@@ -298,10 +299,10 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       />
 
       {copyFor && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onClick={() => setCopyFor(null)}>
-          <div className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]" onClick={e => e.stopPropagation()}>
+        <div className={`fixed inset-0 z-[55] flex items-center justify-center ${MODAL_BACKDROP} p-4`} onClick={() => setCopyFor(null)}>
+          <div className={`w-full max-w-md ${MODAL_PANEL} overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]`} onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-slate-200">
-              <h3 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">Copy {monthLabel(copyFor)} to other months</h3>
+              <h3 className={MODAL_TITLE}>Copy {monthLabel(copyFor)} to other months</h3>
               <p className="text-xs text-muted mt-1">Applies {monthLabel(copyFor)}&rsquo;s hours (all projects) to the months you choose.</p>
             </div>
             <div className="p-5 space-y-2">

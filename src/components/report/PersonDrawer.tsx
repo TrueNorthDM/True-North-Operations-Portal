@@ -13,6 +13,7 @@ import { formatDays } from '@/lib/report/overview'
 import {
   hoursBar, landed, visibleDeliveries, type PersonDetail,
 } from '@/lib/report/drawer'
+import { MODAL_BACKDROP } from '@/lib/ui/modal'
 
 const ROW_GRID = '1.9fr 1fr .8fr .8fr'
 const HEAD_CELL =
@@ -59,7 +60,7 @@ export function PersonDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-[rgba(1,35,88,.34)]"
+      className={`fixed inset-0 z-50 flex justify-end ${MODAL_BACKDROP}`}
       onClick={onClose}
       role="presentation"
     >

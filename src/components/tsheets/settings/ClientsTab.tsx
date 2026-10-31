@@ -8,6 +8,8 @@ import { MonthlyBudgetGrid, type MonthlyBudget } from './MonthlyBudgetGrid'
 import { ProjectHoursGrid, type ProjectMonthHours } from './ProjectHoursGrid'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export interface ClientWithBudget {
   id: number
@@ -157,9 +159,9 @@ function ClientBudgetModal({ client, estimateRate, onClose }: { client: ClientWi
   const isI7 = !!client.monthlyBudgets
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4 py-10 overflow-y-auto" onClick={onClose}>
+    <div className={`fixed inset-0 z-40 flex items-start justify-center ${MODAL_BACKDROP} p-4 py-10 overflow-y-auto`} onClick={onClose}>
       <div
-        className={`w-full ${isI7 ? 'max-w-5xl' : 'max-w-2xl'} rounded-[18px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]`}
+        className={`w-full ${isI7 ? 'max-w-5xl' : 'max-w-2xl'} ${MODAL_PANEL} overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200">
@@ -169,9 +171,9 @@ function ClientBudgetModal({ client, estimateRate, onClose }: { client: ClientWi
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
               </span>
             )}
-            <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink truncate">{client.name}</h2>
+            <h2 className={`${MODAL_TITLE} truncate`}>{client.name}</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" className="shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors text-xl leading-none">&times;</button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <div className="p-6">

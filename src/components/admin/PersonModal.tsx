@@ -33,6 +33,8 @@ import {
 } from '@/lib/directory/people-types'
 import type { TeamOption } from './DirectoryTabs'
 import { DateField } from '@/components/ui/DateField'
+import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -94,8 +96,8 @@ export function PersonModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center px-6 py-10 overflow-y-auto">
-      <div onClick={() => setState(null)} className="fixed inset-0 bg-[rgba(1,20,45,.44)] backdrop-blur-[2px]" />
-      <div role="dialog" aria-modal="true" aria-labelledby="add-person-title" className="relative w-[920px] max-w-full bg-white border border-slate-200 rounded-[18px] shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden flex flex-col max-h-[calc(100vh-80px)] tn-modal animate-[tn-modal-in_.2s_ease]">
+      <div onClick={() => setState(null)} className={`fixed inset-0 ${MODAL_BACKDROP}`} />
+      <div role="dialog" aria-modal="true" aria-labelledby="add-person-title" className={`relative w-[920px] max-w-full ${MODAL_PANEL} overflow-hidden flex flex-col max-h-[calc(100vh-80px)] tn-modal animate-[tn-modal-in_.2s_ease]`}>
 
         {/* header */}
         <div className="px-8 pt-6 pb-5 border-b border-slate-200 shrink-0">
@@ -111,9 +113,7 @@ export function PersonModal({
                 </div>
               </div>
             </div>
-            <button type="button" onClick={() => setState(null)} aria-label="Close" className="inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-all hover:bg-subtle hover:text-tn-ink">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
+            <CloseButton onClick={() => setState(null)} />
           </div>
         </div>
 

@@ -26,6 +26,7 @@ import { RepeatField } from './RepeatField'
 import { ScopeChoice } from './ScopeChoice'
 import type { Repeat, Scope } from '@/lib/agenda/recurrence'
 import { DateField } from '@/components/ui/DateField'
+import { MODAL_BACKDROP } from '@/lib/ui/modal'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
@@ -224,7 +225,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
 
   return createPortal(
     <>
-      <div className="fixed left-0 right-0 bottom-0 top-[var(--chrome-top)] z-[60] bg-[rgba(1,35,88,.22)]" onMouseDown={onClose} />
+      <div className={`fixed left-0 right-0 bottom-0 top-[var(--chrome-top)] z-[60] ${MODAL_BACKDROP}`} onMouseDown={onClose} />
       {finding && (
         <FindTimePanel api={api.findTime} personIds={findIds} externals={externals} names={nameOf} me={setup.me} date={date} from={from} to={to}
           onClose={() => setFinding(false)} onPick={(d, s) => { setWhen('time'); setDate(d); setTo(s + (to - from)); setFrom(s); setFinding(false) }} />

@@ -40,6 +40,7 @@ import { NewEventDialog, type NewEventSetup, type CreateEvent, type DeleteEvent,
 import { EventDrawer, type DrawerApi } from './EventDrawer'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
 import type { Answer, DrawerEdit } from '@/lib/agenda/model'
+import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
 
 export interface AgendaData {
   view: View
@@ -636,8 +637,8 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
     }
   }
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-[rgba(1,35,88,.24)] flex items-center justify-center p-7" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={box} role="dialog" aria-modal="true" aria-label={c.title} className="w-full max-w-[440px] bg-white rounded-[16px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] overflow-hidden flex flex-col leading-[normal]">
+    <div className={`fixed inset-0 z-[70] ${MODAL_BACKDROP} flex items-center justify-center p-7`} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-label={c.title} className={`w-full max-w-[440px] ${MODAL_PANEL} overflow-hidden flex flex-col leading-[normal]`}>
         <div className="h-1.5" style={{ background: c.band }} />
         <div className="pt-[18px] px-5 pb-5 flex flex-col gap-3.5">
           <div className="flex items-start gap-3">

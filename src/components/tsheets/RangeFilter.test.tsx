@@ -35,8 +35,8 @@ describe('RangeFilter, inline', () => {
 
   it('shows From and To for chosen months, and says when they are the wrong way round', () => {
     draw({ ...CHOICE, mode: 'custom', from: '2026-08', to: '2026-03' })
-    expect(screen.getByLabelText('From')).toBeInTheDocument()
-    expect(screen.getByLabelText('To')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^From, Aug 2026/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^To, Mar 2026/)).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('The first month has to come before the last.')
   })
 })

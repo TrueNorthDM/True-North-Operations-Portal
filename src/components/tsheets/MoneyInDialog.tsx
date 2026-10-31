@@ -28,6 +28,8 @@ import { useRouter } from 'next/navigation'
 import { saveDonation, savePurchase } from '@/lib/timeclock/money-in-actions'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal text-right tabular-nums'
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
@@ -108,7 +110,7 @@ export function MoneyInDialog(
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-slate-900/40 backdrop-blur-sm"
+          className={`fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto ${MODAL_BACKDROP}`}
           onClick={() => setOpen(false)}
         >
           <div
@@ -116,12 +118,12 @@ export function MoneyInDialog(
             role="dialog"
             aria-modal="true"
             aria-label="Money in"
-            className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-xl px-6 pt-5 pb-6 my-auto"
+            className={`w-full max-w-2xl ${MODAL_PANEL} px-6 pt-5 pb-6 my-auto`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 pb-4">
               <div>
-                <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">
+                <h2 className={MODAL_TITLE}>
                   Money in, {monthName(data.month)}
                 </h2>
                 <p className="mt-1 text-[13px] text-muted leading-relaxed m-0">
@@ -129,14 +131,7 @@ export function MoneyInDialog(
                   a blank stays blank on the report rather than reading as zero.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="shrink-0 w-8 h-8 rounded-full text-muted hover:bg-[var(--row-hover)] hover:text-tn-ink transition-colors flex items-center justify-center"
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
+              <CloseButton onClick={() => setOpen(false)} />
             </div>
 
             <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pb-2">Donations</p>

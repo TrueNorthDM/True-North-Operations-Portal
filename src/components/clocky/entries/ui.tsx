@@ -13,6 +13,7 @@ import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from
 import { createPortal } from 'react-dom'
 import { Select, type SelectOption } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { NAV_ICON } from '@/lib/nav/nav-icons'
 import type { PillTone } from '@/lib/timeclock/clocky-types'
 
@@ -179,11 +180,11 @@ export function Modal({ label, width, onClose, children, alert = false, gap = 14
   const client = useIsClient()
   if (!client) return null
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-[rgba(1,35,88,.32)] flex items-center justify-center p-5"
+    <div className={`fixed inset-0 z-[70] ${MODAL_BACKDROP} flex items-center justify-center p-5`}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div ref={box} role={alert ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={label} onKeyDown={onKeyDown}
         style={{ maxWidth: width + 44, gap }}
-        className="w-full max-h-full overflow-auto bg-white rounded-[16px] leading-[normal] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] p-[22px] flex flex-col">
+        className={`w-full max-h-full overflow-auto ${MODAL_PANEL} leading-[normal] p-[22px] flex flex-col`}>
         {children}
       </div>
     </div>,
@@ -191,8 +192,8 @@ export function Modal({ label, width, onClose, children, alert = false, gap = 14
   )
 }
 
-export const MODAL_TITLE = 'font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0'
-/** Headings carry -0.015em from globals.css, outside the utilities' layer: the modal titles are drawn without it. */
+/** The modal title lives in lib/ui/modal.ts with the overlay and the card; North Time imports it from here. */
+export { MODAL_TITLE }
 
 /** The page's buttons (toolbar, empty list): white 10px 15px, navy with a small shadow; 8px gap, no letter spacing. */
 export const BTN_PAGE_WHITE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'

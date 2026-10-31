@@ -19,6 +19,7 @@ import { normalPosition, roleTypePill, teamPositionPill, PILL_CLASS, type Person
 import type { ToolAudience } from '@/lib/access/tools'
 import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/color-palette'
 import { Select } from '@/components/ui/Select'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
@@ -249,12 +250,12 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-tn-ink/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+      <div className={`absolute inset-0 ${MODAL_BACKDROP}`} onClick={onClose} aria-hidden="true" />
       <div role="dialog" aria-modal="true" aria-label={mode === 'new' ? 'New team' : 'Rename team'}
-        className="relative w-full max-w-[420px] bg-white rounded-[18px] border border-slate-200 shadow-[0_40px_80px_-24px_rgba(1,35,88,.5)] overflow-hidden">
+        className={`relative w-full max-w-[420px] ${MODAL_PANEL} overflow-hidden`}>
         <div className="h-[6px]" style={{ background: color }} />
         <div className="p-6">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink">{mode === 'new' ? 'New team' : 'Rename team'}</h2>
+          <h2 className={MODAL_TITLE}>{mode === 'new' ? 'New team' : 'Rename team'}</h2>
           <p className="text-[13px] text-muted mt-1">{mode === 'new' ? 'Name the team and pick a colour.' : 'Update the team name and colour.'}</p>
 
           <label className="block mt-5">

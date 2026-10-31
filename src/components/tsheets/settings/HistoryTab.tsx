@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { PILL_CLASS, initialsOf, type PillKind } from '@/lib/directory/people-types'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
+import { CloseButton } from '@/components/clocky/entries/ui'
 
 export interface AuditEntry {
   id: number
@@ -121,11 +123,11 @@ function AuditList({ entries }: { entries: AuditEntry[] }) {
 
 function AllHistoryModal({ entries, onClose }: { entries: AuditEntry[]; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)]" onClick={e => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${MODAL_BACKDROP} p-4`} onClick={onClose}>
+      <div className={`w-full max-w-2xl max-h-[85vh] flex flex-col ${MODAL_PANEL}`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-tn-ink">Change history · {entries.length}</h2>
-          <button onClick={onClose} className="text-muted hover:text-tn-ink text-2xl leading-none">&times;</button>
+          <h2 className={MODAL_TITLE}>Change history · {entries.length}</h2>
+          <CloseButton onClick={onClose} />
         </div>
         <div className="p-5 overflow-y-auto"><AuditList entries={entries} /></div>
       </div>

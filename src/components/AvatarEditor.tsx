@@ -7,6 +7,7 @@
  */
 
 import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 const V = 280 // viewport (crop circle) diameter, px
 const OUT = 400 // exported square size, px
@@ -91,9 +92,9 @@ export function AvatarEditor({ open, onClose, onSave, busy }: {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
-      <div onClick={close} className="fixed inset-0 bg-[rgba(1,20,45,.5)] backdrop-blur-[2px]" />
-      <div className="relative w-[360px] max-w-full bg-white rounded-[18px] border border-slate-200 shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] p-6">
-        <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0 mb-4">Profile photo</h3>
+      <div onClick={close} className={`fixed inset-0 ${MODAL_BACKDROP}`} />
+      <div className={`relative w-[360px] max-w-full ${MODAL_PANEL} p-6`}>
+        <h3 className={`${MODAL_TITLE} mb-4`}>Profile photo</h3>
 
         {!src ? (
           <label

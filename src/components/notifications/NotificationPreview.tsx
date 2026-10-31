@@ -18,6 +18,7 @@ import { CATEGORY_LABEL, timingIsChoice, type NotificationType } from '@/lib/not
 import { barColor } from '@/lib/email/summary'
 import { tabKeys } from '@/components/ui/tab-keys'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 
 type Result = { ok: boolean; error?: string }
 export type SendTest = (key: string, channel: 'app' | 'email') => Promise<Result>
@@ -65,11 +66,11 @@ export function NotificationPreview({ t, hour, sendTest, onClose }: { t: Notific
   const pick = (k: 'app' | 'email') => { setTab(k); setState({ kind: 'idle' }) }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(1,35,88,.35)] flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={box} role="dialog" aria-modal="true" aria-labelledby="notif-preview-title" className="w-full max-w-[560px] bg-white rounded-[18px] shadow-[0_30px_60px_-20px_rgba(1,35,88,.5)] overflow-hidden">
+    <div className={`fixed inset-0 z-50 ${MODAL_BACKDROP} flex items-center justify-center p-4`} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby="notif-preview-title" className={`w-full max-w-[560px] ${MODAL_PANEL} overflow-hidden`}>
         <div className="px-5 pt-[18px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-tn-teal">Preview</span>
-          <h3 id="notif-preview-title" className="font-(family-name:--font-display) font-black text-[18px] text-tn-ink m-0 mt-0.5">{t.title}</h3>
+          <h3 id="notif-preview-title" className={`${MODAL_TITLE} mt-0.5`}>{t.title}</h3>
         </div>
         <div role="tablist" aria-label="Where it shows" onKeyDown={tabKeys(TABS, tab, pick)} className="flex gap-0.5 px-5 mt-3 border-b border-[var(--panel-border)]">
           {TABS.map(k => (
@@ -124,16 +125,14 @@ export function NotificationPreview({ t, hour, sendTest, onClose }: { t: Notific
             <p className="text-[13px] text-muted m-0 py-3">This one is never emailed: it always arrives in the bell the moment it happens.</p>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5">
-          <div className="flex items-center gap-3 flex-wrap">
-            <button type="button" onClick={send} disabled={state.kind === 'sending' || (tab === 'email' && !canEmail) || !t.available}
-              className={`${BTN.navy} disabled:opacity-40 disabled:hover:translate-y-0`}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
-              <span className="text-[#ffffff]">{state.kind === 'sending' ? 'Sending…' : tab === 'app' ? 'Send me a test' : 'Email me a test'}</span>
-            </button>
-            {state.text && <span role="status" className={`text-[12.5px] font-bold ${state.kind === 'error' ? 'text-[#b3271f]' : 'text-[#0d7a4f]'}`}>{state.text}</span>}
-          </div>
+        <div className="flex items-center justify-end gap-2 flex-wrap px-5 py-3.5">
+          {state.text && <span role="status" className={`mr-auto text-[12.5px] font-bold ${state.kind === 'error' ? 'text-[#b3271f]' : 'text-[#0d7a4f]'}`}>{state.text}</span>}
           <button type="button" onClick={onClose} className={BTN.white}>Close</button>
+          <button type="button" onClick={send} disabled={state.kind === 'sending' || (tab === 'email' && !canEmail) || !t.available}
+            className={`${BTN.navy} disabled:opacity-40 disabled:hover:translate-y-0`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+            <span className="text-[#ffffff]">{state.kind === 'sending' ? 'Sending…' : tab === 'app' ? 'Send me a test' : 'Email me a test'}</span>
+          </button>
         </div>
       </div>
     </div>
