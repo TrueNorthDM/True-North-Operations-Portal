@@ -17,7 +17,7 @@ import { Icon, Modal, MODAL_TITLE } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
 import { failText } from '@/lib/ui/action-error'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
-import type { DrawerEdit } from '@/lib/agenda/model'
+import type { Answer, DrawerEdit } from '@/lib/agenda/model'
 import { typeOf, type Audience, type DrawerInput, type EventType, type When } from '@/lib/agenda/event-rules'
 import { clockLabel, DC, instantOf, localOf } from '@/lib/agenda/time'
 import { FindTimePanel, type FindTimeApi } from './FindTimePanel'
@@ -28,6 +28,9 @@ export interface DrawerApi {
   update(i: DrawerInput & { id: number }): Promise<Done>
   remove(i: { id: number }): Promise<Done>
   findTime: FindTimeApi
+  /** The open card: the guests' answers as Google has them, and a guest's own Yes, No or Maybe. */
+  answers?(i: { id: number }): Promise<{ ok: true; gone: boolean; answers: Record<string, Answer> } | { ok: false; error: string }>
+  answer?(i: { id: number; answer: 'yes' | 'no' | 'maybe' }): Promise<Done>
 }
 
 export const TYPE_ICON: Record<EventType, string> = {

@@ -13,7 +13,7 @@ import { addDays } from '@/lib/timeclock/periods'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import { AgendaView } from '@/components/agenda/AgendaView'
 import { createAgendaEvent, deleteAgendaEvent, updateAgendaEvent } from './actions'
-import { createDrawerEvent, deleteDrawerEvent, findTimeData, updateDrawerEvent } from './drawer-actions'
+import { answerEvent, createDrawerEvent, deleteDrawerEvent, eventAnswers, findTimeData, updateDrawerEvent } from './drawer-actions'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadDrawerSetup } from '@/lib/agenda/drawer-data'
 
@@ -49,7 +49,7 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
   return (
     <AgendaView
       api={createAgendaEvent}
-      drawerApi={drawer ? { create: createDrawerEvent, update: updateDrawerEvent, remove: deleteDrawerEvent, findTime: findTimeData } : undefined}
+      drawerApi={drawer ? { create: createDrawerEvent, update: updateDrawerEvent, remove: deleteDrawerEvent, findTime: findTimeData, answers: eventAnswers, answer: answerEvent } : undefined}
       edit={{ update: updateAgendaEvent, remove: deleteAgendaEvent }}
       data={{
         view, anchor, today, items, teams, drawer,

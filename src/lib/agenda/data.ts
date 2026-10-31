@@ -22,7 +22,7 @@ import { loadCatalog, loadDirectory, type Directory } from '@/lib/timeclock/cloc
 import { localDate, localMinutes } from '@/lib/timeclock/format'
 import { addDays } from '@/lib/timeclock/periods'
 import { countryOf, nationalHolidays } from './holidays'
-import { linkIn, type AgendaItem, type AgendaWho } from './model'
+import { answerOf, linkIn, type AgendaItem, type AgendaWho, type DetailGuest, type EventDetail } from './model'
 import { editOf, mayManageEvent, type EventRights, type EventRow } from './events'
 import { mayManage, seesEvent, type EventType, type SeenRow } from './event-rules'
 import type { DrawerEdit } from './model'
@@ -57,7 +57,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     loadCatalog(),
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, calendar_state').eq('state', 'approved').lte('start_date', to).gte('end_date', from).limit(2000),
     // A day either side: a timed event can fall on another day in the viewer's zone.
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id')
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
     // Where people live, for the national holidays.
     c.from('people').select('id, address, location').limit(5000),
@@ -87,8 +87,13 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   // Events and milestones made in the portal.
   // Who was invited to the drawer's events (owner, 30 October 2026): they see them, and an edit starts from them.
   const newIds = (evRes.data ?? []).filter(e => e.audience).map(e => e.id)
-  const guestRows = newIds.length ? ((await c.from('agenda_event_guests').select('event_id, person_id, email, via').in('event_id', newIds)).data ?? []) : []
-  const guestsOf = new Map<number, { person_id: string | null; email: string; via: string }[]>()
+  const fromIds = [...new Set((evRes.data ?? []).map(e => e.sent_from_account_id).filter((x): x is number => x != null))]
+  const [guestRows, acctRows] = await Promise.all([
+    newIds.length ? c.from('agenda_event_guests').select('event_id, person_id, email, via, response').in('event_id', newIds).then(r => r.data ?? []) : [],
+    fromIds.length ? c.from('agenda_accounts').select('id, email, team_calendar').in('id', fromIds).then(r => r.data ?? []) : [],
+  ])
+  const sentFrom = new Map(acctRows.map(a => [a.id as number, { email: a.email as string, team: !!a.team_calendar }]))
+  const guestsOf = new Map<number, { person_id: string | null; email: string; via: string; response: string }[]>()
   for (const g of guestRows) (guestsOf.get(g.event_id) ?? guestsOf.set(g.event_id, []).get(g.event_id)!).push(g)
   const viewer = { id: v.id, level: v.level ?? (v.superAdmin ? 'super_admin' : v.admin ? 'admin' : 'user') as AccessLevel, teamIds: v.teamIds, led: rights?.led ?? new Set<string>() }
 
@@ -116,7 +121,8 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
       team: team ? { id: team.id, name: team.name, color: teamColour(team.color, team.name) } : null,
       by: e.created_by ? dir.nameOf(e.created_by) : null, desc: e.description, client: e.client, onGoogle: e.calendar_state === 'done', audience,
       ...(isNew
-        ? (mayManage(e as SeenRow, viewer) ? { drawerEdit: drawerEditOf(e, gs.filter(g => g.via === 'guest')) } : {})
+        ? { detail: detailOf(e, gs, dir, v.id, sentFrom.get(e.sent_from_account_id ?? -1) ?? null),
+            ...(mayManage(e as SeenRow, viewer) ? { drawerEdit: drawerEditOf(e, gs.filter(g => g.via === 'guest')) } : {}) }
         : rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
     })
   }
@@ -133,6 +139,45 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     for (const [d, name] of nationalHolidays(cc, from, to)) items.push({ id: `hol:${cc}:${d}`, k: 'hol', a: d, b: d, title: name, country: cc })
   }
   return items
+}
+
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+
+/** The open card's details of a drawer event: who it is for, who answered, where it went on Google. */
+export function detailOf(
+  e: { id: number; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; created_at: string | null; google_html_link: string | null; starts_at: string | null; calendar_state: string | null },
+  gs: { person_id: string | null; email: string; response: string }[], dir: Directory, viewerId: string, from: { email: string; team: boolean } | null,
+): EventDetail {
+  const guestOf = (pid: string | null, email: string, response: string, organizer: boolean): DetailGuest => {
+    const p = pid ? dir.people.get(pid) : undefined
+    if (pid && p) {
+      const w = whoOf(dir, pid)
+      return { key: pid, name: w.name, ini: initials(w.name), color: w.color, sub: organizer ? `Organizer${w.teamName ? ` · ${w.teamName}` : ''}` : (w.teamName ?? 'True North'), answer: organizer ? 'yes' : answerOf(response), zone: dir.zoneOf(pid), organizer }
+    }
+    return { key: email.toLowerCase(), name: email, ini: (email[0] ?? '?').toUpperCase(), color: '#e3e7ee', sub: 'Outside True North', answer: answerOf(response), zone: null, organizer }
+  }
+  const org = e.created_by ? [guestOf(e.created_by, '', 'accepted', true)] : []
+  const rest = gs.filter(g => !g.person_id || g.person_id !== e.created_by).map(g => guestOf(g.person_id, g.email, g.response, false))
+  const teamIds = e.audience === 'teams' ? (e.audience_team_ids ?? []) : []
+  const mine = gs.find(g => g.person_id === viewerId)
+  return {
+    eventId: e.id,
+    how: e.how === 'online' || e.how === 'in_person' ? e.how : null,
+    address: e.how === 'in_person' ? (e.place || null) : null,
+    audience: (e.audience ?? 'guests') as EventDetail['audience'],
+    teams: teamIds.map(t => {
+      const team = dir.teams.get(t)
+      return { name: team?.name ?? 'A team', color: teamColour(team?.color, team?.name), count: gs.filter(g => g.person_id && dir.people.get(g.person_id)?.teamIds.includes(t)).length }
+    }),
+    guests: [...org, ...rest],
+    sentFrom: from?.email ?? null,
+    teamCalendar: !!from?.team,
+    created: e.created_at ? e.created_at.slice(0, 10) : null,
+    googleLink: e.calendar_state === 'done' ? e.google_html_link : null,
+    startsAt: e.starts_at,
+    myAnswer: mine && viewerId !== e.created_by ? answerOf(mine.response) : null,
+    onGoogle: e.calendar_state === 'done',
+  }
 }
 
 type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null }

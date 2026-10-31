@@ -12,7 +12,7 @@
  * hide what is here.
  */
 
-import { useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -21,6 +21,7 @@ import { Select } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { MeetIcon } from '@/components/ui/MeetIcon'
+import { DetailFoot, DetailTop } from './EventDetail'
 import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
@@ -34,7 +35,7 @@ import type { EventEdit } from '@/lib/agenda/events'
 import { NewEventDialog, type NewEventSetup, type CreateEvent, type DeleteEvent, type UpdateEvent } from './NewEventDialog'
 import { EventDrawer, type DrawerApi } from './EventDrawer'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
-import type { DrawerEdit } from '@/lib/agenda/model'
+import type { Answer, DrawerEdit } from '@/lib/agenda/model'
 
 export interface AgendaData {
   view: View
@@ -169,6 +170,11 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             onEdit: () => setEditing(open.edit!),
             onDelete: () => edit.remove({ id: open.edit!.id }),
             onDeleted: t => { setCard(null); say({ text: t }); if (linked) router.refresh() },
+          } : undefined}
+          google={drawerApi?.answers && open.detail ? {
+            answers: drawerApi.answers, answer: drawerApi.answer,
+            onGone: () => { setCard(null); say({ text: 'That event was deleted in Google Calendar, so it is off the Agenda too.' }); if (linked) router.refresh() },
+            onAnswered: t => { say({ text: t }); if (linked) router.refresh() },
           } : undefined} />
       )}
       {drawer && drawerApi && (creating || drawerEdit) && (
@@ -425,13 +431,18 @@ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 /** The card's Edit and Delete, for an event the viewer may manage. */
 interface Manage { onEdit: () => void; onDelete: () => Promise<Done>; onDeleted: (toast: string) => void }
+/** A drawer event's Google side: the guests' answers, a guest's own answer, and the event deleted in Google. */
+interface CardGoogle {
+  answers: NonNullable<DrawerApi['answers']>; answer?: DrawerApi['answer']
+  onGone: () => void; onAnswered: (toast: string) => void
+}
 
 /** The small white row actions (the "Open in Google Calendar" link's look): green symbol, navy words. */
 const ROW_BTN = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] no-underline cursor-pointer hover:border-tn-teal'
 
-function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = false }: {
+function ItemCard({ item, me, today, holidays, onClose, manage, google, startConfirm = false }: {
   item: AgendaItem; me: AgendaData['me']; today: string; holidays: ReadonlySet<string>; onClose: () => void
-  manage?: Manage; startConfirm?: boolean
+  manage?: Manage; google?: CardGoogle; startConfirm?: boolean
 }) {
   const box = useRef<HTMLDivElement>(null)
   useModal(true, box, onClose)
@@ -439,6 +450,22 @@ function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = f
   const [confirm, setConfirm] = useState(startConfirm && !!manage)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Record<string, Answer> | null>(null)
+  const [myAnswer, setMyAnswer] = useState<Answer | null>(item.detail?.myAnswer ?? null)
+  const [answering, setAnswering] = useState(false)
+  const eventId = item.detail?.onGoogle ? item.detail.eventId : null
+  // Opening the card reads the guests' answers from Google, and finds an event deleted there.
+  useEffect(() => {
+    if (eventId == null || !google) return
+    let live = true
+    google.answers({ id: eventId }).then(r => {
+      if (!live || !r.ok) return
+      if (r.gone) google.onGone()
+      else setAnswers(r.answers)
+    }).catch(() => { /* the stored answers stand */ })
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
   if (!client) return null
   const c = cardOf(item, { meId: me.id, superAdmin: me.superAdmin, today, zone: me.zone, holidays })
   const what = item.k === 'ms' ? 'milestone' : 'event'
@@ -476,11 +503,15 @@ function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = f
             {c.rows.map((r, i) => (
               <div key={i} className="flex gap-2.5 items-start text-[13px] text-foreground leading-[1.5]">
                 <Icon d={r.d} size={15} color="#8593a4" width={2} className="flex-none mt-0.5" />
-                <span className="[text-wrap:pretty]">{r.b && <b className={`text-tn-ink ${r.bold ? 'font-bold' : 'font-normal'}`}>{r.b}</b>}{r.t}</span>
+                <span className="flex flex-col gap-0.5 min-w-0">
+                  <span className="[text-wrap:pretty]">{r.b && <b className={`text-tn-ink ${r.bold ? 'font-bold' : 'font-normal'}`}>{r.b}</b>}{r.t}</span>
+                  {r.sub && <span className="text-[12.5px] text-muted [text-wrap:pretty]">{r.sub}</span>}
+                </span>
               </div>
             ))}
           </div>
-          {c.meet && (
+          {c.detail && <DetailTop detail={c.detail} meet={c.meet} answers={answers} />}
+          {c.meet && !c.detail && (
             <a href={c.meet} target="_blank" rel="noopener noreferrer"
               className="group flex items-center gap-[13px] rounded-[14px] border border-[var(--panel-border)] bg-[#f8f9fb] px-4 py-3.5 no-underline hover:border-tn-teal">
               <MeetIcon size={34} className="flex-none" />
@@ -493,6 +524,23 @@ function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = f
           )}
           {c.desc && <div className="text-[13px] text-foreground leading-[1.55] bg-subtle rounded-[10px] px-3 py-2.5 [text-wrap:pretty]">{c.desc}</div>}
           {c.foot && <div className="text-[12px] text-muted leading-[1.5]">{c.foot}</div>}
+          {c.detail && (
+            <DetailFoot detail={c.detail} by={item.by ?? null} myAnswer={myAnswer} busy={answering}
+              onAnswer={google?.answer ? async a => {
+                const before = myAnswer
+                setMyAnswer(a); setAnswering(true)
+                try {
+                  const r = await google.answer!({ id: c.detail!.eventId, answer: a })
+                  if (r.ok) google.onAnswered(r.toast)
+                  else { setMyAnswer(before); setError(r.error) }
+                } catch {
+                  setMyAnswer(before); setError('That did not go through. Check your connection and try again.')
+                } finally {
+                  setAnswering(false)
+                }
+              } : undefined} />
+          )}
+          {error && !confirm && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
           {confirm && manage ? (
             <div role="alertdialog" aria-label={`Delete this ${what}?`} className="flex flex-col gap-2.5 border border-[#f3c9cd] bg-[#fdf5f6] rounded-[12px] px-3.5 py-3">
               <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Delete this {what}?</span>

@@ -14,13 +14,74 @@
 
 import { addDays } from '@/lib/timeclock/periods'
 import type { EventEdit } from './events'
-import type { EventType } from './event-rules'
+import { typeOf, type EventType } from './event-rules'
 
 /** The drawer, filled from a stored event (Edit opens it with these). */
 export interface DrawerEdit {
   id: number; type: EventType; when: 'time' | 'day' | 'range'; title: string; date: string; end: string; from: number; to: number
   how: 'online' | 'in_person'; place: string; audience: 'guests' | 'teams' | 'all'; teams: string[]
   guests: { personId: string | null; email: string }[]; client: string; description: string; accountId: number | null
+}
+
+/** A guest's answer, as Google keeps it: accepted, declined, tentative, or none yet. */
+export type Answer = 'yes' | 'no' | 'maybe' | 'waiting'
+export interface DetailGuest { key: string; name: string; ini: string; color: string; sub: string; answer: Answer; zone: string | null; organizer: boolean }
+/** What the open card shows of an event from the New event drawer (owner, 30 October 2026). */
+export interface EventDetail {
+  eventId: number
+  how: 'online' | 'in_person' | null
+  /** In person: where. */
+  address: string | null
+  audience: 'guests' | 'teams' | 'all'
+  teams: { name: string; color: string; count: number }[]
+  /** The organizer first, then everyone invited. */
+  guests: DetailGuest[]
+  /** The Google account it was sent from, and whether that is the team calendar (office@). */
+  sentFrom: string | null
+  teamCalendar: boolean
+  /** The day it was created, YYYY-MM-DD. */
+  created: string | null
+  googleLink: string | null
+  startsAt: string | null
+  /** The viewer's own answer when they are a guest (not the organizer); null otherwise. */
+  myAnswer: Answer | null
+  onGoogle: boolean
+}
+
+export const answerOf = (response: string | null | undefined): Answer =>
+  response === 'accepted' ? 'yes' : response === 'declined' ? 'no' : response === 'tentative' ? 'maybe' : 'waiting'
+
+/** "1 hour 30 minutes", from hours. */
+export function durationLabel(hours: number): string {
+  const m = Math.round(hours * 60), h = Math.floor(m / 60), r = m % 60
+  const H = h ? `${h} hour${h === 1 ? '' : 's'}` : '', M = r ? `${r} minute${r === 1 ? '' : 's'}` : ''
+  return [H, M].filter(Boolean).join(' ') || '0 minutes'
+}
+
+/** "3 yes · 1 no · 2 waiting": the guests' answers, the organizer left out. */
+export function answerCounts(guests: readonly DetailGuest[]): Record<Answer, number> {
+  const n: Record<Answer, number> = { yes: 0, no: 0, maybe: 0, waiting: 0 }
+  for (const g of guests) if (!g.organizer) n[g.answer]++
+  return n
+}
+export const countsLabel = (n: Record<Answer, number>): string =>
+  ([['yes', 'yes'], ['no', 'no'], ['maybe', 'maybe'], ['waiting', 'waiting']] as const).filter(([k]) => n[k]).map(([k, l]) => `${n[k]} ${l}`).join(' · ')
+
+/**
+ * When the event starts for guests in other time zones than the viewer's:
+ * "12:00 PM in São Paulo for Jonatas", "9:00 AM in Chicago for 3 people".
+ * Two zones at most, then "+1 more time zone".
+ */
+export function otherZonesLabel(guests: readonly DetailGuest[], startsAt: string | null, viewerZone: string): string | null {
+  if (!startsAt) return null
+  const byZone = new Map<string, string[]>()
+  for (const g of guests) if (g.zone && g.zone !== viewerZone) (byZone.get(g.zone) ?? byZone.set(g.zone, []).get(g.zone)!).push(g.name.split(' ')[0])
+  if (!byZone.size) return null
+  const t = Date.parse(startsAt)
+  const at = (z: string) => new Intl.DateTimeFormat('en-US', { timeZone: z, hour: 'numeric', minute: '2-digit' }).format(t)
+  const parts = [...byZone].slice(0, 2).map(([z, who]) => `${at(z)} in ${cityOf(z)} for ${who.length === 1 ? who[0] : `${who.length} people`}`)
+  const more = byZone.size - 2
+  return parts.join(', ') + (more > 0 ? `, +${more} more time zone${more === 1 ? '' : 's'}` : '')
 }
 
 export type AgendaKind = 'pto' | 'bday' | 'anni' | 'event' | 'ms' | 'hol'
@@ -64,6 +125,8 @@ export interface AgendaItem {
   /** An event made in the New event drawer: its type, and the drawer's form when the viewer may change it. */
   evType?: EventType
   drawerEdit?: DrawerEdit
+  /** The open card's details of a drawer event. */
+  detail?: EventDetail
 }
 
 export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {
@@ -366,13 +429,15 @@ export function comingUp(items: readonly AgendaItem[], today: string): ComingGro
 
 // ── 8D The card ───────────────────────────────────────────────────────────────
 
-export interface CardRow { d: string; b: string; t: string; bold: boolean }
+export interface CardRow { d: string; b: string; t: string; bold: boolean; sub?: string }
 export interface AgendaCard {
   band: string; kind: string; kindFg: string; title: string
   ini: string | null; d: string; flag: string; yrs?: number; icBg: string; icFg: string; round: boolean
   rows: CardRow[]; desc: string | null; foot: string
   /** An event's Google Meet link: the card shows it as the "Join with Google Meet" box instead of a button. */
   meet: string | null
+  /** A drawer event: the card draws its people, place and Google lines from this. */
+  detail: EventDetail | null
   button: { label: string; href: string } | null
 }
 
@@ -394,7 +459,7 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
   const kind = x.k === 'event' && x.team ? `Team event · ${x.team.name}` : x.k === 'event' ? 'Company event' : x.k === 'ms' ? 'Milestone'
     : x.k === 'pto' ? 'Time off' : x.k === 'bday' ? 'Birthday' : x.k === 'anni' ? 'Work anniversary'
     : x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday'
-  const base: AgendaCard = { band: L.c, kind, kindFg: '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', meet: null, button: null }
+  const base: AgendaCard = { band: L.c, kind, kindFg: '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', meet: null, detail: null, button: null }
   const team = x.who?.teamName ?? ''
   const day = (iso: string, t = '') => ({ d: AG_ICON.cal, b: fday(iso), t, bold: true })
   const when = () => (x.a === x.b ? day(x.a, x.s == null ? ', all day' : '') : { d: AG_ICON.cal, b: drng(x.a, x.b), t: '', bold: true })
@@ -416,6 +481,24 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
       foot: `From the Directory: month and day only, never the year. ${(x.who?.name ?? '').split(' ')[0]} can hide it in their settings.` }
   }
   if (x.k === 'anni') return { ...base, rows: [day(x.a), ...(team ? [{ d: AG_ICON.people, b: '', t: team, bold: false }] : [])], foot: 'From the Directory (Work tab, start date).' }
+  if (x.k === 'event' && x.detail) {
+    const dt = x.detail, meet = meetOf(x)
+    const timed = x.s != null
+    const sub = timed ? [durationLabel((x.e ?? x.s! + 1) - x.s!), otherZonesLabel(dt.guests, dt.startsAt, v.zone)].filter(Boolean).join(' · ') : x.a === x.b ? 'All day' : `${Math.round((Date.parse(x.b) - Date.parse(x.a)) / 864e5) + 1} days, all day`
+    return {
+      ...base,
+      kind: x.team ? `Team event · ${x.team.name}` : x.evType ? typeOf(x.evType).label : base.kind,
+      rows: [
+        timed ? { d: AG_ICON.clock, b: `${fday(x.a)}, ${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`, t: ` in your time zone (${cityOf(v.zone)})`, bold: true, sub }
+          : { d: AG_ICON.cal, b: x.a === x.b ? fday(x.a) : drng(x.a, x.b), t: '', bold: true, sub },
+        ...(x.client ? [{ d: AG_ICON.link, b: '', t: `Tied to ${x.client}`, bold: false }] : []),
+      ],
+      foot: '',
+      meet,
+      detail: dt,
+      button: x.link && !meet ? { label: 'Join the call', href: x.link } : null,
+    }
+  }
   if (x.k === 'event') {
     const meet = meetOf(x)
     return {

@@ -529,9 +529,12 @@ export type Database = {
           end_date: string
           ends_at: string | null
           google_event_id: string | null
+          google_html_link: string | null
+          google_ical_uid: string | null
           id: number
           kind: string
           place: string | null
+          responses_read_at: string | null
           start_date: string
           starts_at: string | null
           team_id: string | null
@@ -556,9 +559,12 @@ export type Database = {
           end_date: string
           ends_at?: string | null
           google_event_id?: string | null
+          google_html_link?: string | null
+          google_ical_uid?: string | null
           id?: number
           kind: string
           place?: string | null
+          responses_read_at?: string | null
           start_date: string
           starts_at?: string | null
           team_id?: string | null
@@ -583,9 +589,12 @@ export type Database = {
           end_date?: string
           ends_at?: string | null
           google_event_id?: string | null
+          google_html_link?: string | null
+          google_ical_uid?: string | null
           id?: number
           kind?: string
           place?: string | null
+          responses_read_at?: string | null
           start_date?: string
           starts_at?: string | null
           team_id?: string | null

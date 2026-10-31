@@ -131,12 +131,98 @@ export async function sendToGoogle(eventId: number, before?: { accountId: number
     if (googleId && (r.status === 404 || r.status === 410)) r = await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online, dropMeet: false }))
     const id = (r.json as { id?: unknown } | null)?.id
     if (r.status >= 300 || typeof id !== 'string') return fail(`Google answered ${r.status}`)
+    const g = r.json as { htmlLink?: unknown; iCalUID?: unknown }
     const { error: upErr } = await c.from('agenda_events').update({
       google_event_id: id, calendar_state: 'done', meet_link: online ? (meetOf(r.json) ?? null) : null,
+      google_html_link: typeof g.htmlLink === 'string' ? g.htmlLink : null, google_ical_uid: typeof g.iCalUID === 'string' ? g.iCalUID : null,
     }).eq('id', eventId)
     if (upErr) console.error('[agenda google] save Google id:', upErr.message)
     return true
   } catch (err) {
     return fail(err instanceof Error ? err.message : String(err))
   }
+}
+
+const RESPONSE = { yes: 'accepted', no: 'declined', maybe: 'tentative' } as const
+export type GuestAnswer = keyof typeof RESPONSE
+
+/** The guests' answers in Google's answer: lower-case email -> responseStatus. */
+export function answersIn(json: unknown): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const a of ((json as { attendees?: { email?: unknown; responseStatus?: unknown }[] })?.attendees ?? [])) {
+    if (typeof a.email === 'string' && typeof a.responseStatus === 'string') out.set(a.email.toLowerCase(), a.responseStatus)
+  }
+  return out
+}
+
+/**
+ * Reads an event back from its organizer's Google Calendar: the guests'
+ * answers go on agenda_event_guests, and `gone` says the event was deleted
+ * in Google (the caller takes it off the Agenda). `null`: Google could not
+ * be asked; the stored answers stand.
+ */
+export async function readFromGoogle(eventId: number): Promise<{ gone: boolean } | null> {
+  const c = createAdminClient()
+  const { data: e } = await c.from('agenda_events').select('sent_from_account_id, google_event_id').eq('id', eventId).maybeSingle()
+  if (!e?.google_event_id || e.sent_from_account_id == null) return null
+  try {
+    const token = await accessTokenFor(e.sent_from_account_id)
+    if (!token) return null
+    const r = await call(token, 'GET', `${API}/${encodeURIComponent(e.google_event_id)}`)
+    if (r.status === 404 || r.status === 410 || (r.json as { status?: string } | null)?.status === 'cancelled') return { gone: true }
+    if (r.status >= 300) { console.error(`[agenda google] read event ${eventId}: ${r.status}`); return null }
+    const answers = answersIn(r.json)
+    const { data: gs } = await c.from('agenda_event_guests').select('id, email, response').eq('event_id', eventId)
+    await Promise.all((gs ?? []).map(g => {
+      const now = answers.get(String(g.email).toLowerCase())
+      return now && now !== g.response ? c.from('agenda_event_guests').update({ response: now }).eq('id', g.id) : null
+    }))
+    await c.from('agenda_events').update({ responses_read_at: new Date().toISOString() }).eq('id', eventId)
+    return { gone: false }
+  } catch (err) {
+    console.error('[agenda google] read event:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+/**
+ * A guest's answer from the portal. It goes on the guest's own copy of the
+ * event when they connected the invited address to the portal (Google then
+ * tells the organizer, as if they answered in Google); otherwise the
+ * organizer's account records it on the event. Saved in the portal either way.
+ */
+export async function answerOnGoogle(eventId: number, personId: string, email: string, answer: GuestAnswer): Promise<boolean> {
+  const c = createAdminClient()
+  const status = RESPONSE[answer]
+  const { data: e } = await c.from('agenda_events').select('sent_from_account_id, google_event_id, google_ical_uid').eq('id', eventId).maybeSingle()
+  let sent = false
+  try {
+    if (e?.google_event_id) {
+      const { data: own } = await c.from('agenda_accounts').select('id').eq('person_id', personId).eq('source', 'google').ilike('email', email).maybeSingle()
+      const ownToken = own && e.google_ical_uid ? await accessTokenFor(own.id) : null
+      if (ownToken) {
+        const list = await call(ownToken, 'GET', `${API}?iCalUID=${encodeURIComponent(e.google_ical_uid!)}`)
+        const copy = ((list.json as { items?: { id: string; attendees?: { email?: string; self?: boolean; responseStatus?: string }[] }[] } | null)?.items ?? [])[0]
+        if (copy) {
+          const attendees = (copy.attendees ?? []).map(a => (a.self ? { ...a, responseStatus: status } : a))
+          const r = await call(ownToken, 'PATCH', `${API}/${encodeURIComponent(copy.id)}?sendUpdates=all`, { attendees })
+          sent = r.status < 300
+        }
+      }
+      if (!sent && e.sent_from_account_id != null) {
+        const token = await accessTokenFor(e.sent_from_account_id)
+        if (token) {
+          const got = await call(token, 'GET', `${API}/${encodeURIComponent(e.google_event_id)}`)
+          const attendees = ((got.json as { attendees?: { email?: string; responseStatus?: string }[] } | null)?.attendees ?? [])
+            .map(a => (a.email?.toLowerCase() === email.toLowerCase() ? { ...a, responseStatus: status } : a))
+          const r = await call(token, 'PATCH', `${API}/${encodeURIComponent(e.google_event_id)}?sendUpdates=none`, { attendees })
+          sent = r.status < 300
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[agenda google] answer:', err instanceof Error ? err.message : err)
+  }
+  await c.from('agenda_event_guests').update({ response: status }).eq('event_id', eventId).eq('person_id', personId)
+  return sent
 }

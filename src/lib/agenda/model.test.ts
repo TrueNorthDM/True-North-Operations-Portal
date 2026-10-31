@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+import { ALL_TEAMS, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
 import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -151,5 +151,28 @@ describe('links and Google', () => {
   it('reads Google days: all-day ends are exclusive', () => {
     expect(daysOf({ id: 'a', start: { date: '2026-11-14' }, end: { date: '2026-11-15' } })).toMatchObject({ start: '2026-11-14', end: '2026-11-14' })
     expect(daysOf({ id: 'b', start: { dateTime: '2026-11-21T16:00:00+03:00' }, end: { dateTime: '2026-11-21T17:00:00+03:00' } })).toMatchObject({ start: '2026-11-21', end: '2026-11-21' })
+  })
+})
+
+describe('the open card of a drawer event', () => {
+  const g = (name: string, answer: 'yes' | 'no' | 'maybe' | 'waiting', zone: string | null = 'America/New_York', organizer = false) =>
+    ({ key: name, name, ini: name[0], color: '#ccc', sub: '', answer, zone, organizer })
+  it('says how long it lasts', () => {
+    expect(durationLabel(1)).toBe('1 hour')
+    expect(durationLabel(1.5)).toBe('1 hour 30 minutes')
+    expect(durationLabel(0.75)).toBe('45 minutes')
+  })
+  it('counts the answers without the organizer', () => {
+    const n = answerCounts([g('Ana', 'yes', null, true), g('Bo', 'yes'), g('Cy', 'no'), g('Di', 'waiting'), g('Ed', 'waiting')])
+    expect(countsLabel(n)).toBe('1 yes · 1 no · 2 waiting')
+  })
+  it('gives the start for guests in other time zones', () => {
+    const s = otherZonesLabel([g('Jonatas Queiroz', 'yes', 'America/Sao_Paulo'), g('Ana Lee', 'yes')], '2026-11-03T15:00:00Z', 'America/New_York')
+    expect(s).toBe('12:00 PM in Sao Paulo for Jonatas')
+    expect(otherZonesLabel([g('Ana Lee', 'yes')], '2026-11-03T15:00:00Z', 'America/New_York')).toBeNull()
+  })
+  it('reads Google answers', () => {
+    expect(answerOf('accepted')).toBe('yes')
+    expect(answerOf('needsAction')).toBe('waiting')
   })
 })

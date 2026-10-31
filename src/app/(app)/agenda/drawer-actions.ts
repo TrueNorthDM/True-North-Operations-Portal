@@ -20,9 +20,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { closedRefusal } from '@/lib/agenda/google-lock'
 import { allLevels, invitablePeople, loadAvailability } from '@/lib/agenda/drawer-data'
-import { checkDrawer, invitees, mayManage, type DrawerInput, type Viewer } from '@/lib/agenda/event-rules'
+import { checkDrawer, invitees, mayManage, seesEvent, type DrawerInput, type SeenRow, type Viewer } from '@/lib/agenda/event-rules'
 import { sampleMeetLink } from '@/lib/agenda/sample-plan'
-import { removeFromGoogle, sendToGoogle } from '@/lib/agenda/google-events'
+import { answerOnGoogle, readFromGoogle, removeFromGoogle, sendToGoogle, type GuestAnswer } from '@/lib/agenda/google-events'
+import { answerOf, type Answer } from '@/lib/agenda/model'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -134,4 +135,65 @@ export async function findTimeData(input: { personIds: string[]; from: string })
     console.error('[agenda drawer] find a time:', e instanceof Error ? e.message : e)
     return { ok: false, error: 'Free and busy times could not be read. Try again in a moment.' }
   }
+}
+
+/** How long answers read from Google count as current when a card opens. */
+const ANSWERS_FRESH_MS = 60_000
+
+/** The event and its guests, when the viewer may see it. */
+async function seenEvent(id: number, viewer: Viewer) {
+  const c = createAdminClient()
+  const { data: e } = await c.from('agenda_events').select('id, audience, audience_team_ids, created_by, team_id, google_event_id, responses_read_at').eq('id', id).maybeSingle()
+  if (!e?.audience) return null
+  const { data: gs } = await c.from('agenda_event_guests').select('person_id, email, response').eq('event_id', id)
+  const guests = (gs ?? []) as { person_id: string | null; email: string; response: string }[]
+  if (!seesEvent(e as SeenRow, viewer, new Set(guests.map(g => g.person_id).filter((x): x is string => !!x)))) return null
+  return { e, guests }
+}
+
+/**
+ * When a card opens: the guests' answers as Google has them now, read at most
+ * once a minute. `gone`: the event was deleted in Google, so it comes off the
+ * Agenda here too.
+ */
+export async function eventAnswers(input: { id: number }): Promise<{ ok: true; gone: boolean; answers: Record<string, Answer> } | { ok: false; error: string }> {
+  const closed = await closedRefusal(no)
+  if (closed) return { ok: false, error: closed.ok ? '' : closed.error }
+  const access = await writerAccess()
+  if (!access?.personId || !access.can('agenda')) return { ok: false, error: 'Sign in again.' }
+  const id = Number(input?.id)
+  if (!Number.isSafeInteger(id)) return { ok: false, error: 'That event is no longer on the Agenda.' }
+  const dir = await loadDirectory()
+  const viewer: Viewer = { id: access.personId, level: access.level as AccessLevel, teamIds: dir.people.get(access.personId)?.teamIds ?? [], led: dir.led.get(access.personId) ?? new Set<string>() }
+  let seen = await seenEvent(id, viewer)
+  if (!seen) return { ok: false, error: 'That event is no longer on the Agenda.' }
+  const fresh = seen.e.responses_read_at && Date.now() - Date.parse(seen.e.responses_read_at) < ANSWERS_FRESH_MS
+  if (seen.e.google_event_id && !fresh) {
+    const r = await readFromGoogle(id)
+    if (r?.gone) {
+      await createAdminClient().from('agenda_events').delete().eq('id', id)
+      revalidatePath('/agenda'); revalidatePath('/')
+      return { ok: true, gone: true, answers: {} }
+    }
+    seen = (await seenEvent(id, viewer)) ?? seen
+  }
+  const answers: Record<string, Answer> = {}
+  for (const g of seen.guests) answers[g.person_id ?? g.email.toLowerCase()] = answerOf(g.response)
+  return { ok: true, gone: false, answers }
+}
+
+/** A guest's Yes, No or Maybe from the open card. */
+export async function answerEvent(input: { id: number; answer: GuestAnswer }): Promise<Done> {
+  const w = await writer(); if (isDone(w)) return w
+  const id = Number(input?.id)
+  const answer = input?.answer
+  if (!Number.isSafeInteger(id) || !['yes', 'no', 'maybe'].includes(answer)) return no(NOT_SAVED)
+  const seen = await seenEvent(id, w.viewer)
+  const mine = seen?.guests.find(g => g.person_id === w.access.personId)
+  if (!seen || !mine) return no('Only someone invited can answer.')
+  if (seen.e.created_by === w.access.personId) return no('You organize this event.')
+  const sent = await answerOnGoogle(id, w.access.personId, mine.email, answer)
+  revalidatePath('/agenda')
+  const said = answer === 'yes' ? 'going' : answer === 'no' ? 'not going' : 'maybe going'
+  return { ok: true, toast: sent || !seen.e.google_event_id ? `You said you are ${said}.` : `You said you are ${said}. Google did not take the answer yet, so the organizer may not see it there.` }
 }
