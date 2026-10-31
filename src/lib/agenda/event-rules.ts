@@ -22,6 +22,7 @@
 
 import type { AccessLevel } from '@/lib/access/catalogue'
 import { DC, instantOf } from './time'
+import { cleanRepeat, lastDay, toRRule, type Repeat } from './recurrence'
 
 export type EventType = 'meeting' | 'training' | 'deadline' | 'milestone' | 'company' | 'celebration'
 export type Audience = 'guests' | 'teams' | 'all'
@@ -101,6 +102,8 @@ export interface DrawerInput {
   client?: string
   description?: string
   accountId: number | null
+  /** Repeats (owner, 30 October 2026): null or absent for a single event. */
+  repeat?: Repeat | null
 }
 
 export interface DrawerRights { level: AccessLevel; led: ReadonlySet<string>; allLevels: readonly string[]; teamIds: readonly string[] }
@@ -121,6 +124,9 @@ export interface DrawerRow {
   client: string | null
   description: string | null
   sent_from_account_id: number
+  /** A series: its rule in Google's words, and its last day (null: never ends). */
+  recurrence: string | null
+  recur_until: string | null
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -159,6 +165,15 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
     ends_at = new Date(instantOf(input.date, to, DC)).toISOString()
   } else if (input.when !== 'day') return { ok: false, error: 'Pick when it happens.' }
 
+  let recurrence: string | null = null, recur_until: string | null = null
+  if (input.repeat) {
+    if (input.when === 'range') return { ok: false, error: 'An event of a few days cannot repeat. Make it all day or at a time.' }
+    const rule = cleanRepeat(input.repeat, start_date)
+    if (!rule) return { ok: false, error: 'Pick how it repeats.' }
+    recurrence = toRRule(rule, start_date, input.when === 'day')
+    recur_until = lastDay(rule, start_date)
+  }
+
   const how = t.meet && input.when === 'time' ? (input.how === 'in_person' ? 'in_person' : 'online') : t.meet ? (input.how === 'in_person' ? 'in_person' : null) : null
   return {
     ok: true,
@@ -171,6 +186,7 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
       client: t.client ? clean(input.client, 160) || null : null,
       description: clean(input.description, 2000) || null,
       sent_from_account_id: input.accountId,
+      recurrence, recur_until,
     },
   }
 }

@@ -28,6 +28,8 @@ import { mayManage, seesEvent, type EventType, type SeenRow } from './event-rule
 import type { DrawerEdit } from './model'
 import type { AccessLevel } from '@/lib/access/catalogue'
 import { DC, localOf } from './time'
+import { describe, fromRRule } from './recurrence'
+import { expandSeries } from './series'
 
 export interface AgendaViewer { id: string; zone: string; superAdmin: boolean; admin: boolean; teamIds: readonly string[]; level?: AccessLevel }
 
@@ -51,18 +53,21 @@ export function holidaysIn(from: string, to: string): Map<string, string> {
 /** `rights`: the viewer's event rights; the events they may edit carry the form to edit them. */
 export async function loadAgendaItems(v: AgendaViewer, from: string, to: string, rights?: EventRights): Promise<AgendaItem[]> {
   const c = createAdminClient()
-  const [dir, people, catalog, offRes, evRes, homeRes] = await Promise.all([
+  const [dir, people, catalog, offRes, evRes, seriesRes, homeRes] = await Promise.all([
     loadDirectory(),
     loadCelebrationPeople(),
     loadCatalog(),
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, calendar_state').eq('state', 'approved').lte('start_date', to).gte('end_date', from).limit(2000),
     // A day either side: a timed event can fall on another day in the viewer's zone.
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link')
-      .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
+      .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).is('recurrence', null).limit(2000),
+    // Series that began before the range and still run in it (owner, 30 October 2026).
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
+      .not('recurrence', 'is', null).lte('start_date', addDays(to, 1)).or(`recur_until.is.null,recur_until.gte.${addDays(from, -1)}`).limit(500),
     // Where people live, for the national holidays.
     c.from('people').select('id, address, location').limit(5000),
   ])
-  for (const r of [offRes, evRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
+  for (const r of [offRes, evRes, seriesRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
   const items: AgendaItem[] = []
 
   // Approved time off, with its kind (Vacation, Sick...) for everyone (owner, 27 October 2026; it was the person and Super Admins only).
@@ -86,8 +91,9 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
 
   // Events and milestones made in the portal.
   // Who was invited to the drawer's events (owner, 30 October 2026): they see them, and an edit starts from them.
-  const newIds = (evRes.data ?? []).filter(e => e.audience).map(e => e.id)
-  const fromIds = [...new Set((evRes.data ?? []).map(e => e.sent_from_account_id).filter((x): x is number => x != null))]
+  const allRows = [...(evRes.data ?? []), ...(seriesRes.data ?? [])]
+  const newIds = allRows.filter(e => e.audience).map(e => e.id)
+  const fromIds = [...new Set(allRows.map(e => e.sent_from_account_id).filter((x): x is number => x != null))]
   const [guestRows, acctRows] = await Promise.all([
     newIds.length ? c.from('agenda_event_guests').select('event_id, person_id, email, via, response').in('event_id', newIds).then(r => r.data ?? []) : [],
     fromIds.length ? c.from('agenda_accounts').select('id, email, team_calendar').in('id', fromIds).then(r => r.data ?? []) : [],
@@ -97,7 +103,10 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   for (const g of guestRows) (guestsOf.get(g.event_id) ?? guestsOf.set(g.event_id, []).get(g.event_id)!).push(g)
   const viewer = { id: v.id, level: v.level ?? (v.superAdmin ? 'super_admin' : v.admin ? 'admin' : 'user') as AccessLevel, teamIds: v.teamIds, led: rights?.led ?? new Set<string>() }
 
-  for (const e of evRes.data ?? []) {
+  // A series is drawn as its occurrences, each with its own id and day; its first day names the rule.
+  const firstOf = new Map(allRows.filter(e => e.recurrence).map(e => [e.id, e.start_date]))
+  const rows = allRows.flatMap(e => expandSeries(e, addDays(from, -1), addDays(to, 1)))
+  for (const { row: e, day: occ } of rows) {
     const audience = e.audience_team_ids ?? []
     const isNew = !!e.audience
     const gs = guestsOf.get(e.id) ?? []
@@ -114,15 +123,15 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     }
     if (b < from || a > to) continue
     items.push({
-      id: `ev:${e.id}`, k: e.kind === 'milestone' ? 'ms' : 'event', a, b, s, e: en, title: e.title,
+      id: occ ? `ev:${e.id}:${occ}` : `ev:${e.id}`, k: e.kind === 'milestone' ? 'ms' : 'event', a, b, s, e: en, title: e.title,
       place: isNew && e.how === 'online' ? 'Google Meet' : e.place, link: e.meet_link || linkIn(e.place),
       teams: isNew && e.audience === 'guests' ? `${gs.length} guest${gs.length === 1 ? '' : 's'}` : audience.length ? audience.map(t => dir.teams.get(t)?.name).filter(Boolean).join(', ') : 'Everyone',
       ...(isNew && e.type ? { evType: e.type as EventType } : {}),
       team: team ? { id: team.id, name: team.name, color: teamColour(team.color, team.name) } : null,
       by: e.created_by ? dir.nameOf(e.created_by) : null, desc: e.description, client: e.client, onGoogle: e.calendar_state === 'done', audience,
       ...(isNew
-        ? { detail: detailOf(e, gs, dir, v.id, sentFrom.get(e.sent_from_account_id ?? -1) ?? null),
-            ...(mayManage(e as SeenRow, viewer) ? { drawerEdit: drawerEditOf(e, gs.filter(g => g.via === 'guest')) } : {}) }
+        ? { detail: detailOf(e, gs, dir, v.id, sentFrom.get(e.sent_from_account_id ?? -1) ?? null, occ, firstOf.get(e.id) ?? null),
+            ...(mayManage(e as SeenRow, viewer) ? { drawerEdit: drawerEditOf(e, gs.filter(g => g.via === 'guest'), occ) } : {}) }
         : rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
     })
   }
@@ -145,9 +154,11 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(w => w[
 
 /** The open card's details of a drawer event: who it is for, who answered, where it went on Google. */
 export function detailOf(
-  e: { id: number; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; created_at: string | null; google_html_link: string | null; starts_at: string | null; calendar_state: string | null },
+  e: { id: number; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; created_at: string | null; google_html_link: string | null; starts_at: string | null; calendar_state: string | null; recurrence?: string | null },
   gs: { person_id: string | null; email: string; response: string }[], dir: Directory, viewerId: string, from: { email: string; team: boolean } | null,
+  occ: string | null = null, first: string | null = null,
 ): EventDetail {
+  const rule = fromRRule(e.recurrence)
   const guestOf = (pid: string | null, email: string, response: string, organizer: boolean): DetailGuest => {
     const p = pid ? dir.people.get(pid) : undefined
     if (pid && p) {
@@ -182,19 +193,21 @@ export function detailOf(
     startsAt: e.starts_at,
     myAnswer: mine ? answerOf(mine.response) : null,
     onGoogle: e.calendar_state === 'done',
+    repeat: rule && first ? describe(rule, first) : null,
+    occurrence: occ ? { seriesId: e.id, day: occ } : null,
   }
 }
 
-type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null }
+type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null; recurrence?: string | null }
 
 /** The drawer's form from a stored event, in Washington time. */
-export function drawerEditOf(e: DrawerRowIn, guests: { person_id: string | null; email: string }[]): DrawerEdit {
+export function drawerEditOf(e: DrawerRowIn, guests: { person_id: string | null; email: string }[], occurrence: string | null = null): DrawerEdit {
   const s = e.starts_at ? localOf(Date.parse(e.starts_at), DC) : null
   const en = e.ends_at ? localOf(Date.parse(e.ends_at), DC) : null
   return {
     id: e.id, type: (e.type ?? 'meeting') as EventType, title: e.title,
     when: s ? 'time' : e.end_date > e.start_date ? 'range' : 'day',
-    date: s?.date ?? e.start_date, end: e.end_date, from: s?.minutes ?? 600, to: en ? (en.date === s?.date ? en.minutes : 1440) : 660,
+    date: occurrence ?? s?.date ?? e.start_date, repeat: fromRRule(e.recurrence), occurrence, end: e.end_date, from: s?.minutes ?? 600, to: en ? (en.date === s?.date ? en.minutes : 1440) : 660,
     how: e.how === 'in_person' ? 'in_person' : 'online', place: e.place ?? '',
     audience: (e.audience ?? 'guests') as DrawerEdit['audience'], teams: e.audience_team_ids ?? [],
     guests: guests.map(g => ({ personId: g.person_id, email: g.email })), client: e.client ?? '', description: e.description ?? '', accountId: e.sent_from_account_id,

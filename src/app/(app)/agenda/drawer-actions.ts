@@ -24,6 +24,8 @@ import { checkDrawer, invitees, mayManage, seesEvent, type DrawerInput, type See
 import { sampleMeetLink } from '@/lib/agenda/sample-plan'
 import { answerOnGoogle, readFromGoogle, removeFromGoogle, sendToGoogle, type GuestAnswer } from '@/lib/agenda/google-events'
 import { answerOf, type Answer } from '@/lib/agenda/model'
+import { endBefore, fromRRule, instanceId, lastDay, restFrom, toRRule, type Scope } from '@/lib/agenda/recurrence'
+import { occurrenceOf } from '@/lib/agenda/series'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -46,7 +48,8 @@ async function writer(): Promise<{ access: Access & { personId: string }; viewer
 
 const sampleMeet = sampleMeetLink
 
-async function save(input: DrawerInput, id: number | null): Promise<Done> {
+/** `extra`: columns a new row also takes (one occurrence of a series: its series, its day, its Google id). */
+async function save(input: DrawerInput, id: number | null, extra: Record<string, unknown> = {}): Promise<Done> {
   const w = await writer(); if (isDone(w)) return w
   const { access, viewer } = w
   const c = createAdminClient()
@@ -61,10 +64,12 @@ async function save(input: DrawerInput, id: number | null): Promise<Done> {
   let eventId = id
   let before: { accountId: number | null; googleEventId: string | null } | undefined
   if (id != null) {
-    const { data: old } = await c.from('agenda_events').select('id, audience, audience_team_ids, created_by, team_id, meet_link, sent_from_account_id, google_event_id').eq('id', id).maybeSingle()
+    const { data: old } = await c.from('agenda_events').select('id, audience, audience_team_ids, created_by, team_id, meet_link, sent_from_account_id, google_event_id, series_id').eq('id', id).maybeSingle()
     if (!old || !old.audience) return no('That event is no longer on the Agenda.')
     if (!mayManage(old as Parameters<typeof mayManage>[0], viewer)) return no('Only who created it can change this event.')
     before = { accountId: old.sent_from_account_id, googleEventId: old.google_event_id }
+    // One occurrence changed on its own stays one occurrence: it never becomes a series of its own.
+    if (old.series_id) { r.row.recurrence = null; r.row.recur_until = null }
     // On Google the link is Google's own (sendToGoogle sets it); a sample account keeps a sample one.
     const meet = r.row.how !== 'online' ? null : google ? old.meet_link : (old.meet_link || sampleMeet(`${id}`))
     const { error } = await c.from('agenda_events').update({ ...r.row, meet_link: meet, source: google ? 'google' : 'sample' }).eq('id', id)
@@ -72,7 +77,7 @@ async function save(input: DrawerInput, id: number | null): Promise<Done> {
     const { error: delErr } = await c.from('agenda_event_guests').delete().eq('event_id', id)
     if (delErr) { console.error('[agenda drawer] guests:', delErr.message); return no(NOT_SAVED) }
   } else {
-    const { data, error } = await c.from('agenda_events').insert({ ...r.row, created_by: access.personId, add_to_google: false, source: google ? 'google' : 'sample' }).select('id').single()
+    const { data, error } = await c.from('agenda_events').insert({ ...r.row, created_by: access.personId, add_to_google: false, source: google ? 'google' : 'sample', ...extra }).select('id').single()
     if (error || !data) { console.error('[agenda drawer] create:', error?.message); return no(NOT_SAVED) }
     eventId = data.id as number
     if (r.row.how === 'online' && !google) await c.from('agenda_events').update({ meet_link: sampleMeet(`${eventId}`) }).eq('id', eventId)
@@ -99,19 +104,106 @@ export async function createDrawerEvent(input: DrawerInput): Promise<Done> {
   return save(input, null)
 }
 
-export async function updateDrawerEvent(input: DrawerInput & { id: number }): Promise<Done> {
-  const id = Number(input?.id)
-  if (!Number.isSafeInteger(id)) return no(NOT_SAVED)
-  return save(input, id)
+const SERIES_COLS = 'id, title, audience, audience_team_ids, created_by, team_id, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, sent_from_account_id, google_event_id, meet_link'
+type SeriesOld = { id: number; title: string; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; team_id: string | null; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; time_zone: string | null; recurrence: string | null; skip_days: string[] | null; sent_from_account_id: number | null; google_event_id: string | null; meet_link: string | null }
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 864e5)
+const plusDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
+
+/** The id Google gives one occurrence of this series on `day`. */
+function occurrenceGoogleId(old: SeriesOld, day: string): string | null {
+  if (!old.google_event_id) return null
+  const o = occurrenceOf(old, day)
+  return instanceId(old.google_event_id, o.starts_at ? { at: o.starts_at } : { date: day })
 }
 
-export async function deleteDrawerEvent(input: { id: number }): Promise<Done> {
+/** A series ends the day before `day` ("This and following"): its rule, its later one-off changes, and its Google copy. */
+async function cutSeries(old: SeriesOld, day: string): Promise<boolean> {
+  const c = createAdminClient()
+  const rule = fromRRule(old.recurrence)
+  const cut = rule ? endBefore(rule, old.start_date, day) : null
+  if (!rule || !cut) return false
+  const { error } = await c.from('agenda_events').update({ recurrence: toRRule(cut, old.start_date, !old.starts_at), recur_until: lastDay(cut, old.start_date), skip_days: (old.skip_days ?? []).filter(d => d < day) }).eq('id', old.id)
+  if (error) throw new Error(error.message)
+  await c.from('agenda_events').delete().eq('series_id', old.id).gte('original_day', day)
+  if (old.google_event_id) await sendToGoogle(old.id)
+  return true
+}
+
+/**
+ * A change to an event. On one occurrence of a series (`occurrence`), the
+ * answer to "This event, This and following, or All events" decides what
+ * changes, here and on Google, as Google Calendar does it.
+ */
+export async function updateDrawerEvent(input: DrawerInput & { id: number; occurrence?: { day: string; scope: Scope } | null }): Promise<Done> {
+  const id = Number(input?.id)
+  if (!Number.isSafeInteger(id)) return no(NOT_SAVED)
+  const occ = input.occurrence
+  if (!occ || !/^\d{4}-\d{2}-\d{2}$/.test(occ.day ?? '') || !['one', 'following', 'all'].includes(occ.scope)) return save(input, id)
+  const w = await writer(); if (isDone(w)) return w
+  const c = createAdminClient()
+  const { data } = await c.from('agenda_events').select(SERIES_COLS).eq('id', id).maybeSingle()
+  const old = data as SeriesOld | null
+  if (!old?.audience) return no('That event is no longer on the Agenda.')
+  if (!mayManage(old as Parameters<typeof mayManage>[0], w.viewer)) return no('Only who created it can change this event.')
+  if (!old.recurrence) return save(input, id)
+  const day = occ.day
+
+  if (occ.scope === 'all' || (occ.scope === 'following' && day <= old.start_date)) {
+    // The whole series moves by as many days as this occurrence moved, and keeps the new times.
+    return save({ ...input, date: plusDays(old.start_date, daysBetween(day, input.date)) }, id)
+  }
+  if (occ.scope === 'one') {
+    const single = { ...input, repeat: null }
+    const { data: mine } = await c.from('agenda_events').select('id').eq('series_id', id).eq('original_day', day).maybeSingle()
+    if (mine) return save(single, mine.id as number)
+    const done = await save(single, null, { series_id: id, original_day: day, created_by: old.created_by, google_event_id: occurrenceGoogleId(old, day), meet_link: old.meet_link })
+    if (done.ok) await c.from('agenda_events').update({ skip_days: [...new Set([...(old.skip_days ?? []), day])] }).eq('id', id)
+    return done
+  }
+  // This and following: the series ends the day before, and a new one starts with the changes.
+  const rule = fromRRule(old.recurrence)!
+  const rest = input.repeat && input.repeat.ends === 'count' && rule.ends === 'count' ? { ...input.repeat, count: restFrom(rule, old.start_date, day).count } : input.repeat
+  try {
+    await cutSeries(old, day)
+  } catch (e) {
+    console.error('[agenda drawer] cut series:', e instanceof Error ? e.message : e)
+    return no(NOT_SAVED)
+  }
+  return save({ ...input, repeat: rest ?? null }, null)
+}
+
+export async function deleteDrawerEvent(input: { id: number; occurrence?: { day: string; scope: Scope } | null }): Promise<Done> {
   const w = await writer(); if (isDone(w)) return w
   const id = Number(input?.id)
   const c = createAdminClient()
-  const { data: old } = await c.from('agenda_events').select('id, title, audience, audience_team_ids, created_by, team_id, sent_from_account_id, google_event_id').eq('id', id).maybeSingle()
+  const { data } = await c.from('agenda_events').select(SERIES_COLS).eq('id', id).maybeSingle()
+  const old = data as SeriesOld | null
   if (!old || !old.audience) return no('That event is no longer on the Agenda.')
   if (!mayManage(old as Parameters<typeof mayManage>[0], w.viewer)) return no('Only who created it can delete this event.')
+  const occ = input.occurrence
+  if (old.recurrence && occ && /^\d{4}-\d{2}-\d{2}$/.test(occ.day ?? '') && occ.scope !== 'all' && !(occ.scope === 'following' && occ.day <= old.start_date)) {
+    try {
+      if (occ.scope === 'one') {
+        // Only this one: taken out of the series here, and cancelled on Google (which tells the guests).
+        const { data: mine } = await c.from('agenda_events').select('id').eq('series_id', id).eq('original_day', occ.day).maybeSingle()
+        if (mine) await c.from('agenda_events').delete().eq('id', mine.id)
+        const gid = occurrenceGoogleId(old, occ.day)
+        if (gid && old.sent_from_account_id != null && !(await removeFromGoogle(old.sent_from_account_id, gid))) {
+          return no('Google did not cancel it, so the guests were not told. Try again in a moment.')
+        }
+        const { error } = await c.from('agenda_events').update({ skip_days: [...new Set([...(old.skip_days ?? []), occ.day])] }).eq('id', id)
+        if (error) throw new Error(error.message)
+      } else {
+        await cutSeries(old, occ.day)
+      }
+    } catch (e) {
+      console.error('[agenda drawer] delete occurrence:', e instanceof Error ? e.message : e)
+      return no(NOT_SAVED)
+    }
+    revalidatePath('/agenda')
+    revalidatePath('/')
+    return { ok: true, toast: occ.scope === 'one' ? `${old.title} on that day was deleted. The guests get Google's cancellation.` : `${old.title} was deleted from that day on.` }
+  }
   if (old.google_event_id && old.sent_from_account_id != null && !(await removeFromGoogle(old.sent_from_account_id, old.google_event_id))) {
     return no('Google did not delete it, so the guests were not told. Try again in a moment, or reconnect the account in Agenda settings.')
   }

@@ -15,12 +15,17 @@
 import { addDays } from '@/lib/timeclock/periods'
 import type { EventEdit } from './events'
 import { typeOf, type EventType } from './event-rules'
+import type { Repeat } from './recurrence'
 
 /** The drawer, filled from a stored event (Edit opens it with these). */
 export interface DrawerEdit {
   id: number; type: EventType; when: 'time' | 'day' | 'range'; title: string; date: string; end: string; from: number; to: number
   how: 'online' | 'in_person'; place: string; audience: 'guests' | 'teams' | 'all'; teams: string[]
   guests: { personId: string | null; email: string }[]; client: string; description: string; accountId: number | null
+  /** The series' rule, when it repeats. */
+  repeat: Repeat | null
+  /** Editing one occurrence of a series: its day, so Save asks This event, This and following, or All events. */
+  occurrence: string | null
 }
 
 /** A guest's answer, as Google keeps it: accepted, declined, tentative, or none yet. */
@@ -46,6 +51,10 @@ export interface EventDetail {
   /** The viewer's own answer when they are a guest (not the organizer); null otherwise. */
   myAnswer: Answer | null
   onGoogle: boolean
+  /** "Every Tuesday, until Dec 15" for a series; null for a single event. */
+  repeat: string | null
+  /** One occurrence of a series: the series' row and the occurrence's day (Delete asks which ones). */
+  occurrence: { seriesId: number; day: string } | null
 }
 
 export const answerOf = (response: string | null | undefined): Answer =>
@@ -153,6 +162,7 @@ export const AG_ICON = {
   link: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
   ext: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   agenda: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2',
+  repeat: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3',
 } as const
 
 // ── Days ─────────────────────────────────────────────────────────────────────
@@ -522,6 +532,7 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
       rows: [
         timed ? { d: AG_ICON.clock, b: `${fday(x.a)}, ${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`, t: ` in your time zone (${cityOf(v.zone)})`, bold: true, sub }
           : { d: AG_ICON.cal, b: x.a === x.b ? fday(x.a) : drng(x.a, x.b), t: '', bold: true, sub },
+        ...(dt.repeat ? [{ d: AG_ICON.repeat, b: '', t: dt.repeat, bold: false }] : []),
         ...(x.client ? [{ d: AG_ICON.link, b: '', t: `Tied to ${x.client}`, bold: false }] : []),
       ],
       foot: '',

@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { accessTokenFor } from './google-app'
 import { answersIn } from './google-events'
 import { DC, localOf } from './time'
+import { fromRRule, lastDay } from './recurrence'
 
 const API = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 /** The first read of an account looks this far back; later reads ask only for changes. */
@@ -31,6 +32,35 @@ export interface GoogleItem {
   end?: { date?: string; dateTime?: string; timeZone?: string }
   attendees?: { email?: string; responseStatus?: string; organizer?: boolean; self?: boolean }[]
   extendedProperties?: { private?: Record<string, string> }
+  /** A series: its RRULE and EXDATE lines. */
+  recurrence?: string[]
+  /** One occurrence of a series changed or cancelled on its own: the series' id and the start it had. */
+  recurringEventId?: string
+  originalStartTime?: { date?: string; dateTime?: string; timeZone?: string }
+}
+
+/** A series' rule and the days taken out of it, from Google's lines; null when it is not a rule the portal can draw. */
+export function seriesOf(lines: readonly string[] | undefined, first: string, zone: string): { recurrence: string; recur_until: string | null; skip_days: string[] } | null {
+  const rrule = (lines ?? []).find(l => l.startsWith('RRULE:'))
+  const rule = fromRRule(rrule)
+  if (!rrule || !rule) return null
+  const skip = new Set<string>()
+  for (const l of lines ?? []) {
+    if (!l.startsWith('EXDATE')) continue
+    for (const v of l.slice(l.indexOf(':') + 1).split(',')) {
+      const m = /^(\d{4})(\d{2})(\d{2})(T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(v.trim())
+      if (!m) continue
+      const day = `${m[1]}-${m[2]}-${m[3]}`
+      skip.add(m[8] ? localOf(Date.parse(`${day}T${m[5]}:${m[6]}:${m[7]}Z`), zone).date : day)
+    }
+  }
+  return { recurrence: rrule, recur_until: lastDay(rule, first), skip_days: [...skip].sort() }
+}
+
+/** The day one occurrence of a series had before it was changed, in the series' zone. */
+export function originalDay(o: GoogleItem['originalStartTime'], zone: string): string | null {
+  if (o?.date) return o.date
+  return o?.dateTime ? localOf(Date.parse(o.dateTime), zone).date : null
 }
 
 const dayBefore = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) - 864e5).toISOString().slice(0, 10)
@@ -62,7 +92,8 @@ async function changes(token: string, syncToken: string | null): Promise<{ items
   const items: GoogleItem[] = []
   let page: string | null = null
   for (let i = 0; i < PAGES; i++) {
-    const q = new URLSearchParams({ showDeleted: 'true', maxResults: '250', singleEvents: 'true' })
+    // Series come whole, with their rule; an occurrence changed or cancelled on its own comes as its own item.
+    const q = new URLSearchParams({ showDeleted: 'true', maxResults: '250' })
     if (syncToken) q.set('syncToken', syncToken)
     else q.set('timeMin', new Date(Date.now() - FIRST_BACK_MS).toISOString())
     if (page) q.set('pageToken', page)
@@ -104,6 +135,46 @@ export async function syncFromGoogle(): Promise<SyncReport> {
       const first = !t?.sync_token
 
       for (const g of got.items) {
+        // One occurrence of a series the portal knows, changed or cancelled on its own in Google.
+        if (g.recurringEventId) {
+          const { data: master } = await c.from('agenda_events').select('id, kind, type, audience, audience_team_ids, created_by, team_id, time_zone, skip_days, client, sent_from_account_id, source, starts_at').eq('sent_from_account_id', a.id).eq('google_event_id', g.recurringEventId).maybeSingle()
+          if (master) {
+            const day = originalDay(g.originalStartTime, master.time_zone || DC)
+            if (!day) continue
+            const skip = [...new Set([...(master.skip_days ?? []), day])].sort()
+            const { data: mine } = await c.from('agenda_events').select('id').eq('series_id', master.id).eq('original_day', day).maybeSingle()
+            if (g.status === 'cancelled') {
+              if (mine) await c.from('agenda_events').delete().eq('id', mine.id)
+              await c.from('agenda_events').update({ skip_days: skip }).eq('id', master.id)
+              report.deleted++
+              continue
+            }
+            const f = fieldsOf(g)
+            if (!f) continue
+            const cols = {
+              title: f.title, start_date: f.start_date, end_date: f.end_date, starts_at: f.starts_at, ends_at: f.ends_at, time_zone: f.time_zone,
+              how: f.how, place: f.how === 'in_person' ? f.place : null, meet_link: f.meet_link, description: f.description,
+              google_event_id: g.id, google_html_link: g.htmlLink ?? null, calendar_state: 'done' as const,
+            }
+            let oneId = mine?.id as number | undefined
+            if (oneId) {
+              const { error: upErr } = await c.from('agenda_events').update(cols).eq('id', oneId)
+              if (upErr) throw new Error(upErr.message)
+            } else {
+              const { data: made, error: insErr } = await c.from('agenda_events').insert({
+                ...cols, kind: master.kind, type: master.type, audience: master.audience, audience_team_ids: master.audience_team_ids,
+                created_by: master.created_by, team_id: master.team_id, client: master.client, sent_from_account_id: a.id,
+                add_to_google: false, source: master.source, series_id: master.id, original_day: day,
+              }).select('id').single()
+              if (insErr) throw new Error(insErr.message)
+              oneId = made.id as number
+            }
+            await c.from('agenda_events').update({ skip_days: skip }).eq('id', master.id)
+            await syncGuests(oneId, (g.attendees ?? []).filter(x => x.email && !x.organizer && x.email.toLowerCase() !== a.email.toLowerCase()), personOf)
+            report.updated++
+            continue
+          }
+        }
         const { data: ev } = await c.from('agenda_events').select('id').eq('sent_from_account_id', a.id).eq('google_event_id', g.id).maybeSingle()
         if (g.status === 'cancelled') {
           if (ev) { await c.from('agenda_events').delete().eq('id', ev.id); report.deleted++ }
@@ -113,10 +184,17 @@ export async function syncFromGoogle(): Promise<SyncReport> {
         if (!f) continue
         const guests = (g.attendees ?? []).filter(x => x.email && !x.organizer && x.email.toLowerCase() !== a.email.toLowerCase())
         if (ev) {
+          const series = seriesOf(g.recurrence, f.start_date, f.time_zone || DC)
+          // Days changed on their own stay out of the series here: their own rows draw them.
+          if (series) {
+            const { data: moved } = await c.from('agenda_events').select('original_day').eq('series_id', ev.id)
+            series.skip_days = [...new Set([...series.skip_days, ...((moved ?? []) as { original_day: string }[]).map(m => m.original_day)])].sort()
+          }
           const { error: upErr } = await c.from('agenda_events').update({
             title: f.title, start_date: f.start_date, end_date: f.end_date, starts_at: f.starts_at, ends_at: f.ends_at, time_zone: f.time_zone,
             how: f.how, place: f.how === 'in_person' ? f.place : null, meet_link: f.meet_link, description: f.description,
             google_html_link: g.htmlLink ?? null, calendar_state: 'done', responses_read_at: new Date().toISOString(),
+            ...(series ?? (g.recurrence ? {} : { recurrence: null, recur_until: null })),
           }).eq('id', ev.id)
           if (upErr) throw new Error(upErr.message)
           await syncGuests(ev.id, guests, personOf)
@@ -132,6 +210,7 @@ export async function syncFromGoogle(): Promise<SyncReport> {
           meet_link: f.meet_link, description: f.description, audience_team_ids: null, client: null,
           sent_from_account_id: a.id, created_by: null, add_to_google: false, source: 'google',
           google_event_id: g.id, google_html_link: g.htmlLink ?? null, google_ical_uid: g.iCalUID ?? null, calendar_state: 'done',
+          ...(seriesOf(g.recurrence, f.start_date, f.time_zone || DC) ?? {}),
         }).select('id').single()
         if (insErr) throw new Error(insErr.message)
         await syncGuests(made.id as number, guests, personOf)

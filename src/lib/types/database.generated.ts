@@ -521,6 +521,11 @@ export type Database = {
           audience: string | null
           how: string | null
           meet_link: string | null
+          original_day: string | null
+          recur_until: string | null
+          recurrence: string | null
+          series_id: number | null
+          skip_days: string[]
           sample_key: string | null
           sent_from_account_id: number | null
           source: string
@@ -551,6 +556,11 @@ export type Database = {
           audience?: string | null
           how?: string | null
           meet_link?: string | null
+          original_day?: string | null
+          recur_until?: string | null
+          recurrence?: string | null
+          series_id?: number | null
+          skip_days?: string[]
           sample_key?: string | null
           sent_from_account_id?: number | null
           source?: string
@@ -581,6 +591,11 @@ export type Database = {
           audience?: string | null
           how?: string | null
           meet_link?: string | null
+          original_day?: string | null
+          recur_until?: string | null
+          recurrence?: string | null
+          series_id?: number | null
+          skip_days?: string[]
           sample_key?: string | null
           sent_from_account_id?: number | null
           source?: string

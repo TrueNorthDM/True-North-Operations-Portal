@@ -20,6 +20,7 @@ import { usHolidays } from '@/lib/notifications/calendar'
 import { audiencesFor, teamsFor, typesFor, type Audience, type EventType, type Person } from './event-rules'
 import type { Avail } from './find-time'
 import { refreshGoogleBusy } from './google-busy'
+import { expandSeries, type SeriesRow } from './series'
 import { DC, instantOf, zoneLabel } from './time'
 import { readHours, workingIntervals } from './working-hours'
 
@@ -118,15 +119,19 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
   const dir = await loadDirectory()
   const lo = instantOf(fromDay, 0, DC), hi = lo + days * 864e5
   const loIso = new Date(lo).toISOString(), hiIso = new Date(hi).toISOString()
-  const [acc, set, off, guests, created] = await Promise.all([
+  const hiDay = new Date(hi).toISOString().slice(0, 10)
+  const [acc, set, off, guests, created, series] = await Promise.all([
     c.from('agenda_accounts').select('id, person_id, source').in('person_id', ids),
     c.from('agenda_person_settings').select('person_id, working_hours').in('person_id', ids),
     c.from('tc_absence_requests').select('person_id, start_date, end_date').eq('state', 'approved').in('person_id', ids)
       .lte('start_date', new Date(hi).toISOString().slice(0, 10)).gte('end_date', fromDay),
     c.from('agenda_event_guests').select('person_id, agenda_events(starts_at, ends_at)').in('person_id', ids),
     c.from('agenda_events').select('created_by, starts_at, ends_at').in('created_by', ids).not('starts_at', 'is', null).lt('starts_at', hiIso).gt('ends_at', loIso),
+    // Repeating events at a time that run in these days: each occurrence is busy for its creator and its guests.
+    c.from('agenda_events').select('id, created_by, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, agenda_event_guests(person_id)')
+      .not('recurrence', 'is', null).not('starts_at', 'is', null).lte('start_date', hiDay).or(`recur_until.is.null,recur_until.gte.${fromDay}`).limit(500),
   ])
-  for (const r of [acc, set, off, created]) if (r.error) throw new Error(`Availability could not be read: ${r.error.message}`)
+  for (const r of [acc, set, off, created, series]) if (r.error) throw new Error(`Availability could not be read: ${r.error.message}`)
   const accounts = (acc.data ?? []) as { id: number; person_id: string; source: string }[]
   // Accounts connected by Google sign-in: their busy times come from Google, refreshed when the copy is old.
   await refreshGoogleBusy(accounts.filter(a => a.source === 'google').map(a => a.id), lo, hi)
@@ -144,6 +149,13 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
   for (const g of ((guests.data ?? []) as unknown as { person_id: string; agenda_events: { starts_at: string | null; ends_at: string | null } | null }[])) {
     const e = g.agenda_events
     if (e?.starts_at && e.ends_at) push(g.person_id, ms(e.starts_at), ms(e.ends_at))
+  }
+  type SeriesBusy = SeriesRow & { created_by: string | null; agenda_event_guests: { person_id: string | null }[] | null }
+  for (const sr of (series.data ?? []) as unknown as SeriesBusy[]) {
+    const who = [sr.created_by, ...(sr.agenda_event_guests ?? []).map(g => g.person_id)]
+    for (const { row } of expandSeries(sr, fromDay, hiDay)) {
+      if (row.starts_at && row.ends_at) for (const p of who) push(p, ms(row.starts_at), ms(row.ends_at))
+    }
   }
   for (const o of (off.data ?? []) as { person_id: string; start_date: string; end_date: string }[]) {
     const z = dir.zoneOf(o.person_id)

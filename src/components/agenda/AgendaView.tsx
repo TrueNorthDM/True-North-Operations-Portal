@@ -22,6 +22,8 @@ import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { MeetIcon } from '@/components/ui/MeetIcon'
 import { DetailFoot, DetailTop } from './EventDetail'
+import { ScopeChoice } from './ScopeChoice'
+import type { Scope } from '@/lib/agenda/recurrence'
 import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
@@ -164,7 +166,8 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
         <ItemCard item={open} me={data.me} today={data.today} holidays={holidays} onClose={() => setCard(null)} startConfirm={!!data.startConfirm}
           manage={drawer && drawerApi && open.drawerEdit ? {
             onEdit: () => { setDrawerEdit(open.drawerEdit!); setCard(null) },
-            onDelete: () => drawerApi.remove({ id: open.drawerEdit!.id }),
+            onDelete: (scope?: Scope) => drawerApi.remove({ id: open.drawerEdit!.id, occurrence: open.drawerEdit!.occurrence && scope ? { day: open.drawerEdit!.occurrence, scope } : null }),
+            series: !!open.drawerEdit.occurrence,
             onDeleted: t => { setCard(null); say({ text: t }); if (linked) router.refresh() },
           } : edit && data.create && open.edit ? {
             onEdit: () => setEditing(open.edit!),
@@ -430,7 +433,7 @@ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 /** The card's Edit and Delete, for an event the viewer may manage. */
-interface Manage { onEdit: () => void; onDelete: () => Promise<Done>; onDeleted: (toast: string) => void }
+interface Manage { onEdit: () => void; onDelete: (scope?: Scope) => Promise<Done>; onDeleted: (toast: string) => void; /** One occurrence of a series: Delete asks which ones. */ series?: boolean }
 /** A drawer event's Google side: the guests' answers, a guest's own answer, and the event deleted in Google. */
 interface CardGoogle {
   answers: NonNullable<DrawerApi['answers']>; answer?: DrawerApi['answer']
@@ -453,6 +456,7 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
   const [answers, setAnswers] = useState<Record<string, Answer> | null>(null)
   const [myAnswer, setMyAnswer] = useState<Answer | null>(item.detail?.myAnswer ?? null)
   const [answering, setAnswering] = useState(false)
+  const [scoping, setScoping] = useState(false)
   const eventId = item.detail?.onGoogle ? item.detail.eventId : null
   // Opening the card reads the guests' answers from Google, and finds an event deleted there.
   useEffect(() => {
@@ -469,11 +473,11 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
   if (!client) return null
   const c = cardOf(item, { meId: me.id, superAdmin: me.superAdmin, today, zone: me.zone, holidays })
   const what = item.k === 'ms' ? 'milestone' : 'event'
-  const remove = async () => {
+  const remove = async (scope?: Scope) => {
     if (!manage || busy) return
     setBusy(true); setError(null)
     try {
-      const r = await manage.onDelete()
+      const r = await manage.onDelete(scope)
       if (r.ok) manage.onDeleted(r.toast)
       else setError(r.error)
     } catch {
@@ -559,7 +563,7 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
           ) : (c.button || manage) && (
             <div className="flex justify-end gap-2 flex-wrap">
               {manage && <>
-                <button type="button" onClick={() => setConfirm(true)} className={ROW_BTN}>
+                <button type="button" onClick={() => (manage.series ? setScoping(true) : setConfirm(true))} className={ROW_BTN}>
                   <Icon d={ICON.trash} size={14} color={BTN_ICON.white} width={2.2} />Delete
                 </button>
                 <button type="button" onClick={manage.onEdit} className={ROW_BTN}>
@@ -575,6 +579,7 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
           )}
         </div>
       </div>
+      {scoping && manage && <ScopeChoice action="delete" busy={busy} onClose={() => setScoping(false)} onPick={sc => void remove(sc)} />}
     </div>,
     document.body,
   )

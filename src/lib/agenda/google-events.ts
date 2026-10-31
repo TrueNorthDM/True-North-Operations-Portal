@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accessTokenFor } from './google-app'
+import { DC, localOf } from './time'
 
 const API = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 
@@ -24,6 +25,21 @@ export interface EventForGoogle {
   place: string | null
   description: string | null
   client: string | null
+  /** A series: its RRULE line, and the days taken out of it. */
+  recurrence?: string | null
+  skip_days?: string[] | null
+}
+
+/** Google's lines for a series: the rule, then one EXDATE per day taken out, at the series' own start time. */
+export function recurrenceLines(e: Pick<EventForGoogle, 'recurrence' | 'skip_days' | 'starts_at' | 'time_zone'>): string[] | undefined {
+  if (!e.recurrence) return undefined
+  const skip = [...new Set(e.skip_days ?? [])].sort()
+  if (!skip.length) return [e.recurrence]
+  if (!e.starts_at) return [e.recurrence, `EXDATE;VALUE=DATE:${skip.map(d => d.replace(/-/g, '')).join(',')}`]
+  const zone = e.time_zone || DC
+  const hm = localOf(Date.parse(e.starts_at), zone).minutes
+  const at = `T${String(Math.floor(hm / 60)).padStart(2, '0')}${String(hm % 60).padStart(2, '0')}00`
+  return [e.recurrence, `EXDATE;TZID=${zone}:${skip.map(d => d.replace(/-/g, '') + at).join(',')}`]
 }
 
 const nextDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 864e5).toISOString().slice(0, 10)
@@ -33,7 +49,7 @@ const nextDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 864e5).to
  * Google adds the calendar's owner on its own. `meet` asks Google for a new
  * Meet link (an online event that has none yet); `dropMeet` takes it off.
  */
-export function eventBody(e: EventForGoogle, guests: string[], organizer: string, opts: { meet: boolean; dropMeet: boolean }): Record<string, unknown> {
+export function eventBody(e: EventForGoogle, guests: string[], organizer: string, opts: { meet: boolean; dropMeet: boolean; clearRepeat?: boolean }): Record<string, unknown> {
   const timed = e.starts_at && e.ends_at
   const seen = new Set<string>([organizer.toLowerCase()])
   const attendees = guests.map(g => g.trim()).filter(g => {
@@ -51,6 +67,8 @@ export function eventBody(e: EventForGoogle, guests: string[], organizer: string
     attendees,
     // The portal's own id, so Google's copy can be traced back.
     extendedProperties: { private: { tnPortalEventId: String(e.id) } },
+    // A change to a whole event that no longer repeats takes its rule off on Google too.
+    recurrence: recurrenceLines(e) ?? (opts.clearRepeat ? [] : undefined),
   }
   if (opts.meet) body.conferenceData = { createRequest: { requestId: `tn-${e.id}-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } } }
   else if (opts.dropMeet) body.conferenceData = null
@@ -99,7 +117,7 @@ export async function removeFromGoogle(accountId: number, googleEventId: string)
 export async function sendToGoogle(eventId: number, before?: { accountId: number | null; googleEventId: string | null }): Promise<boolean> {
   const c = createAdminClient()
   const { data: e, error } = await c.from('agenda_events')
-    .select('id, title, start_date, end_date, starts_at, ends_at, time_zone, how, place, description, client, sent_from_account_id, google_event_id, meet_link')
+    .select('id, title, start_date, end_date, starts_at, ends_at, time_zone, how, place, description, client, sent_from_account_id, google_event_id, meet_link, recurrence, skip_days, series_id')
     .eq('id', eventId).maybeSingle()
   if (error || !e) { console.error('[agenda google] event to send:', error?.message ?? 'missing'); return false }
   const fail = async (why: string) => {
@@ -120,15 +138,21 @@ export async function sendToGoogle(eventId: number, before?: { accountId: number
     ])
     const token = await accessTokenFor(e.sent_from_account_id)
     if (!acct || !token) return fail('the account needs to be connected again')
+    // A day moved out of a series by its own change stays in the series on Google (that occurrence is changed, not cancelled).
+    if (e.recurrence) {
+      const { data: moved } = await c.from('agenda_events').select('original_day').eq('series_id', eventId)
+      const keep = new Set(((moved ?? []) as { original_day: string }[]).map(m => m.original_day))
+      e.skip_days = (e.skip_days ?? []).filter(d => !keep.has(d))
+    }
     const online = e.how === 'online'
     // A copy made by the portal before had Google's Meet link; a sample link is never kept.
     const hasMeet = !!googleId && !!e.meet_link && e.meet_link.startsWith('https://meet.google.com/')
-    const body = eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online && !hasMeet, dropMeet: !online && !!googleId })
+    const body = eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online && !hasMeet, dropMeet: !online && !!googleId, clearRepeat: !!googleId && !e.series_id })
     let r = googleId
       ? await call(token, 'PATCH', `${API}/${encodeURIComponent(googleId)}?conferenceDataVersion=1&sendUpdates=all`, body)
       : await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, body)
-    // Deleted straight in Google: make it again.
-    if (googleId && (r.status === 404 || r.status === 410)) r = await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online, dropMeet: false }))
+    // Deleted straight in Google: make it again (never one occurrence of a series, which lives only inside it).
+    if (googleId && !e.series_id && (r.status === 404 || r.status === 410)) r = await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online, dropMeet: false }))
     const id = (r.json as { id?: unknown } | null)?.id
     if (r.status >= 300 || typeof id !== 'string') return fail(`Google answered ${r.status}`)
     const g = r.json as { htmlLink?: unknown; iCalUID?: unknown }

@@ -22,12 +22,15 @@ import type { Answer, DrawerEdit } from '@/lib/agenda/model'
 import { typeOf, type Audience, type DrawerInput, type EventType, type When } from '@/lib/agenda/event-rules'
 import { clockLabel, DC, instantOf, localOf } from '@/lib/agenda/time'
 import { FindTimePanel, type FindTimeApi } from './FindTimePanel'
+import { RepeatField } from './RepeatField'
+import { ScopeChoice } from './ScopeChoice'
+import type { Repeat, Scope } from '@/lib/agenda/recurrence'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 export interface DrawerApi {
   create(i: DrawerInput): Promise<Done>
-  update(i: DrawerInput & { id: number }): Promise<Done>
-  remove(i: { id: number }): Promise<Done>
+  update(i: DrawerInput & { id: number; occurrence?: { day: string; scope: Scope } | null }): Promise<Done>
+  remove(i: { id: number; occurrence?: { day: string; scope: Scope } | null }): Promise<Done>
   findTime: FindTimeApi
   /** The open card: the guests' answers as Google has them, and a guest's own Yes, No or Maybe. */
   answers?(i: { id: number }): Promise<{ ok: true; gone: boolean; answers: Record<string, Answer> } | { ok: false; error: string }>
@@ -115,6 +118,9 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
   const [busy, setBusy] = useState(false)
   const [finding, setFinding] = useState(false)
   const [asking, setAsking] = useState(false)
+  const [repeat, setRepeat] = useState<Repeat | null>(start?.repeat ?? null)
+  // One occurrence of a series: Save and Delete first ask which ones.
+  const [scopeFor, setScopeFor] = useState<'save' | 'delete' | null>(null)
 
   const t = typeOf(type)
   const word = t.label.toLowerCase()
@@ -172,19 +178,26 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
   const input = (): DrawerInput => ({
     type, when, title, date, end: when === 'range' ? end : undefined, from: when === 'time' ? from : undefined, to: when === 'time' ? to : undefined,
     how, place, audience, teams: audience === 'teams' ? teams : [], guests, client, description: desc, accountId: account,
+    repeat: when === 'range' ? null : repeat,
   })
-  const save = async () => {
+  const save = async (scope?: Scope) => {
     if (!account) { setFromErr(true); return }
+    if (start?.occurrence && !scope) { setScopeFor('save'); return }
     setBusy(true); setError(null)
     try {
-      const r = start ? await api.update({ ...input(), id: start.id }) : await api.create(input())
-      if (r.ok) onDone(r.toast); else setError(r.error)
+      const occurrence = start?.occurrence && scope ? { day: start.occurrence, scope } : null
+      const r = start ? await api.update({ ...input(), id: start.id, occurrence }) : await api.create(input())
+      if (r.ok) onDone(r.toast); else { setError(r.error); setScopeFor(null) }
     } catch (e) { setError(failText(e)) } finally { setBusy(false) }
   }
-  const remove = async () => {
+  const remove = async (scope?: Scope) => {
     if (!start) return
     setBusy(true); setError(null)
-    try { const r = await api.remove({ id: start.id }); if (r.ok) onDone(r.toast); else { setError(r.error); setAsking(false) } }
+    try {
+      const occurrence = start.occurrence && scope ? { day: start.occurrence, scope } : null
+      const r = await api.remove({ id: start.id, occurrence })
+      if (r.ok) onDone(r.toast); else { setError(r.error); setAsking(false); setScopeFor(null) }
+    }
     catch (e) { setError(failText(e)) } finally { setBusy(false) }
   }
 
@@ -260,6 +273,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
                     onChange={v => { const n = Number(v); setTo(n); if (n <= from) setFrom(Math.max(n - 60, 0)) }} /></label>
               </>}
             </div>
+            {when !== 'range' && <RepeatField date={date} value={repeat} onChange={setRepeat} />}
             {when === 'time' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 bg-subtle rounded-[12px]">
                 <div className="flex items-center gap-2.5 px-4 py-3 text-[13.5px] text-foreground leading-[1.45]">
@@ -400,7 +414,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
         </div>
 
         <div className="flex-none flex flex-wrap items-center gap-2.5 px-5 md:px-7 py-3.5 border-t border-[var(--panel-border)] bg-white">
-          {start && <button type="button" disabled={busy} onClick={() => setAsking(true)} className="border border-slate-200 rounded-[12px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer">Delete</button>}
+          {start && <button type="button" disabled={busy} onClick={() => (start.occurrence ? setScopeFor('delete') : setAsking(true))} className="border border-slate-200 rounded-[12px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer">Delete</button>}
           <span className="flex gap-2.5 ml-auto">
             <button type="button" onClick={onClose} className="border border-slate-200 rounded-[12px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[14px] cursor-pointer">Cancel</button>
             <button type="button" disabled={busy || setup.accounts.length === 0} onClick={() => void save()}
@@ -410,6 +424,10 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
           </span>
         </div>
       </aside>
+      {scopeFor && (
+        <ScopeChoice action={scopeFor} busy={busy} onClose={() => setScopeFor(null)}
+          onPick={sc => void (scopeFor === 'save' ? save(sc) : remove(sc))} />
+      )}
       {asking && start && (
         <Modal label="Delete the event" width={420} alert onClose={() => setAsking(false)}>
           <h2 className={MODAL_TITLE}>Delete {title || 'this event'}?</h2>
