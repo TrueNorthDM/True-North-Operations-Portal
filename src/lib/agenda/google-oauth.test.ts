@@ -46,7 +46,7 @@ describe('the answer from Google', () => {
     expect(missingScopes('openid https://www.googleapis.com/auth/calendar.events')).toEqual(['https://www.googleapis.com/auth/calendar.freebusy'])
   })
 
-  it('takes only the True North domain until Google approves the portal', () => {
+  it('knows a True North address (the team calendar must be one)', () => {
     expect(onApprovedDomain('ana@truenorthdigitalmarketing.com')).toBe(true)
     expect(onApprovedDomain('ana@gmail.com')).toBe(false)
     expect(onApprovedDomain('ana@evil-truenorthdigitalmarketing.com')).toBe(false)

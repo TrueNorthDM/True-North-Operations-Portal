@@ -2,8 +2,9 @@
  * Google sign-in for the Agenda (owner, 30 October 2026): the address that
  * sends a person to Google, the answer Google sends back, and the tokens.
  * The app is "True North Operations Portal" in True North's Google Cloud,
- * Internal until Google approves it, so only @truenorthdigitalmarketing.com
- * accounts can sign in. Not a "use server" file; no database here.
+ * External but not yet verified by Google (owner, 30 October 2026): any
+ * Google account can connect after Google's "not verified" warning, up to
+ * 100 people. Not a "use server" file; no database here.
  */
 
 import { APPROVED_DOMAIN } from './accounts'
@@ -126,7 +127,7 @@ export function connectNotice(code: string | null | undefined, email?: string | 
     case 'signin': return bad('Sign in to the portal again, then connect.')
     case 'not_allowed': return bad('Only a Super Admin connects the team calendar.')
     case 'no_app': return bad('Google sign-in is not set up yet. A Super Admin adds the app\'s keys in Company settings > Integrations.')
-    case 'domain': return bad(`${who} was not connected. For now only @${APPROVED_DOMAIN} accounts connect; others can once Google approves the portal.`)
+    case 'domain': return bad(`${who} was not connected: the team calendar is an @${APPROVED_DOMAIN} account (office@).`)
     case 'scopes': return bad(`${who} was not connected: on Google's page, leave the calendar boxes ticked so the portal can create events and see when you are busy.`)
     case 'taken': return bad(`${who} is already connected by someone else.`)
     case 'is_team': return bad(`${who} is the team calendar, so it connects from the Team calendar box above (Reconnect), not as your own account.`)

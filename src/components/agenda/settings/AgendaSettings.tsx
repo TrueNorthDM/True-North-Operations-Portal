@@ -230,7 +230,9 @@ function AccountsCard({ data, busy, run, api }: { data: AgendaSettingsData; busy
       )}
       <div className="flex gap-2.5 items-start bg-[var(--warn-bg)] border border-[#e9d48a] rounded-[12px] px-3 py-2.5 text-[13px] text-[#5c4502] leading-[1.45]">
         <Icon d="M12 8v5M12 16h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" size={17} color="#8a6703" width={2} />
-        <span>For now you can only connect <b>@{APPROVED_DOMAIN}</b> accounts. Other Google accounts, like Gmail or another company, can connect once Google approves the portal.</span>
+        {data.googleReady
+          ? <span>Any Google account can connect. Until Google finishes reviewing the portal, Google shows <b>&quot;Google hasn&apos;t verified this app&quot;</b>: click <b>Advanced</b>, then <b>Go to True North Operations Portal</b>.</span>
+          : <span>For now you can only connect <b>@{APPROVED_DOMAIN}</b> accounts. Other Google accounts, like Gmail or another company, can connect once Google approves the portal.</span>}
       </div>
       {asking && <ConnectDialog title="Connect a Google account" placeholder={`you@${APPROVED_DOMAIN}`} busy={busy}
         onClose={() => setAsking(false)} onConnect={email => void run(api.connectAccount({ email }), () => setAsking(false))} />}

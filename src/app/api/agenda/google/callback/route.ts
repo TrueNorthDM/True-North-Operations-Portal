@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     const answer = await exchangeCode(app, code, `${base}${CALLBACK_PATH}`)
     const who = answer.id_token ? idTokenClaims(answer.id_token) : null
     if (!who || !who.verified) return back('failed')
-    if (!onApprovedDomain(who.email)) return back('domain', who.email)
+    // Own accounts may be on any Google domain (the app is External since 30 Oct); the team calendar stays a True North address.
+    if (saved.purpose === 'team' && !onApprovedDomain(who.email)) return back('domain', who.email)
     if (missingScopes(answer.scope ?? '').length) return back('scopes', who.email)
     const r = await saveConnection({ purpose: saved.purpose, personId: access.personId, email: who.email, sub: who.sub, answer })
     if (!r.ok) return back(r.reason, who.email)
