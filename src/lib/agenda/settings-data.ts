@@ -81,3 +81,10 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     },
   }
 }
+
+/** One person's working hours, for the shading in the week (the default when they never saved any). */
+export async function loadMyHours(personId: string): Promise<WorkingHours> {
+  const { data, error } = await createAdminClient().from('agenda_person_settings').select('working_hours').eq('person_id', personId).maybeSingle()
+  if (error) console.error('[agenda] working hours:', error.message)
+  return readHours(data?.working_hours ?? null)
+}

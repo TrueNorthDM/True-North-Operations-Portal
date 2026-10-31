@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, nowLine, rangeTitle, stepAnchor, thisWeek, weekModel, WEEK_ROW, type AgendaItem } from './model'
+import { ALL_TEAMS, lanesOf, answerCounts, answerOf, countsLabel, durationLabel, otherZonesLabel, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, nowLine, offHours, rangeTitle, stepAnchor, thisWeek, weekModel, WEEK_ROW, type AgendaItem } from './model'
 import { daysOf } from '@/lib/integrations/google-calendar'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -64,7 +64,7 @@ describe('8B week', () => {
   })
   it('places an event by its hours, as drawn', () => {
     const e = wk.cols[2].events[0]
-    expect([e.title, e.time, e.top, e.height]).toEqual(['Thanksgiving gratitude call', '1:00 PM to 1:45 PM', 13 * 48 + 2, 32])
+    expect([e.title, e.time, e.top, e.height]).toEqual(['Thanksgiving gratitude call', '1:00 PM to 1:45 PM', 13 * WEEK_ROW + 2, 0.75 * WEEK_ROW - 4])
     expect(wk.hours[0]).toBe('12 AM')
     expect(wk.hours.at(-1)).toBe('11 PM')
   })
@@ -196,5 +196,15 @@ describe('the line at the current time in the week', () => {
     expect(nowLine(wk, { date: '2026-11-03', minutes: 7 * 60 })).toBeNull()
     expect(nowLine(wk, { date: '2026-11-03', minutes: 17 * 60 + 59 })).not.toBeNull()
     expect(nowLine(wk, { date: '2026-11-03', minutes: 18 * 60 + 1 })).toBeNull()
+  })
+})
+
+describe('the hours outside work, shaded in the week', () => {
+  const hours = { 2: [[420, 660], [780, 1080]] as [number, number][] }
+  it('shades before, between and after the blocks', () => {
+    expect(offHours('2026-11-03', hours)).toEqual([[0, 7 * WEEK_ROW], [11 * WEEK_ROW, 2 * WEEK_ROW], [18 * WEEK_ROW, 6 * WEEK_ROW]])
+  })
+  it('shades a day off whole', () => {
+    expect(offHours('2026-11-01', hours)).toEqual([[0, 24 * WEEK_ROW]])
   })
 })

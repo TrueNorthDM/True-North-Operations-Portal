@@ -16,6 +16,7 @@ import { addDays } from '@/lib/timeclock/periods'
 import type { EventEdit } from './events'
 import { typeOf, type EventType } from './event-rules'
 import type { Repeat } from './recurrence'
+import type { Weekday, WorkingHours } from './working-hours'
 
 /** The drawer, filled from a stored event (Edit opens it with these). */
 export interface DrawerEdit {
@@ -375,6 +376,24 @@ export interface WeekModel {
 }
 
 /**
+ * The parts of a day outside a person's working hours (Agenda settings), as
+ * [top, height] in pixels of the week, for the shading (owner, 31 October
+ * 2026). A day with no blocks is shaded whole. Hours are in the viewer's own
+ * zone, the one the week is drawn in. Pure.
+ */
+export function offHours(day: string, hours: WorkingHours): [number, number][] {
+  const d = dow(day), blocks = hours[String(d === 0 ? 7 : d) as Weekday] ?? []
+  const out: [number, number][] = []
+  let at = 0
+  for (const [a, b] of blocks) {
+    if (a > at) out.push([at, a])
+    at = Math.max(at, b)
+  }
+  if (at < 1440) out.push([at, 1440])
+  return out.map(([a, b]) => [a / 60 * WEEK_ROW, (b - a) / 60 * WEEK_ROW])
+}
+
+/**
  * Where the line at the current time goes in the week (owner, 31 October 2026):
  * the column of today and the height of this minute, or null when today is
  * not in the week or the hour is not drawn. `now` is in the viewer's zone. Pure.
@@ -385,7 +404,9 @@ export function nowLine(wk: Pick<WeekModel, 'days' | 'first' | 'last'>, now: { d
   return { col, top: (h - wk.first) * WEEK_ROW }
 }
 
-export const WEEK_ROW = 48
+/** One hour of the week, in pixels: seven of them fill the box, so cards read larger (owner, 31 October 2026). */
+export const WEEK_ROW = 80
+export const WEEK_SHOWN_HOURS = 7
 
 export function weekModel(items: readonly AgendaItem[], anchor: string, today: string, seesType: (x: AgendaItem) => boolean): WeekModel {
   const { from } = viewDays('week', anchor), days = [...Array(7)].map((_, i) => addDays(from, i))

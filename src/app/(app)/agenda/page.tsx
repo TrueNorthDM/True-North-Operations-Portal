@@ -16,6 +16,7 @@ import { createAgendaEvent, deleteAgendaEvent, updateAgendaEvent } from './actio
 import { answerEvent, createDrawerEvent, deleteDrawerEvent, eventAnswers, findTimeData, updateDrawerEvent } from './drawer-actions'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadDrawerSetup } from '@/lib/agenda/drawer-data'
+import { loadMyHours } from '@/lib/agenda/settings-data'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Agenda' }
@@ -39,7 +40,7 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
   const led = dir.led.get(v.id) ?? new Set<string>()
   // Whoever may create an event may edit and delete it (lib/agenda/events.ts); the actions check again.
   const rights = { company, team: access.can('ag-team'), led }
-  const [items, conn] = await Promise.all([loadAgendaItems(v, lo, hi, rights), loadConnections()])
+  const [items, conn, hours] = await Promise.all([loadAgendaItems(v, lo, hi, rights), loadConnections(), loadMyHours(v.id)])
   const teams = [...dir.teams.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     .map(t => ({ id: t.id, name: t.name, color: teamColour(t.color, t.name) }))
   const mode = company ? 'company' as const : access.can('ag-team') && led.size ? 'team' as const : null
@@ -53,7 +54,7 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
       edit={{ update: updateAgendaEvent, remove: deleteAgendaEvent }}
       data={{
         view, anchor, today, items, teams, drawer,
-        me: { id: v.id, superAdmin: v.superAdmin, zone: v.zone },
+        me: { id: v.id, superAdmin: v.superAdmin, zone: v.zone, hours },
         holidays: [...holidaysIn(lo, addDays(hi, 31)).keys()],
         create: mode && {
           mode,

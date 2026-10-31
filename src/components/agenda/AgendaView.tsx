@@ -24,9 +24,10 @@ import { MeetIcon } from '@/components/ui/MeetIcon'
 import { DetailFoot, DetailTop } from './EventDetail'
 import { ScopeChoice } from './ScopeChoice'
 import type { Scope } from '@/lib/agenda/recurrence'
+import type { WorkingHours } from '@/lib/agenda/working-hours'
 import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, nowLine, rangeTitle, WEEK_ROW, stepAnchor, viewDays, weekModel, weekNumber,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, nowLine, offHours, rangeTitle, WEEK_ROW, WEEK_SHOWN_HOURS, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -46,7 +47,8 @@ export interface AgendaData {
   today: string
   items: AgendaItem[]
   teams: { id: string; name: string; color: string }[]
-  me: { id: string; superAdmin: boolean; zone: string }
+  /** hours: their working hours (Agenda settings), shaded outside in the week; absent, nothing is shaded. */
+  me: { id: string; superAdmin: boolean; zone: string; hours?: WorkingHours }
   /** Company holidays near these days, for "Back on". */
   holidays: string[]
   /** Who may create, and with what (null: nobody here may). */
@@ -157,7 +159,7 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
             : <Month items={items} anchor={anchor} today={data.today} onOpen={setCard} onMore={d => go('list', d)} />)}
           {view === 'week' && (phone
             ? <WeekPhone items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />
-            : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} seesType={seesType} onOpen={setCard} />)}
+            : <Week items={items} anchor={anchor} today={data.today} zone={data.me.zone} hours={data.me.hours} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
         <ComingUp items={items} today={data.today} onOpen={setCard} />
@@ -253,22 +255,23 @@ function useNow(zone: string): { date: string; minutes: number } | null {
   return now
 }
 
-function Week({ items, anchor, today, zone, seesType, onOpen }: { items: AgendaItem[]; anchor: string; today: string; zone: string; seesType: (x: AgendaItem) => boolean; onOpen: (id: string) => void }) {
+function Week({ items, anchor, today, zone, hours, seesType, onOpen }: { items: AgendaItem[]; anchor: string; today: string; zone: string; hours?: WorkingHours; seesType: (x: AgendaItem) => boolean; onOpen: (id: string) => void }) {
   const wk = weekModel(items, anchor, today, seesType)
   const now = useNow(zone)
   const line = now ? nowLine(wk, now) : null
-  // Opens on 7 AM, or two hours before now when today is in the week; once per
-  // week shown, so the time line moving never scrolls the box under the mouse.
+  // Seven hours at a time, centred on the line at the current time (3.5 before,
+  // 3.5 after) and following it as it moves, until the person scrolls; with
+  // today not in the week, it opens where their working day starts (owner, 31
+  // October 2026). A new week shown follows the line again.
   const box = useRef<HTMLDivElement>(null)
-  const nowHour = line ? Math.floor(now!.minutes / 60) : null
-  const openAt = nowHour == null ? 7 : Math.max(0, nowHour - 2)
-  const opened = useRef('')
+  const follow = useRef(true)
+  const startOfWork = Math.min(...Object.values(hours ?? {}).map(b => b?.[0]?.[0] ?? 1440), 8 * 60) / 60
+  const target = line ? line.top - WEEK_SHOWN_HOURS * WEEK_ROW / 2 : startOfWork * WEEK_ROW
+  useEffect(() => { follow.current = true }, [anchor])
   useEffect(() => {
-    const k = `${anchor}:${nowHour != null}`
-    if (!box.current || opened.current === k) return
-    opened.current = k
-    box.current.scrollTop = openAt * WEEK_ROW
-  }, [anchor, nowHour, openAt])
+    if (box.current && follow.current) box.current.scrollTop = Math.max(0, target)
+  }, [anchor, target])
+  const stop = () => { follow.current = false }
   return (
     <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
       <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] bg-subtle border-b border-[var(--panel-border)]">
@@ -291,14 +294,17 @@ function Week({ items, anchor, today, zone, seesType, onOpen }: { items: AgendaI
           </button>
         ))}
       </div>
-      <div ref={box} className="max-h-[max(420px,calc(100vh-300px))] overflow-y-auto overscroll-contain">
+      <div ref={box} onWheel={stop} onTouchMove={stop} onKeyDown={stop} className="overflow-y-auto overscroll-contain" style={{ height: WEEK_SHOWN_HOURS * WEEK_ROW }}>
       <div className="relative grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
         <div className="flex flex-col">
-          {wk.hours.map(h => <div key={h} className="h-12 box-border px-2 py-0.5 text-[10.5px] text-muted leading-[normal] tabular-nums lining-nums border-t border-[#f1f3f6]">{h}</div>)}
+          {wk.hours.map(h => <div key={h} className="h-20 box-border px-2 py-0.5 text-[10.5px] text-muted leading-[normal] tabular-nums lining-nums border-t border-[#f1f3f6]">{h}</div>)}
         </div>
         {wk.cols.map((c, i) => (
           <div key={i} className={`relative border-l border-[var(--row-rule)] ${c.weekend ? 'bg-[#faf9f5]' : 'bg-white'}`}>
-            {wk.hours.map(h => <div key={h} className="h-12 box-border border-t border-[#f1f3f6]" />)}
+            {wk.hours.map(h => <div key={h} className="h-20 box-border border-t border-[#f1f3f6]" />)}
+            {hours && offHours(wk.days[i], hours).map(([top, height]) => (
+              <div key={top} aria-hidden="true" className="absolute left-0 right-0 pointer-events-none bg-[repeating-linear-gradient(135deg,rgba(1,35,88,.045)_0_6px,rgba(1,35,88,.02)_6px_12px)]" style={{ top, height }} />
+            ))}
             {line?.col === i && (
               <div aria-hidden="true" className="absolute left-0 right-0 z-[2] h-0.5 -mt-px bg-[#c8323d] pointer-events-none" style={{ top: line.top }}>
                 <span className="absolute -left-[5px] -top-1 w-2.5 h-2.5 rounded-full bg-[#c8323d]" />
