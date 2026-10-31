@@ -54,6 +54,10 @@ describe('invitees', () => {
     expect(invitees('teams', ['mk'], [{ personId: 'b', email: 'B@tn.com' }, { personId: 'a', email: 'a@tn.com' }], people, 'me'))
       .toEqual([{ person_id: 'a', email: 'a@tn.com', via: 'team' }, { person_id: 'b', email: 'b@tn.com', via: 'guest' }])
     expect(invitees('all', [], [{ email: 'x@ext.org' }], people, 'me').map(i => i.email)).toEqual(['a@tn.com', 'b@tn.com', 'x@ext.org'])
+
+  })
+  it('lets the creator invite themselves at another address, never through a team', () => {
+    expect(invitees('guests', [], [{ personId: 'me', email: 'me@work.com' }], people, 'me')).toEqual([{ person_id: 'me', email: 'me@work.com', via: 'guest' }])
   })
 })
 

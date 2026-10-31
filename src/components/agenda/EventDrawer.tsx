@@ -116,7 +116,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
   const t = typeOf(type)
   const word = t.label.toLowerCase()
   const setType = (x: EventType) => { setTypeRaw(x); setWhen(typeOf(x).when); setTypeOpen(false) }
-  const nameOf = useMemo(() => new Map(setup.people.map(p => [p.personId, p.name])), [setup.people])
+  const nameOf = useMemo(() => new Map([...setup.people.map(p => [p.personId, p.name] as const), [setup.me.id, `${setup.me.name} (you)`] as const]), [setup.people, setup.me])
   const teamPeople = (ids: string[]) => setup.people.filter(p => p.teamIds.some(x => ids.includes(x)))
   const covered = (g: Guest) => !!g.personId && (audience === 'all' || (audience === 'teams' && teamPeople(teams).some(p => p.personId === g.personId)))
   const shownGuests = guests.filter(g => !covered(g))
@@ -141,9 +141,17 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
         out.push({ key: `p:${e.email}`, label: p.name, sub: e.email, tag: inTeam ? (audience === 'all' ? 'Already in True North' : 'Already in a team') : e.tag, guest: { personId: p.personId, email: e.email }, disabled: inTeam })
       }
     }
-    if (EMAIL.test(s) && !setup.people.some(p => p.emails.some(e => e.email === s)) && !guests.some(g => g.email === s)) out.push({ key: `x:${s}`, label: `Invite ${s}`, sub: 'Not in the Directory', tag: 'External', guest: { personId: null, email: s } })
+    // The creator, at their other addresses: never the one the event is sent from.
+    const sendingFrom = setup.accounts.find(a => a.id === account)?.email.toLowerCase()
+    if (setup.me.name.toLowerCase().split(/\s+/).some(w => w.startsWith(s)) || setup.me.emails.some(e => e.email.startsWith(s))) {
+      for (const e of setup.me.emails) {
+        if (e.email.toLowerCase() === sendingFrom || guests.some(g => g.email === e.email)) continue
+        out.push({ key: `p:${e.email}`, label: `${setup.me.name} (you)`, sub: e.email, tag: e.tag, guest: { personId: setup.me.id, email: e.email } })
+      }
+    }
+    if (EMAIL.test(s) && !setup.people.some(p => p.emails.some(e => e.email === s)) && !setup.me.emails.some(e => e.email === s) && !guests.some(g => g.email === s)) out.push({ key: `x:${s}`, label: `Invite ${s}`, sub: 'Not in the Directory', tag: 'External', guest: { personId: null, email: s } })
     return out.slice(0, 12)
-  }, [q, setup, guests, audience, teams])
+  }, [q, setup, guests, audience, teams, account])
 
   const pick = (x: (typeof suggestions)[number]) => {
     if (x.disabled) return

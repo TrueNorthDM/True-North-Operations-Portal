@@ -79,7 +79,8 @@ export function invitees(audience: Audience, teams: readonly string[], guests: r
   const add = (i: Invitee) => { const k = i.email.trim().toLowerCase(); if (k && !out.has(k)) out.set(k, { ...i, email: k }) }
   if (audience === 'all') for (const p of people) if (p.active && p.id !== creatorId && p.inviteEmail) add({ person_id: p.id, email: p.inviteEmail, via: 'all' })
   if (audience === 'teams') for (const p of people) if (p.active && p.id !== creatorId && p.inviteEmail && p.teamIds.some(t => teams.includes(t))) add({ person_id: p.id, email: p.inviteEmail, via: 'team' })
-  for (const g of guests) if (g.personId !== creatorId) add({ person_id: g.personId ?? null, email: g.email, via: 'guest' })
+  // The creator may invite themselves at another address (owner, 31 October 2026); the address that sends it is left out on Google.
+  for (const g of guests) add({ person_id: g.personId ?? null, email: g.email, via: 'guest' })
   return [...out.values()]
 }
 

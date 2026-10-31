@@ -28,7 +28,8 @@ export interface DrawerTeam { id: string; name: string; color: string; count: nu
 export interface DrawerAccount { id: number; email: string }
 
 export interface DrawerSetup {
-  me: { id: string; name: string; zone: string; zoneName: string }
+  /** `emails`: the creator's own addresses, so they can invite themselves at another one (owner, 31 October 2026). */
+  me: { id: string; name: string; zone: string; zoneName: string; emails: { email: string; tag: string }[] }
   types: EventType[]
   audiences: Audience[]
   teams: DrawerTeam[]
@@ -88,7 +89,7 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
   const count = (id: string) => people.filter(p => p.teamIds.includes(id) && p.id !== me).length
   const zone = dir.zoneOf(me)
   return {
-    me: { id: me, name: dir.nameOf(me), zone, zoneName: zoneLabel(zone) },
+    me: { id: me, name: dir.nameOf(me), zone, zoneName: zoneLabel(zone), emails: people.find(p => p.id === me)?.emails ?? [] },
     types: typesFor(level),
     audiences: audiencesFor(level, led.size, levels),
     teams: allTeams.filter(t => mine.has(t.id)).map(t => ({ id: t.id, name: t.name, color: teamColour(t.color, t.name), count: count(t.id) })),
