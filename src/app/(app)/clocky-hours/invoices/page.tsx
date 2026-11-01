@@ -20,5 +20,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const access = await requireSurface('clocky-invoices')
   const v = await viewerFor(access)
   const data = await loadInvoiceList(invoiceViewer(access, v?.zone ?? 'America/New_York'))
+  // Try again on a failed Drive copy is a Super Admin's, as on the Google Drive card.
+  if (data.drive) data.drive.retry = access.can('cs-integrations-edit')
   return <InvoicesListLive data={data} st={STATES.find(x => x === state)} />
 }

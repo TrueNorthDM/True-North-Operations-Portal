@@ -23,5 +23,5 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   // Closed and missing look the same.
   if (!d) notFound()
   // Just submitted from Time entries (6A): the toast says the invoice waits with the hours.
-  return <InvoiceDetailLive d={d} submitted={submitted === '1'} />
+  return <InvoiceDetailLive d={d} submitted={submitted === '1'} retry={access.can('cs-integrations-edit')} />
 }

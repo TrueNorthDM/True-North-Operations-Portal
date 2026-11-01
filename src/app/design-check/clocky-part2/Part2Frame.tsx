@@ -59,7 +59,7 @@ export function Part2Frame({ frame }: { frame: string }) {
   if (/^8/.test(frame)) return <AgendaCheck data={agendaFrame(frame)} />
   if (/^13[ABC]$/.test(frame)) {
     return <SettingsCheck frame={frame} invoices={{
-      prefix: 'INV', nextNumber: '0150', rmbPrefix: 'RMB', nextInvoice: 'INV-2026-0150', nextRmb: 'RMB-2026-0032',
+      prefix: 'INV', nextNumber: '0150', rmbPrefix: 'RMB', rctPrefix: 'RCT', nextInvoice: 'INV-2026-0150', nextRmb: 'RMB-2026-0032', nextRct: 'RCT-2026-0041',
       approvers: [{ name: 'Arnaldo Oliveira', who: 'Everyone, except the people who report to Dave Sharpe' }, { name: 'Dave Sharpe', who: 'The people who report to him, Arnaldo Oliveira included' }],
       billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14, mileageRate: 0.76,
     }} integrations={{
@@ -70,7 +70,7 @@ export function Part2Frame({ frame }: { frame: string }) {
         teamCalendarId: 'c_truenorth.team@group.calendar.google.com',
         facts: [{ k: 'Last sync', v: 'Nov 3, 9:15 AM: 3 PTO events written today' }, { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' }], errors: [] },
       googleApp: { saved: false, clientId: '', secretEnd: null, pickerEnd: null, who: 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.' },
-      drive: { ready: false, why: 'Connect office@ as the team calendar in Agenda settings first.', folder: null, who: 'No folder picked. Pick the folder where receipts and invoices go; share it with office@ first.' },
+      drive: { ready: false, why: 'Connect office@ as the team calendar in Agenda settings first.', folder: null, who: 'No folder picked. Pick the folder where receipts and invoices go; share it with office@ first.', rootIsDocs: false, copies: null },
     }} />
   }
   if (frame === '10A3' || frame === '10A4') {

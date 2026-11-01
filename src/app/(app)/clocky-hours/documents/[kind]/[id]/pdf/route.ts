@@ -2,10 +2,13 @@
  * GET /clocky-hours/documents/<payroll|rmb>/<id>/pdf: a payroll summary or a
  * reimbursement document as a PDF, the one the preview window shows. The
  * print page decides who may have it (lib/timeclock/pay-docs.ts). A
- * reimbursement document brings its receipts as pages (9D-p).
+ * reimbursement document brings its receipts as pages (9D-p) and is named
+ * as its copy in Google Drive: "RMB-2026-002-Arnaldo Oliveira.pdf" (owner, 31
+ * October 2026).
  */
 
 import { loadAccess } from '@/lib/access/resolve'
+import { rmbFileName } from '@/lib/drive/doc-names'
 import { sheetPdf } from '@/lib/pdf/sheet-pdf'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { docSurface, loadRmbDoc } from '@/lib/timeclock/pay-docs'
@@ -33,5 +36,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
   return sheetPdf(request, print, title => `${title}.pdf`, {
     width: 620, landscape: false,
     paged: { labels: n => pageLabels(n, doc.receipts), draw: (pdf, boxes, pxToPt) => drawPdfReceipts(pdf, boxes, files, pxToPt) },
-  })
+  }, (await rmbFileName(Number(id))) ?? undefined)
 }

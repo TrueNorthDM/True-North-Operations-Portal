@@ -2,7 +2,8 @@
  * One A4 sheet as a PDF (Clocky part 2: invoices, payroll summaries,
  * reimbursement documents). Same mechanics as the Report PDF: the print page
  * rendered in headless Chromium with the caller's cookies, so it passes the
- * same gate; then the sheet alone (.print-doc, 620px wide, or 860px for the
+ * same gate (or, for the Drive copy that has no caller, the Drive print page
+ * with its one-document pass: printSheet, lib/drive/copies.ts); then the sheet alone (.print-doc, 620px wide, or 860px for the
  * landscape report) is printed at the scale that fills A4's width, on one page
  * (a reimbursement document runs on with its receipts, `paged`).
  */
@@ -11,6 +12,7 @@ import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from './browser'
 import { fitOnePage, pagePx, sheetPages, type ReceiptBox } from '@/lib/timeclock/receipt-pages'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 /** A4 at 96 dpi is 793.7px wide (1122.5px on its side); the documents are drawn 620px wide. */
 const A4 = 793.7
@@ -36,21 +38,20 @@ const PORTRAIT: SheetLayout = { width: 620, landscape: false }
 
 const text = (body: string, status: number) => new Response(body, { status, headers: { 'Content-Type': 'text/plain' } })
 
-/** The file is named by the sheet itself (data-file), else by `fileName` from its title. */
-export async function sheetPdf(request: Request, printPath: string, fileName: (title: string) => string, layout: SheetLayout = PORTRAIT): Promise<Response> {
-  // The print page's own query (the report's filters) and the View Stage preview.
-  const target = new URL(printPath, internalOrigin(request.url))
-  const vs = new URL(request.url).searchParams.get('_vs')
-  if (vs) target.searchParams.set('_vs', vs)
-  const cookie = request.headers.get('cookie') ?? ''
-
+/**
+ * The sheet as PDF bytes: `target` is the print page, `headers` what the
+ * headless browser sends with every request (the caller's cookie, or the Drive
+ * copy's one-document pass, lib/drive/print-token.ts). Null when the page
+ * answers 404 (not open to the caller). Throws when it cannot be made.
+ */
+export async function printSheet(target: URL, headers: Record<string, string>, layout: SheetLayout = PORTRAIT): Promise<{ pdf: Uint8Array; title: string; file: string | null } | null> {
   let browser: Browser | null = null
   try {
     browser = await launchBrowser()
     const page = await browser.newPage()
-    if (cookie) await page.setExtraHTTPHeaders({ cookie })
+    if (Object.keys(headers).length) await page.setExtraHTTPHeaders(headers)
     const res = await page.goto(target.toString(), { waitUntil: 'networkidle0', timeout: 45_000 })
-    if (!res || res.status() === 404) return text('That document is not open to you.', 404)
+    if (!res || res.status() === 404) return null
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
     // The sheet alone: no rail, no top bar, no page padding around it.
     const named = await page.evaluate(() => {
@@ -103,14 +104,32 @@ export async function sheetPdf(request: Request, printPath: string, fileName: (t
     const printed = await page.pdf({ format: 'A4', landscape: layout.landscape, printBackground: true, scale, margin: { top: 0, right: 0, bottom: 0, left: 0 }, ...(layout.allPages || paged ? {} : { pageRanges: '1' }) })
     // A4 is 595.28pt wide (841.89pt on its side); the sheet is drawn `width` pixels wide.
     const pdf = paged ? await paged.draw(printed, boxes, (layout.landscape ? 841.89 : 595.28) / width) : printed
-    const name = (named.file ?? fileName(named.title)).replace(/[^A-Za-z0-9._-]/g, '-')
-    return new Response(pdf as unknown as BodyInit, {
-      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store' },
+    return { pdf, title: named.title, file: named.file }
+  } finally {
+    await browser?.close()
+  }
+}
+
+/**
+ * The PDF as a download. The file is named `name` when given (the documents'
+ * own names, lib/drive/file-names.ts), else by the sheet itself (data-file),
+ * else by `fileName` from its title.
+ */
+export async function sheetPdf(request: Request, printPath: string, fileName: (title: string) => string, layout: SheetLayout = PORTRAIT, name?: string): Promise<Response> {
+  // The print page's own query (the report's filters) and the View Stage preview.
+  const target = new URL(printPath, internalOrigin(request.url))
+  const vs = new URL(request.url).searchParams.get('_vs')
+  if (vs) target.searchParams.set('_vs', vs)
+  const cookie = request.headers.get('cookie') ?? ''
+  try {
+    const done = await printSheet(target, cookie ? { cookie } : {}, layout)
+    if (!done) return text('That document is not open to you.', 404)
+    const file = name ?? (done.file ?? fileName(done.title)).replace(/[^A-Za-z0-9._-]/g, '-')
+    return new Response(done.pdf as unknown as BodyInit, {
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition(file), 'Cache-Control': 'no-store' },
     })
   } catch (err) {
     console.error('[sheet pdf] generation failed:', err)
     return text('The PDF could not be made. Try again in a moment.', 500)
-  } finally {
-    await browser?.close()
   }
 }

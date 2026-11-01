@@ -52,6 +52,7 @@ describe('every page asks the access rule', () => {
     'app/meet/confirm/[token]/page.tsx': 'the public booking page: the link from the confirmation email',
     'app/legal/privacy/page.tsx': 'the public privacy policy (static, for Google\'s review)',
     'app/legal/terms/page.tsx': 'the public terms of use (static, for Google\'s review)',
+    'app/api/cron/drive-print/[kind]/[id]/page.tsx': 'the Drive copy\'s print page: one document, only with the server\'s signed two-minute pass (lib/drive/print-token.ts)',
   }
   const redirectsOnly = (s: string) => /export default (async )?function \w+\(\)\s*\{\s*redirect\((await previewHref\()?/.test(s)
 

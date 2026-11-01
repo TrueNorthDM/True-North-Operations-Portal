@@ -27,10 +27,13 @@ import { InvoicePdfModal } from './InvoicePdfModal'
 import { MarkPaidDialog, STATE_PILL, type PayTarget } from './InvoiceParts'
 import { ExportCsvButton, LIST_HEAD, ListStrip, PersonCell, RowMarkPaid, StatePill, StateSwitch, downloadCsv } from './ListParts'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { DriveCell, type RetryDrive } from './DriveParts'
 
 export interface InvoicesApi {
   getInvoiceDoc(i: { id: number }): Promise<Result<{ doc: InvoiceDocView }>>
   markInvoicePaid(i: { id: number; paidOn: string; ref?: string; note?: string }): Promise<Result<{ toast: string }>>
+  /** Try again on a failed Drive copy (Super Admins). */
+  retryDriveCopy?: RetryDrive
 }
 
 export type StFilter = 'all' | 'wait' | 'appr' | 'paid' | 'draft'
@@ -100,12 +103,16 @@ export function InvoicesList({ data, api, initial }: {
     say({ text: `Exported ${shown.length} invoice${shown.length === 1 ? '' : 's'} to ${name}` })
   }
 
+  // The Drive column (owner, 31 October 2026) on the everyone list. Literal classes, so Tailwind sees them.
+  const drive = !mine && !!data.drive
+  const retry = data.drive?.retry ? api.retryDriveCopy : undefined
   const cols = mine
     ? 'grid-cols-[150px_160px_130px_140px_190px_minmax(160px,1fr)_60px]'
-    : 'grid-cols-[150px_minmax(200px,1.3fr)_140px_130px_120px_180px_minmax(150px,1fr)_120px]'
+    : drive ? 'grid-cols-[150px_minmax(200px,1.3fr)_140px_130px_120px_180px_minmax(150px,1fr)_150px_120px]'
+      : 'grid-cols-[150px_minmax(200px,1.3fr)_140px_130px_120px_180px_minmax(150px,1fr)_120px]'
   const heads: [string, boolean?][] = mine
     ? [['Number'], ['Period'], ['Pays as'], ['Total', true], ['State'], ['Paid'], ['']]
-    : [['Number'], ['Person'], ['Period'], ['Pays as'], ['Total', true], ['State'], ['Paid'], ['']]
+    : [['Number'], ['Person'], ['Period'], ['Pays as'], ['Total', true], ['State'], ['Paid'], ...(drive ? [['Drive']] as [string][] : []), ['']]
   const title = mine || data.mode === 'none' ? 'My invoices' : 'Invoices'
   const sub = mine ? 'One invoice a month, made when you submit your timesheet. You never type hours or the rate; Finance pays and marks it paid.'
     : data.mode === 'none' ? ''
@@ -147,7 +154,7 @@ export function InvoicesList({ data, api, initial }: {
       {data.mode !== 'none' && shown.length > 0 && (
         <>
           <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-            <div className="min-w-[860px]">
+            <div className={drive ? 'min-w-[1010px]' : 'min-w-[860px]'}>
               <div className={`grid ${cols} bg-subtle border-b border-[var(--panel-border)]`}>
                 {heads.map(([label, right], i) => <div key={i} className={`${LIST_HEAD} ${right ? 'text-right' : ''}`}>{label}</div>)}
               </div>
@@ -163,6 +170,7 @@ export function InvoicesList({ data, api, initial }: {
                   <div className="px-3.5 py-[11px] text-right font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{r.total}</div>
                   <div className="px-3.5 py-[11px]"><StatePill st={r.st} /></div>
                   <div className="px-3.5 py-[11px] text-foreground whitespace-nowrap overflow-hidden text-ellipsis">{r.where}</div>
+                  {drive && <div className="px-3.5 py-[11px]"><DriveCell show={r.drive} retry={retry} say={t => { say(t); if (!t.error) router.refresh() }} /></div>}
                   <div className="px-3.5 py-2 flex justify-end">
                     {r.canPay ? <RowMarkPaid onClick={() => setPay(payTarget(r))} /> : (
                       <button type="button" disabled={busy === r.id} onClick={e => { e.stopPropagation(); void openPdf(r) }} aria-label={`Preview ${r.number}.pdf`}

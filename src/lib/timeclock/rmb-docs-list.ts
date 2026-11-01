@@ -8,6 +8,7 @@
 
 import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear } from './format'
 import { moneyTotal, paidText } from './invoice-doc'
+import type { DriveShow } from '@/lib/drive/copy-plan'
 
 export type RmbDocState = 'appr' | 'paid'
 
@@ -36,6 +37,8 @@ export interface RmbDocListRow {
   canPay: boolean
   /** The Mark paid dialog's line: "2 items · approved Nov 3, 2026", as the document's. */
   payLine: string
+  /** Its copy in Google Drive (owner, 31 October 2026). */
+  drive?: DriveShow
 }
 
 export interface RmbDocList {
@@ -49,6 +52,8 @@ export interface RmbDocList {
   paidIn: { label: string; count: number; total: string }
   /** "Tina Gennette": who marks documents paid (Company settings, Invoices). */
   financeNames: string
+  /** The Drive column; `retry` when the viewer may try a failed copy again (Super Admins). */
+  drive?: { retry: boolean }
 }
 
 export type RmbDocSource = { id: number; number: string; person_id: string; state: string; total: number; paid_on: string | null; paid_ref: string | null; created_at: string }

@@ -14,6 +14,7 @@
  */
 
 import { driveAccount } from '@/lib/agenda/google-drive'
+import { countFailedCopies, loadDriveStatus, type DriveStatus } from '@/lib/drive/copies'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDirectory } from './clocky-context'
 import { dateLabel, dayLabel, localDate, stampLabel } from './format'
@@ -30,8 +31,8 @@ export interface IntegrationsData {
   google: { connected: boolean; saved: boolean; viaOffice: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
   googleApp: { saved: boolean; clientId: string; secretEnd: string | null; pickerEnd: string | null; who: string }
-  /** Drive through office@: `ready` when office@ is connected with Drive and the Picker key is saved; `why` when not. */
-  drive: { ready: boolean; why: string | null; folder: string | null; who: string }
+  /** Drive through office@: `ready` when office@ is connected with Drive and the Picker key is saved; `why` when not. `copies`: how the copies are doing (null when they could not be read). */
+  drive: { ready: boolean; why: string | null; folder: string | null; who: string; rootIsDocs: boolean; copies: DriveStatus | null }
 }
 
 type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
@@ -75,22 +76,25 @@ export function jobErrorText(p: Record<string, unknown>, error: string | null, n
 
 /**
  * The rail's "Failed jobs to try again" (owner, 25 October 2026): exactly the
- * rows 13A draws with Try again, read and filtered the same way.
+ * rows 13A draws with Try again, read and filtered the same way, and since 31
+ * October 2026 the Drive copies that failed (the Google Drive card's Try again).
  */
 export async function countRetryable(now = new Date()): Promise<number> {
-  const list = await readOutbox(now)
-  return [RIPPLING_KINDS, GOOGLE_KINDS].reduce((n, kinds) => n + listedErrors(list, kinds).filter(j => j.state === 'failed').length, 0)
+  const [list, drive] = await Promise.all([readOutbox(now), countFailedCopies()])
+  return drive + [RIPPLING_KINDS, GOOGLE_KINDS].reduce((n, kinds) => n + listedErrors(list, kinds).filter(j => j.state === 'failed').length, 0)
 }
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
   const [conn, dir, list, appRes, teamRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
-    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at, drive_folder_name, drive_folder_by, drive_folder_at').eq('singleton_id', 1).maybeSingle(),
+    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at, drive_folder_id, drive_folder_name, drive_folder_by, drive_folder_at').eq('singleton_id', 1).maybeSingle(),
     createAdminClient().from('agenda_accounts').select('email, status, connected_by, connected_at').eq('team_calendar', true).eq('source', 'google').maybeSingle()])
   const office = teamRes.data
   const driveAcc = await driveAccount()
   if (appRes.error) throw new Error(`The Google app could not be read: ${appRes.error.message}`)
   const app = appRes.data
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
+  // A card that cannot read its copies still shows the folder; the counts say they could not be read.
+  const copies = await loadDriveStatus(app?.drive_folder_id ?? null, at).catch(e => { console.error('[settings] drive copies:', e instanceof Error ? e.message : e); return null })
   const errorsOf = (kinds: string[]): IntegrationError[] => listedErrors(list, kinds)
     .map(j => {
       const what = WHAT[j.kind] ?? j.kind
@@ -153,6 +157,8 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
       who: app?.drive_folder_name
         ? `Writes into "${app.drive_folder_name}"${by(app.drive_folder_by ?? null, app.drive_folder_at ?? null)}, through ${driveAcc.ok ? driveAcc.email : 'office@'}.`
         : 'No folder picked. Pick the folder where receipts and invoices go; share it with office@ first.',
+      rootIsDocs: (app?.drive_folder_name ?? '').trim().toLowerCase() === 'docs from the portal',
+      copies,
     },
   }
 }
@@ -161,8 +167,11 @@ export interface InvoiceSettingsData {
   prefix: string
   nextNumber: string
   rmbPrefix: string
+  /** Receipts' prefix (owner, 31 October 2026): RCT. */
+  rctPrefix: string
   nextInvoice: string
   nextRmb: string
+  nextRct: string
   approvers: { name: string; who: string }[]
   billing: { name: string; address: string; country: string; email: string }
   paymentDays: number
@@ -178,8 +187,8 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
   const def = s.defaultApprover
   const others = s.invoiceApprovers.filter(id => id !== def)
   return {
-    prefix: s.prefix, nextNumber: seqText(s.nextNumber), rmbPrefix: s.rmbPrefix,
-    nextInvoice: docNumber(s.prefix, y, s.nextNumber), nextRmb: docNumber(s.rmbPrefix, y, s.rmbNextNumber),
+    prefix: s.prefix, nextNumber: seqText(s.nextNumber), rmbPrefix: s.rmbPrefix, rctPrefix: s.rctPrefix,
+    nextInvoice: docNumber(s.prefix, y, s.nextNumber), nextRmb: docNumber(s.rmbPrefix, y, s.rmbNextNumber), nextRct: docNumber(s.rctPrefix, y, s.rctNextNumber),
     approvers: [
       ...(def ? [{ name: dir.nameOf(def), who: others.length ? `Everyone, except the people who report to ${others.map(o => dir.nameOf(o)).join(' or ')}` : 'Everyone' }] : []),
       ...others.map(o => ({ name: dir.nameOf(o), who: 'The people who report to them' })),

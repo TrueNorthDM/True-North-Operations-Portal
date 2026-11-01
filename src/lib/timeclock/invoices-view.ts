@@ -19,6 +19,9 @@ import { INV_COLS, LINE_COLS, invoiceDocOf, paidText, usd, type DocTone, type In
 import { isFinance, loadRouteSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
 import { hoursApprover, invoiceApprover, oneStep, type RoutePerson } from './routing'
+import { driveShow, folderText, historyLines, wantInvoice, type DriveBoxData, type DriveShow } from '@/lib/drive/copy-plan'
+import { copyFrom, copyRow, driveShows } from '@/lib/drive/copies'
+import { docFileName } from '@/lib/drive/file-names'
 
 export type InvoiceMode = 'mine' | 'all' | 'none'
 export type InvoiceStateKey = 'draft' | 'hrs' | 'wait' | 'appr' | 'paid'
@@ -52,6 +55,8 @@ export interface InvoiceListRow {
   /** "Oct 12, 2026": when it was paid, for the strip. */
   paidOn: string | null
   canPay: boolean
+  /** Its copy in Google Drive (owner, 31 October 2026), on the everyone list only. */
+  drive?: DriveShow
 }
 
 export interface InvoiceList {
@@ -68,6 +73,8 @@ export interface InvoiceList {
   paidPeriod: string
   /** "Tina Gennette": who marks invoices paid (Company settings, Invoices). */
   financeNames: string
+  /** The Drive column (the everyone list); `retry` when the viewer may try a failed copy again (Super Admins). */
+  drive?: { retry: boolean }
 }
 
 type SubState = { id: number; state: string }
@@ -175,7 +182,12 @@ export async function loadInvoiceList(v: InvoiceViewer, now = new Date()): Promi
   ])
   const rates = new Map<number, number>()
   for (const l of lines as { invoice_id: number; rate: number | null }[]) if (l.rate != null && !rates.has(l.invoice_id)) rates.set(l.invoice_id, Number(l.rate))
-  return buildInvoiceList({ ...empty, invoices, rates, subs: new Map((subs as SubState[]).map(s => [s.id, s])), routes })
+  const list = buildInvoiceList({ ...empty, invoices, rates, subs: new Map((subs as SubState[]).map(s => [s.id, s])), routes })
+  if (mode !== 'all') return list
+  // The Drive column (owner, 31 October 2026); a list that cannot read it still shows, with no column.
+  const shows = await driveShows('invoice', invoices, wantInvoice).catch(e => { console.error('[invoices] drive:', e instanceof Error ? e.message : e); return null })
+  if (!shows) return list
+  return { ...list, rows: list.rows.map(r => ({ ...r, drive: shows.get(r.id) })), drive: { retry: false } }
 }
 
 // ── One invoice (6F) ────────────────────────────────────────────────────────
@@ -190,6 +202,8 @@ export interface InvoiceDetail {
   history: { text: string; when: string; dot: string }[]
   /** For the Mark paid dialog. */
   pay: { who: string; line: string; total: string }
+  /** The "Google Drive" box (owner, 31 October 2026): for Super Admins, Admins and Finance. */
+  drive?: DriveBoxData
 }
 
 type EventRow = { step: string; action: string; by_person: string | null; at: string; note: string | null }
@@ -262,7 +276,21 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
     loadRoutes([inv.person_id]),
     loadDirectory(),
   ])
-  return buildInvoiceDetail({ inv, lines, events, sub, route: routes.get(inv.person_id), settings, finance: isFinance({ personId: v.personId }, settings), nameOf: dir.nameOf, zone: v.zone })
+  const detail = buildInvoiceDetail({ inv, lines, events, sub, route: routes.get(inv.person_id), settings, finance: isFinance({ personId: v.personId }, settings), nameOf: dir.nameOf, zone: v.zone })
+  // The Google Drive box: Finance's copy, so for those who see everyone's invoices, not the contractor's own page.
+  if (!v.isAdmin && !isFinance({ personId: v.personId }, settings)) return detail
+  try {
+    const [from, row] = await Promise.all([copyFrom(), copyRow('invoice', inv.id)])
+    detail.drive = {
+      show: driveShow(wantInvoice(inv, from), row ?? undefined),
+      file: row?.file_name ?? docFileName(inv.number, dir.people.get(inv.person_id)?.name ?? null, 'pdf'),
+      folder: row?.folder_path ?? folderText('invoice'),
+      history: historyLines(row?.history, v.zone),
+    }
+  } catch (e) {
+    console.error('[invoice] drive:', e instanceof Error ? e.message : e)
+  }
+  return detail
 }
 
 /** The decisions that touched this invoice: its own, and its timesheet's after it was made. */

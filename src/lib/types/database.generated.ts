@@ -660,6 +660,7 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          drive_copy_from: string
           clocky_reminders: Json
           google_checked_at: string | null
           google_connected_at: string | null
@@ -693,6 +694,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          drive_copy_from?: string
           clocky_reminders?: Json
           google_checked_at?: string | null
           google_connected_at?: string | null
@@ -726,6 +728,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          drive_copy_from?: string
           clocky_reminders?: Json
           google_checked_at?: string | null
           google_connected_at?: string | null
@@ -839,6 +842,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      drive_copies: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          copied_at: string | null
+          created_at: string
+          drive_file_id: string | null
+          file_name: string | null
+          folder_path: string | null
+          history: Json
+          id: number
+          kind: string
+          last_error: string | null
+          next_at: string
+          pending_key: string | null
+          ref_id: number
+          state: string
+          updated_at: string
+          version_key: string | null
+          web_link: string | null
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          copied_at?: string | null
+          created_at?: string
+          drive_file_id?: string | null
+          file_name?: string | null
+          folder_path?: string | null
+          history?: Json
+          id?: number
+          kind: string
+          last_error?: string | null
+          next_at?: string
+          pending_key?: string | null
+          ref_id: number
+          state?: string
+          updated_at?: string
+          version_key?: string | null
+          web_link?: string | null
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          copied_at?: string | null
+          created_at?: string
+          drive_file_id?: string | null
+          file_name?: string | null
+          folder_path?: string | null
+          history?: Json
+          id?: number
+          kind?: string
+          last_error?: string | null
+          next_at?: string
+          pending_key?: string | null
+          ref_id?: number
+          state?: string
+          updated_at?: string
+          version_key?: string | null
+          web_link?: string | null
+        }
+        Relationships: []
       }
       extra_hours_requests: {
         Row: {
@@ -1171,6 +1237,9 @@ export type Database = {
       }
       invoice_settings: {
         Row: {
+          rct_next_number: number
+          rct_number_year: number | null
+          rct_prefix: string
           billing_address: string | null
           billing_email: string | null
           billing_name: string | null
@@ -1191,6 +1260,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          rct_next_number?: number
+          rct_number_year?: number | null
+          rct_prefix?: string
           billing_address?: string | null
           billing_email?: string | null
           billing_name?: string | null
@@ -1211,6 +1283,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          rct_next_number?: number
+          rct_number_year?: number | null
+          rct_prefix?: string
           billing_address?: string | null
           billing_email?: string | null
           billing_name?: string | null
@@ -2949,6 +3024,7 @@ export type Database = {
       }
       reimbursements: {
         Row: {
+          receipt_number: string | null
           amount: number
           asked_at: string
           billable: boolean
@@ -2973,6 +3049,7 @@ export type Database = {
           state: string
         }
         Insert: {
+          receipt_number?: string | null
           amount: number
           asked_at?: string
           billable?: boolean
@@ -2997,6 +3074,7 @@ export type Database = {
           state?: string
         }
         Update: {
+          receipt_number?: string | null
           amount?: number
           asked_at?: string
           billable?: boolean

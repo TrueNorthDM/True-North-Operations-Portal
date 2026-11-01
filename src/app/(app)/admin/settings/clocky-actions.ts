@@ -201,6 +201,43 @@ export async function testDrive(): Promise<Done> {
   }
 }
 
+/** Try again on a Drive copy that failed (the Google Drive card and the Drive columns): it waits for the next pass. */
+export async function retryDriveCopy(input: { id: number }): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins try the Drive copies again.')
+  try {
+    const { retryCopy } = await import('@/lib/drive/copies')
+    if (!(await retryCopy(Number(input?.id)))) return no('That copy is not waiting to be tried again.')
+  } catch (e) {
+    console.error('[settings] drive retry:', e instanceof Error ? e.message : e)
+    return no(NOT_SAVED)
+  }
+  refresh()
+  revalidatePath('/clocky-hours/invoices')
+  revalidatePath('/requests/reimbursements')
+  return { ok: true, toast: 'Queued again. It is copied within five minutes.' }
+}
+
+/** "Copy the missing now": one pass of the Drive copies straight away, as the scheduled one does every five minutes. */
+export async function copyDriveNow(): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins run the Drive copies.')
+  try {
+    const { runCopyPass, PASS_LIMIT } = await import('@/lib/drive/copies')
+    const r = await runCopyPass({ limit: PASS_LIMIT * 2 })
+    refresh()
+    revalidatePath('/clocky-hours/invoices')
+    revalidatePath('/requests/reimbursements')
+    if (r.skipped) return no(`Nothing was copied: ${r.skipped.replace(/\.$/, '')}.`)
+    if (!r.copied && !r.failed) return { ok: true, toast: 'Nothing was missing: everything due is in Drive.' }
+    const n = (k: number) => `${k} file${k === 1 ? '' : 's'}`
+    return r.failed
+      ? no(`${r.copied ? `${n(r.copied)} copied; ` : ''}${n(r.failed)} could not be copied. The reason is in the list below.`)
+      : { ok: true, toast: `${n(r.copied)} copied into Drive.${r.copied >= PASS_LIMIT * 2 ? ' The rest follow in the next few minutes.' : ''}` }
+  } catch (e) {
+    console.error('[settings] drive copy now:', e instanceof Error ? e.message : e)
+    return no('The copies could not run. Try again in a moment.')
+  }
+}
+
 /** Try again on one failed item of the outbox; its request shows it waiting again. */
 export async function retryIntegrationJob(input: { id: number }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins try again.')
@@ -223,12 +260,15 @@ export async function retryIntegrationJob(input: { id: number }): Promise<Done> 
 
 // ── 13B Invoices ────────────────────────────────────────────────────────────
 
-export async function saveInvoiceSettings(input: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }): Promise<Done> {
+export async function saveInvoiceSettings(input: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix?: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }): Promise<Done> {
   if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins change the invoice settings.')
   const prefix = String(input.prefix ?? '').trim().toUpperCase()
   const rmb = String(input.rmbPrefix ?? '').trim().toUpperCase()
-  if (!/^[A-Z]{2,6}$/.test(prefix) || !/^[A-Z]{2,6}$/.test(rmb)) return no('A prefix is 2 to 6 letters, like INV or RMB.')
+  // Receipts (owner, 31 October 2026): a form without the field keeps the one saved.
+  const rct = input.rctPrefix == null ? null : String(input.rctPrefix).trim().toUpperCase()
+  if (!/^[A-Z]{2,6}$/.test(prefix) || !/^[A-Z]{2,6}$/.test(rmb) || (rct != null && !/^[A-Z]{2,6}$/.test(rct))) return no('A prefix is 2 to 6 letters, like INV, RMB or RCT.')
   if (prefix === rmb) return no('Invoices and reimbursement documents need different prefixes.')
+  if (rct != null && (rct === prefix || rct === rmb)) return no('Receipts need a prefix of their own, different from invoices and reimbursement documents.')
   const next = Number(String(input.nextNumber ?? '').trim())
   if (!Number.isInteger(next) || next < 1 || next > 9999) return no('The next number goes from 1 to 9999.')
   const days = Number(String(input.paymentDays ?? '').trim())
@@ -254,7 +294,7 @@ export async function saveInvoiceSettings(input: { prefix: string; nextNumber: s
   if (next <= top.n) return no(`${top.number} is already used: the next number must be ${top.n + 1} or more.`)
   const me = await getRealPerson()
   const { error } = await c.from('invoice_settings').update({
-    prefix, next_number: next, rmb_prefix: rmb, billing_name: name,
+    prefix, next_number: next, rmb_prefix: rmb, ...(rct != null ? { rct_prefix: rct } : {}), billing_name: name,
     billing_address: [String(input.address ?? '').trim(), String(input.country ?? '').trim()].filter(Boolean).join('\n') || null,
     billing_email: email || null, payment_days: days, mileage_rate: rate, updated_by: me?.id ?? null, updated_at: new Date().toISOString(),
   }).eq('singleton_id', 1)

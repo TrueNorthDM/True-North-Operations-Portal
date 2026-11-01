@@ -18,6 +18,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { CSSProperties, ReactNode } from 'react'
 import type { DocKind, DocSheetData } from '@/lib/timeclock/pay-docs'
 import { previewPagesText, sheetPages } from '@/lib/timeclock/receipt-pages'
+import { nameFromDisposition } from '@/lib/drive/file-names'
 import { DocSheet } from './DocSheet'
 import { ReceiptPages } from './ReceiptPages'
 import { InvoiceDoc, type InvoiceDocData } from './InvoiceDoc'
@@ -28,7 +29,7 @@ export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
   onDownloaded?: (name: string) => void
 }) {
   return (
-    <PdfWindow name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}>
+    <PdfWindow named name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}>
       <InvoiceDoc inv={invoice} variant="page" />
     </PdfWindow>
   )
@@ -60,15 +61,17 @@ export function DocPdfModal({ kind, id, doc, onClose, onDownloaded, files = true
     return () => watch.disconnect()
   }, [])
   return (
-    <PdfWindow name={doc.file} href={`/clocky-hours/documents/${kind}/${id}/pdf`} onClose={onClose} onDownloaded={onDownloaded} pages={previewPagesText(docPages, doc.receipts)}>
+    <PdfWindow named={kind === 'rmb'} name={doc.file} href={`/clocky-hours/documents/${kind}/${id}/pdf`} onClose={onClose} onDownloaded={onDownloaded} pages={previewPagesText(docPages, doc.receipts)}>
       <div ref={sheet}><DocSheet doc={doc} docPages={docPages} /></div>
       <ReceiptPages doc={doc} docPages={docPages} src={files ? r => withViewAs(`/requests/reimbursements/receipt/${r.id}`) : undefined} />
     </PdfWindow>
   )
 }
 
-export function PdfWindow({ name, href, onClose, onDownloaded, children, landscape = false, pages }: {
+export function PdfWindow({ name, href, onClose, onDownloaded, children, landscape = false, pages, named = false }: {
   name: string
+  /** The server names the file (invoices and RMB documents, as their Drive copies); `name` is then the fallback. */
+  named?: boolean
   href: string
   onClose: () => void
   onDownloaded?: (name: string) => void
@@ -102,13 +105,15 @@ export function PdfWindow({ name, href, onClose, onDownloaded, children, landsca
     try {
       const res = await fetch(withViewAs(href))
       if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
+      // The server's name for the file when it gives one ("INV-2026-010-Arnaldo Oliveira.pdf", as in Drive).
+      const file = (named && nameFromDisposition(res.headers.get('content-disposition'))) || name
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
       a.href = url
-      a.download = name
+      a.download = file
       a.click()
       setTimeout(() => URL.revokeObjectURL(url), 10_000)
-      onDownloaded?.(name)
+      onDownloaded?.(file)
       onClose()
     } catch {
       setError('The PDF could not be made. Try again in a moment.')

@@ -18,12 +18,13 @@ import { InvoiceHistory, MarkPaidDialog, STATE_PILL } from './InvoiceParts'
 import type { InvoicesApi } from './InvoicesList'
 import { PAGE_TITLE, CARD } from '@/lib/ui/type'
 import { Pill } from '@/components/ui/Pill'
+import { DriveBox } from './DriveParts'
 
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 
 export function InvoiceDetailView({ d, api, initial }: {
   d: InvoiceDetail
-  api: Pick<InvoicesApi, 'markInvoicePaid'>
+  api: Pick<InvoicesApi, 'markInvoicePaid' | 'retryDriveCopy'>
   /** The design checks open a frame's state. */
   initial?: { pdf?: boolean; pay?: boolean; toast?: string }
 }) {
@@ -81,6 +82,7 @@ export function InvoiceDetailView({ d, api, initial }: {
               </div>
             )}
           </div>
+          {d.drive && <DriveBox data={d.drive} retry={api.retryDriveCopy} say={t => { say(t); if (!t.error) router.refresh() }} />}
           <InvoiceHistory items={d.history} />
         </div>
       </div>

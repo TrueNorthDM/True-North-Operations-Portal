@@ -16,6 +16,8 @@ import type { Result } from '@/lib/timeclock/clocky-types'
 import { LabeledSelect, type ToastState } from '@/components/clocky/entries/ui'
 import { MarkPaidDialog, STATE_PILL, type PayTarget } from '@/components/clocky/invoices/InvoiceParts'
 import { ExportCsvButton, LIST_HEAD, ListStrip, PersonCell, RowMarkPaid, StatePill, StateSwitch, downloadCsv } from '@/components/clocky/invoices/ListParts'
+import { DriveCell } from '@/components/clocky/invoices/DriveParts'
+import { retryDriveCopy } from '@/app/(app)/admin/settings/clocky-actions'
 
 export type MarkRmbPaid = (i: { id: number; paidOn: string; ref?: string; note?: string }) => Promise<Result<{ toast: string }>>
 
@@ -26,6 +28,9 @@ const EVERYONE = 'Everyone'
 // Literal classes, so Tailwind sees them: the action column is Finance's alone.
 const COLS_PAY = 'grid-cols-[150px_minmax(200px,1.3fr)_80px_130px_minmax(130px,.8fr)_120px_minmax(170px,1fr)_120px]'
 const COLS = 'grid-cols-[150px_minmax(200px,1.3fr)_80px_130px_minmax(130px,.8fr)_120px_minmax(170px,1fr)]'
+// With the Drive column (owner, 31 October 2026).
+const COLS_PAY_DRIVE = 'grid-cols-[150px_minmax(200px,1.3fr)_80px_130px_minmax(130px,.8fr)_120px_minmax(170px,1fr)_150px_120px]'
+const COLS_DRIVE = 'grid-cols-[150px_minmax(200px,1.3fr)_80px_130px_minmax(130px,.8fr)_120px_minmax(170px,1fr)_150px]'
 
 const plural = (n: number) => `${n} document${n === 1 ? '' : 's'}`
 
@@ -61,8 +66,9 @@ export function RmbDocsList({ data, markRmbPaid, initial, say }: {
     say({ text: `Exported ${plural(shown.length)} to ${name}` })
   }
 
-  const cols = data.finance ? COLS_PAY : COLS
-  const heads: [string, boolean?][] = [['Number'], ['Person'], ['Items', true], ['Date'], ['Total', true], ['State'], ['Paid'], ...(data.finance ? [['']] as [string][] : [])]
+  const drive = !!data.drive
+  const cols = data.finance ? (drive ? COLS_PAY_DRIVE : COLS_PAY) : drive ? COLS_DRIVE : COLS
+  const heads: [string, boolean?][] = [['Number'], ['Person'], ['Items', true], ['Date'], ['Total', true], ['State'], ['Paid'], ...(drive ? [['Drive']] as [string][] : []), ...(data.finance ? [['']] as [string][] : [])]
 
   return (
     <>
@@ -83,7 +89,7 @@ export function RmbDocsList({ data, markRmbPaid, initial, say }: {
       {shown.length > 0 ? (
         <>
           <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-            <div className="min-w-[960px]">
+            <div className={drive ? 'min-w-[1110px]' : 'min-w-[960px]'}>
               <div className={`grid ${cols} bg-subtle border-b border-[var(--panel-border)]`}>
                 {heads.map(([label, right], i) => <div key={i} className={`${LIST_HEAD} ${right ? 'text-right' : ''}`}>{label}</div>)}
               </div>
@@ -98,6 +104,7 @@ export function RmbDocsList({ data, markRmbPaid, initial, say }: {
                   <div className="px-3.5 py-[11px] text-right font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{r.total}</div>
                   <div className="px-3.5 py-[11px]"><StatePill st={r.st} /></div>
                   <div className="px-3.5 py-[11px] text-foreground whitespace-nowrap overflow-hidden text-ellipsis">{r.where}</div>
+                  {drive && <div className="px-3.5 py-[11px]"><DriveCell show={r.drive} retry={data.drive?.retry ? retryDriveCopy : undefined} say={t => { say(t); if (!t.error) router.refresh() }} /></div>}
                   {data.finance && <div className="px-3.5 py-2 flex justify-end">{r.canPay && <RowMarkPaid onClick={() => setPay(payTarget(r))} />}</div>}
                 </div>
               ))}

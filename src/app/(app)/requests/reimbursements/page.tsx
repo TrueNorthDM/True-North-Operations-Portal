@@ -25,6 +25,8 @@ export default async function ReimbursementsRoute({ searchParams }: { searchPara
   const access = await requireSurface('rq-reimbursements')
   const v = await viewerFor(access)
   const data = await loadReimbursements(access, v?.zone ?? 'America/New_York')
+  // Try again on a failed Drive copy is a Super Admin's, as on the Google Drive card.
+  if (data?.documents?.drive) data.documents.drive.retry = access.can('cs-integrations-edit')
   if (!data) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Your login is not linked to anyone in the Directory.</p>
   return <ReimbursementsLive data={data} documents={view === 'documents' && data.documents ? { st: STATES.find(x => x === state) } : undefined} />
 }

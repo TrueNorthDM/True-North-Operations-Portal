@@ -64,6 +64,7 @@ export interface IntegrationsApi {
   saveGoogleApp(i: { clientId: string; clientSecret?: string; pickerKey?: string }): Promise<Done>
   removeGoogleApp(): Promise<Done>
   drivePicker?: DriveApi['drivePicker']; saveDriveFolder?: DriveApi['saveDriveFolder']; testDrive?: DriveApi['testDrive']
+  retryDriveCopy?: DriveApi['retryDriveCopy']; copyDriveNow?: DriveApi['copyDriveNow']
 }
 
 export function IntegrationsSettings({ data, canEdit, api }: { data: IntegrationsData; canEdit: boolean; api: IntegrationsApi }) {
@@ -163,7 +164,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
       ))}
       <GoogleAppCard app={data.googleApp} canEdit={canEdit} busy={busy} onEdit={() => setModal('app')} />
       <DriveCard data={data.drive} canEdit={canEdit} say={say}
-        api={api.drivePicker && api.saveDriveFolder && api.testDrive ? { drivePicker: api.drivePicker, saveDriveFolder: api.saveDriveFolder, testDrive: api.testDrive } : undefined} />
+        api={api.drivePicker && api.saveDriveFolder && api.testDrive ? { drivePicker: api.drivePicker, saveDriveFolder: api.saveDriveFolder, testDrive: api.testDrive, retryDriveCopy: api.retryDriveCopy, copyDriveNow: api.copyDriveNow } : undefined} />
       {modal === 'app' && <GoogleAppDialog app={data.googleApp} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveGoogleApp(v), () => setModal(null))} onRemove={() => void run(api.removeGoogleApp(), () => setModal(null))} />}
       {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Settings, API access). Only its last four characters are shown again."
@@ -270,15 +271,16 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
 
 // ── 13B ─────────────────────────────────────────────────────────────────────
 
-export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done> }) {
+export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
-  const [f, setF] = useState({ prefix: data.prefix, nextNumber: data.nextNumber, rmbPrefix: data.rmbPrefix, billingName: data.billing.name, address: data.billing.address, country: data.billing.country, email: data.billing.email, paymentDays: String(data.paymentDays), mileageRate: String(data.mileageRate) })
+  const [f, setF] = useState({ prefix: data.prefix, nextNumber: data.nextNumber, rmbPrefix: data.rmbPrefix, rctPrefix: data.rctPrefix, billingName: data.billing.name, address: data.billing.address, country: data.billing.country, email: data.billing.email, paymentDays: String(data.paymentDays), mileageRate: String(data.mileageRate) })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF(x => ({ ...x, [k]: e.target.value }))
   const y = data.nextInvoice.split('-')[1]
   const nextInv = docNumber(f.prefix.toUpperCase(), y, Number(f.nextNumber) || 0)
   const nextRmb = `${f.rmbPrefix.toUpperCase()}-${y}-${data.nextRmb.split('-')[2]}`
+  const nextRct = `${f.rctPrefix.toUpperCase()}-${y}-${data.nextRct.split('-')[2]}`
   const due = (() => { const d = new Date(Date.UTC(Number(y), 11, 1)); d.setUTCDate(d.getUTCDate() + (parseInt(f.paymentDays, 10) || 0)); return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}` })()
   const field = (k: keyof typeof f, label: string, num = false) => (
     <label key={k} className="flex flex-col gap-[5px]"><span className={LABEL}>{label}</span><input value={f[k]} onChange={set(k)} disabled={!canEdit} inputMode={num ? (k === 'mileageRate' ? 'decimal' : 'numeric') : undefined} className={`${INPUT} ${num ? 'tabular-nums lining-nums' : ''}`} /></label>
@@ -301,8 +303,8 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-4 items-start">
         <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>
-          <div className="grid grid-cols-3 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}</div>
-          <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}{field('rctPrefix', 'Receipt prefix')}</div>
+          <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b> · next receipt: <b className="text-tn-ink">{nextRct}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
             <span className={LABEL}>Who approves invoices</span>
             {data.approvers.map((a, i) => (

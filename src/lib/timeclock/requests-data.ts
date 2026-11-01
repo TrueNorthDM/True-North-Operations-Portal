@@ -25,6 +25,8 @@ import { clientFolder } from './invoices-data'
 import { reportTitle, totalsText } from './reimbursement-reports'
 import { buildRmbDocList, type RmbDocItem, type RmbDocList, type RmbDocSource } from './rmb-docs-list'
 import { teamColour } from '@/lib/directory/team-colour'
+import { wantRmb } from '@/lib/drive/copy-plan'
+import { driveShows } from '@/lib/drive/copies'
 
 export type ReqTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal' | 'navy'
 
@@ -163,7 +165,10 @@ async function loadRmbDocList(finance: boolean, financeNames: string, dir: Direc
     const p = dir.people.get(id), t = p?.teamId ? dir.teams.get(p.teamId) : undefined
     return { name: dir.nameOf(id), team: t?.name ?? '', color: teamColour(t?.color, t?.name) }
   }
-  return buildRmbDocList({ finance, docs, items, person, financeNames, zone, today })
+  const list = buildRmbDocList({ finance, docs, items, person, financeNames, zone, today })
+  // The Drive column (owner, 31 October 2026); a list that cannot read it still shows, with no column.
+  const shows = await driveShows('rmb', docs, wantRmb).catch(e => { console.error('[documents] drive:', e instanceof Error ? e.message : e); return null })
+  return shows ? { ...list, rows: list.rows.map(r => ({ ...r, drive: shows.get(r.id) })), drive: { retry: false } } : list
 }
 
 // ── One reimbursement document (9D) ─────────────────────────────────────────
@@ -194,7 +199,7 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
   const [items, dir] = await Promise.all([
-    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, decided_by, decided_at, receipt_name').eq('document_id', d.id).order('decided_at').then(r => rowsOf(r, 'The document\'s items could not be read')),
+    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, decided_by, decided_at, receipt_name, receipt_number').eq('document_id', d.id).order('decided_at').then(r => rowsOf(r, 'The document\'s items could not be read')),
     loadDirectory(),
   ])
   const p = dir.people.get(d.person_id)
@@ -214,7 +219,7 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id
   return {
     id: d.id, number: d.number, paid, st: paid ? { label: 'Paid', tone: 'ok' } : { label: 'Approved, waiting for Finance', tone: 'teal' },
     date: dateLabel(localDate(d.created_at, zone)), personId: d.person_id, who, team, first,
-    items: list.map(i => ({ id: i.id, date: dateLabel(i.spent_on).replace(/, \d{4}$/, ''), category: i.category, what: i.purpose, amount: money(Number(i.amount), i.currency), file: i.receipt_name || 'receipt' })),
+    items: list.map(i => ({ id: i.id, date: dateLabel(i.spent_on).replace(/, \d{4}$/, ''), category: i.category, what: i.purpose, amount: money(Number(i.amount), i.currency), file: `${i.receipt_number ? `${i.receipt_number} · ` : ''}${i.receipt_name || 'receipt'}` })),
     total: moneyTotal(list.map(i => ({ amount: Number(i.amount), currency: i.currency }))),
     billing: { name: settings.billingName ?? 'True North Digital Marketing', line1: lines[0] ?? '', line2: lines.slice(1).join(', ') },
     canPay: finance && !paid,

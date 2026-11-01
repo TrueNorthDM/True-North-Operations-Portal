@@ -16,6 +16,10 @@
  * the form) and needs no receipt; a meal while travelling is $25 at most; the
  * request's name is its event or trip.
  *
+ * Each receipt gets its number (RCT-2026-005, migration 145), the name of its
+ * file in downloads and in Google Drive; the name it was sent with is kept.
+ * Anyone may ask: employees and contractors alike.
+ *
  * The person really signed in, never a View Stage preview.
  */
 
@@ -131,6 +135,15 @@ export async function POST(request: Request) {
     paths.push(path)
     pathOf.push(path)
   }
+  // Each receipt's own number (owner, 31 October 2026): RCT-2026-005, given in the order sent, under the
+  // settings row's lock (next_document_number), as invoices and RMB documents get theirs. Its file is named by it.
+  const numberOf: (string | null)[] = []
+  for (const p of pathOf) {
+    if (!p) { numberOf.push(null); continue }
+    const { data: n, error } = await c.rpc('next_document_number', { p_kind: 'receipt' })
+    if (error || !n) { console.error('[reimbursement] receipt number:', error?.message); await undo(null); return no('Not saved. Try again in a moment.', 500) }
+    numberOf.push(n)
+  }
   let reportId: number | null = null
   if (items.length > 1 || name) {
     const { data: rep, error } = await c.from('reimbursement_reports').insert({ person_id: v.personId, name }).select('id').single()
@@ -139,7 +152,7 @@ export async function POST(request: Request) {
   }
   const { data, error } = await c.from('reimbursements').insert(items.map((it, i) => ({
     person_id: v.personId, spent_on: it.spentOn, category: it.category, amount: it.amount, currency: it.currency, purpose: it.purpose,
-    client: it.client, billable: it.billable, receipt_path: pathOf[i],
+    client: it.client, billable: it.billable, receipt_path: pathOf[i], receipt_number: numberOf[i],
     receipt_name: it.file ? it.file.name.slice(0, 200) || `receipt.${it.ext}` : null, receipt_size: it.file?.size ?? null,
     miles: it.miles, mileage_rate: it.rate, state: 'pending', report_id: reportId,
   }))).select('id').order('id')

@@ -38,6 +38,9 @@ export interface InvoiceSettings extends RouteSettings {
   nextNumber: number
   rmbPrefix: string
   rmbNextNumber: number
+  /** Receipts (migration 145): RCT-2026-005. */
+  rctPrefix: string
+  rctNextNumber: number
   billingName: string | null
   billingAddress: string | null
   billingEmail: string | null
@@ -58,6 +61,8 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     nextNumber: s?.next_number ?? 1,
     rmbPrefix: s?.rmb_prefix ?? 'RMB',
     rmbNextNumber: s?.rmb_next_number ?? 1,
+    rctPrefix: s?.rct_prefix ?? 'RCT',
+    rctNextNumber: s?.rct_next_number ?? 1,
     billingName: s?.billing_name ?? null,
     billingAddress: s?.billing_address ?? null,
     billingEmail: s?.billing_email ?? null,
