@@ -328,7 +328,7 @@ function PeopleEditor({ list, options, add, canEdit, save }: {
  */
 function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { personIds: string[] }) => Promise<Done> }) {
   return (
-    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-2`}>
       <span className={LABEL}>Finance: who marks invoices paid</span>
       {data.finance.length === 0 && <span className={`text-[13px] ${ERROR_TEXT}`}>Nobody yet: no one can mark invoices or reimbursement documents paid.</span>}
       <PeopleEditor list={data.finance} options={data.people} add="Add a person to Finance" canEdit={canEdit} save={save} />
@@ -374,7 +374,7 @@ function WhoApproves({ data, canEdit, saveReimbursers }: { data: InvoiceSettings
   const fallback = def ?? 'the default approver'
   const only = data.reimbursers.length === 1 ? data.reimbursers[0].name : null
   return (
-    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-3">
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
       <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Who approves what</span>
       <Block icon={CLOCK} tint="var(--color-tn-teal-soft)" ink="var(--color-tn-teal)" title="Timesheets (hours)" sub="Everyone, employees and contractors"
         link={<Link href="/directory" className={BTN.link}>Open the Directory ›</Link>}>
@@ -438,13 +438,14 @@ export function InvoiceSettings({ data, canEdit, save, saveFinance, saveReimburs
   return (
     <div className="flex flex-col gap-[18px]">
       {!canEdit && <ReadOnly />}
+      {/* Who approves what, then Finance, on their own at the top of the tab (owner, 1 November 2026, as in the mockup). */}
+      <WhoApproves data={data} canEdit={canEdit} saveReimbursers={saveReimbursers} />
+      <FinancePeople data={data} canEdit={canEdit} save={saveFinance} />
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-4 items-start">
         <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}{field('rctPrefix', 'Receipt prefix')}</div>
           <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b> · next receipt: <b className="text-tn-ink">{nextRct}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
-          <WhoApproves data={data} canEdit={canEdit} saveReimbursers={saveReimbursers} />
-          <FinancePeople data={data} canEdit={canEdit} save={saveFinance} />
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-1">True North&apos;s billing details</span>
           {field('billingName', 'Billing name')}{field('address', 'Address')}{field('country', 'Country')}{field('email', 'Billing email')}
           <div className="grid grid-cols-2 gap-3">
