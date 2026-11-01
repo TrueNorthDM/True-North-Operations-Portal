@@ -19,7 +19,7 @@ import {
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
-import { loadInvoiceSettings } from './pay-terms'
+import { loadRequestDeciders } from './pay-terms'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import { reportTitle, totalsText, type Amount } from './reimbursement-reports'
@@ -112,24 +112,26 @@ export async function announceCorrectionDecided(r: { id: number; person_id: stri
   })
 }
 
+/** 7A: time off asked for; whoever the routing names decides (Company settings, Who approves what). */
 export async function announceTimeOffRequested(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number; teamLeader?: string | null }): Promise<void> {
   await quiet('time off requested', async () => {
-    const dir = await loadDirectory()
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([r.person_id])])
     await notifyClockyTimeOffRequested({
       requestId: r.id,
       personId: r.person_id,
+      to: deciders('off', r.person_id),
       also: r.teamLeader ? [r.teamLeader] : [],
       text: timeOffRequestedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.seconds),
     })
   })
 }
 
-/** 7E: approved time off its person asks to cancel; the Super Admins decide. */
+/** 7E: approved time off its person asks to cancel; whoever decides their time off decides. */
 export async function announceTimeOffCancelAsked(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; reason: string }): Promise<void> {
   await quiet('time off cancel asked', async () => {
-    const dir = await loadDirectory()
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([r.person_id])])
     await notifyClockyTimeOffRequested({
-      requestId: r.id, personId: r.person_id, key: `${r.id}:cancel`,
+      requestId: r.id, personId: r.person_id, key: `${r.id}:cancel`, to: deciders('off', r.person_id),
       text: timeOffCancelAskedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.reason),
     })
   })
@@ -213,16 +215,16 @@ const money = (n: number, currency: string) => (currency === 'USD' ? `$${n.toLoc
 /** "Wendy Cacka asked for a reimbursement: Software, $45.00 (Figma Professional, Oct to Dec)." */
 export async function announceReimbursementRequested(x: { id: number; personId: string; category: string; amount: number; currency: string; purpose: string }): Promise<void> {
   await quiet('reimbursement requested', async () => {
-    const [dir, settings] = await Promise.all([loadDirectory(), loadInvoiceSettings()])
-    await notifyClockyReimbursementRequested({ id: x.id, personId: x.personId, finance: settings.finance, text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).` })
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
+    await notifyClockyReimbursementRequested({ id: x.id, personId: x.personId, to: deciders('rmb', x.personId), text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).` })
   })
 }
 
 /** Several receipts in one request: "Justus Tsofa asked for a reimbursement: São Paulo trip, 4 receipts, $873.00." */
 export async function announceReimbursementReportRequested(x: { firstId: number; personId: string; name: string | null; items: readonly Amount[] }): Promise<void> {
   await quiet('reimbursement requested', async () => {
-    const [dir, settings] = await Promise.all([loadDirectory(), loadInvoiceSettings()])
-    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, finance: settings.finance, text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}, ${totalsText(x.items)}.` })
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
+    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}, ${totalsText(x.items)}.` })
   })
 }
 
@@ -263,9 +265,10 @@ export async function announceRmbPaid(x: { documentId: number; number: string; p
 /** "Cheyenne Wilson asked for 8h extra in November, for 2 - i7 Marketing." */
 export async function announceExtraRequested(x: { id: number; personId: string; askedBy: string; hours: string; when: string; client: string | null }): Promise<void> {
   await quiet('extra hours requested', async () => {
-    const dir = await loadDirectory()
+    // Whoever decides for the person the hours are for, not who asked.
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
     const by = x.askedBy !== x.personId ? ` ${dir.nameOf(x.askedBy)} asked for them.` : ''
-    await notifyClockyExtraRequested({ id: x.id, personId: x.personId, text: `${dir.nameOf(x.personId)} asked for ${x.hours} extra in ${x.when}${x.client ? `, for ${x.client}` : ''}.${by}` })
+    await notifyClockyExtraRequested({ id: x.id, personId: x.personId, to: deciders('xh', x.personId), text: `${dir.nameOf(x.personId)} asked for ${x.hours} extra in ${x.when}${x.client ? `, for ${x.client}` : ''}.${by}` })
   })
 }
 

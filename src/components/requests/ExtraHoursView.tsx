@@ -32,7 +32,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
   const [toast, setToast] = useState<ToastState | null>(null)
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const a = data.allowance
-  const sub = data.forOthers ? 'Ask before someone on your team goes over their allowance. A Super Admin decides.'
+  const sub = data.forOthers ? 'Ask before someone on your team goes over their allowance. It goes to whoever Company settings names under Who approves what.'
     : a ? `Your allowance is ${a.cap.split(' ')[0]} a ${a.period.startsWith('Week') ? 'week' : 'month'}. Going over needs approval before, not a surprise on the invoice.`
       : 'You have no hours allowance: your hours are never flagged as over. Ask here if one is set and you need more.'
 

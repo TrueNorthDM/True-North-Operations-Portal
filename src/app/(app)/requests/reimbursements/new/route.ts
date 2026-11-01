@@ -18,7 +18,9 @@
  *
  * Each receipt gets its number (RCT-2026-005, migration 145), the name of its
  * file in downloads and in Google Drive; the name it was sent with is kept.
- * Anyone may ask: employees and contractors alike.
+ * Anyone may ask: employees and contractors alike. Anyone on the
+ * Reimbursements list decides (Company settings, Who approves what); the
+ * answer's toast names them.
  *
  * The person really signed in, never a View Stage preview.
  */
@@ -28,11 +30,12 @@ import { NextResponse } from 'next/server'
 import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
-import { viewerFor } from '@/lib/timeclock/clocky-context'
+import { loadDirectory, viewerFor } from '@/lib/timeclock/clocky-context'
 import { announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
 import { localDate } from '@/lib/timeclock/format'
 import { loadClients } from '@/lib/timeclock/requests-data'
-import { loadInvoiceSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadInvoiceSettings, loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { orList } from '@/lib/timeclock/routing'
 import { CATEGORIES, MEAL_HINT, MILEAGE, mileageAmount, mileageNote, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
@@ -167,5 +170,9 @@ export async function POST(request: Request) {
     const it = items[0]
     await announceReimbursementRequested({ id: data[0].id, personId: v.personId, category: it.category, amount: it.amount, currency: it.currency, purpose: it.purpose })
   }
-  return NextResponse.json({ ok: true })
+  // "Sent. David Sharpe decides; you hear back in the bell." Saved either way: a name not read is no failure.
+  const names = await Promise.all([loadDirectory(), loadRequestDeciders([v.personId])])
+    .then(([dir, deciders]) => orList(deciders('rmb', v.personId).map(id => dir.nameOf(id))))
+    .catch(e => { console.error('[reimbursement] who decides:', (e as Error).message); return '' })
+  return NextResponse.json({ ok: true, toast: names ? `Sent. ${names} decides; you hear back in the bell.` : 'Sent. You hear back in the bell.' })
 }

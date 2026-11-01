@@ -164,7 +164,7 @@ export const notifyClockyCorrectionDecided = (x: { requestId: number; personId: 
 export const notifyClockyTsheetsFix = (x: { personId: string; title: string; body: string; key: string }) =>
   simple('clocky-tsheets-fix', ctx => clockyTsheetsFixDrafts(ctx, x))
 
-export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }) =>
+export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; to: readonly string[]; text: string; also?: readonly string[]; key?: string }) =>
   simple('clocky-timeoff-requested', ctx => clockyTimeOffRequestedDrafts(ctx, x))
 
 export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: string; text: string; key?: string }) =>
@@ -179,7 +179,7 @@ export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt
 export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
   simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
 
-export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; text: string; finance?: readonly string[] }) =>
+export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; to: readonly string[]; text: string }) =>
   simple('clocky-reimbursement-requested', ctx => clockyReimbursementRequestedDrafts(ctx, x))
 
 export const notifyClockyReimbursementDecided = (x: { id: number; personId: string; text: string }) =>
@@ -191,7 +191,7 @@ export const notifyClockyRmbReady = (x: { documentId: number; itemId: number; to
 export const notifyClockyRmbPaid = (x: { documentId: number; personId: string; text: string }) =>
   simple('clocky-rmb-paid', ctx => clockyRmbPaidDrafts(ctx, x))
 
-export const notifyClockyExtraRequested = (x: { id: number; personId: string; text: string }) =>
+export const notifyClockyExtraRequested = (x: { id: number; personId: string; to: readonly string[]; text: string }) =>
   simple('clocky-extra-requested', ctx => clockyExtraRequestedDrafts(ctx, x))
 
 export const notifyClockyExtraDecided = (x: { id: number; to: readonly string[]; text: string }) =>

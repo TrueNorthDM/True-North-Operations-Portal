@@ -206,7 +206,7 @@ const TREE: Node[] = [
       { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [1, 0, 0] },
     ] },
     { key: 'clocky-approvals', label: 'Approvals: requests to add time in their scope', kind: 'page', v: [1, 1, 0], ch: [
-      { key: 'ck-timeoff', label: 'Decide time off', kind: 'action', superOnly: true, note: 'Approving hours and time off: Super Admins only (8 October 2026).' },
+      { key: 'ck-timeoff', label: 'Try again when Rippling refuses a time off', kind: 'action', superOnly: true, note: 'Who decides time off is set in Company settings, Invoices, Who approves what (1 November 2026).' },
     ] },
     { key: 'ck-whos-working', label: "Who's working, in their scope", kind: 'page', v: [1, 1, 0], ch: [
       { key: 'ck-clock-out-for', label: 'Clock out for them', kind: 'action', superOnly: true },
@@ -218,12 +218,13 @@ const TREE: Node[] = [
     { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, translated into the 2026 structure', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side. Reading only.' },
   ] },
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
-  // Super Admins decide (time off with ck-timeoff, the rest with rq-decide); Finance (Company
-  // settings > Invoices) also decides reimbursements, outside this list (owner, 29 October 2026).
+  // Who decides a request is the routing (owner, 1 November 2026: Company settings > Invoices,
+  // Who approves what; routing.ts requestDeciders), not a key here. ck-timeoff and rq-decide stay
+  // for what is not a decision: Rippling's retry and its bell, and reading any receipt.
   { key: 'm-requests', label: 'Requests', kind: 'module', ch: [
     { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it.' },
     { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays.', ch: [
-      { key: 'rq-decide', label: 'Decide reimbursements and extra hours', kind: 'action', superOnly: true },
+      { key: 'rq-decide', label: 'Open any receipt', kind: 'action', superOnly: true, note: 'Who decides reimbursements and extra hours is set in Company settings, Invoices, Who approves what (1 November 2026).' },
     ] },
     { key: 'rq-extra-hours', label: 'Extra hours: ask before going over the allowance', kind: 'page', v: [1, 1, 1], note: 'Team Leaders can ask for someone on their team.' },
   ] },

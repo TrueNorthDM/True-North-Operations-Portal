@@ -103,12 +103,12 @@ function tripRow(sup: boolean): QueueRow {
     key: 'rr1', type: 'rmb', id: 1, personId: 'Justus Tsofa', name: 'Justus Tsofa', initials: ini('Justus Tsofa'), team: { name: 'Africa', color: TEAMC.Africa ?? null },
     main: 'São Paulo trip, Oct 12 to 15 · $873.00', sub: '4 receipts: Flight GRU, round trip, Hotel, 3 nights, Uber to the client, …', flag: null,
     why: 'Contractor: each receipt goes on their next invoice.', asked: 'Asked Fri, Oct 16, 9:20 AM', askedAt: 'Asked Fri, Oct 16, 9:20 AM',
-    ownerName: 'a Super Admin', own: false, done: null, href: null, card: null,
+    ownerName: 'Arnaldo Oliveira', own: false, done: null, href: null, card: null,
     request: {
       kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'São Paulo trip, Oct 12 to 15, 4 receipts, $873.00', width: 760, twoCols: false, receipt: null, items: TRIP_ITEMS,
       facts: [{ k: 'Client or project', v: '2 - i7 Marketing' }], allow: null, cal: null,
       after: 'Justus Tsofa is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.',
-      canDecide: sup, roText: sup ? null : 'Read only. Only Super Admins decide time off, reimbursements and extra hours.', approveLabel: 'Approve all 4', denyLabel: 'Deny all',
+      canDecide: sup, roText: sup ? null : 'Read only. Arnaldo Oliveira decides it.', approveLabel: 'Approve all 4', denyLabel: 'Deny all',
     },
   }
 }
@@ -126,9 +126,9 @@ export function sampleQueue(level: 'super' | 'admin' | 'lead', withTrip = false)
       main: s.main, sub: lead && s.subLead ? s.subLead : s.sub,
       flag: lead && s.flagLead !== undefined ? (s.flagLead ? { text: s.flagLead[0], tone: s.flagLead[1] } : null) : s.flag ? { text: s.flag[0], tone: s.flag[1] } : null,
       why: s.why ?? null, asked: s.asked, askedAt: s.asked,
-      ownerName: ownerOf(s) === 'super' ? 'a Super Admin' : ownerOf(s), own: s.who === me, done,
+      ownerName: ownerOf(s) === 'super' ? 'Arnaldo Oliveira' : ownerOf(s), own: s.who === me, done,
       href: s.ts ? `/design-check/clocky-app?frame=6C` : null, card: null,
-      request: CARD[s.id] ? { ...CARD[s.id], canDecide: !done && sup && s.who !== me, roText: done || (sup && s.who !== me) ? null : 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' } : null,
+      request: CARD[s.id] ? { ...CARD[s.id], canDecide: !done && sup && s.who !== me, roText: done || (sup && s.who !== me) ? null : 'Read only. Arnaldo Oliveira decides it.' } : null,
     }
   }
   const mine = (s: Seed) => s.who !== me && (ownerOf(s) === me || (ownerOf(s) === 'super' && sup) || (s.type === 'cor' && sup))

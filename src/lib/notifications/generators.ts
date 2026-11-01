@@ -511,10 +511,10 @@ export function clockyTsheetsFixDrafts(ctx: Ctx, x: { personId: string; title: s
   })
 }
 
-/** Time off asked for: to the Super Admins who decide it, never the person. */
-export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }): Draft[] {
-  // The Super Admins decide; the Team Leader the person reports to is told too (Requests.dc.html 7A).
-  const deciders = ctx.aud.withTool('ck-timeoff')
+/** Time off asked for: to whoever decides it (the routing, `to`), never the person. */
+export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; to: readonly string[]; text: string; also?: readonly string[]; key?: string }): Draft[] {
+  // Whoever the routing names decides; the Team Leader the person reports to is told too (Requests.dc.html 7A).
+  const deciders = [...new Set(x.to)].map(id => ctx.aud.byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r)
   const told = (x.also ?? []).map(id => ctx.aud.byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r && !deciders.some(d => d.personId === r.personId))
   // Whoever is only told and cannot open Approvals goes to the Agenda, where the time off shows once approved.
   return [...deciders, ...told].filter(r => r.personId !== x.personId)
@@ -559,11 +559,9 @@ export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; person
   })
 }
 
-/** A reimbursement asked for: to who decides it, the Super Admins (rq-decide) and Finance (owner, 29 October 2026), never the person. */
-export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string; finance?: readonly string[] }): Draft[] {
-  const to = new Map(ctx.aud.withTool('rq-decide').map(r => [r.personId, r]))
-  for (const id of x.finance ?? []) { const r = ctx.aud.byId.get(id); if (r) to.set(r.personId, r) }
-  return [...to.values()].filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
+/** A reimbursement asked for: to who decides it (the Reimbursements list, owner, 1 November 2026), never the person. */
+export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string }): Draft[] {
+  return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
     title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
   }))
 }
@@ -589,9 +587,9 @@ export function clockyRmbPaidDrafts(ctx: Ctx, x: { documentId: number; personId:
   })
 }
 
-/** Extra hours asked for: to the Super Admins who decide (rq-decide). */
-export function clockyExtraRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string }): Draft[] {
-  return ctx.aud.withTool('rq-decide').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-extra-requested', r, {
+/** Extra hours asked for: to whoever decides them for the person they are for (the routing). */
+export function clockyExtraRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string }): Draft[] {
+  return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-extra-requested', r, {
     title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
   }))
 }

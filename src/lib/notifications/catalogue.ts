@@ -242,8 +242,9 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     timings: 'instant', section: 'Time off', stat: 'time off requests', statOne: 'time off request',
     example: { title: 'Olivia Hale asked for time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },
     title: 'Someone asked for time off',
-    description: 'A request for time off, waiting for a Super Admin. In the bell only.',
-    who: 'Super Admins', audience: { kind: 'tool', tool: 'ck-timeoff' },
+    description: 'A request for time off, or to cancel one, waiting for whoever Company settings names to decide it (Who approves what). In the bell only.',
+    // Reaches whoever decides it (the routing) and the person's Reports to, so the rule is open to everyone.
+    who: 'Whoever decides it, and the person they report to', audience: { kind: 'everyone' },
     // No href of its own: the line's, which is Approvals only for whoever can open it (audit, 24 October 2026).
     button: { label: 'Review' },
   },
@@ -319,8 +320,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'Wendy Cacka asked for a reimbursement', body: 'Software, $45.00 (Figma Professional, Oct to Dec).' },
     title: 'Someone asked for a reimbursement',
     description: 'Money spent for work, with the receipt. Approve it on Approvals, or deny it with a reason. In the bell only.',
-    // Finance decides reimbursements too (owner, 29 October 2026): the generator picks who, as for clocky-rmb-ready.
-    who: 'Super Admins and Finance', audience: { kind: 'everyone' },
+    // The Reimbursements list in Company settings decides (owner, 1 November 2026): the generator picks who.
+    who: 'Whoever decides it (the Reimbursements list)', audience: { kind: 'everyone' },
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {
@@ -356,7 +357,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'Cheyenne Wilson asked for 8h extra in November', body: 'For 2 - i7 Marketing.' },
     title: 'Someone asked for extra hours',
     description: 'More hours than the allowance, asked before going over. Approve it on Approvals, or deny it with a reason. In the bell only.',
-    who: 'Super Admins', audience: { kind: 'tool', tool: 'rq-decide' },
+    // Reaches whoever decides it (the routing), so the rule is open to everyone.
+    who: 'Whoever decides it', audience: { kind: 'everyone' },
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {

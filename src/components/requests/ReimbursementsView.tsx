@@ -58,14 +58,14 @@ const INPUT = `${FIELD} tabular-nums lining-nums`
 export { CATEGORIES }
 const CURRENCIES = ['USD', 'KES', 'RWF']
 
-export type SendReimbursement = (form: FormData) => Promise<{ ok: true } | { ok: false; error: string }>
+export type SendReimbursement = (form: FormData) => Promise<{ ok: true; toast?: string } | { ok: false; error: string }>
 
 /** The live sender: the form goes to the route that stores the receipt. */
 export const sendReimbursement: SendReimbursement = async form => {
   try {
     const res = await fetch(withViewAs('/requests/reimbursements/new'), { method: 'POST', body: form })
-    const body = await res.json().catch(() => null) as { ok: boolean; error?: string } | null
-    return body?.ok ? { ok: true } : { ok: false, error: body?.error ?? 'Not saved. Try again in a moment.' }
+    const body = await res.json().catch(() => null) as { ok: boolean; error?: string; toast?: string } | null
+    return body?.ok ? { ok: true, toast: body.toast } : { ok: false, error: body?.error ?? 'Not saved. Try again in a moment.' }
   } catch {
     return { ok: false, error: 'Not saved. Check the connection and try again.' }
   }
@@ -97,7 +97,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
   const list = all ? data.everyone! : data.rows
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const sub = docs && docs.finance ? 'Every employee reimbursement document. You are Finance: you pay them outside Rippling payroll, then mark them paid.'
-    : docs ? 'Every employee reimbursement document. Made when a Super Admin approves an employee\'s reimbursement, paid by Finance outside Rippling payroll.'
+    : docs ? 'Every employee reimbursement document. Made when an employee\'s reimbursement is approved, paid by Finance outside Rippling payroll.'
     : data.contractor ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
     : 'Ask for money you spent for work, with the receipt. Approved, Finance pays it with a reimbursement document.'
 
@@ -205,7 +205,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data:
       )}
 
       {form && <NewReimbursement data={data} draft={initial?.draft} send={send} onClose={() => setForm(false)}
-        onSent={() => { setForm(false); say({ text: data.contractor ? 'Sent. Approved, each receipt goes on your next invoice by itself.' : 'Sent. Approved, Finance pays it with a reimbursement document.' }); router.refresh() }} />}
+        onSent={sent => { setForm(false); say({ text: sent ?? (data.contractor ? 'Sent. Approved, each receipt goes on your next invoice by itself.' : 'Sent. Approved, Finance pays it with a reimbursement document.') }); router.refresh() }} />}
       <Toast toast={toast} />
     </div>
   )
@@ -229,7 +229,7 @@ const itemOk = (it: Item) => ((!!it.file || !!it.fileLabel) || !needsReceipt(it.
   && !!it.what.trim()
 let nextKey = 1
 
-function NewReimbursement({ data, draft, send, onClose, onSent }: { data: ReimbursementsPage; draft?: Partial<Draft>; send: SendReimbursement; onClose: () => void; onSent: () => void }) {
+function NewReimbursement({ data, draft, send, onClose, onSent }: { data: ReimbursementsPage; draft?: Partial<Draft>; send: SendReimbursement; onClose: () => void; onSent: (toast?: string) => void }) {
   const blank = (p: Partial<Item> = {}): Item => ({ key: nextKey++, file: null, fileLabel: '', date: today(), category: 'Internet', amount: '', miles: '', currency: 'USD', what: '', client: null, billable: 'no', ...p })
   const [name, setName] = useState(draft?.name ?? '')
   const [client, setClient] = useState(draft?.client ?? 'None')
@@ -292,7 +292,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
     setError(null)
     const r = await send(f)
     setBusy(false)
-    if (r.ok) onSent()
+    if (r.ok) onSent(r.toast)
     else setError(r.error)
   }
 

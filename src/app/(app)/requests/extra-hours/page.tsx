@@ -1,6 +1,6 @@
 // Extra hours (Clocky part 2, Requests.dc.html 10C, 10E): asked before going
-// over the hours allowance, by the person or their Team Leader; a Super Admin
-// decides on Approvals. The data is lib/timeclock/requests-data.ts.
+// over the hours allowance, by the person or their Team Leader; whoever
+// Company settings, Who approves what, names for the person decides on Approvals. The data is lib/timeclock/requests-data.ts.
 
 import { requireSurface } from '@/lib/access/resolve'
 import { viewerFor } from '@/lib/timeclock/clocky-context'

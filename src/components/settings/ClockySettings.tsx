@@ -5,7 +5,8 @@
  *
  *   13A  IntegrationsSettings   Rippling and Google Calendar: the connection,
  *        what each sends and reads, Test connection, the errors with Try again
- *   13B  InvoiceSettings        numbering, who approves invoices, billing
+ *   13B  InvoiceSettings        numbering, who approves what (timesheets,
+ *        invoices, time off and extra hours, reimbursements), Finance, billing
  *        details, payment terms, and how an invoice reads
  *   13C  RemindersSettings      the timesheet reminders, on or off, and the
  *        bell lines part 2 adds
@@ -22,6 +23,7 @@ import Link from 'next/link'
 import { DriveCard, type DriveApi } from './DriveCard'
 import { useRouter } from 'next/navigation'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { ERROR_TEXT } from '@/lib/ui/feedback'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
@@ -34,7 +36,7 @@ import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type Toast
 import { DateField } from '@/components/ui/DateField'
 import { Select } from '@/components/ui/Select'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
-import { PILL } from '@/components/ui/Pill'
+import { PILL, Pill } from '@/components/ui/Pill'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
@@ -273,14 +275,22 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
 // ── 13B ─────────────────────────────────────────────────────────────────────
 
 /**
- * Finance (owner, 31 October 2026): who marks invoices and reimbursement
- * documents paid. Each change saves at once; at least one person stays.
+ * A list of people chosen here (Finance, the Reimbursements list): Remove
+ * while more than one stays, a searchable Select to add someone. Each change
+ * saves at once, with its toast.
  */
-function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { personIds: string[] }) => Promise<Done> }) {
+function PeopleEditor({ list, options, add, canEdit, save }: {
+  list: { id: string; name: string }[]
+  options: { value: string; label: string }[]
+  /** The Select's placeholder: "Add a person to Finance". */
+  add: string
+  canEdit: boolean
+  save: (i: { personIds: string[] }) => Promise<Done>
+}) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
-  const ids = data.finance.map(f => f.id)
+  const ids = list.map(f => f.id)
   const change = async (next: string[]) => {
     setBusy(true)
     try {
@@ -293,29 +303,113 @@ function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; can
       setBusy(false)
     }
   }
-  const options = data.people.filter(p => !ids.includes(p.value))
+  const left = options.filter(p => !ids.includes(p.value))
   return (
-    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
-      <span className={LABEL}>Finance: who marks invoices paid</span>
-      {data.finance.length === 0 && <span className="text-[13px] text-[#c8323d]">Nobody yet: no one can mark invoices or reimbursement documents paid.</span>}
-      {data.finance.map((f, i) => (
-        <div key={f.id} className={`flex justify-between items-center gap-3 text-[13px] ${i < data.finance.length - 1 ? 'border-b border-[var(--row-rule)] pb-[7px]' : ''}`}>
+    <>
+      {list.map((f, i) => (
+        <div key={f.id} className={`flex justify-between items-center gap-3 text-[13px] ${i < list.length - 1 ? 'border-b border-[var(--row-rule)] pb-[7px]' : ''}`}>
           <span className="text-tn-ink font-bold">{f.name}</span>
-          {canEdit && data.finance.length > 1 && (
+          {canEdit && list.length > 1 && (
             <button type="button" disabled={busy} onClick={() => void change(ids.filter(x => x !== f.id))} className={BTN.link}>Remove</button>
           )}
         </div>
       ))}
-      {canEdit && options.length > 0 && (
-        <Select value="" onChange={v => v && void change([...ids, v])} options={options} placeholder="Add a person to Finance" searchable fullWidth ariaLabel="Add a person to Finance" disabled={busy} className={INPUT} />
+      {canEdit && left.length > 0 && (
+        <Select value="" onChange={v => v && void change([...ids, v])} options={left} placeholder={add} searchable fullWidth ariaLabel={add} disabled={busy} className={INPUT} />
       )}
-      <span className="text-[12px] text-muted leading-[1.5]">Finance pays approved invoices and reimbursement documents outside Rippling and marks them paid. Admins and Super Admins who are not Finance see what waits, but do not mark it paid.</span>
       <Toast toast={toast} />
+    </>
+  )
+}
+
+/**
+ * Finance (owner, 31 October 2026): who marks invoices and reimbursement
+ * documents paid. Each change saves at once; at least one person stays.
+ */
+function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { personIds: string[] }) => Promise<Done> }) {
+  return (
+    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
+      <span className={LABEL}>Finance: who marks invoices paid</span>
+      {data.finance.length === 0 && <span className={`text-[13px] ${ERROR_TEXT}`}>Nobody yet: no one can mark invoices or reimbursement documents paid.</span>}
+      <PeopleEditor list={data.finance} options={data.people} add="Add a person to Finance" canEdit={canEdit} save={save} />
+      <span className="text-[12px] text-muted leading-[1.5]">Finance pays approved invoices and reimbursement documents outside Rippling and marks them paid. Admins and Super Admins who are not Finance see what waits, but do not mark it paid.</span>
     </div>
   )
 }
 
-export function InvoiceSettings({ data, canEdit, save, saveFinance }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done>; saveFinance: (i: { personIds: string[] }) => Promise<Done> }) {
+// Who approves what: one block a kind, in the order work flows (owner, 1 November 2026).
+const CLOCK = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2'
+const DOC = 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6'
+const CASE = 'M4 7h16v12H4zM8 7V5h8v2M4 12h16'
+const RECEIPT = 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'
+const RULE = 'bg-subtle rounded-[10px] px-3 py-[9px] text-[13px] text-tn-ink leading-[1.5]'
+const NOTE = 'text-[12px] text-muted leading-[1.5] m-0'
+const orNames = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`)
+
+function Block({ icon, tint, ink, title, sub, isNew, link, children }: { icon: string; tint: string; ink: string; title: string; sub: string; isNew?: boolean; link?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-[9px]">
+      <div className="flex gap-2.5 items-center flex-wrap">
+        <span className="w-[30px] h-[30px] rounded-[9px] inline-flex items-center justify-center flex-none" style={{ background: tint }}><Icon d={icon} size={16} color={ink} width={2.2} /></span>
+        <span className="flex-1 min-w-[180px] flex flex-col">
+          <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink inline-flex items-center gap-2">{title}{isNew && <Pill tone="blue" text="New" />}</span>
+          <span className="text-[12px] text-muted">{sub}</span>
+        </span>
+        {link}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * "Who approves what" (owner, 1 November 2026): who approves each thing, with
+ * every name from the settings. Timesheets and invoices keep their rules (the
+ * Directory's Reports to, the invoice approvers); time off and extra hours
+ * follow the invoice rule for everyone; reimbursements have their own list,
+ * edited here.
+ */
+function WhoApproves({ data, canEdit, saveReimbursers }: { data: InvoiceSettingsData; canEdit: boolean; saveReimbursers: (i: { personIds: string[] }) => Promise<Done> }) {
+  const { defaultApprover: def, deputyDirector: deputy, others } = data.routing
+  const fallback = def ?? 'the default approver'
+  const only = data.reimbursers.length === 1 ? data.reimbursers[0].name : null
+  return (
+    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-3">
+      <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Who approves what</span>
+      <Block icon={CLOCK} tint="var(--color-tn-teal-soft)" ink="var(--color-tn-teal)" title="Timesheets (hours)" sub="Everyone, employees and contractors"
+        link={<Link href="/directory" className={BTN.link}>Open the Directory ›</Link>}>
+        <div className={RULE}>Approved by <b>the person each one reports to</b>, set on their Directory page (Work, Reports to). Someone with no Reports to, or whose Reports to cannot open Approvals, goes to <b>{fallback}</b>.</div>
+        <p className={NOTE}>{deputy ? `${deputy}'s own timesheet is recorded without approval. ` : ''}To change who approves someone&apos;s hours, change their Reports to.</p>
+      </Block>
+      <Block icon={DOC} tint="var(--bdg-blue-bg)" ink="var(--color-tn-ink)" title="Invoices" sub="Contractors only. Team Leaders never see invoices.">
+        {data.approvers.map((a, i) => (
+          <div key={a.name} className={`flex justify-between gap-3 flex-wrap text-[13px] ${i < data.approvers.length - 1 ? 'border-b border-[var(--row-rule)] pb-[7px]' : ''}`}>
+            <span className="text-tn-ink font-bold">{a.name}</span><span className="text-foreground text-right">{a.who}</span>
+          </div>
+        ))}
+        <p className={NOTE}>When the same person approves the hours and the invoice, it is one step.</p>
+      </Block>
+      <Block icon={CASE} tint="var(--bdg-orange-bg)" ink="var(--bdg-orange-fg)" title="Time off and extra hours" sub="Time off (PTO), its cancellation, and extra hours" isNew>
+        <div className={RULE}>
+          The same rule as invoices, for everyone: {others.length
+            ? <><b>{orNames(others)}</b> for the people who report to them, <b>{fallback}</b> for everyone else.</>
+            : <><b>{fallback}</b> for everyone.</>}
+        </div>
+        <p className={NOTE}>Follows the Invoices list above: change it there and this follows. Nobody decides their own: theirs goes to {fallback}.</p>
+      </Block>
+      <Block icon={RECEIPT} tint="var(--bdg-green-bg)" ink="var(--bdg-green-fg)" title="Reimbursements" sub="Everyone's, employees and contractors" isNew>
+        {data.reimbursers.length === 0 && <span className={`text-[13px] ${ERROR_TEXT}`}>Nobody yet: reimbursements go to {fallback}.</span>}
+        <PeopleEditor list={data.reimbursers} options={data.approverPeople} add="Add a person who approves reimbursements" canEdit={canEdit} save={saveReimbursers} />
+        <p className={NOTE}>
+          Each change saves at once. At least one person stays, so a reimbursement never waits for nobody; with more than one, the first to decide closes it. The list offers people who can open Approvals (Admins and Super Admins).
+          {only && only !== def ? ` ${only}'s own reimbursements go to ${fallback}.` : ' Nobody decides their own.'}
+        </p>
+      </Block>
+    </div>
+  )
+}
+
+export function InvoiceSettings({ data, canEdit, save, saveFinance, saveReimbursers }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done>; saveFinance: (i: { personIds: string[] }) => Promise<Done>; saveReimbursers: (i: { personIds: string[] }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -349,15 +443,7 @@ export function InvoiceSettings({ data, canEdit, save, saveFinance }: { data: In
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}{field('rctPrefix', 'Receipt prefix')}</div>
           <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b> · next receipt: <b className="text-tn-ink">{nextRct}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
-          <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
-            <span className={LABEL}>Who approves invoices</span>
-            {data.approvers.map((a, i) => (
-              <div key={a.name} className={`flex justify-between gap-3 text-[13px] ${i < data.approvers.length - 1 ? 'border-b border-[var(--row-rule)] pb-[7px]' : ''}`}>
-                <span className="text-tn-ink font-bold">{a.name}</span><span className="text-foreground text-right">{a.who}</span>
-              </div>
-            ))}
-            <span className="text-[12px] text-muted leading-[1.5]">Hours are approved by the person each one reports to. When the same person approves both, it is one step. The Deputy Director&apos;s own timesheet is recorded without approval. Team Leaders never see invoices.</span>
-          </div>
+          <WhoApproves data={data} canEdit={canEdit} saveReimbursers={saveReimbursers} />
           <FinancePeople data={data} canEdit={canEdit} save={saveFinance} />
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-1">True North&apos;s billing details</span>
           {field('billingName', 'Billing name')}{field('address', 'Address')}{field('country', 'Country')}{field('email', 'Billing email')}
@@ -401,11 +487,11 @@ export function InvoiceSettings({ data, canEdit, save, saveFinance }: { data: In
 
 const LINES: [string, string, string][] = [
   ['Invoices', 'Invoice created (on submit) · approved · returned, with the reason · paid', 'The contractor; approved also to Finance'],
-  ['Time off', 'Asked · cancellation asked', "Super Admins and the person's Team Leader"],
+  ['Time off', 'Asked · cancellation asked', "Whoever decides it (Who approves what) and the person's Team Leader"],
   ['Time off', 'Approved, denied or cancelled', 'The person'],
   ['Time off', 'Rippling refused it', 'Super Admins, in red'],
-  ['Reimbursements', 'Asked · decided · document ready · paid', 'Super Admins and Finance · the person · Finance · the person'],
-  ['Extra hours', 'Asked · decided', 'Super Admins · the person'],
+  ['Reimbursements', 'Asked · decided · document ready · paid', 'The Reimbursements list · the person · Finance · the person'],
+  ['Extra hours', 'Asked · decided', 'Whoever decides it (Who approves what) · the person'],
   ['Allowance', '90% · over', 'The person; over without approval also to the Team Leader and Super Admins'],
   ['Timesheets', 'The reminders above', 'As set above'],
   ['Agenda', 'Today: a birthday (optional)', 'Everyone who keeps it on'],

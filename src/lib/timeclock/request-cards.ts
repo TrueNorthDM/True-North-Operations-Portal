@@ -5,8 +5,11 @@
  * off, the receipt for a reimbursement, the allowance for extra hours) and what
  * approving does by itself.
  *
- * Super Admins decide (time off with ck-timeoff, the rest with rq-decide), and
- * Finance decides reimbursements too (owner, 29 October 2026); never their own. Reimbursements are money: shown only to who sees that
+ * Who decides is the routing (owner, 1 November 2026, Company settings >
+ * Invoices "Who approves what"; routing.ts requestDeciders): time off, its
+ * cancellation and extra hours by the invoice rule, a reimbursement by anyone
+ * on the Reimbursements list; never their own. Everyone else who sees a row
+ * sees whose decision it is. Reimbursements are money: shown only to who sees that
  * person's money (pay-terms.ts seesMoney), and never to Team Leaders. The
  * Approvals count (clocky-approvals.ts countWaiting) asks the same questions
  * (waitingRequests below), so the number and the list cannot disagree.
@@ -19,7 +22,8 @@ import { allRows, db, loadCatalog, must } from './clocky-context'
 import { dateLabel, dayLabel, initials, localDate, monthYear, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
-import { isFinance, loadPayTerms, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
+import { loadPayTerms, loadRequestDeciders, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
+import { orList } from './routing'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays } from './time-off'
 import { usd } from './invoice-doc'
@@ -81,6 +85,8 @@ export interface CardRow {
   askedAt: string
   ownerName: string
   owner: string | null
+  /** The viewer is one of its deciders (waiting or not): what a User below Team Leader is shown. */
+  decides: boolean
   own: boolean
   done: { label: string; tone: 'ok' | 'warn' | 'bad' | 'neu' | 'teal'; by: string } | null
   href: string | null
@@ -102,16 +108,19 @@ export const moneyViewer = (v: Viewer) => ({ isAdmin: v.level === 'super_admin' 
 export const offWaiting = (r: { state: string; cancel_asked_at: string | null }): boolean =>
   r.state === 'pending' || (r.state === 'approved' && !!r.cancel_asked_at)
 
-/**
- * The viewer decides this kind of request for this person: time off with
- * ck-timeoff, extra hours with rq-decide, a reimbursement with rq-decide or as
- * Finance (owner, 29 October 2026); never their own.
- */
-export const decidesRequest = (v: Viewer, kind: 'off' | 'rmb' | 'xh', personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
-  personId !== v.personId && (kind === 'off' ? v.can('ck-timeoff') : v.can('rq-decide') || (kind === 'rmb' && isFinance(v, settings)))
+/** The viewer decides this request: they are one of its deciders (routing.ts requestDeciders), and it is not their own. */
+export const decidesRequest = (v: Pick<Viewer, 'personId'>, deciders: readonly string[], personId: string): boolean =>
+  personId !== v.personId && deciders.includes(v.personId)
 
-/** Who decides what this viewer cannot, for the read-only line. */
-const RO_PENDING = 'Read only. Super Admins decide time off and extra hours; Super Admins and Finance decide reimbursements.'
+/** Who decides, for the row and the read-only line: "David Sharpe", "Arnaldo Oliveira or David Sharpe". */
+export const decidersText = (deciders: readonly string[], nameOf: (id: string) => string): string => orList(deciders.map(nameOf))
+
+/** The read-only line under a card the viewer does not decide. */
+export function readOnlyLine(own: boolean, pending: boolean, who: string): string | null {
+  if (!who) return pending ? 'Nobody can decide it yet. A Super Admin sets who approves what in Company settings, Invoices.' : null
+  if (own) return `Your own request. ${who} decides it.`
+  return pending ? `Read only. ${who} decides it.` : null
+}
 
 /** A reimbursement is money: its row is for whoever sees that person's money, never a Team Leader. */
 export const showsRmb = (v: Viewer, personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
@@ -126,31 +135,28 @@ export const showsXh = (v: Viewer, personId: string, teamId: string | null): boo
  * viewer in Approvals: what loadRequestRows lists with the viewer as owner,
  * counted with the same predicates (a request with several receipts is one).
  */
-export async function waitingRequests(v: Viewer, dir: Directory, settings: Pick<InvoiceSettings, 'finance'>): Promise<number> {
+export async function waitingRequests(v: Viewer, dir: Directory, settings: InvoiceSettings): Promise<number> {
   const c = db()
   const [offs, rmbs, xhs] = await Promise.all([
-    v.can('ck-timeoff')
-      ? allRows<{ person_id: string; state: string; cancel_asked_at: string | null }>((a, b) => c.from('tc_absence_requests').select('person_id, state, cancel_asked_at')
-        .or('state.eq.pending,cancel_asked_at.not.is.null').order('id').range(a, b), 'Time off could not be read')
-      : Promise.resolve([]),
-    v.can('rq-decide') || isFinance(v, settings)
-      ? allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read')
-      : Promise.resolve([]),
-    v.can('rq-decide')
-      ? allRows<{ person_id: string }>((a, b) => c.from('extra_hours_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Extra hours could not be read')
-      : Promise.resolve([]),
+    allRows<{ person_id: string; state: string; cancel_asked_at: string | null }>((a, b) => c.from('tc_absence_requests').select('person_id, state, cancel_asked_at')
+      .or('state.eq.pending,cancel_asked_at.not.is.null').order('id').range(a, b), 'Time off could not be read'),
+    v.level === 'team_leader'
+      ? Promise.resolve([])
+      : allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read'),
+    allRows<{ person_id: string }>((a, b) => c.from('extra_hours_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Extra hours could not be read'),
   ])
-  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings) && decidesRequest(v, 'rmb', r.person_id, settings))
-  return offs.filter(r => offWaiting(r) && decidesRequest(v, 'off', r.person_id, settings)).length
+  const deciders = await loadRequestDeciders([...offs, ...rmbs, ...xhs].map(r => r.person_id), settings)
+  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings) && decidesRequest(v, deciders('rmb', r.person_id), r.person_id))
+  return offs.filter(r => offWaiting(r) && decidesRequest(v, deciders('off', r.person_id), r.person_id)).length
     + new Set(rmbRows.filter(r => r.report_id != null).map(r => r.report_id)).size + rmbRows.filter(r => r.report_id == null).length
-    + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, 'xh', r.person_id, settings)).length
+    + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, deciders('xh', r.person_id), r.person_id)).length
 }
 
 type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string | null; receipt_name: string | null; receipt_size: number | null; receipt_number: string | null; report_id: number | null }
 type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
 type XhRow = { id: number; person_id: string; asked_by: string | null; hours: number; period: string; period_start: string; period_end: string; client: string | null; reason: string; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
 
-export async function loadRequestRows(v: Viewer, dir: Directory, since: string, settings: Pick<InvoiceSettings, 'finance'>, now = new Date()): Promise<CardRow[]> {
+export async function loadRequestRows(v: Viewer, dir: Directory, since: string, settings: InvoiceSettings, now = new Date()): Promise<CardRow[]> {
   const c = db()
   // Every row, a page at a time, and a failed read throws: an empty list would read as nothing waiting.
   const [offs, rmbs, xhs, catalog] = await Promise.all([
@@ -166,6 +172,14 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
     const p = dir.people.get(id)
     const t = p?.teamId ? dir.teams.get(p.teamId) : undefined
     return { name: p?.name ?? 'Someone', initials: initials(p?.name ?? ''), team: t ? { name: t.name, color: t.color } : null, teamId: p?.teamId ?? null }
+  }
+  const deciders = await loadRequestDeciders([...offs, ...rmbs, ...xhs].map(r => r.person_id), settings)
+  // Whose decision a waiting row is: the viewer when it is theirs, else the first decider; with their names.
+  const routed = (kind: 'off' | 'rmb' | 'xh', personId: string, pending: boolean) => {
+    const ids = deciders(kind, personId)
+    const decides = decidesRequest(v, ids, personId)
+    const canDecide = pending && decides
+    return { canDecide, decides, owner: !pending ? null : canDecide ? v.personId : ids[0] ?? null, ownerName: decidersText(ids, id => dir.nameOf(id)) }
   }
   const out: CardRow[] = []
 
@@ -202,7 +216,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       ]
       const clash = mates.flatMap(m => days.filter(d => d >= m.start_date && d <= m.end_date).map(d => ({ who: dir.nameOf(m.person_id), d })))
       const own = r.person_id === v.personId
-      const canDecide = pending && decidesRequest(v, 'off', r.person_id, settings)
+      const { canDecide, decides, owner, ownerName } = routed('off', r.person_id, pending)
       const label = daysText(r.start_date, r.end_date)
       const doneOf = (): CardRow['done'] => {
         if (pending) return null
@@ -218,7 +232,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         why: cancelAsk ? (r.cancel_reason ? `"${r.cancel_reason}"` : null) : r.reason ? `"${r.reason}"` : null,
         asked: cancelAsk ? `Cancellation asked ${short(r.cancel_asked_at!, v.zone)}` : asked(r.requested_at, v.zone),
         askedAt: cancelAsk ? r.cancel_asked_at! : r.requested_at,
-        ownerName: 'a Super Admin', owner: canDecide ? v.personId : null, own,
+        ownerName, owner, decides, own,
         done: doneOf(),
         href: !pending && r.rippling_state === 'refused' ? '/requests/time-off' : null,
         request: {
@@ -237,7 +251,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off Rippling and the team calendar where it went. Keep it, with a reason, and it stays.`
             : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day into their time entries.`,
           canDecide,
-          roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
+          roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Deny',
         },
       })
@@ -269,7 +283,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const own = r0.person_id === v.personId
       const waiting = list.filter(r => r.state === 'pending')
       const pending = waiting.length > 0
-      const canDecide = pending && decidesRequest(v, 'rmb', r0.person_id, settings)
+      const { canDecide, decides, owner, ownerName } = routed('rmb', r0.person_id, pending)
       const doc = openDocs.find(d => d.person_id === r0.person_id)
       const values = list.map(r => ({ amount: Number(r.amount), currency: r.currency }))
       const total = totalsText(values)
@@ -282,7 +296,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         main: `${name ?? 'Several receipts'} · ${total}`, sub: `${receiptsText(list.length)}: ${purposes.slice(0, 3).join(', ')}${purposes.length > 3 ? ', …' : ''}`, flag: null,
         why: contractor ? 'Contractor: each receipt goes on their next invoice.' : 'Employee: they go on a reimbursement document for Finance.',
         asked: asked(r0.asked_at, v.zone), askedAt: r0.asked_at,
-        ownerName: 'a Super Admin', owner: canDecide ? v.personId : null, own,
+        ownerName, owner, decides, own,
         done: pending ? null : {
           label: !denied ? 'Approved' : !approved ? 'Denied' : `Approved ${approved}, denied ${denied}`, tone: !denied ? 'ok' : !approved ? 'bad' : 'warn',
           by: decided ? `${dir.nameOf(decided.decided_by)}, ${dateLabel(localDate(decided.decided_at!, v.zone)).replace(/, \d{4}$/, '')}` : '',
@@ -300,7 +314,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: contractor
             ? `${who.name} is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.`
             : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
+          canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Deny all' : 'Deny',
         },
       })
@@ -312,7 +326,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const amt = r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toFixed(2)} ${r.currency}`
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decidesRequest(v, 'rmb', r.person_id, settings)
+      const { canDecide, decides, owner, ownerName } = routed('rmb', r.person_id, pending)
       const doc = openDocs.find(d => d.person_id === r.person_id)
       const isPdf = (r.receipt_name ?? '').toLowerCase().endsWith('.pdf')
       const size = r.receipt_size ? (r.receipt_size >= 1048576 ? `${(r.receipt_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.receipt_size / 1024))} KB`) : ''
@@ -321,7 +335,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         main: `${r.category} · ${amt}`, sub: r.purpose, flag: null,
         why: contractor ? 'Contractor: goes on their next invoice.' : 'Employee: goes on a reimbursement document for Finance.',
         asked: asked(r.asked_at, v.zone), askedAt: r.asked_at,
-        ownerName: 'a Super Admin', owner: canDecide ? v.personId : null, own,
+        ownerName, owner, decides, own,
         done: pending ? null : r.state === 'denied'
           ? { label: 'Denied', tone: 'bad', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}${r.decision_note ? `: "${r.decision_note}"` : ''}` }
           : { label: 'Approved', tone: 'ok', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}` },
@@ -339,7 +353,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: contractor
             ? `${who.name} is a contractor. Approving puts it on their next invoice by itself.`
             : `${who.name} is an employee. Approving puts it on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
+          canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: 'Approve', denyLabel: 'Deny',
         },
       })
@@ -357,7 +371,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       if (!showsXh(v, r.person_id, who.teamId)) continue
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decidesRequest(v, 'xh', r.person_id, settings)
+      const { canDecide, decides, owner, ownerName } = routed('xh', r.person_id, pending)
       const hours = formatDuration(Number(r.hours) * 3600)
       const when = r.period === 'month' ? monthYear(r.period_start) : `the week of ${dayLabel(r.period_start)}`
       const t = terms.get(r.person_id)
@@ -367,7 +381,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         key: `x${r.id}`, type: 'xh', id: r.id, personId: r.person_id, ...who,
         main: `Extra hours · ${hours}`, sub: `${r.period === 'month' ? monthYear(r.period_start) : `Week of ${dayLabel(r.period_start)}`}${r.client ? ` · ${r.client}` : ''}`,
         flag: null, why: `"${r.reason}"`, asked: `${asked(r.asked_at, v.zone)}${r.asked_by && r.asked_by !== r.person_id ? ` by ${dir.nameOf(r.asked_by)}` : ''}`, askedAt: r.asked_at,
-        ownerName: 'a Super Admin', owner: canDecide ? v.personId : null, own,
+        ownerName, owner, decides, own,
         done: pending ? null : { label: r.state === 'approved' ? 'Approved' : 'Denied', tone: r.state === 'approved' ? 'ok' : 'bad', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}${r.state === 'denied' && r.decision_note ? `: "${r.decision_note}"` : ''}` },
         href: null,
         request: {
@@ -378,7 +392,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           after: cap != null && t?.allowance?.period === r.period
             ? `Approved, their ${when} allowance becomes ${cap + Number(r.hours)}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
             : 'Approved, these hours are added to the allowance of that period. Hours past it are flagged again.',
-          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? RO_PENDING : null,
+          canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: 'Approve', denyLabel: 'Deny',
         },
       })

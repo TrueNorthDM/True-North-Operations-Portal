@@ -2,8 +2,8 @@
  * The Approvals page's data (design handoff of 16 October 2026, README "Time
  * correction requests and approvals", Time Entries.dc.html frames 3L and 3L-2):
  * the time corrections waiting for the viewer's decision in their scope, and
- * for Super Admins the time off and the timesheets people sent (owner's
- * mockup of 20 October 2026); and what was decided.
+ * what was decided. Time off, timesheets and the other requests are read by
+ * approval-queue.ts and request-cards.ts, by the routing (routing.ts).
  *
  * Not a "use server" file: app/(app)/clocky-hours/approvals/actions.ts serves it.
  */
@@ -13,8 +13,7 @@ import { overlapFor } from './clocky-store'
 import { approveOverlapLine } from './entry-rules'
 import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
 import { recordedSeconds } from './rounding'
-import { holidaysBetween, offDays } from './time-off'
-import { canApproveCorrection, canDecideTimeOff, seesEveryone } from './scope'
+import { canApproveCorrection, seesEveryone } from './scope'
 import { loadRouteSettings, loadRoutes } from './pay-terms'
 import { currentStep, invoiceApprover, type TimesheetState } from './routing'
 import type { ApprovalRow, ApprovalsData } from './clocky-types'
@@ -25,12 +24,11 @@ import { waitingRequests } from './request-cards'
 const DECIDED_DAYS = 90
 
 type Correction = { id: number; person_id: string; entry_date: string; started_at: string; ended_at: string; jobcode_id: number; fields: Record<string, string>; reason: string; state: string; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; entry_id: number | null }
-type TimeOff = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
 
 /** The one-line subtitle per level (exact copy; a Team Leader's names their teams). */
 export function approvalsSubtitle(level: 'super' | 'admin' | 'lead', teamNames: readonly string[]): string {
-  if (level === 'super') return 'Requests to add time, time off and timesheets waiting for a decision. Only Super Admins decide time off and timesheets.'
-  if (level === 'admin') return 'Requests to add time from everyone, waiting for a decision. Super Admins decide time off.'
+  if (level === 'super') return 'Requests to add time, time off and timesheets waiting for a decision. Time off goes to who Company settings names under Who approves what.'
+  if (level === 'admin') return 'Requests to add time from everyone, waiting for a decision. Time off goes to who Company settings names under Who approves what.'
   const teams = teamNames.length <= 1 ? `the ${teamNames[0] ?? 'your'} team` : `the ${teamNames.slice(0, -1).join(', ')} and ${teamNames[teamNames.length - 1]} teams`
   return `Requests to add time from ${teams}, waiting for your decision.`
 }
@@ -39,15 +37,8 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
   const c = db()
   const [dir, catalog] = await Promise.all([loadDirectory(), loadCatalog()])
   const since = new Date(now.getTime() - DECIDED_DAYS * 86_400_000).toISOString()
-  const decidesTimeOff = v.can('ck-timeoff')
-  const [corrections, timeOff] = await Promise.all([
-    allRows<Correction>((a, b) => c.from('tc_correction_requests').select('*')
-      .or(`state.eq.pending,decided_at.gte.${since}`).order('requested_at').range(a, b), 'Requests to add time could not be read'),
-    decidesTimeOff
-      ? allRows<TimeOff>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note')
-        .or(`state.eq.pending,decided_at.gte.${since}`).in('state', ['pending', 'approved', 'denied']).order('requested_at').range(a, b), 'Time off could not be read')
-      : Promise.resolve([] as TimeOff[]),
-  ])
+  const corrections = await allRows<Correction>((a, b) => c.from('tc_correction_requests').select('*')
+    .or(`state.eq.pending,decided_at.gte.${since}`).order('requested_at').range(a, b), 'Requests to add time could not be read')
 
   const person = (id: string) => {
     const p = dir.people.get(id)
@@ -87,29 +78,6 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
       canDecide: r.state === 'pending',
     })
   }
-  for (const r of timeOff) {
-    if (!canDecideTimeOff(v, dir.target(r.person_id))) continue
-    const type = catalog.jobs.get(r.jobcode_id)?.name ?? 'Time off'
-    const days = offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days.length
-    const range = r.start_date === r.end_date ? dayLabel(r.start_date) : `${dayLabel(r.start_date)} to ${dayLabel(r.end_date)}`
-    rows.push({
-      key: `o${r.id}`, type: 'time_off', id: r.id, personId: r.person_id, ...person(r.person_id),
-      date: r.start_date,
-      goesTo: '',
-      seconds: Math.round(days * Number(r.hours_per_day) * 3600),
-      when: `${range}, ${r.end_date.slice(0, 4)} · ${type}`,
-      job: '',
-      reason: r.reason ?? '',
-      askedAt: r.requested_at,
-      asked: `Asked ${stampLabel(r.requested_at, v.zone)}`,
-      state: r.state as ApprovalRow['state'],
-      decided: decided(r.decided_by, r.decided_at, r.state === 'denied' ? r.decision_note : null),
-      entryId: null,
-      overlap: null,
-      canDecide: r.state === 'pending',
-    })
-  }
-
   const level = v.isSuperAdmin ? 'super' : seesEveryone(v) ? 'admin' : 'lead'
   const led = [...v.ledTeamIds].map(id => dir.teams.get(id)?.name).filter((n): n is string => !!n).sort()
   return {
@@ -117,7 +85,7 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
     subtitle: approvalsSubtitle(level, led),
     note: "Times in each person's own time zone. Approved time becomes an entry marked Edited.",
     // As the prototype lists them: waiting by the request's day, oldest first; decided in the order
-    // the requests came (corrections, then time off, each as asked), unsorted.
+    // the requests came, unsorted.
     waiting: waitingOrder(rows.filter(r => r.state === 'pending')),
     decided: rows.filter(r => r.state !== 'pending'),
   }

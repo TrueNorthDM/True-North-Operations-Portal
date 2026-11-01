@@ -75,10 +75,10 @@ export interface OffRequest {
 
 export interface OffCheck { t: string; tone: OffTone; icon: 'check' | 'x' | 'clock' }
 
-/** The chips of a row in My time off (7B). */
-export function checksOf(r: OffRequest): OffCheck[] {
-  if (r.state === 'pending') return [{ t: 'A Super Admin decides', tone: 'neu', icon: 'clock' }]
-  if (r.cancelAskedAt) return [{ t: 'Waiting for a Super Admin', tone: 'neu', icon: 'clock' }]
+/** The chips of a row in My time off (7B). `who`: whoever decides it, by name (routing.ts requestApprover). */
+export function checksOf(r: OffRequest, who = ''): OffCheck[] {
+  if (r.state === 'pending') return [{ t: who ? `${who} decides` : 'Waiting for a decision', tone: 'neu', icon: 'clock' }]
+  if (r.cancelAskedAt) return [{ t: who ? `Waiting for ${who}` : 'Waiting for a decision', tone: 'neu', icon: 'clock' }]
   const rip: OffCheck = r.rippling === 'sent' ? { t: 'Sent to Rippling', tone: 'ok', icon: 'check' }
     : r.rippling === 'refused' ? { t: 'Rippling refused it', tone: 'bad', icon: 'x' }
       : { t: 'Waiting for Rippling', tone: 'neu', icon: 'clock' }
@@ -98,8 +98,8 @@ export function pillOf(r: OffRequest): { label: string; tone: OffTone } {
 export interface OffStep { t: string; sub: string; state: 'ok' | 'bad' | 'wait'; retry: boolean }
 
 /** "What happened by itself" (7D, 7D-x). */
-export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp: (t: string) => string; canRetry: boolean }): OffStep[] {
-  if (r.state === 'pending') return [{ t: 'Nothing yet', sub: 'When a Super Admin approves: Rippling, the team calendar and the time entries, by themselves.', state: 'wait', retry: false }]
+export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp: (t: string) => string; canRetry: boolean; who?: string }): OffStep[] {
+  if (r.state === 'pending') return [{ t: 'Nothing yet', sub: `When ${x.who || 'it is'} approve${x.who ? 's' : 'd'}: Rippling, the team calendar and the time entries, by themselves.`, state: 'wait', retry: false }]
   const first = r.who.split(' ')[0]
   const rip: OffStep = r.rippling === 'sent'
     ? { t: `Sent to Rippling, ${r.ripplingSentAt ? x.stamp(r.ripplingSentAt) : ''}`.replace(/, $/, ''), sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll.`, state: 'ok', retry: false }

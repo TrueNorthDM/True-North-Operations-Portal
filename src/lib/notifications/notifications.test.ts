@@ -233,7 +233,9 @@ describe("North Time's notifications (16 October 2026)", () => {
   it('reach the right people', () => {
     expect(T('clocky-still-working').audience).toEqual({ kind: 'everyone' })
     expect(T('clocky-correction-requested').audience).toEqual({ kind: 'tool', tool: 'clocky-approvals' })
-    expect(T('clocky-timeoff-requested').audience).toEqual({ kind: 'tool', tool: 'ck-timeoff' })
+    // Requests reach whoever the routing names (owner, 1 November 2026), so their rules are open to everyone.
+    expect(T('clocky-timeoff-requested').audience).toEqual({ kind: 'everyone' })
+    expect(T('clocky-extra-requested').audience).toEqual({ kind: 'everyone' })
     expect(T('clocky-auto-stops').audience).toEqual({ kind: 'tool', tool: 'access-levels' })
   })
 

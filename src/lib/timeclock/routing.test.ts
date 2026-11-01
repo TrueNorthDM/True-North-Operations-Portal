@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currentStep, hoursApprover, invoiceApprover, isRecordedOnly, oneStep, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
+import { currentStep, hoursApprover, invoiceApprover, isRecordedOnly, oneStep, orList, reimbursementApprovers, requestApprover, requestDeciders, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
 
 // The README's people: Arnaldo approves invoices by default, Dave Sharpe is the
 // Deputy Director and approves the invoices of those who report to him.
@@ -82,5 +82,64 @@ describe('approval routing (README_PART2 "Approval routing")', () => {
     expect(currentStep(john, B, 'submitted')).toEqual({ step: 'invoice', owner: 'arnaldo' })
     // Not given: as named, whoever they are.
     expect(hoursApprover(samuel, S)).toBe('wendy')
+  })
+})
+
+describe('who decides requests (owner, 1 November 2026: "Who approves what")', () => {
+  const R: RouteSettings = { ...S, reimbursementApprovers: ['dave'] }
+
+  it('time off and extra hours follow the invoice rule, employees too', () => {
+    expect(requestApprover(rock, R)).toBe('dave')
+    expect(requestApprover(cheyenne, R)).toBe('arnaldo')
+    // Reports to someone who is not an invoice approver: the default approver.
+    expect(requestApprover(samuel, R)).toBe('arnaldo')
+    expect(requestApprover(wendy, R)).toBe('arnaldo')
+    expect(requestApprover(p('emp', 'dave', false), R)).toBe('dave')
+    expect(requestApprover(p('new', null, false), R)).toBe('arnaldo')
+  })
+
+  it('never the person: their own goes to the default approver, the default approver\'s to the next invoice approver', () => {
+    // Arnaldo reports to Dave: Dave decides. Were Arnaldo to report to himself or to nobody, Dave still.
+    expect(requestApprover(arnaldo, R)).toBe('dave')
+    expect(requestApprover(p('arnaldo', null), R)).toBe('dave')
+    expect(requestApprover(p('arnaldo', 'wendy'), R)).toBe('dave')
+    // Dave reports to Arnaldo, an invoice approver.
+    expect(requestApprover(dave, R)).toBe('arnaldo')
+    // Dave reporting to himself (a gap) lands on him: the default approver instead.
+    expect(requestApprover(p('dave', 'dave', false), R)).toBe('arnaldo')
+  })
+
+  it('someone who cannot open Approvals is passed over for the default approver', () => {
+    const B: RouteSettings = { ...R, approvers: ['arnaldo'] }
+    expect(requestApprover(rock, B)).toBe('arnaldo')
+    // The default approver's own, when the other invoice approver cannot open Approvals: nobody.
+    expect(requestApprover(p('arnaldo', 'dave'), B)).toBeNull()
+  })
+
+  it('reimbursements go to everyone on the list, never their own', () => {
+    expect(reimbursementApprovers('samuel', R)).toEqual(['dave'])
+    expect(reimbursementApprovers('arnaldo', R)).toEqual(['dave'])
+    // Dave's own: the list minus him is empty, so the default approver.
+    expect(reimbursementApprovers('dave', R)).toEqual(['arnaldo'])
+    const two: RouteSettings = { ...R, reimbursementApprovers: ['dave', 'tina'] }
+    expect(reimbursementApprovers('samuel', two)).toEqual(['dave', 'tina'])
+    expect(reimbursementApprovers('dave', two)).toEqual(['tina'])
+  })
+
+  it('a reimbursement with nobody able on the list goes to the default approver, or the next invoice approver', () => {
+    expect(reimbursementApprovers('samuel', { ...R, reimbursementApprovers: [] })).toEqual(['arnaldo'])
+    expect(reimbursementApprovers('samuel', { ...R, approvers: ['arnaldo'] })).toEqual(['arnaldo'])
+    // The default approver's own, the list holding only them: the other invoice approver.
+    expect(reimbursementApprovers('arnaldo', { ...R, reimbursementApprovers: ['arnaldo'] })).toEqual(['dave'])
+    expect(reimbursementApprovers('arnaldo', { ...S, defaultApprover: 'arnaldo', invoiceApprovers: ['arnaldo'], reimbursementApprovers: ['arnaldo'] })).toEqual([])
+  })
+
+  it('one answer per kind, and the names read as one line', () => {
+    expect(requestDeciders('off', rock, R)).toEqual(['dave'])
+    expect(requestDeciders('xh', samuel, R)).toEqual(['arnaldo'])
+    expect(requestDeciders('rmb', dave, R)).toEqual(['arnaldo'])
+    expect(orList(['David Sharpe'])).toBe('David Sharpe')
+    expect(orList(['A', 'B'])).toBe('A or B')
+    expect(orList(['X', 'Y', 'Z'])).toBe('X, Y or Z')
   })
 })

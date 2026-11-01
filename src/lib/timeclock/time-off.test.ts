@@ -17,8 +17,11 @@ describe('time off (Requests.dc.html 7A to 7E)', () => {
     expect(countText(1, 8 * 3600)).toBe('1 working day, 8h 00m')
   })
 
-  it('waits for a Super Admin, then shows what went out by itself', () => {
-    expect(checksOf(req())).toEqual([{ t: 'A Super Admin decides', tone: 'neu', icon: 'clock' }])
+  it('waits for whoever decides it, then shows what went out by itself', () => {
+    expect(checksOf(req(), 'David Sharpe')).toEqual([{ t: 'David Sharpe decides', tone: 'neu', icon: 'clock' }])
+    expect(checksOf(req())).toEqual([{ t: 'Waiting for a decision', tone: 'neu', icon: 'clock' }])
+    expect(checksOf(req({ state: 'approved', cancelAskedAt: '2026-11-02T14:00:00Z' }), 'Arnaldo Oliveira')).toEqual([{ t: 'Waiting for Arnaldo Oliveira', tone: 'neu', icon: 'clock' }])
+    expect(stepsOf(req(), { days: 1, seconds: 8 * 3600, stamp: () => '', canRetry: false, who: 'David Sharpe' })[0].sub).toBe('When David Sharpe approves: Rippling, the team calendar and the time entries, by themselves.')
     expect(pillOf(req())).toEqual({ label: 'Waiting', tone: 'warn' })
     const sent = req({ state: 'approved', rippling: 'sent', calendar: 'done', entriesWrittenAt: '2026-11-03T14:00:00Z', ripplingSentAt: '2026-11-03T14:00:00Z' })
     expect(checksOf(sent).map(c => c.t)).toEqual(['Sent to Rippling', 'On the team calendar'])
@@ -45,6 +48,6 @@ describe('time off (Requests.dc.html 7A to 7E)', () => {
   it('a cancellation asked shows as waiting again', () => {
     const r = req({ state: 'approved', rippling: 'sent', calendar: 'done', cancelAskedAt: '2026-11-03T14:32:00Z' })
     expect(pillOf(r)).toEqual({ label: 'Cancellation asked', tone: 'warn' })
-    expect(checksOf(r)).toEqual([{ t: 'Waiting for a Super Admin', tone: 'neu', icon: 'clock' }])
+    expect(checksOf(r, 'Arnaldo Oliveira')).toEqual([{ t: 'Waiting for Arnaldo Oliveira', tone: 'neu', icon: 'clock' }])
   })
 })

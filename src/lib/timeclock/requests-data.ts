@@ -20,6 +20,7 @@ import { INVOICE_STATE, stateKey } from './invoices-view'
 import { money, moneyTotal } from './invoice-doc'
 import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
 import { addDays } from './periods'
+import { orList, reimbursementApprovers } from './routing'
 import { formatDuration } from './rounding'
 import { clientFolder } from './invoices-data'
 import { reportTitle, totalsText } from './reimbursement-reports'
@@ -119,7 +120,11 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     const d = r.document_id != null ? doc.get(r.document_id) : undefined
     const mine = r.person_id === me
     let st: RmbRow['st'], info: string
-    if (r.state === 'pending') { st = { label: 'Waiting', tone: 'warn' }; info = 'Waiting for a Super Admin or Finance.' }
+    if (r.state === 'pending') {
+      // Anyone on the Reimbursements list decides (Company settings, Who approves what).
+      const who = orList(reimbursementApprovers(r.person_id, settings).map(id => dir.nameOf(id)))
+      st = { label: 'Waiting', tone: 'warn' }; info = who ? `Waiting for ${who}.` : 'Waiting for a decision.'
+    }
     else if (r.state === 'denied') { st = { label: 'Denied', tone: 'bad' }; info = `Denied by ${dir.nameOf(r.decided_by)}${r.decision_note ? `: "${r.decision_note}"` : '.'}` }
     else if (r.state === 'paid') {
       st = { label: 'Paid', tone: 'ok' }

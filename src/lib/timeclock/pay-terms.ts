@@ -1,7 +1,8 @@
 /**
  * How people are paid and who approves them (Clocky part 2, migration 115):
  * the pay terms (Pays as, the fixed amount, the hours allowance), the invoice
- * settings (who approves invoices, the Deputy Director, Finance), and the
+ * settings (who approves invoices and reimbursements, the Deputy Director,
+ * Finance), and the
  * routing input each person's timesheet is decided with (lib/timeclock/
  * routing.ts).
  *
@@ -18,7 +19,7 @@ import { cache } from 'react'
 import type { Access } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAudience } from '@/lib/notifications/audience'
-import type { PaysAs, RoutePerson, RouteSettings } from './routing'
+import { requestDeciders, type PaysAs, type RequestKind, type RoutePerson, type RouteSettings } from './routing'
 import { loadAllowanceUse } from './allowance-data'
 import { DEFAULT_MILEAGE_RATE } from './reimbursement-rules'
 
@@ -46,6 +47,8 @@ export interface InvoiceSettings extends RouteSettings {
   billingEmail: string | null
   paymentDays: number
   finance: readonly string[]
+  /** Decide reimbursements (migration 146), chosen in Company settings > Invoices. */
+  reimbursementApprovers: readonly string[]
   /** Dollars a mile for a Mileage reimbursement (migration 133; Tina's spreadsheet used 0.76). */
   mileageRate: number
 }
@@ -71,6 +74,7 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     defaultApprover: s?.default_approver ?? null,
     deputyDirector: s?.deputy_director ?? null,
     finance: s?.finance ?? [],
+    reimbursementApprovers: s?.reimbursement_approvers ?? [],
     mileageRate: num((s as { mileage_rate?: unknown } | null)?.mileage_rate) ?? DEFAULT_MILEAGE_RATE,
   }
 }
@@ -147,6 +151,17 @@ export async function loadPayTerms(personIds?: readonly string[]): Promise<Map<s
 export async function loadRoutes(personIds?: readonly string[]): Promise<Map<string, RoutePerson>> {
   const terms = await loadPayTerms(personIds)
   return new Map([...terms].map(([id, t]) => [id, t.route]))
+}
+
+/**
+ * Who decides time off, extra hours and reimbursements (routing.ts
+ * requestDeciders) for these people, with the settings every other place reads
+ * (loadRouteSettings, unless the caller has them). Someone missing from the Directory reports to nobody.
+ */
+export async function loadRequestDeciders(personIds: readonly string[], given?: RouteSettings): Promise<(kind: RequestKind, personId: string) => string[]> {
+  const ids = [...new Set(personIds)]
+  const [settings, routes] = await Promise.all([given ?? loadRouteSettings(), ids.length ? loadRoutes(ids) : Promise.resolve(new Map<string, RoutePerson>())])
+  return (kind, personId) => requestDeciders(kind, { personId, reportsTo: routes.get(personId)?.reportsTo ?? null }, settings)
 }
 
 /**

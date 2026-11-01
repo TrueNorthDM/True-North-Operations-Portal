@@ -10,7 +10,7 @@
  *        counts, the balance, who else is off.
  *   7D   The drawer: what happened by itself after the approval (Rippling,
  *        the team calendar, the time entries), Try again when Rippling refused.
- *   7E   Cancel an approved request still to come: a Super Admin approves it.
+ *   7E   Cancel an approved request still to come: whoever decides their time off approves it.
  */
 
 import { useMemo, useRef, useState } from 'react'
@@ -176,7 +176,7 @@ export function TimeOffView({ data, api, initial }: {
         onCancel={() => { setCancelId(open.id); setModal('cancel') }} />}
       {modal === 'ask' && <AskForm data={data} initial={initial?.form} busy={busy} onClose={() => setModal(null)}
         onSend={f => void run(api.askTimeOff(f), () => setModal(null))} />}
-      {modal === 'cancel' && cx && <CancelDialog row={cx} busy={busy} onClose={() => setModal(null)}
+      {modal === 'cancel' && cx && <CancelDialog row={cx} decider={data.decider} busy={busy} onClose={() => setModal(null)}
         onAsk={reason => void run(api.askCancelTimeOff({ id: cx.id, reason }), () => setModal(null))} />}
       <Toast toast={toast} />
     </div>
@@ -272,13 +272,13 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
 
 // ── 7E: cancel an approved one ──────────────────────────────────────────────
 
-function CancelDialog({ row, busy, onClose, onAsk }: { row: TimeOffRow; busy: boolean; onClose: () => void; onAsk: (reason: string) => void }) {
+function CancelDialog({ row, decider, busy, onClose, onAsk }: { row: TimeOffRow; decider: string; busy: boolean; onClose: () => void; onAsk: (reason: string) => void }) {
   const [reason, setReason] = useState('')
   const ok = !!reason.trim()
   return (
     <Modal label="Cancel time off" width={470} onClose={onClose} alert gap={12}>
       <h2 className={`${MODAL_TITLE} leading-[1.3]`}>Cancel your time off, {row.dates}?</h2>
-      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] [text-wrap:pretty]">It is approved, so a Super Admin approves the cancellation. Then it comes off Rippling and the team calendar, and the {formatDuration(row.seconds)} leave your time entries.</p>
+      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] [text-wrap:pretty]">It is approved, so {decider || 'whoever approves time off'} approves the cancellation. Then it comes off Rippling and the team calendar, and the {formatDuration(row.seconds)} leave your time entries.</p>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel warn>Reason (required)</FieldLabel>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Why you no longer need these days" className={TEXTAREA_WARN} />
@@ -482,7 +482,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Who else is off</span>
             {whoList}
           </div>
-          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When a Super Admin approves, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and North Time writes it into your time entries. Nobody copies anything.</div>
+          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When {data.decider || 'it is approved'}{data.decider ? ' approves' : ''}, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and North Time writes it into your time entries. Nobody copies anything.</div>
         </div>
       </div>
       <div className="flex justify-end gap-2">

@@ -5,10 +5,11 @@
  *
  *   Waiting for you   items whose current owner is you: timesheets by the
  *                     routing (lib/timeclock/routing.ts); time off,
- *                     reimbursements and extra hours for Super Admins; time
- *                     corrections for whoever may decide them
- *   With others       read only: what is still with a Team Leader, Dave
- *                     Sharpe or a Super Admin
+ *                     reimbursements and extra hours by the same routing
+ *                     (requestDeciders: Company settings, "Who approves
+ *                     what"); time corrections for whoever may decide them
+ *   With others       read only: what is still with a Team Leader or another
+ *                     approver, named
  *   Decided           who, when and why, the last 90 days
  *
  * Team Leaders see their own teams only, and never money: a timesheet row
@@ -34,7 +35,7 @@ import { loadPayTerms, loadRouteSettings, seesMoney, type InvoiceSettings } from
 import { periodLabel } from './periods'
 import { currentStep, hoursApprover, invoiceApprover, oneStep, type TimesheetState } from './routing'
 import type { ApprovalRow } from './clocky-types'
-import { decidesRequest, loadRequestRows, moneyViewer, type RequestCard } from './request-cards'
+import { loadRequestRows, moneyViewer, type RequestCard } from './request-cards'
 
 export type QueueType = 'ts' | 'off' | 'rmb' | 'xh' | 'cor'
 export type Tone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
@@ -57,7 +58,7 @@ export interface QueueRow {
   /** "Submitted Nov 1, 9:14 AM" */
   asked: string
   askedAt: string
-  /** Whose decision it is now: a person, or any Super Admin. */
+  /** Whose decision it is now: a person, or the people who may decide it ("A or B"). */
   ownerName: string
   own: boolean
   /** Decided rows: the pill and who, when, why. */
@@ -249,8 +250,8 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
 
   // Time off, reimbursements and extra hours, with their cards (7C, 9C, 10D).
   for (const r of requests) {
-    const { owner, teamId, request, ...row } = r
-    push({ ...row, card: null, request }, owner, teamId, decidesRequest(v, row.type, row.personId, settings))
+    const { owner, teamId, request, decides, ...row } = r
+    push({ ...row, card: null, request }, owner, teamId, decides)
   }
 
   const open = rows.filter(r => !r.done)
@@ -269,7 +270,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     wait: open.filter(mine),
     others: open.filter(r => !mine(r) && inTeam(r)),
     done: rows.filter(r => r.done && inTeam(r)).sort(byAsked),
-    note: "Hours go to the person each one reports to. Invoices go to Arnaldo Oliveira, or to Dave Sharpe for the people who report to him. When both land on the same person it is one step. The Deputy Director's timesheet is recorded without approval.",
+    note: "Hours go to the person each one reports to. Invoices, time off and extra hours follow the invoice approvers, and reimbursements their own list, both in Company settings > Invoices (Who approves what). When hours and invoice land on the same person it is one step. The Deputy Director's timesheet is recorded without approval.",
   }
 }
 
@@ -278,7 +279,7 @@ function usd(n: number): string {
 }
 
 async function subtitleFor(v: Viewer, settings: InvoiceSettings, dir: Awaited<ReturnType<typeof loadDirectory>>): Promise<string> {
-  if (v.isSuperAdmin) return 'Your decisions: hours of the people who report to you, invoices, time off, reimbursements and extra hours. "With others" shows, read only, what Team Leaders and Dave Sharpe still have.'
+  if (v.isSuperAdmin) return 'Your decisions: hours of the people who report to you, and the invoices, time off, reimbursements and extra hours that come to you (Company settings, Invoices: Who approves what). "With others" shows, read only, what Team Leaders and the other approvers still have.'
   if (v.level === 'team_leader') {
     const teams = [...v.ledTeamIds].map(id => dir.teams.get(id)?.name).filter(Boolean)
     const def = settings.defaultApprover ? dir.nameOf(settings.defaultApprover) : 'a Super Admin'
@@ -286,6 +287,6 @@ async function subtitleFor(v: Viewer, settings: InvoiceSettings, dir: Awaited<Re
   }
   const mine = (must(await db().from('people').select('full_name').eq('manager_id', v.personId).eq('status', 'active').order('full_name'), 'People could not be read') ?? []).map(p => p.full_name)
   return mine.length
-    ? `You approve the hours and invoices of the people who report to you (${mine.join(', ')}). Everything else is read only.`
-    : 'You approve the hours and invoices of the people who report to you. Everything else is read only.'
+    ? `You approve the hours and invoices of the people who report to you (${mine.join(', ')}), and the requests that come to you. Everything else is read only.`
+    : 'You approve the hours and invoices of the people who report to you, and the requests that come to you. Everything else is read only.'
 }

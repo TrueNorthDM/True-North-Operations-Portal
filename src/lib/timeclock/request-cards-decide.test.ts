@@ -4,32 +4,31 @@ vi.mock('./clocky-context', () => ({ allRows: vi.fn(), db: vi.fn(), loadCatalog:
 vi.mock('./allowance-data', () => ({ loadAllowanceUse: vi.fn(), loadApprovedExtra: vi.fn() }))
 vi.mock('./pay-terms', async () => {
   const actual = await vi.importActual<typeof import('./pay-terms')>('./pay-terms')
-  return { ...actual, loadPayTerms: vi.fn(), loadRoutes: vi.fn() }
+  return { ...actual, loadPayTerms: vi.fn(), loadRoutes: vi.fn(), loadRequestDeciders: vi.fn() }
 })
 
-import type { Viewer } from './clocky-context'
-import { decidesRequest } from './request-cards'
+import { decidersText, decidesRequest, readOnlyLine } from './request-cards'
 
-const viewer = (personId: string, keys: string[]) => ({ personId, can: (k: string) => keys.includes(k) }) as unknown as Viewer
-const settings = { finance: ['tina'] }
+const viewer = (personId: string) => ({ personId })
 
-describe('who decides a request (owner, 29 October 2026: Finance decides reimbursements)', () => {
-  it('Finance decides a reimbursement, never their own', () => {
-    expect(decidesRequest(viewer('tina', []), 'rmb', 'ana', settings)).toBe(true)
-    expect(decidesRequest(viewer('tina', []), 'rmb', 'tina', settings)).toBe(false)
+describe('who decides a request (owner, 1 November 2026: the routing, "Who approves what")', () => {
+  it('a decider the routing names decides, never their own', () => {
+    expect(decidesRequest(viewer('dave'), ['dave'], 'ana')).toBe(true)
+    expect(decidesRequest(viewer('tina'), ['dave', 'tina'], 'ana')).toBe(true)
+    expect(decidesRequest(viewer('dave'), ['dave'], 'dave')).toBe(false)
   })
-  it('Finance does not decide extra hours or time off', () => {
-    expect(decidesRequest(viewer('tina', []), 'xh', 'ana', settings)).toBe(false)
-    expect(decidesRequest(viewer('tina', []), 'off', 'ana', settings)).toBe(false)
+  it('a Super Admin or Finance the routing does not name decides nothing', () => {
+    expect(decidesRequest(viewer('arnaldo'), ['dave'], 'ana')).toBe(false)
+    expect(decidesRequest(viewer('tina'), ['arnaldo'], 'ana')).toBe(false)
+    expect(decidesRequest(viewer('bo'), [], 'ana')).toBe(false)
   })
-  it('Super Admins keep every kind, never their own', () => {
-    const sa = viewer('arnaldo', ['rq-decide', 'ck-timeoff'])
-    expect(decidesRequest(sa, 'rmb', 'ana', settings)).toBe(true)
-    expect(decidesRequest(sa, 'xh', 'ana', settings)).toBe(true)
-    expect(decidesRequest(sa, 'off', 'ana', settings)).toBe(true)
-    expect(decidesRequest(sa, 'rmb', 'arnaldo', settings)).toBe(false)
-  })
-  it('anyone else decides nothing', () => {
-    expect(decidesRequest(viewer('bo', []), 'rmb', 'ana', settings)).toBe(false)
+  it('everyone else reads whose decision it is', () => {
+    const names: Record<string, string> = { dave: 'David Sharpe', arnaldo: 'Arnaldo Oliveira' }
+    expect(decidersText(['dave'], id => names[id])).toBe('David Sharpe')
+    expect(decidersText(['arnaldo', 'dave'], id => names[id])).toBe('Arnaldo Oliveira or David Sharpe')
+    expect(readOnlyLine(false, true, 'David Sharpe')).toBe('Read only. David Sharpe decides it.')
+    expect(readOnlyLine(true, true, 'Arnaldo Oliveira')).toBe('Your own request. Arnaldo Oliveira decides it.')
+    expect(readOnlyLine(false, false, 'David Sharpe')).toBeNull()
+    expect(readOnlyLine(false, true, '')).toMatch(/^Nobody can decide it yet/)
   })
 })

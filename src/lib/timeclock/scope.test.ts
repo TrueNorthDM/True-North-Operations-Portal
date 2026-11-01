@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { canAs } from '@/lib/access/simulate'
 import type { AccessLevel } from '@/lib/access/catalogue'
 import {
-  SHORTEN_ONLY, canAddFor, canApproveCorrection, canClockOutFor, canDecideTimeOff, canReopen, canSeeWorking, canView,
+  SHORTEN_ONLY, canAddFor, canApproveCorrection, canClockOutFor, canReopen, canSeeWorking, canView,
   changeRight, isLeader, onlyShorter, periodsAccess, safetyAccess, whoChoice, type ScopeTarget, type ScopeViewer,
 } from './scope'
 
@@ -26,7 +26,6 @@ const user = viewer('user', 'samuel', [], [WEB])
 const wendy: ScopeTarget = { personId: 'wendy', teamIds: [WEB] }
 const samuel: ScopeTarget = { personId: 'samuel', teamIds: [WEB] }
 const saheed: ScopeTarget = { personId: 'saheed', teamIds: [SEO] }
-const arnaldo: ScopeTarget = { personId: 'arnaldo', teamIds: [] }
 
 describe('Time entries: whose hours each level sees', () => {
   it('Super Admin and Admin: their own and everyone', () => {
@@ -131,14 +130,7 @@ describe('who approves a time correction', () => {
   })
 })
 
-describe('only Super Admins decide time off and reopen periods', () => {
-  it('time off', () => {
-    expect(canDecideTimeOff(superAdmin, samuel)).toBe(true)
-    expect(canDecideTimeOff(superAdmin, arnaldo)).toBe(false)
-    expect(canDecideTimeOff(admin, samuel)).toBe(false)
-    expect(canDecideTimeOff(lead, samuel)).toBe(false)
-  })
-
+describe('only Super Admins reopen periods (time off is the routing, routing.test.ts)', () => {
   it('reopening', () => {
     expect(canReopen(superAdmin)).toBe(true)
     expect(canReopen(admin)).toBe(false)

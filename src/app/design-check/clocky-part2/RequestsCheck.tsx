@@ -24,7 +24,7 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
     { file: null, fileLabel: '', date: 'Oct 12, 2026', category: 'Mileage', amount: '', miles: '84', what: 'Home to the airport and back' },
   ] : [])
   if (timeOff) {
-    const ok = async () => ({ ok: true as const, toast: 'Sent. A Super Admin decides; you hear back in the bell.' })
+    const ok = async () => ({ ok: true as const, toast: 'Sent. Arnaldo Oliveira decides; you hear back in the bell.' })
     return (
       <TimeOffView key={frame} data={timeOff} api={{ askTimeOff: ok, cancelTimeOff: async () => ({ ok: true, toast: 'Request cancelled. Nothing was sent anywhere.' }), askCancelTimeOff: async () => ({ ok: true, toast: 'Asked. When a Super Admin approves, it comes off Rippling and the team calendar.' }), retryTimeOffRippling: async () => ({ ok: true, toast: 'Sent to Rippling, Nov 3, 2026, 9:41 AM.' }) }}
         initial={frame === '7A' || frame === '7Ap' ? { modal: 'ask', form: { type: 1, a: '2026-11-23', b: '2026-11-25', note: 'Family trip for Thanksgiving.', month: '2026-11' } }
@@ -48,7 +48,7 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
       initial={frame === '9Dp' ? { pdf: sheet, sample: true } : { sample: true }} />
   }
   if (extra) {
-    return <ExtraHoursView key={frame} data={extra} api={{ askExtraHours: async () => ({ ok: true, toast: 'Sent. A Super Admin decides on Approvals.' }) }}
+    return <ExtraHoursView key={frame} data={extra} api={{ askExtraHours: async () => ({ ok: true, toast: 'Sent. Arnaldo Oliveira decides; you hear back in the bell.' }) }}
       initial={frame === '10C' ? { form: true, draft: { why: 'Six extra i7 blog posts for the Q4 push, asked by the i7 team.', hours: '8', client: '2 - i7 Marketing' } } : undefined} />
   }
   return null

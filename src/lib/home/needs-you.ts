@@ -14,8 +14,9 @@
  *               the viewer's; clocky-approvals. A Team Leader's rows never
  *               carry an amount (the queue gives them "Hours only")
  *   Requests    time off, reimbursements and extra hours waiting for the
- *   to decide   viewer's decision (request-cards.ts, the rows Approvals lists);
- *               ck-timeoff and rq-decide; Finance for reimbursements
+ *   to decide   viewer's decision (request-cards.ts, the rows Approvals lists):
+ *               whoever the routing names (Company settings, Who approves
+ *               what); clocky-approvals
  *   Invoices    the fixed-pay invoices the 1st makes by itself and sends to
  *               the viewer (invoices-cron.ts), in the week before; informs only
  *   To pay      Super Admins, Admins and Finance (pay-terms.ts paysWhat): one line for the approved invoices
@@ -48,16 +49,15 @@ import { loadWorklist } from '@/lib/monday/worklist/data'
 import { matchesDue, todayIso, WORK_ZONE } from '@/lib/monday/worklist/list-view'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadQueue, type QueueRow } from '@/lib/timeclock/approval-queue'
-import { loadApprovers } from '@/lib/timeclock/approvers'
 import { db, loadDirectory, viewerFor, type Directory, type Viewer } from '@/lib/timeclock/clocky-context'
 import { goesToLabel, teamLeadNames } from '@/lib/timeclock/clocky-requests'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel } from '@/lib/timeclock/format'
 import { moneyTotal, usd } from '@/lib/timeclock/invoice-doc'
-import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
+import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
-import { currentStep, invoiceApprover, type TimesheetState } from '@/lib/timeclock/routing'
+import { currentStep, invoiceApprover, orList, type TimesheetState } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, ownTimeOffShown, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
@@ -119,9 +119,10 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
   // "Open Approvals to try again", as a link, only for who can open Approvals.
   const retry = (text: string, page: string, href: string, can: boolean): TabError => (can ? { text: `${text} Open ${page} to try again.`, href } : { text })
 
-  // Finance decides reimbursements too (owner, 29 October 2026); North Time closed, nobody decides.
-  const decides = access.can('ck-timeoff') || access.can('rq-decide') || (ntOpen && !!settings && isFinance(access, settings))
+  // Requests are decided by whoever the routing names among those who open Approvals (owner,
+  // 1 November 2026); North Time closed, nobody decides.
   const approvalsOpen = access.can('clocky-approvals')
+  const decides = approvalsOpen
   const viewerKinds = [approvalsOpen, decides, access.can('my-work'), access.can('rq-time-off'), access.can('rq-reimbursements'), access.can('rq-extra-hours'), access.can('clocky-hours'), access.can('clocky-invoices')]
   const [system, invites, approvals, decisions, invoices, payInv, payDocs, work, ...mine] = await Promise.all([
     // Every System row leads to Automations: no rows for who cannot open it (audit, 25 October 2026).
@@ -423,11 +424,9 @@ async function workRows(v: Viewer, now: Date): Promise<HomeRow[]> {
 
 const sinceIso = (now: Date) => new Date(now.getTime() - DONE_DAYS * 86_400_000).toISOString()
 
-/** "Waiting on Arnaldo Oliveira": time off, reimbursements and extra hours go to the Super Admins (approvers.ts). */
-async function waitingOn(personId: string): Promise<string> {
-  const names = (await loadApprovers(db(), personId)).map(a => a.name)
-  return names.length && names.length <= 2 ? `Waiting on ${names.join(' or ')}` : 'Waiting for a Super Admin'
-}
+/** "Waiting on David Sharpe": whoever the routing names for this kind and person (routing.ts requestDeciders). */
+const waitingText = (ids: readonly string[], dir: Directory): string =>
+  ids.length ? `Waiting on ${orList(ids.map(id => dir.nameOf(id)))}` : 'Waiting for who approves it to be set in Company settings'
 
 type Mine = HomeRow & { at: string }
 type MineIcon = 'requests' | 'clock' | 'client-reports'
@@ -447,7 +446,8 @@ async function myTimeOff(v: Viewer, now: Date): Promise<HomeRow[]> {
   // The read is wide (a cancellation keeps cancel_asked_at once approved); what shows is ownTimeOffShown's.
   const rows = ((data ?? []) as R[]).filter(r => ownTimeOffShown(r, since))
   if (!rows.length) return []
-  const [dir, wait] = await Promise.all([loadDirectory(), waitingOn(v.personId)])
+  const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([v.personId])])
+  const wait = waitingText(deciders('off', v.personId), dir)
   return newestFirst(rows.map(r => {
     const title = `Time off,${r.start_date === r.end_date ? monthDay(r.start_date) : rangeLabel(r.start_date, r.end_date)}`
     const on = (t: string | null) => (t ? monthDay(localDate(t, v.zone)) : '')
@@ -473,7 +473,9 @@ async function myReimbursements(v: Viewer, now: Date): Promise<HomeRow[]> {
     const k = r.report_id != null ? `rr${r.report_id}` : `r${r.id}`
     groups.set(k, [...(groups.get(k) ?? []), r])
   }
-  const wait = rows.some(r => r.state === 'pending') ? await waitingOn(v.personId) : ''
+  const pending = rows.some(r => r.state === 'pending')
+  const [dir, deciders] = pending ? await Promise.all([loadDirectory(), loadRequestDeciders([v.personId])]) : [null, null]
+  const wait = dir && deciders ? waitingText(deciders('rmb', v.personId), dir) : ''
   return newestFirst([...groups].map(([key, list]) => {
     const title = `Reimbursement, ${totalsText(list.map(r => ({ amount: Number(r.amount), currency: r.currency })))}`
     if (list.some(r => r.state === 'pending')) return mineRow(key, title, wait, 'wait', 'client-reports', list[0].asked_at)
@@ -497,8 +499,10 @@ async function myExtraHours(v: Viewer, now: Date): Promise<HomeRow[]> {
   const since = sinceIso(now)
   const rows = ((data ?? []) as R[]).filter(r => r.state === 'pending' || (r.decided_at ?? '') >= since)
   if (!rows.length) return []
-  const [dir, wait] = await Promise.all([loadDirectory(), waitingOn(v.personId)])
+  // Extra hours wait on whoever decides for the person they are for, not who asked.
+  const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders(rows.map(r => r.person_id))])
   return newestFirst(rows.map(r => {
+    const wait = waitingText(deciders('xh', r.person_id), dir)
     const hours = formatDuration(Number(r.hours) * 3600)
     const title = r.person_id === v.personId ? `Extra hours, ${hours}` : `Extra hours for ${dir.nameOf(r.person_id)}, ${hours}`
     if (r.state === 'pending') return mineRow(`x${r.id}`, title, wait, 'wait', 'clock', r.asked_at)

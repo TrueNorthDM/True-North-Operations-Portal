@@ -202,7 +202,7 @@ export const RAIL: readonly RailEntry[] = [
     key: 'requests',
     label: NAV_LABEL['/requests'],
     icon: 'requests',
-    hint: 'Time off, reimbursements and extra hours. Everyone sees their own; Super Admins decide.',
+    hint: 'Time off, reimbursements and extra hours. Everyone sees their own; Company settings says who decides each.',
     groups: [
       {
         label: null,

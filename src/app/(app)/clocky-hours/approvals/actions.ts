@@ -5,8 +5,9 @@
  * requests and approvals", Time Entries.dc.html frames 3K-3, 3L and 3L-2).
  *
  * Time corrections are decided by the person's Team Lead, an Admin or a Super
- * Admin, never by the person (lib/timeclock/scope.ts); time off by Super
- * Admins only. Approving a correction turns it into a normal entry marked
+ * Admin, never by the person (lib/timeclock/scope.ts); time off, extra hours
+ * and reimbursements by whoever the routing names (routing.ts
+ * requestDeciders: Company settings, Who approves what). Approving a correction turns it into a normal entry marked
  * Edited, with the request in its history, unless the time now overlaps an
  * entry or would go past the person's hours allowance (owner, 25 October
  * 2026); denying needs a reason. The requester hears either way.
@@ -25,8 +26,8 @@ import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
-import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
-import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
+import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
@@ -38,7 +39,7 @@ import { holidaysBetween, offDays } from '@/lib/timeclock/time-off'
 import { enqueue, retryJobs } from '@/lib/integrations/outbox'
 import { dayLabel, monthYear } from '@/lib/timeclock/format'
 import { lockedMessage, periodLabel } from '@/lib/timeclock/periods'
-import { canApproveCorrection, canDecideTimeOff, canReopen } from '@/lib/timeclock/scope'
+import { canApproveCorrection, canReopen } from '@/lib/timeclock/scope'
 import type { ApprovalsData, Fail, Result } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 
@@ -68,18 +69,14 @@ async function actor(key: string): Promise<Viewer | Fail> {
 }
 
 /**
- * Who decides a reimbursement (owner, 29 October 2026): Super Admins
- * (rq-decide) and Finance (Company settings > Invoices). Never their own,
- * checked in each action. Extra hours and time off stay with Super Admins.
+ * Time off, its cancellation, extra hours and reimbursements are decided only
+ * by whoever the routing names (owner, 1 November 2026: Company settings >
+ * Invoices, Who approves what; routing.ts requestDeciders), never their own.
+ * Opening Approvals (decider below) is the gate; this is the decision.
  */
-async function reimbursementDecider(): Promise<Viewer | Fail> {
-  if (await getViewAs()) return fail(PREVIEW)
-  const closed = await closedRefusal(fail)
-  if (closed) return closed
-  const access = await writerAccess()
-  if (!access) return fail(SIGN_IN)
-  if (!access.can('rq-decide') && !isFinance(access, await loadInvoiceSettings())) return fail(NO_ACCESS)
-  return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
+async function routedTo(v: Viewer, kind: RequestKind, personId: string): Promise<boolean> {
+  if (personId === v.personId) return false
+  return (await loadRequestDeciders([personId]))(kind, personId).includes(v.personId)
 }
 
 /** The Approvals list of Clocky part 2: waiting for you, with others, decided (approval-queue.ts). */
@@ -168,7 +165,7 @@ export async function decideCorrection(input: { id: number; decision: 'approve' 
 }
 
 /**
- * Approve or deny time off (Super Admins; Requests.dc.html 7C). Approving
+ * Approve or deny time off (whoever the routing names; Requests.dc.html 7C). Approving
  * writes its entries, one per working day that is not a company holiday, and
  * is refused when a day sits in a locked period (audit finding N8); then, by
  * itself, Rippling gets it for payroll and the team calendar shows the person
@@ -176,7 +173,7 @@ export async function decideCorrection(input: { id: number; decision: 'approve' 
  * a reason.
  */
 export async function decideTimeOff(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result> {
-  const v = await actor('ck-timeoff')
+  const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
@@ -184,7 +181,7 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
     const { data, error } = await c.from('tc_absence_requests').select('*').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
     const r = data as { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string } | null
-    if (!r || r.state !== 'pending' || !canDecideTimeOff(v, dir.target(r.person_id))) return fail(NOT_WAITING)
+    if (!r || r.state !== 'pending' || !(await routedTo(v, 'off', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
     if (input.decision === 'deny' && !note) return fail(REASON_REQUIRED)
     const days = offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days
@@ -233,17 +230,17 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
 /**
  * An approved time off its person asked to cancel (7E): approving takes it off
  * the time entries, Rippling and the team calendar; denying keeps it, with the
- * reason. Super Admins, as for the time off itself.
+ * reason. Whoever decides the time off itself (the routing).
  */
 export async function decideTimeOffCancel(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
-  const v = await actor('ck-timeoff')
+  const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
     const dir = await loadDirectory()
     const { data: r, error } = await c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, state, cancel_asked_at, rippling_state, calendar_event_id').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
-    if (!r || r.state !== 'approved' || !r.cancel_asked_at || !canDecideTimeOff(v, dir.target(r.person_id))) return fail(NOT_WAITING)
+    if (!r || r.state !== 'approved' || !r.cancel_asked_at || !(await routedTo(v, 'off', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
     const at = new Date().toISOString()
     const kind = (await loadCatalog()).jobs.get(r.jobcode_id)?.short ?? 'Time off'
@@ -279,7 +276,7 @@ export async function decideTimeOffCancel(input: { id: number; decision: 'approv
   }
 }
 
-/** "Try again" when Rippling refused a time off (7D-x): it goes back in the queue. Super Admins. */
+/** "Try again" when Rippling refused a time off (7D-x): it goes back in the queue. Super Admins: a retry of the connection, not a decision. */
 export async function retryTimeOffRippling(input: { id: number }): Promise<Result<{ toast: string }>> {
   const v = await actor('ck-timeoff')
   if (isFail(v)) return v
@@ -301,19 +298,19 @@ export async function retryTimeOffRippling(input: { id: number }): Promise<Resul
 // ── Reimbursements and extra hours (Requests.dc.html 9C, 10D) ───────────────
 
 /**
- * A reimbursement (9C), Super Admins (rq-decide) and Finance, never their own. Approved:
+ * A reimbursement (9C), by anyone on the Reimbursements list (the routing), never their own. Approved:
  * a contractor's waits for their next invoice, which takes it by itself; an
  * employee's goes on their open reimbursement document (a new one when none is
  * open), and Finance hears it is ready to pay. Denied: with the reason.
  */
 export async function decideReimbursement(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
-  const v = await reimbursementDecider()
+  const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
     const { data: r, error } = await c.from('reimbursements').select('id, person_id, purpose, amount, currency, state').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
-    if (!r || r.state !== 'pending' || r.person_id === v.personId) return fail(NOT_WAITING)
+    if (!r || r.state !== 'pending' || !(await routedTo(v, 'rmb', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
     const at = new Date().toISOString()
     const dir = await loadDirectory()
@@ -381,14 +378,14 @@ async function settleRmbDocument(c: ReturnType<typeof db>, documentId: number, i
 }
 
 /**
- * A request with several receipts (9C, migration 122), Super Admins
- * (rq-decide) and Finance, never their own: every receipt still waiting gets a decision,
+ * A request with several receipts (9C, migration 122), by anyone on the
+ * Reimbursements list (the routing), never their own: every receipt still waiting gets a decision,
  * approved or denied with its reason. Approved ones go where a single one would
  * (the next invoice, or the employee's open document), each on its own line.
  * The person hears it once, with what was approved and why the rest was not.
  */
 export async function decideReimbursementReport(input: { reportId: number; decisions: { id: number; decision: 'approve' | 'deny'; note?: string }[] }): Promise<Result<{ toast: string }>> {
-  const v = await reimbursementDecider()
+  const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
@@ -398,7 +395,7 @@ export async function decideReimbursementReport(input: { reportId: number; decis
     ])
     if (error) return notSaved(error)
     const waiting = (rows ?? []).filter(r => r.state === 'pending')
-    if (!waiting.length || waiting[0].person_id === v.personId) return fail(NOT_WAITING)
+    if (!waiting.length || !(await routedTo(v, 'rmb', waiting[0].person_id))) return fail(NOT_WAITING)
     const personId = waiting[0].person_id
     const chosen = new Map((input.decisions ?? []).map(d => [Number(d.id), d]))
     const approve: typeof waiting = [], deny: { r: (typeof waiting)[number]; note: string }[] = []
@@ -453,15 +450,19 @@ export async function decideReimbursementReport(input: { reportId: number; decis
   }
 }
 
-/** Extra hours (10D), Super Admins (rq-decide), never their own. Approved, the allowance of that week or month grows by them. */
+/**
+ * Extra hours (10D), by whoever the routing names for the person the hours are
+ * for (not who asked), never their own. Approved, the allowance of that week or
+ * month grows by them.
+ */
 export async function decideExtraHours(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
-  const v = await actor('rq-decide')
+  const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
     const { data: r, error } = await c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, client, state').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
-    if (!r || r.state !== 'pending' || r.person_id === v.personId) return fail(NOT_WAITING)
+    if (!r || r.state !== 'pending' || !(await routedTo(v, 'xh', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
     if (input.decision === 'deny' && !note) return fail(REASON_REQUIRED)
     const approve = input.decision === 'approve'

@@ -10,7 +10,8 @@
 import type { Access } from '@/lib/access/resolve'
 import { db, loadCatalog, loadDirectory } from './clocky-context'
 import { initials, localDate, stampLabel } from './format'
-import { loadRoutes } from './pay-terms'
+import { loadRequestDeciders, loadRoutes } from './pay-terms'
+import { orList } from './routing'
 import { addDays } from './periods'
 import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pillOf, stepsOf, type OffCheck, type OffRequest, type OffStep, type OffTone } from './time-off'
 
@@ -55,8 +56,10 @@ export interface TimeOffPage {
   holidays: Record<string, string>
   /** Approved time off of everyone else, for "Who else is off" and the calendar dots. */
   offs: { personId: string; who: string; team: string | null; color: string; start: string; end: string }[]
-  /** Whoever the person reports to, when that is not a Super Admin: they are told too. */
+  /** Whoever the person reports to: they are told too, when they are not who decides. */
   teamLeader: string | null
+  /** Who decides the person's own time off, by name ("David Sharpe"); empty when nobody can yet. */
+  decider: string
 }
 
 const COLS = 'id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, rippling_error, rippling_sent_at, calendar_state, entries_written_at, cancel_asked_at, cancel_reason'
@@ -81,6 +84,9 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
   if (error || offsErr) throw new Error(`Time off could not be read: ${(error ?? offsErr)!.message}`)
   const holidays = holidaysBetween(addDays(today, -400), addDays(today, 400))
   const stamp = (t: string) => stampLabel(t, zone)
+  // Who decides each person's time off (Company settings, Who approves what), by name.
+  const deciders = await loadRequestDeciders([v.personId, ...((data ?? []) as Raw[]).map(r => r.person_id)])
+  const whoDecides = (personId: string) => orList(deciders('off', personId).map(id => dir.nameOf(id)))
   const kindOf = (jobcodeId: number) => { const j = catalog.jobs.get(jobcodeId); return j?.short || j?.path || 'Time off' }
   const rows = ((data ?? []) as Raw[]).map(r => {
     const req: OffRequest = {
@@ -98,11 +104,11 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
     const refused = req.state === 'approved' && req.rippling === 'refused'
     return {
       id: req.id, personId: req.personId, who: req.who, initials: initials(req.who), type: req.type, start: req.start, end: req.end,
-      dates: daysText(req.start, req.end), count: countText(days, seconds), checks: checksOf(req), pill, seconds, waiting: req.state === 'pending', group,
+      dates: daysText(req.start, req.end), count: countText(days, seconds), checks: checksOf(req, whoDecides(req.personId)), pill, seconds, waiting: req.state === 'pending', group,
       cancel: !own ? null : req.state === 'pending' ? 'direct' as const : req.state === 'approved' && upcoming && !req.cancelAskedAt ? 'ask' as const : null,
       drawer: {
         dates: `${daysText(req.start, req.end)}, ${req.end.slice(0, 4)}`, note: req.note,
-        steps: stepsOf(req, { days, seconds, stamp, canRetry: v.isSuperAdmin }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
+        steps: stepsOf(req, { days, seconds, stamp, canRetry: v.isSuperAdmin, who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
         stateLabel: refused ? 'Approved, Rippling refused it' : pill.label, stateTone: refused ? 'bad' as const : pill.tone,
       },
     }
@@ -118,5 +124,6 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
     holidays: Object.fromEntries(holidays),
     offs: (offsRaw ?? []).map(o => ({ personId: o.person_id, who: dir.nameOf(o.person_id), team: teamOf(o.person_id).name, color: teamOf(o.person_id).color, start: o.start_date, end: o.end_date })),
     teamLeader: route?.reportsTo && route.reportsTo !== v.personId ? dir.nameOf(route.reportsTo) : null,
+    decider: whoDecides(v.personId),
   }
 }

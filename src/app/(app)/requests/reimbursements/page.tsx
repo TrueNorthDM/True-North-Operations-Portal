@@ -1,7 +1,7 @@
 // Reimbursements (Clocky part 2, Requests.dc.html 9A, 9B): money spent for
 // work, asked for with the receipt. A contractor's goes on their next invoice;
-// an employee's on a reimbursement document Finance pays. Super Admins decide
-// on Approvals. Super Admins, Admins and Finance also see everyone's, and
+// an employee's on a reimbursement document Finance pays. The Reimbursements
+// list (Company settings, Who approves what) decides on Approvals. Super Admins, Admins and Finance also see everyone's, and
 // every reimbursement document (Documents). The data is
 // lib/timeclock/requests-data.ts.
 

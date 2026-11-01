@@ -3,7 +3,8 @@
  *
  *   13A  Integrations: Rippling and Google Calendar, what each sends and
  *        reads, the errors with Try again
- *   13B  Invoices: numbering, who approves invoices, True North's billing
+ *   13B  Invoices: numbering, who approves what (timesheets, invoices, time
+ *        off and extra hours, reimbursements), Finance, True North's billing
  *        details, payment terms
  *   13C  Reminders: the timesheet reminders, each on or off, and the bell
  *        lines Clocky part 2 adds
@@ -173,6 +174,16 @@ export interface InvoiceSettingsData {
   nextRmb: string
   nextRct: string
   approvers: { name: string; who: string }[]
+  /**
+   * Who approves what (owner, 1 November 2026): the names the card's rules read,
+   * from invoice_settings, never from code. `others`: the invoice approvers
+   * besides the default one.
+   */
+  routing: { defaultApprover: string | null; deputyDirector: string | null; others: string[] }
+  /** Decide reimbursements (migration 146), chosen here; anyone on it decides. */
+  reimbursers: { id: string; name: string }[]
+  /** Active Admins and Super Admins (who can open Approvals), for adding someone to Reimbursements. */
+  approverPeople: { value: string; label: string }[]
   /** Finance (owner, 31 October 2026): who marks invoices and reimbursement documents paid, chosen here. */
   finance: { id: string; name: string }[]
   /** Active people, for adding someone to Finance. */
@@ -184,7 +195,9 @@ export interface InvoiceSettingsData {
 }
 
 export async function loadInvoiceSettingsData(now = new Date()): Promise<InvoiceSettingsData> {
-  const [s, dir] = await Promise.all([loadInvoiceSettings(), loadDirectory()])
+  const [s, dir, levels] = await Promise.all([loadInvoiceSettings(), loadDirectory(),
+    createAdminClient().from('people').select('id, full_name').eq('status', 'active').in('access_level', ['admin', 'super_admin']).order('full_name')])
+  if (levels.error) throw new Error(`Approvers could not be read: ${levels.error.message}`)
   // The count never restarts: only the year in the number changes.
   const y = Number(localDate(now, 'America/New_York').slice(0, 4))
   const lines = (s.billingAddress ?? '').split('\n')
@@ -197,6 +210,9 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
       ...(def ? [{ name: dir.nameOf(def), who: others.length ? `Everyone, except the people who report to ${others.map(o => dir.nameOf(o)).join(' or ')}` : 'Everyone' }] : []),
       ...others.map(o => ({ name: dir.nameOf(o), who: 'The people who report to them' })),
     ],
+    routing: { defaultApprover: def ? dir.nameOf(def) : null, deputyDirector: s.deputyDirector ? dir.nameOf(s.deputyDirector) : null, others: others.map(o => dir.nameOf(o)) },
+    reimbursers: s.reimbursementApprovers.map(id => ({ id, name: dir.nameOf(id) })),
+    approverPeople: (levels.data ?? []).map(p => ({ value: p.id, label: p.full_name })),
     finance: s.finance.map(id => ({ id, name: dir.nameOf(id) })),
     people: [...dir.people.values()].filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: p.name })),
     billing: { name: s.billingName ?? '', address: lines[0] ?? '', country: lines.slice(1).join(', '), email: s.billingEmail ?? '' },

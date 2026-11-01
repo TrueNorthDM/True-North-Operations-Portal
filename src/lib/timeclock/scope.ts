@@ -4,7 +4,7 @@
  * October 2026):
  *
  *   Level        Time entries        Change hours                          Approvals
- *   Super Admin  own + everyone      anything, anyone, themselves too      corrections + time off, everyone
+ *   Super Admin  own + everyone      anything, anyone, themselves too      corrections, everyone
  *   Admin        own + everyone      anything, anyone, themselves too      corrections, everyone
  *   Team Leader  own + own team      anything, own team; their own hours   corrections, own team
  *                                    like a User: shorten only
@@ -16,8 +16,9 @@
  * a User's, decided by another Lead of a team they are on, an Admin or a Super
  * Admin. Admins and Super Admins still change their own hours: the rule is
  * about Team Leaders, and they see and change everyone's. Only Super Admins
- * decide time off and reopen submitted periods; corrections are approved by
- * the person's Team Lead, an Admin or a Super Admin, never by the person.
+ * reopen submitted periods; corrections are approved by the person's Team
+ * Lead, an Admin or a Super Admin, never by the person. Time off is decided by
+ * the routing (routing.ts requestApprover, owner, 1 November 2026), not here.
  *
  * The levels are the access catalogue's starting answers (lib/access/
  * catalogue.ts, module Clocky), so a Super Admin can still move a tick on
@@ -27,7 +28,6 @@
  *   ck-team            see and change the hours of the teams they lead
  *   ck-all             see and change everyone's hours
  *   clocky-approvals   Approvals: decide time corrections in their scope
- *   ck-timeoff         decide time off (Super Admin only)
  *   ck-reopen          approve, return or reopen a sent timesheet (Super Admin only)
  *   ck-whos-working    Who's working, in their scope
  *   ck-clock-out-for   "Clock out for them" (Super Admin only)
@@ -109,10 +109,6 @@ export function canApproveCorrection(v: ScopeViewer, t: ScopeTarget): boolean {
   if (own(v, t) || !v.can(CLOCKY_KEYS.approvals)) return false
   return seesEveryone(v) || leadsTeamOf(v, t)
 }
-
-/** Approve or deny time off: Super Admins, never for themselves. */
-export const canDecideTimeOff = (v: ScopeViewer, t: ScopeTarget): boolean =>
-  !own(v, t) && v.can(CLOCKY_KEYS.timeOff)
 
 /** Reopen a submitted or approved period: Super Admins. */
 export const canReopen = (v: ScopeViewer): boolean => v.can(CLOCKY_KEYS.reopen)

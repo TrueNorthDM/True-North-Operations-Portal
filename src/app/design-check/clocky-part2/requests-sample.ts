@@ -78,6 +78,7 @@ export function timeOffFrame(frame: string): TimeOffPage {
     holidays: HOL,
     offs: PTO.filter(p => p.st === 'appr' && p.who !== me).map(p => ({ personId: p.who, who: p.who, team: TEAM[p.who], color: COLOR[TEAM[p.who]], start: p.a, end: p.b })),
     teamLeader: null,
+    decider: 'Arnaldo Oliveira',
   }
 }
 

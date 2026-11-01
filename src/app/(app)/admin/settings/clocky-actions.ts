@@ -325,6 +325,31 @@ export async function saveFinance(input: { personIds: string[] }): Promise<Done>
   return { ok: true, toast: 'Saved. Finance can mark invoices and reimbursement documents paid.' }
 }
 
+/**
+ * Reimbursements (owner, 1 November 2026, Who approves what): the people who
+ * decide reimbursements, anyone on the list, never their own. Super Admins
+ * only; at least one person, all active Admins or Super Admins (who can open
+ * Approvals). Saved as saveFinance saves Finance.
+ */
+export async function saveReimbursementApprovers(input: { personIds: string[] }): Promise<Done> {
+  if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins choose who approves reimbursements.')
+  const ids = [...new Set((Array.isArray(input?.personIds) ? input.personIds : []).map(String))]
+  if (!ids.length) return no('Keep at least one person: a reimbursement must never wait for nobody.')
+  if (ids.length > 10 || ids.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return no(NOT_SAVED)
+  const c = createAdminClient()
+  const { data: found, error: e1 } = await c.from('people').select('id, status, access_level').in('id', ids)
+  if (e1) { console.error('[settings] reimbursement approvers:', e1.message); return no(NOT_SAVED) }
+  if ((found ?? []).length !== ids.length || (found ?? []).some(p => p.status && p.status !== 'active')) return no('Pick active people from the Directory.')
+  if ((found ?? []).some(p => p.access_level !== 'admin' && p.access_level !== 'super_admin')) return no('Pick Admins or Super Admins: only they open Approvals to decide.')
+  const me = await getRealPerson()
+  const { error } = await c.from('invoice_settings').update({ reimbursement_approvers: ids, updated_by: me?.id ?? null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] reimbursement approvers:', error.message); return no(NOT_SAVED) }
+  refresh()
+  revalidatePath('/clocky-hours/approvals')
+  revalidatePath('/requests/reimbursements')
+  return { ok: true, toast: 'Saved. New and waiting reimbursements go to the people on the list.' }
+}
+
 // ── 13C Reminders ───────────────────────────────────────────────────────────
 
 export async function setReminder(input: { key: ReminderKey; on: boolean }): Promise<Done> {

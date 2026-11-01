@@ -20,10 +20,10 @@ import { historyLines, type AuditRow } from './history'
 import { holidaysBetween, offDays } from './time-off'
 import { reportActivity } from './structure-2026'
 import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
-import { canAddFor, canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
+import { canAddFor, canApproveCorrection, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
-import { loadPayTerms, loadRouteSettings } from './pay-terms'
+import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-terms'
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
 
@@ -239,10 +239,12 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     })
   }
 
+  // Time off is decided by whoever the routing names (Company settings, Who approves what), never the person.
+  const deciders = timeOff.some(r => r.state === 'pending') ? await loadRequestDeciders(timeOff.map(r => r.person_id)) : null
   for (const r of timeOff) {
     const person = dir.people.get(r.person_id)
     const team = person?.teamId ? dir.teams.get(person.teamId) : undefined
-    const decides = canDecideTimeOff(v, dir.target(r.person_id))
+    const decides = r.person_id !== v.personId && !!deciders?.('off', r.person_id).includes(v.personId)
     const type = catalog.jobs.get(r.jobcode_id)?.name ?? 'Time off'
     for (const day of offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days.filter(d => d >= q.from && d <= q.to)) {
       rows.push({

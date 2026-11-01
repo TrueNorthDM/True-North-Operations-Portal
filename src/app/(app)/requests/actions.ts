@@ -4,15 +4,16 @@
  * Requests (Clocky part 2, Requests.dc.html): what people ask for.
  *
  *   Time off (7A, 7B, 7E)    US employees ask for days off, cancel one still
- *                            waiting, or ask a Super Admin to cancel an
- *                            approved one still to come
+ *                            waiting, or ask to cancel an approved one
+ *                            still to come
  *   Extra hours (10C)        before going over the allowance, for themselves or,
  *                            a Team Leader, for someone on their teams
  *   Reimbursement documents  Finance marks one paid (9D); the reimbursement
  *   (9D)                     itself is sent with its receipt by a route
  *                            (reimbursements/new/route.ts)
  *
- * Super Admins decide on Approvals (approvals/actions.ts). Writes are for the
+ * Whoever the routing names decides on Approvals (approvals/actions.ts;
+ * Company settings, Who approves what), and each toast names them. Writes are for the
  * person really signed in (writerAccess), never during a View Stage preview,
  * and go through the privileged client.
  */
@@ -22,9 +23,9 @@ import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { announceTimeOffCancelAsked, announceTimeOffRequested } from '@/lib/timeclock/clocky-notify'
-import { loadApprovers } from '@/lib/timeclock/approvers'
 import { localDate } from '@/lib/timeclock/format'
-import { loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { orList } from '@/lib/timeclock/routing'
 import { daysText, holidaysBetween, offDays } from '@/lib/timeclock/time-off'
 import { allowanceRange } from '@/lib/timeclock/allowance'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
@@ -42,6 +43,12 @@ const isFail = (x: unknown): x is Fail => !!x && typeof x === 'object' && (x as 
 function notSaved(e: unknown): Fail {
   console.error('[requests]', e instanceof Error ? e.message : e)
   return fail(NOT_SAVED)
+}
+/** "David Sharpe", "Arnaldo Oliveira or David Sharpe": who decides this kind of request for this person. */
+async function whoDecides(kind: 'off' | 'xh', personId: string): Promise<{ ids: string[]; names: string }> {
+  const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([personId])])
+  const ids = deciders(kind, personId)
+  return { ids, names: orList(ids.map(id => dir.nameOf(id))) }
 }
 const refresh = () => { revalidatePath('/requests', 'layout'); revalidatePath('/clocky-hours/approvals'); revalidatePath('/clocky-hours') }
 
@@ -78,8 +85,8 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     if (!(hours >= 1 && hours <= 8 && Number.isInteger(hours))) return fail('Hours a day go from 1h to 8h.')
     const { days } = offDays(start, end, holidaysBetween(start, end))
     if (!days.length) return fail('Those days are weekends or company holidays. Nothing to ask for.')
-    const approvers = await loadApprovers(c, v.personId)
-    if (!approvers.length) return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')
+    const who = await whoDecides('off', v.personId)
+    if (!who.ids.length) return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')
     const { data: mine, error: readErr } = await c.from('tc_absence_requests').select('start_date, end_date').eq('person_id', v.personId).in('state', ['pending', 'approved'])
     if (readErr) return notSaved(readErr)
     const clash = (mine ?? []).find(r => r.start_date <= end && r.end_date >= start)
@@ -89,12 +96,12 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
       person_id: v.personId, jobcode_id: code.id, start_date: start, end_date: end, hours_per_day: hours, state: 'pending', reason: note,
     }).select('id').single()
     if (error) return notSaved(error)
-    // Whoever they report to hears of it too, when that is not one of the Super Admins who decide.
-    const leader = route.reportsTo && !approvers.some(a => a.id === route.reportsTo) ? route.reportsTo : null
+    // Whoever they report to hears of it too, when that is not who decides.
+    const leader = route.reportsTo && !who.ids.includes(route.reportsTo) ? route.reportsTo : null
     await announceTimeOffRequested({ id: data.id, person_id: v.personId, start_date: start, end_date: end, kind: code.short || code.path, seconds: days.length * hours * 3600, teamLeader: leader })
     refresh()
     const leaderName = leader ? (await loadDirectory()).nameOf(leader) : null
-    return { ok: true, toast: leaderName ? `Sent. A Super Admin decides; ${leaderName}, your Team Leader, was told.` : 'Sent. A Super Admin decides; you hear back in the bell.' }
+    return { ok: true, toast: leaderName ? `Sent. ${who.names} decides; ${leaderName}, your Team Leader, was told.` : `Sent. ${who.names} decides; you hear back in the bell.` }
   } catch (e) {
     return notSaved(e)
   }
@@ -116,7 +123,7 @@ export async function cancelTimeOff(input: { id: number }): Promise<Result<{ toa
   }
 }
 
-/** 7E: an approved time off still to come; a Super Admin approves the cancellation. The reason is required. */
+/** 7E: an approved time off still to come; whoever decides their time off approves the cancellation. The reason is required. */
 export async function askCancelTimeOff(input: { id: number; reason: string }): Promise<Result<{ toast: string }>> {
   const v = await actor('rq-time-off')
   if (isFail(v)) return v
@@ -134,7 +141,8 @@ export async function askCancelTimeOff(input: { id: number; reason: string }): P
     const kind = (await loadCatalog()).jobs.get(r.jobcode_id)?.short ?? 'Time off'
     await announceTimeOffCancelAsked({ id: r.id, person_id: v.personId, start_date: r.start_date, end_date: r.end_date, kind, reason })
     refresh()
-    return { ok: true, toast: 'Asked. When a Super Admin approves, it comes off Rippling and the team calendar.' }
+    const who = await whoDecides('off', v.personId)
+    return { ok: true, toast: `Asked. When ${who.names || 'who approves time off'} approves, it comes off Rippling and the team calendar.` }
   } catch (e) {
     return notSaved(e)
   }
@@ -145,7 +153,8 @@ export async function askCancelTimeOff(input: { id: number; reason: string }): P
 /**
  * Ask for extra hours before going over the allowance: for themselves, or a
  * Team Leader for someone on the teams they lead. A week or a month, how many
- * hours, the client and why. A Super Admin decides on Approvals.
+ * hours, the client and why. Whoever the routing names for that person (not
+ * who asked) decides on Approvals.
  */
 export async function askExtraHours(input: { personId: string; hours: number; when: string; client: string; why: string }): Promise<Result<{ toast: string }>> {
   const v = await actor('rq-extra-hours')
@@ -172,7 +181,10 @@ export async function askExtraHours(input: { personId: string; hours: number; wh
     const when = period === 'month' ? monthYear(range.from) : `the week of ${dateLabel(range.from).replace(/, \d{4}$/, '')}`
     await announceExtraRequested({ id: data.id, personId: target, askedBy: v.personId, hours: formatDuration(hours * 3600), when, client })
     refresh()
-    return { ok: true, toast: 'Sent. A Super Admin decides on Approvals.' }
+    const who = await whoDecides('xh', target)
+    // A Team Leader who asks for someone they decide for: theirs on Approvals.
+    if (who.ids.includes(v.personId)) return { ok: true, toast: 'Sent. It is yours to decide on Approvals.' }
+    return { ok: true, toast: who.names ? `Sent. ${who.names} decides; you hear back in the bell.` : 'Sent. You hear back in the bell.' }
   } catch (e) {
     return notSaved(e)
   }

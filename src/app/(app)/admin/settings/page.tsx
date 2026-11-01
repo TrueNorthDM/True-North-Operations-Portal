@@ -52,7 +52,7 @@ import { saveRolloutDates, moveToWave, setNorthTimeOpen, setAgendaGoogleOpen } f
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
-import { copyDriveNow, drivePicker, retryDriveCopy, saveDriveFolder, testDrive, removeGoogle, removeGoogleApp, removeRipplingToken, retryIntegrationJob, saveGoogle, saveGoogleApp, saveInvoiceSettings, saveFinance, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
+import { copyDriveNow, drivePicker, retryDriveCopy, saveDriveFolder, testDrive, removeGoogle, removeGoogleApp, removeRipplingToken, retryIntegrationJob, saveGoogle, saveGoogleApp, saveInvoiceSettings, saveFinance, saveReimbursementApprovers, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { anchorOptions } from '@/components/clocky/periods/anchor-options'
 import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
@@ -433,7 +433,7 @@ export default async function SettingsPage() {
       content: (
         <div>
           <SectionHead title="Invoices" desc='How invoices and reimbursement documents are numbered, and what True North puts in the "To" block.' />
-          <InvoiceSettings data={invoiceSettings} canEdit={access.can('cs-invoices-edit')} save={saveInvoiceSettings} saveFinance={saveFinance} />
+          <InvoiceSettings data={invoiceSettings} canEdit={access.can('cs-invoices-edit')} save={saveInvoiceSettings} saveFinance={saveFinance} saveReimbursers={saveReimbursementApprovers} />
         </div>
       ),
     },

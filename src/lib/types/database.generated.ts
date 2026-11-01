@@ -1252,6 +1252,7 @@ export type Database = {
           mileage_rate: number
           payment_days: number
           prefix: string
+          reimbursement_approvers: string[]
           rmb_next_number: number
           rmb_number_year: number | null
           rmb_prefix: string
@@ -1275,6 +1276,7 @@ export type Database = {
           mileage_rate?: number
           payment_days?: number
           prefix?: string
+          reimbursement_approvers?: string[]
           rmb_next_number?: number
           rmb_number_year?: number | null
           rmb_prefix?: string
@@ -1298,6 +1300,7 @@ export type Database = {
           mileage_rate?: number
           payment_days?: number
           prefix?: string
+          reimbursement_approvers?: string[]
           rmb_next_number?: number
           rmb_number_year?: number | null
           rmb_prefix?: string

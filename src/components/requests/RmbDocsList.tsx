@@ -116,7 +116,7 @@ export function RmbDocsList({ data, markRmbPaid, initial, say }: {
         </>
       ) : (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-11 text-center text-[13.5px] text-muted">
-          {data.rows.length ? 'No documents match these filters.' : "No documents yet. They are made when a Super Admin approves an employee's reimbursement."}
+          {data.rows.length ? 'No documents match these filters.' : "No documents yet. They are made when an employee's reimbursement is approved."}
         </div>
       )}
 

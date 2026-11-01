@@ -68,7 +68,7 @@ const NT: Block[] = [
   { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Users and Team Leaders can only shorten their own entries. **Add time** is for Team Leaders (their team), Admins and Super Admins; everyone else sends **Request to add time**. Every change needs a reason and stays in the entry’s history.' },
   { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over.' },
   { t: 'Timesheets and approvals', d: 'Each person submits monthly or every 2 weeks. Hours are approved by the person they report to (Directory, Work tab, **Reports to**); a contractor’s invoice by the invoice approver in Company settings, Invoices; when it is the same person it is one step. A submitted period is locked until it is returned or a Super Admin reopens it.' },
-  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Super Admins decide them. Requests to add time are decided by the person’s Team Lead, an Admin or a Super Admin, never by the person.' },
+  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Who decides is set in Company settings, Invoices, **Who approves what**: time off and extra hours follow the invoice rule (the person’s Reports to when they approve invoices, else the default approver); reimbursements go to the people on the **Reimbursements** list. Nobody decides their own. Requests to add time are decided by the person’s Team Lead, an Admin or a Super Admin, never by the person.' },
   { t: 'Invoices and documents', d: 'A contractor’s invoice is made when they submit their timesheet, from their hours, their rate in Rates & Costs and their approved reimbursements. An employee’s approved reimbursements go on a reimbursement document. Finance pays both outside Rippling payroll and marks them paid.' },
 ]
 
@@ -130,7 +130,7 @@ const QUICK: Audience[] = [
       { t: 'Request extra hours', steps: [
         'Open Requests, **Extra hours**, and press **Ask for extra hours** (the clock panel links there too).',
         'Fill in **How many hours**, **Which week or month**, **Client or project** and **Why**.',
-        'Press **Send request**. A Super Admin decides.',
+        'Press **Send request**. The message names who decides it.',
         'Approved hours are added to your allowance for that week or month.',
       ] },
       { t: 'The hours allowance and the hard limit', steps: [
@@ -150,14 +150,14 @@ const QUICK: Audience[] = [
         'Open Requests, **Time off**, and press **Request time off**.',
         'Pick the **Type** and the **Dates** (one day or a range), full days or hours a day, and add a note if you like.',
         '**Who else is off** shows who on your team is off those days.',
-        'Press **Send request**. A Super Admin decides, and you get a notification.',
+        'Press **Send request**. The message names who decides it (Company settings, **Who approves what**), and you get a notification.',
         'Company holidays are off for everyone and are not asked for. Vacation, Sick, Holiday and Jury duty are never clocked.',
       ] },
       { t: 'Reimbursements', steps: [
         'Open Requests, **Reimbursements**, and press **New request**.',
         'Add a line for each receipt: you can drop several photos and PDFs at once, so one request can hold a whole trip.',
         'For each line: the date, the category, the amount, what it was for, and its photo or PDF.',
-        'Press **Send request** (**Send 3 receipts** when there are three). A Super Admin decides each receipt.',
+        'Press **Send request** (**Send 3 receipts** when there are three). Someone on the **Reimbursements** list decides each receipt; the message names them.',
         'Anyone can ask for a reimbursement. Each receipt gets its own number when it is sent, like **RCT-2026-005**.',
         'Contractors: each approved receipt goes on your next invoice as its own line. Employees: approved receipts go on a reimbursement document that Finance pays, outside Rippling payroll.',
       ] },
@@ -207,12 +207,12 @@ const QUICK: Audience[] = [
       ] },
       { t: 'Extra hours', steps: [
         'Open Requests, **Extra hours**, **Ask for extra hours**, and pick the person under **For**.',
-        'Ask before they go over. A Super Admin decides.',
+        'Ask before they go over. It goes to whoever decides for that person (Company settings, **Who approves what**), not for you.',
         'If someone on your team goes over without approval, your bell tells you.',
       ] },
       { t: 'Never any money', steps: [
         'You see no invoices, rates or amounts: a timesheet in Approvals says **Hours only**.',
-        'Reports show your teams’ hours only. Time off for your team is decided by Super Admins; your bell tells you when someone asks.',
+        'Reports show your teams’ hours only. Time off for your team is decided as Company settings, **Who approves what**, says; your bell tells you when someone who reports to you asks.',
       ] },
     ],
   },
@@ -221,7 +221,7 @@ const QUICK: Audience[] = [
     topics: [
       { t: 'Approvals', steps: [
         'North Time, **Approvals**: **Waiting for you**, **With others** (read only) and **Decided** (the last 90 days).',
-        'Super Admins decide time off, reimbursements (each receipt) and extra hours. Admins and Super Admins decide requests to add time for everyone.',
+        'Time off, its cancellation and extra hours go to the person’s Reports to when they approve invoices, else to the default approver; reimbursements (each receipt) to anyone on the **Reimbursements** list, the first to decide closes it. Only they decide, never their own; everyone else sees whose decision it is under **With others**. Admins and Super Admins decide requests to add time for everyone.',
         'A timesheet goes to the person’s Reports to; the invoice to the approver in Company settings, Invoices.',
         'Hours over the allowance that were not approved before: **Approve** still works, with a **Note to approve (required)**.',
         'A Super Admin can **Reopen** an approved timesheet until its invoice is paid.',
@@ -233,7 +233,7 @@ const QUICK: Audience[] = [
         'Admins and Super Admins who are not Finance see what waits, but do not mark it paid.',
       ] },
       { t: 'RMB documents', steps: [
-        'A reimbursement document (like RMB-2026-001) is made when a Super Admin approves an employee’s reimbursement.',
+        'A reimbursement document (like RMB-2026-001) is made when an employee’s reimbursement is approved.',
         'Find them in Requests, **Reimbursements**, **Documents**, or from Home’s **Reimbursements to pay** (**Open Reimbursements**).',
         'Open one and press **Preview PDF**: the document comes first, then each receipt as its own page.',
         'Finance pays it outside Rippling payroll, then presses **Mark paid**, as for invoices.',
@@ -255,7 +255,7 @@ const QUICK: Audience[] = [
       { t: 'Company settings', steps: [
         'Admin, **Company settings**. Admins read these sections; Super Admins change them.',
         '**Job catalogue**: the 2026 structure beside the TSheets jobs. Add clients, divisions and projects; options are hidden, never deleted. From the switch date a TSheets job can be switched off, never renamed or moved.',
-        '**Invoices**: the prefixes and the next number for invoices (INV), reimbursement documents (RMB) and receipts (RCT) (the count never restarts, only the year changes), who approves invoices, who is **Finance** (the people who mark invoices and reimbursement documents paid: **Add a person to Finance**, **Remove**), True North’s billing details and the payment terms.',
+        '**Invoices**: the prefixes and the next number for invoices (INV), reimbursement documents (RMB) and receipts (RCT) (the count never restarts, only the year changes), **Who approves what** (timesheets, invoices, time off and extra hours, and the **Reimbursements** list: **Add a person who approves reimbursements**, **Remove**), who is **Finance** (the people who mark invoices and reimbursement documents paid: **Add a person to Finance**, **Remove**), True North’s billing details and the payment terms.',
         '**Reminders**: turn each timesheet reminder on or off; **See them in the bell**.',
         '**North Time rollout**: each wave’s start date, who is in each wave (**Move to wave 1** or **2**, **Follow their level**), **Save dates**, and **Clocked in TSheets after switching**: each TSheets entry made after its person’s date waits under **To decide**, where you **Count it** (it becomes a Time entry; past the allowance it asks for a reason) or **Discard it**; **Decided** shows who chose what, and when.',
         '**Timesheet periods**: when pay periods start and who submits how.',
