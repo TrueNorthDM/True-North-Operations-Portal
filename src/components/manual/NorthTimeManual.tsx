@@ -255,7 +255,7 @@ const QUICK: Audience[] = [
       { t: 'Company settings', steps: [
         'Admin, **Company settings**. Admins read these sections; Super Admins change them.',
         '**Job catalogue**: the 2026 structure beside the TSheets jobs. Add clients, divisions and projects; options are hidden, never deleted. From the switch date a TSheets job can be switched off, never renamed or moved.',
-        '**Invoices**: the prefixes and the next number for invoices (INV), reimbursement documents (RMB) and receipts (RCT) (the count never restarts, only the year changes), who approves invoices, True North’s billing details and the payment terms.',
+        '**Invoices**: the prefixes and the next number for invoices (INV), reimbursement documents (RMB) and receipts (RCT) (the count never restarts, only the year changes), who approves invoices, who is **Finance** (the people who mark invoices and reimbursement documents paid: **Add a person to Finance**, **Remove**), True North’s billing details and the payment terms.',
         '**Reminders**: turn each timesheet reminder on or off; **See them in the bell**.',
         '**North Time rollout**: each wave’s start date, who is in each wave (**Move to wave 1** or **2**, **Follow their level**), **Save dates**, and **Clocked in TSheets after switching**: each TSheets entry made after its person’s date waits under **To decide**, where you **Count it** (it becomes a Time entry; past the allowance it asks for a reason) or **Discard it**; **Decided** shows who chose what, and when.',
         '**Timesheet periods**: when pay periods start and who submits how.',

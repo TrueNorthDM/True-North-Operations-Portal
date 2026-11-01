@@ -61,6 +61,8 @@ export function Part2Frame({ frame }: { frame: string }) {
     return <SettingsCheck frame={frame} invoices={{
       prefix: 'INV', nextNumber: '0150', rmbPrefix: 'RMB', rctPrefix: 'RCT', nextInvoice: 'INV-2026-0150', nextRmb: 'RMB-2026-0032', nextRct: 'RCT-2026-0041',
       approvers: [{ name: 'Arnaldo Oliveira', who: 'Everyone, except the people who report to Dave Sharpe' }, { name: 'Dave Sharpe', who: 'The people who report to him, Arnaldo Oliveira included' }],
+      finance: [{ id: 'f1', name: 'Tina Gennette' }, { id: 'f2', name: 'David Sharpe' }],
+      people: [{ value: 'p1', label: 'Arnaldo Oliveira' }],
       billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14, mileageRate: 0.76,
     }} integrations={{
       rippling: { tokenSaved: true, tokenEnd: '9f2c', who: "Token saved by Arnaldo Oliveira, Sep 30, 2026. Nothing is sent until the portal's Rippling calls are written.",

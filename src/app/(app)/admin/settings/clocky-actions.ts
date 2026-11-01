@@ -303,6 +303,28 @@ export async function saveInvoiceSettings(input: { prefix: string; nextNumber: s
   return { ok: true, toast: 'Saved. New invoices use these details; approved ones stay as they were.' }
 }
 
+/**
+ * Finance (owner, 31 October 2026): the people who mark invoices and
+ * reimbursement documents paid, chosen in Company settings, Invoices, instead
+ * of in the code. Super Admins only; at least one person, all active.
+ */
+export async function saveFinance(input: { personIds: string[] }): Promise<Done> {
+  if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins choose who is Finance.')
+  const ids = [...new Set((Array.isArray(input?.personIds) ? input.personIds : []).map(String))]
+  if (!ids.length) return no('Keep at least one person in Finance: nobody else can mark invoices paid.')
+  if (ids.length > 10 || ids.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return no(NOT_SAVED)
+  const c = createAdminClient()
+  const { data: found, error: e1 } = await c.from('people').select('id, status').in('id', ids)
+  if (e1) { console.error('[settings] finance:', e1.message); return no(NOT_SAVED) }
+  if ((found ?? []).length !== ids.length || (found ?? []).some(p => p.status && p.status !== 'active')) return no('Pick active people from the Directory.')
+  const me = await getRealPerson()
+  const { error } = await c.from('invoice_settings').update({ finance: ids, updated_by: me?.id ?? null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] finance:', error.message); return no(NOT_SAVED) }
+  refresh()
+  revalidatePath('/clocky-hours/invoices')
+  return { ok: true, toast: 'Saved. Finance can mark invoices and reimbursement documents paid.' }
+}
+
 // ── 13C Reminders ───────────────────────────────────────────────────────────
 
 export async function setReminder(input: { key: ReminderKey; on: boolean }): Promise<Done> {

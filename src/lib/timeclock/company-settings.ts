@@ -173,6 +173,10 @@ export interface InvoiceSettingsData {
   nextRmb: string
   nextRct: string
   approvers: { name: string; who: string }[]
+  /** Finance (owner, 31 October 2026): who marks invoices and reimbursement documents paid, chosen here. */
+  finance: { id: string; name: string }[]
+  /** Active people, for adding someone to Finance. */
+  people: { value: string; label: string }[]
   billing: { name: string; address: string; country: string; email: string }
   paymentDays: number
   /** Dollars a mile for a Mileage reimbursement. */
@@ -193,6 +197,8 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
       ...(def ? [{ name: dir.nameOf(def), who: others.length ? `Everyone, except the people who report to ${others.map(o => dir.nameOf(o)).join(' or ')}` : 'Everyone' }] : []),
       ...others.map(o => ({ name: dir.nameOf(o), who: 'The people who report to them' })),
     ],
+    finance: s.finance.map(id => ({ id, name: dir.nameOf(id) })),
+    people: [...dir.people.values()].filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: p.name })),
     billing: { name: s.billingName ?? '', address: lines[0] ?? '', country: lines.slice(1).join(', '), email: s.billingEmail ?? '' },
     paymentDays: s.paymentDays,
     mileageRate: s.mileageRate,

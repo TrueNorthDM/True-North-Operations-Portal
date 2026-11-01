@@ -32,6 +32,7 @@ import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { DateField } from '@/components/ui/DateField'
+import { Select } from '@/components/ui/Select'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 import { PILL } from '@/components/ui/Pill'
 
@@ -271,7 +272,50 @@ function SecretDialog({ title, hint, placeholder, multiline, canRemove, busy, on
 
 // ── 13B ─────────────────────────────────────────────────────────────────────
 
-export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done> }) {
+/**
+ * Finance (owner, 31 October 2026): who marks invoices and reimbursement
+ * documents paid. Each change saves at once; at least one person stays.
+ */
+function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { personIds: string[] }) => Promise<Done> }) {
+  const router = useRouter()
+  const [toast, say] = useToast()
+  const [busy, setBusy] = useState(false)
+  const ids = data.finance.map(f => f.id)
+  const change = async (next: string[]) => {
+    setBusy(true)
+    try {
+      const r = await save({ personIds: next })
+      say(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) router.refresh()
+    } catch (e) {
+      say({ text: failText(e), error: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const options = data.people.filter(p => !ids.includes(p.value))
+  return (
+    <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
+      <span className={LABEL}>Finance: who marks invoices paid</span>
+      {data.finance.length === 0 && <span className="text-[13px] text-[#c8323d]">Nobody yet: no one can mark invoices or reimbursement documents paid.</span>}
+      {data.finance.map((f, i) => (
+        <div key={f.id} className={`flex justify-between items-center gap-3 text-[13px] ${i < data.finance.length - 1 ? 'border-b border-[var(--row-rule)] pb-[7px]' : ''}`}>
+          <span className="text-tn-ink font-bold">{f.name}</span>
+          {canEdit && data.finance.length > 1 && (
+            <button type="button" disabled={busy} onClick={() => void change(ids.filter(x => x !== f.id))} className={BTN.link}>Remove</button>
+          )}
+        </div>
+      ))}
+      {canEdit && options.length > 0 && (
+        <Select value="" onChange={v => v && void change([...ids, v])} options={options} placeholder="Add a person to Finance" searchable fullWidth ariaLabel="Add a person to Finance" disabled={busy} className={INPUT} />
+      )}
+      <span className="text-[12px] text-muted leading-[1.5]">Finance pays approved invoices and reimbursement documents outside Rippling and marks them paid. Admins and Super Admins who are not Finance see what waits, but do not mark it paid.</span>
+      <Toast toast={toast} />
+    </div>
+  )
+}
+
+export function InvoiceSettings({ data, canEdit, save, saveFinance }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done>; saveFinance: (i: { personIds: string[] }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -314,6 +358,7 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
             ))}
             <span className="text-[12px] text-muted leading-[1.5]">Hours are approved by the person each one reports to. When the same person approves both, it is one step. The Deputy Director&apos;s own timesheet is recorded without approval. Team Leaders never see invoices.</span>
           </div>
+          <FinancePeople data={data} canEdit={canEdit} save={saveFinance} />
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-1">True North&apos;s billing details</span>
           {field('billingName', 'Billing name')}{field('address', 'Address')}{field('country', 'Country')}{field('email', 'Billing email')}
           <div className="grid grid-cols-2 gap-3">
