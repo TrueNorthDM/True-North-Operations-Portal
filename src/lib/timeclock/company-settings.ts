@@ -22,7 +22,6 @@ import { dateLabel, dayLabel, localDate, stampLabel } from './format'
 import { loadConnections } from '@/lib/integrations/connections'
 import { loadInvoiceSettings } from './pay-terms'
 import { portalOrigin } from './clocky-notify'
-import { formToken } from '@/lib/invoice-form/data'
 import { docNumber, seqText } from './doc-number'
 import { REMINDERS, type ReminderKey } from './reminder-kinds'
 
@@ -199,13 +198,13 @@ export interface InvoiceSettingsData {
    * migration made one) and the deliverable rates for everyone. Only for the
    * people who open Company settings > Invoices.
    */
-  form: { link: string | null; pageRate: number; assetRate: number }
+  form: { link: string; pageRate: number; assetRate: number }
 }
 
 export async function loadInvoiceSettingsData(now = new Date()): Promise<InvoiceSettingsData> {
-  const [s, dir, levels, token, origin] = await Promise.all([loadInvoiceSettings(), loadDirectory(),
+  const [s, dir, levels, origin] = await Promise.all([loadInvoiceSettings(), loadDirectory(),
     createAdminClient().from('people').select('id, full_name').eq('status', 'active').in('access_level', ['admin', 'super_admin']).order('full_name'),
-    formToken(), portalOrigin()])
+    portalOrigin()])
   if (levels.error) throw new Error(`Approvers could not be read: ${levels.error.message}`)
   // The count never restarts: only the year in the number changes.
   const y = Number(localDate(now, 'America/New_York').slice(0, 4))
@@ -227,7 +226,7 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
     billing: { name: s.billingName ?? '', address: lines[0] ?? '', country: lines.slice(1).join(', '), email: s.billingEmail ?? '' },
     paymentDays: s.paymentDays,
     mileageRate: s.mileageRate,
-    form: { link: token ? `${origin}/send/${token}` : null, pageRate: s.pageRate, assetRate: s.assetRate },
+    form: { link: `${origin}/send`, pageRate: s.pageRate, assetRate: s.assetRate },
   }
 }
 

@@ -50,7 +50,7 @@ describe('every page asks the access rule', () => {
     'app/(app)/profile/page.tsx': "sends the person to their own page in the Directory, which checks",
     'app/meet/[slug]/page.tsx': 'the public booking page: open to anyone while the link is on',
     'app/meet/confirm/[token]/page.tsx': 'the public booking page: the link from the confirmation email',
-    'app/send/[token]/page.tsx': 'the public invoice form: open to anyone with the link while North Time is open',
+    'app/send/page.tsx': 'the public invoice form: open to anyone with the link while North Time is open',
     'app/legal/privacy/page.tsx': 'the public privacy policy (static, for Google\'s review)',
     'app/legal/terms/page.tsx': 'the public terms of use (static, for Google\'s review)',
     'app/api/cron/drive-print/[kind]/[id]/page.tsx': 'the Drive copy\'s print page: one document, only with the server\'s signed two-minute pass (lib/drive/print-token.ts)',
@@ -76,7 +76,7 @@ describe('every file route asks the access rule', () => {
     'app/auth/no-access/route.ts': 'signs out a refused login',
     'app/api/monday/webhook/[secret]/route.ts': 'Monday, checked by the secret in its address',
     'app/design-check/project-history-export/csv/route.ts': '404 in production',
-    'app/send/[token]/submit/route.ts': 'the public invoice form: checks the link, the code-proved email and every field itself',
+    'app/send/submit/route.ts': 'the public invoice form: checks the code-proved email and every field itself',
   }
   it('has a guard, the cron secret, or is listed as open', () => {
     const missing = files

@@ -37,7 +37,6 @@ import { DateField } from '@/components/ui/DateField'
 import { Select } from '@/components/ui/Select'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 import { PILL, Pill } from '@/components/ui/Pill'
-import { useConfirm } from '@/components/ui/useConfirm'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
@@ -340,16 +339,14 @@ function FinancePeople({ data, canEdit, save }: { data: InvoiceSettingsData; can
 
 /**
  * "Send an invoice" (migration 147, forms mockup v3 section 1): the invoice
- * form's one public link, with Copy and Make a new link (the old address stops
- * at once), and the deliverable rates for everyone. A person's own rates are
+ * form's one public link (the same for good), with Copy, and the deliverable rates for everyone. A person's own rates are
  * in Rates & Costs.
  */
-function SendInvoiceCard({ data, canEdit, saveRates, newLink }: { data: InvoiceSettingsData; canEdit: boolean; saveRates: (i: { pageRate: string; assetRate: string }) => Promise<Done>; newLink: () => Promise<Done> }) {
+function SendInvoiceCard({ data, canEdit, saveRates }: { data: InvoiceSettingsData; canEdit: boolean; saveRates: (i: { pageRate: string; assetRate: string }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
   const [rates, setRates] = useState({ pageRate: data.form.pageRate.toFixed(2), assetRate: data.form.assetRate.toFixed(2) })
-  const [dialog, confirm] = useConfirm()
   const run = async (go: () => Promise<Done>) => {
     setBusy(true)
     try {
@@ -363,11 +360,7 @@ function SendInvoiceCard({ data, canEdit, saveRates, newLink }: { data: InvoiceS
     }
   }
   const copy = async () => {
-    if (!data.form.link) return
     try { await navigator.clipboard.writeText(data.form.link); say({ text: 'Copied the link.' }) } catch { say({ text: 'Could not copy. Select the link and copy it.', error: true }) }
-  }
-  const remake = async () => {
-    if (await confirm({ title: 'Make a new link?', body: 'The old address stops working at once. Everyone who sends invoices needs the new one.', action: 'Make a new link', danger: true })) await run(newLink)
   }
   const rate = (k: 'pageRate' | 'assetRate', label: string) => (
     <label className="flex items-center justify-between gap-3 border-t border-[var(--row-rule)] pt-2.5 text-[13px]">
@@ -381,19 +374,11 @@ function SendInvoiceCard({ data, canEdit, saveRates, newLink }: { data: InvoiceS
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,.7fr)] gap-4 items-start">
       <div className={`${CARD} px-[22px] py-5 flex flex-col gap-2.5`}>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink inline-flex items-center gap-2">Send an invoice<Pill tone="blue" text="New" /></span>
-        {data.form.link ? (
-          <div className="flex gap-2 items-center flex-wrap">
-            <code className="flex-1 min-w-[200px] bg-subtle rounded-[10px] px-3 py-[9px] font-mono text-[12px] text-tn-ink break-all">{data.form.link}</code>
-            <button type="button" onClick={() => void copy()} className={BTN.smallWhite}>Copy</button>
-            {canEdit && <button type="button" disabled={busy} onClick={() => void remake()} className={`${BTN.smallWhite} disabled:opacity-50`}>Make a new link</button>}
-          </div>
-        ) : (
-          <div className="flex gap-2 items-center flex-wrap">
-            <span className="text-[13px] text-muted">No link yet.</span>
-            {canEdit && <button type="button" disabled={busy} onClick={() => void run(newLink)} className={`${BTN.smallWhite} disabled:opacity-50`}>Make a link</button>}
-          </div>
-        )}
-        <span className="text-[12px] text-muted leading-[1.5]">Anyone with the link can open the form, so share it only with the people who send invoices. They confirm their email with a code. &ldquo;Make a new link&rdquo; stops the old address at once.</span>
+        <div className="flex gap-2 items-center flex-wrap">
+          <code className="flex-1 min-w-[200px] bg-subtle rounded-[10px] px-3 py-[9px] font-mono text-[12px] text-tn-ink break-all">{data.form.link}</code>
+          <button type="button" onClick={() => void copy()} className={BTN.smallWhite}>Copy</button>
+        </div>
+        <span className="text-[12px] text-muted leading-[1.5]">Anyone with the link can open the form, so share it only with the people who send invoices. They confirm their email with a code before they can send anything.</span>
       </div>
       <div className={`${CARD} px-[22px] py-5 flex flex-col gap-2.5`}>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Deliverable rates</span>
@@ -402,7 +387,6 @@ function SendInvoiceCard({ data, canEdit, saveRates, newLink }: { data: InvoiceS
         <span className="text-[12px] text-muted leading-[1.5]">For everyone. A person with their own rates has them in Rates &amp; Costs.</span>
         {canEdit && <div className="flex justify-end"><button type="button" disabled={busy} onClick={() => void run(() => saveRates(rates))} className={`${BTN.navy} disabled:opacity-50`}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save rates</button></div>}
       </div>
-      {dialog}
       <Toast toast={toast} />
     </div>
   )
@@ -480,7 +464,7 @@ function WhoApproves({ data, canEdit, saveReimbursers }: { data: InvoiceSettings
   )
 }
 
-export function InvoiceSettings({ data, canEdit, save, saveFinance, saveReimbursers, saveFormRates, newFormLink }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done>; saveFinance: (i: { personIds: string[] }) => Promise<Done>; saveReimbursers: (i: { personIds: string[] }) => Promise<Done>; saveFormRates?: (i: { pageRate: string; assetRate: string }) => Promise<Done>; newFormLink?: () => Promise<Done> }) {
+export function InvoiceSettings({ data, canEdit, save, saveFinance, saveReimbursers, saveFormRates }: { data: InvoiceSettingsData; canEdit: boolean; save: (i: { prefix: string; nextNumber: string; rmbPrefix: string; rctPrefix: string; billingName: string; address: string; country: string; email: string; paymentDays: string; mileageRate: string }) => Promise<Done>; saveFinance: (i: { personIds: string[] }) => Promise<Done>; saveReimbursers: (i: { personIds: string[] }) => Promise<Done>; saveFormRates?: (i: { pageRate: string; assetRate: string }) => Promise<Done> }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -512,7 +496,7 @@ export function InvoiceSettings({ data, canEdit, save, saveFinance, saveReimburs
       {/* Who approves what, then Finance, on their own at the top of the tab (owner, 1 November 2026, as in the mockup). */}
       <WhoApproves data={data} canEdit={canEdit} saveReimbursers={saveReimbursers} />
       <FinancePeople data={data} canEdit={canEdit} save={saveFinance} />
-      {saveFormRates && newFormLink && <SendInvoiceCard data={data} canEdit={canEdit} saveRates={saveFormRates} newLink={newFormLink} />}
+      {saveFormRates && <SendInvoiceCard data={data} canEdit={canEdit} saveRates={saveFormRates} />}
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-4 items-start">
         <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`}>
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>

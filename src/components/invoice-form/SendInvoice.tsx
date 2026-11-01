@@ -53,11 +53,11 @@ export interface SendContext {
 
 type Fail = { ok: false; error: string }
 export interface SendApi {
-  requestCode: (i: { token: string; email: string }) => Promise<{ ok: true; email: string; waitSeconds: number } | Fail>
-  checkCode: (i: { token: string; email: string; code: string }) => Promise<{ ok: true } | Fail>
-  forgetDevice: (i: { token: string }) => Promise<{ ok: true } | Fail>
-  checkLine: (i: { token: string; name: string; kind: string; others: { name: string; kind: string }[]; month: string }) => Promise<{ ok: true; name: string } | Fail>
-  checkMonth: (i: { token: string; month: string }) => Promise<{ ok: true; again: string | null } | Fail>
+  requestCode: (i: { email: string }) => Promise<{ ok: true; email: string; waitSeconds: number } | Fail>
+  checkCode: (i: { email: string; code: string }) => Promise<{ ok: true } | Fail>
+  forgetDevice: () => Promise<{ ok: true } | Fail>
+  checkLine: (i: { name: string; kind: string; others: { name: string; kind: string }[]; month: string }) => Promise<{ ok: true; name: string } | Fail>
+  checkMonth: (i: { month: string }) => Promise<{ ok: true; again: string | null } | Fail>
 }
 
 const TRY = 'Something went wrong. Check the connection and try again.'
@@ -110,8 +110,8 @@ const Err = ({ text }: { text: string | null }) => (text ? <div role="alert" cla
 
 // ── Who are you? / Check your email ────────────────────────────────────────
 
-function WhoAreYou({ token, api, kind, setKind, name, setName, onSent }: {
-  token: string; api: SendApi; kind: FormKind; setKind: (k: FormKind) => void; name: string; setName: (s: string) => void; onSent: (email: string) => void
+function WhoAreYou({ api, kind, setKind, name, setName, onSent }: {
+  api: SendApi; kind: FormKind; setKind: (k: FormKind) => void; name: string; setName: (s: string) => void; onSent: (email: string) => void
 }) {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -120,7 +120,7 @@ function WhoAreYou({ token, api, kind, setKind, name, setName, onSent }: {
   const send = async () => {
     setBusy(true); setError(null)
     try {
-      const r = await api.requestCode({ token, email })
+      const r = await api.requestCode({ email })
       if (r.ok) onSent(r.email)
       else setError(r.error)
     } catch { setError(TRY) } finally { setBusy(false) }
@@ -140,7 +140,7 @@ function WhoAreYou({ token, api, kind, setKind, name, setName, onSent }: {
   )
 }
 
-function CheckEmail({ token, api, email, onBack, onDone }: { token: string; api: SendApi; email: string; onBack: () => void; onDone: () => void }) {
+function CheckEmail({ api, email, onBack, onDone }: { api: SendApi; email: string; onBack: () => void; onDone: () => void }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -154,7 +154,7 @@ function CheckEmail({ token, api, email, onBack, onDone }: { token: string; api:
   const go = async () => {
     setBusy(true); setError(null); setNote(null)
     try {
-      const r = await api.checkCode({ token, email, code })
+      const r = await api.checkCode({ email, code })
       if (r.ok) onDone()
       else setError(r.error)
     } catch { setError(TRY) } finally { setBusy(false) }
@@ -162,7 +162,7 @@ function CheckEmail({ token, api, email, onBack, onDone }: { token: string; api:
   const again = async () => {
     setError(null); setNote(null)
     try {
-      const r = await api.requestCode({ token, email })
+      const r = await api.requestCode({ email })
       if (r.ok) { setWait(r.waitSeconds); setNote('A new code is on its way. The one before no longer works.') }
       else setError(r.error)
     } catch { setError(TRY) }
@@ -304,8 +304,8 @@ function ReceiptEditor({ r, n, ctx, onCancel, onSave }: { r: Receipt; n: number;
   )
 }
 
-function InvoicePage({ token, api, ctx, kind, setKind, startName, onSent }: {
-  token: string; api: SendApi; ctx: SendContext; kind: FormKind; setKind: (k: FormKind) => void; startName: string; onSent: (number: string | null, email: string) => void
+function InvoicePage({ api, ctx, kind, setKind, startName, onSent }: {
+  api: SendApi; ctx: SendContext; kind: FormKind; setKind: (k: FormKind) => void; startName: string; onSent: (number: string | null, email: string) => void
 }) {
   const router = useRouter()
   const found = ctx.found
@@ -336,9 +336,9 @@ function InvoicePage({ token, api, ctx, kind, setKind, startName, onSent }: {
   // The month picked: free, theirs to send again (it was returned), or already sent.
   useEffect(() => {
     let live = true
-    api.checkMonth({ token, month }).then(r => { if (live) setMonthNote(r.ok ? (r.again ? { again: r.again } : null) : { error: r.error }) }).catch(() => { if (live) setMonthNote(null) })
+    api.checkMonth({ month }).then(r => { if (live) setMonthNote(r.ok ? (r.again ? { again: r.again } : null) : { error: r.error }) }).catch(() => { if (live) setMonthNote(null) })
     return () => { live = false }
-  }, [api, token, month])
+  }, [api, month])
 
   const items = lines.map(l => ({ name: l.name, kind: l.kind }))
   const rmb = rmbOn === 'yes' ? receipts : []
@@ -358,7 +358,7 @@ function InvoicePage({ token, api, ctx, kind, setKind, startName, onSent }: {
     if (name.length < 2) return
     setAdding(true); setLineError(null)
     try {
-      const r = await api.checkLine({ token, name, kind: itemKind, others: items, month })
+      const r = await api.checkLine({ name, kind: itemKind, others: items, month })
       if (r.ok) { setLines(xs => [...xs, { key: nextKey++, name: r.name, kind: itemKind }]); setItemDraft('') }
       else setLineError(r.error)
     } catch { setLineError(TRY) } finally { setAdding(false) }
@@ -369,7 +369,7 @@ function InvoicePage({ token, api, ctx, kind, setKind, startName, onSent }: {
     setPdfError(null); setPdf(f)
   }
   const startOver = async () => {
-    try { await api.forgetDevice({ token }) } finally { router.refresh() }
+    try { await api.forgetDevice() } finally { router.refresh() }
   }
 
   const send = async () => {
@@ -387,7 +387,7 @@ function InvoicePage({ token, api, ctx, kind, setKind, startName, onSent }: {
       })),
     }))
     try {
-      const res = await fetch(`/send/${encodeURIComponent(token)}/submit`, { method: 'POST', body: f })
+      const res = await fetch('/send/submit', { method: 'POST', body: f })
       const body = await res.json().catch(() => null) as { ok: boolean; error?: string; number?: string | null; email?: string } | null
       if (body?.ok) onSent(body.number ?? null, body.email ?? ctx.email)
       else setError(body?.error ?? 'Not sent. Try again in a moment.')
@@ -557,14 +557,14 @@ function ThankYou({ number, email }: { number: string | null; email: string }) {
   )
 }
 
-export function SendInvoice({ token, ctx, api }: { token: string; ctx: SendContext | null; api: SendApi }) {
+export function SendInvoice({ ctx, api }: { ctx: SendContext | null; api: SendApi }) {
   const router = useRouter()
   const [kind, setKind] = useState<FormKind>('fixed')
   const [name, setName] = useState('')
   const [codeFor, setCodeFor] = useState<string | null>(null)
   const [sent, setSent] = useState<{ number: string | null; email: string } | null>(null)
   if (sent) return <ThankYou number={sent.number} email={sent.email} />
-  if (ctx) return <InvoicePage token={token} api={api} ctx={ctx} kind={kind} setKind={setKind} startName={name} onSent={(number, email) => { setSent({ number, email }); window.scrollTo({ top: 0 }) }} />
-  if (codeFor) return <CheckEmail token={token} api={api} email={codeFor} onBack={() => setCodeFor(null)} onDone={() => { setCodeFor(null); router.refresh() }} />
-  return <WhoAreYou token={token} api={api} kind={kind} setKind={setKind} name={name} setName={setName} onSent={setCodeFor} />
+  if (ctx) return <InvoicePage api={api} ctx={ctx} kind={kind} setKind={setKind} startName={name} onSent={(number, email) => { setSent({ number, email }); window.scrollTo({ top: 0 }) }} />
+  if (codeFor) return <CheckEmail api={api} email={codeFor} onBack={() => setCodeFor(null)} onDone={() => { setCodeFor(null); router.refresh() }} />
+  return <WhoAreYou api={api} kind={kind} setKind={setKind} name={name} setName={setName} onSent={setCodeFor} />
 }

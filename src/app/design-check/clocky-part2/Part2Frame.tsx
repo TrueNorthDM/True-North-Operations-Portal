@@ -66,7 +66,7 @@ export function Part2Frame({ frame }: { frame: string }) {
       approverPeople: [{ value: 'p1', label: 'Arnaldo Oliveira' }, { value: 'd1', label: 'David Sharpe' }],
       finance: [{ id: 'f1', name: 'Tina Gennette' }, { id: 'f2', name: 'David Sharpe' }],
       people: [{ value: 'p1', label: 'Arnaldo Oliveira' }],
-      billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14, mileageRate: 0.76, form: { link: 'https://truenorthportal.online/send/sample', pageRate: 30, assetRate: 5 },
+      billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14, mileageRate: 0.76, form: { link: 'https://truenorthportal.online/send', pageRate: 30, assetRate: 5 },
     }} integrations={{
       rippling: { tokenSaved: true, tokenEnd: '9f2c', who: "Token saved by Arnaldo Oliveira, Sep 30, 2026. Nothing is sent until the portal's Rippling calls are written.",
         facts: [{ k: 'Sends', v: 'Approved PTO, and approved employee hours by day' }, { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' }, { k: 'Waiting to send', v: '2 items, sent by themselves once it works' }],

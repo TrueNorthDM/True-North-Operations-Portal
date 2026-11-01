@@ -1,13 +1,12 @@
 /**
- * POST /send/<token>/submit: "Send invoice" on the public invoice form
+ * POST /send/submit: "Send invoice" on the public invoice form
  * (owner, 1 November 2026, forms mockup v3). A route and not a server action,
  * because receipts and their own PDF are bigger than an action takes. One
  * multipart form: `data` (the fields, as JSON), receipt_<n> for each receipt,
  * own_pdf for their own invoice.
  *
- * No session on purpose: North Time is open (the form follows its lock), the
- * token is the link's, and the email was proved with a code (the signed
- * cookie). Every field is checked again here (lib/invoice-form/rules.ts), the
+ * No session on purpose: North Time is open (the form follows its lock), and
+ * the email was proved with a code (the signed cookie). Every field is checked again here (lib/invoice-form/rules.ts), the
  * rates and the amounts are worked out here, never taken from the page.
  *
  *   In the Directory   the invoice is made at once, numbered INV, routed by
@@ -31,7 +30,7 @@ import { periodLabel } from '@/lib/timeclock/periods'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { provedEmail } from '@/lib/invoice-form/device'
 import {
-  companyRates, findSender, formToday, mailSender, monthFor, ownRates, sentBefore, storeSubmission, tellApprover, tokenOk, writeBackAddress, writeFormInvoice,
+  companyRates, findSender, formToday, mailSender, monthFor, ownRates, sentBefore, storeSubmission, tellApprover, writeBackAddress, writeFormInvoice,
   type StoredFile,
 } from '@/lib/invoice-form/data'
 import {
@@ -46,10 +45,8 @@ const no = (error: string, status = 400) => NextResponse.json({ ok: false, error
 const TRY_AGAIN = 'Not sent. Try again in a moment.'
 const COUNTRIES = new Set(allCountries().map(c => c.code))
 
-export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params
+export async function POST(request: Request) {
   if (!(await northTimeOpen())) return no('The invoice form is not open yet.', 409)
-  if (!(await tokenOk(token))) return no('This link does not work any more. Ask True North for the new one.', 404)
   const email = await provedEmail()
   if (!email) return no('Confirm your email first: your device no longer remembers it.', 401)
 

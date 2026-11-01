@@ -9,7 +9,6 @@
  * are written, never sent back; their changes are logged without the value.
  */
 
-import { randomBytes } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { allowedTo } from '@/lib/access/resolve'
 import { getRealPerson } from '@/lib/auth/session'
@@ -367,18 +366,6 @@ export async function saveFormRates(input: { pageRate: string; assetRate: string
   await logChange('invoice_form_rates', 'saved')
   refresh()
   return { ok: true, toast: 'Saved. New invoices from the form use these rates; sent ones keep theirs.' }
-}
-
-/** "Make a new link" (decision A): a new token in the invoice form's address; the old one stops at once. Super Admins only. */
-export async function newFormLink(): Promise<Done> {
-  if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins change the invoice settings.')
-  const token = randomBytes(32).toString('hex')
-  const me = await getRealPerson()
-  const { error } = await createAdminClient().from('invoice_settings').update({ form_token: token, updated_by: me?.id ?? null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
-  if (error) { console.error('[settings] form link:', error.message); return no(NOT_SAVED) }
-  await logChange('invoice_form_link', 'replaced')
-  refresh()
-  return { ok: true, toast: 'New link made. The old address stopped working; share the new one.' }
 }
 
 // ── 13C Reminders ───────────────────────────────────────────────────────────

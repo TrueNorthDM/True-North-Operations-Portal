@@ -31,8 +31,8 @@ import { switchOverAction } from '@/lib/switch-over'
 //   /legal: the privacy policy and terms, static pages Google's review of the
 //           portal's Google sign-in reads without a login.
 //   /send: the invoice form (Company settings > Invoices), for people with no
-//          portal login; its page, actions and route check the link's token,
-//          the code-proved email and their own limits (app/send/actions.ts).
+//          portal login; its page, actions and route check the code-proved
+//          email and their own limits (app/send/actions.ts).
 const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron', '/meet', '/legal', '/send']
 
 

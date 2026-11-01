@@ -1,6 +1,6 @@
 /**
  * The invoice form on the server (owner, 1 November 2026, forms mockup v3):
- * the link's token, who a proved email is in the Directory, the items sent
+ * who a proved email is in the Directory, the items sent
  * before, the month already sent, and the invoice a send makes. It is a
  * normal invoice in the invoices tables ('fixed_no_timesheet' with a
  * `source`, migration 147), so Approvals, Mark paid, the PDF, the Drive
@@ -16,7 +16,6 @@
  * actions, decide who may cause each of these.
  */
 
-import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
 import type { Json } from '@/lib/types/database.generated'
 import { sendEmail } from '@/lib/email/resend'
@@ -39,25 +38,6 @@ const c = () => createAdminClient()
 /** True North's own zone: the day an invoice is issued, the "today" of the form. */
 export const FORM_ZONE = 'America/New_York'
 export const formToday = (now = new Date()) => localDate(now, FORM_ZONE)
-
-// ── The link ───────────────────────────────────────────────────────────────
-
-/** The link's token as saved (null when there is none yet, or it cannot be read). */
-export async function formToken(): Promise<string | null> {
-  const { data, error } = await c().from('invoice_settings').select('form_token').eq('singleton_id', 1).maybeSingle()
-  if (error) { console.error('[invoice form] token:', error.message); return null }
-  return (data?.form_token as string | null) ?? null
-}
-
-/** Whether a token from an address is the link's, compared in constant time. */
-export async function tokenOk(token: unknown): Promise<boolean> {
-  const t = String(token ?? '')
-  if (!/^[A-Za-z0-9_-]{32,128}$/.test(t)) return false
-  const saved = await formToken()
-  if (!saved) return false
-  const a = Buffer.from(t), b = Buffer.from(saved)
-  return a.length === b.length && timingSafeEqual(a, b)
-}
 
 /** The company's deliverable rates. */
 export const companyRates = (s: Pick<InvoiceSettings, 'pageRate' | 'assetRate'>): Rates => ({ page: s.pageRate, asset: s.assetRate })
@@ -449,8 +429,7 @@ export async function tellFormSender(invoiceId: number, event: 'approved' | 'ret
     if (event === 'approved') await mailSender(i.sender_email, { kind: 'approved', number: i.number, month, total }, key)
     else if (event === 'paid') await mailSender(i.sender_email, { kind: 'paid', number: i.number, month, total, paidOn: i.paid_on ? dateLabel(i.paid_on) : '', ref: i.paid_ref }, key)
     else {
-      const token = await formToken()
-      const link = `${await portalOrigin()}/send${token ? `/${token}` : ''}`
+      const link = `${await portalOrigin()}/send`
       await mailSender(i.sender_email, { kind: 'returned', number: i.number, month, reason: i.paid_note ?? '', link }, key)
     }
   } catch (e) {

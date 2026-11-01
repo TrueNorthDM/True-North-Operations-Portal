@@ -6,12 +6,11 @@
  * device knows their email for 30 days.
  *
  * No session here on purpose, so every action checks the rest itself: North
- * Time is open (the form follows its lock), the link's token is the one in
- * Company settings, the email was proved (the signed cookie), and nobody asks
+ * Time is open (the form follows its lock), the email was proved (the signed cookie), and nobody asks
  * too often (codes an hour for an email and for a network address). Nothing
  * of anyone else's ever comes back: an item sent before names only the item
  * and the day. Generic errors to the page, details in the server log. The
- * invoice itself is sent by the route next to the page ([token]/submit), as
+ * invoice itself is sent by the route next to the page (submit/route.ts), as
  * its receipts and PDF are bigger than an action takes.
  */
 
@@ -22,7 +21,7 @@ import { IS_STAGING } from '@/lib/environment'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { periodLabel } from '@/lib/timeclock/periods'
-import { findSender, formToday, mailSender, monthFor, sentBefore, tokenOk } from '@/lib/invoice-form/data'
+import { findSender, formToday, mailSender, monthFor, sentBefore } from '@/lib/invoice-form/data'
 import { CODE_LIFE_MS, MAX_TRIES, codeOf, codeVerdict, emailOf, firstDuplicate, isDeliverable, itemKey, itemName, monthBounds, monthOk, monthTakenText, overCodeCap, resendWait } from '@/lib/invoice-form/rules'
 import { DEVICE_COOKIE, DEVICE_MAX_AGE, DEVICE_PATH, codeHash, codeMatches, devicePass } from '@/lib/invoice-form/secrets'
 import { provedEmail } from '@/lib/invoice-form/device'
@@ -31,7 +30,6 @@ type Fail = { ok: false; error: string }
 const no = (error: string): Fail => ({ ok: false, error })
 const TRY_AGAIN = 'Something went wrong. Try again in a moment.'
 const NOT_OPEN = 'The invoice form is not open yet.'
-const LINK_OFF = 'This link does not work any more. Ask True North for the new one.'
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex')
 async function clientKey(): Promise<string> {
@@ -40,18 +38,17 @@ async function clientKey(): Promise<string> {
   return sha(`invoice-form:${ip}`)
 }
 
-/** The lock and the link, before anything else. */
-async function gate(token: unknown): Promise<Fail | null> {
+/** The lock, before anything else. */
+async function gate(): Promise<Fail | null> {
   if (!(await northTimeOpen())) return no(NOT_OPEN)
-  if (!(await tokenOk(token))) return no(LINK_OFF)
   return null
 }
 
 export type CodeSent = { ok: true; email: string; waitSeconds: number } | Fail
 
 /** "Send me a code" and "send it again": a new 6-digit code by email (the one before stops working). */
-export async function requestCode(input: { token: string; email: string }): Promise<CodeSent> {
-  const g = await gate(input?.token)
+export async function requestCode(input: { email: string }): Promise<CodeSent> {
+  const g = await gate()
   if (g) return g
   const email = emailOf(input?.email)
   if (!email) return no('Write your email, like name@example.com.')
@@ -85,8 +82,8 @@ export async function requestCode(input: { token: string; email: string }): Prom
 export type Checked = { ok: true } | Fail
 
 /** "Continue": the code against the newest one of that email. Right: this device remembers the email for 30 days. */
-export async function checkCode(input: { token: string; email: string; code: string }): Promise<Checked> {
-  const g = await gate(input?.token)
+export async function checkCode(input: { email: string; code: string }): Promise<Checked> {
+  const g = await gate()
   if (g) return g
   const email = emailOf(input?.email)
   const code = codeOf(input?.code)
@@ -120,8 +117,7 @@ export async function checkCode(input: { token: string; email: string; code: str
 }
 
 /** "Change email" or "Not you?": this device forgets the email. */
-export async function forgetDevice(input: { token: string }): Promise<Checked> {
-  if (!(await tokenOk(input?.token))) return no(LINK_OFF)
+export async function forgetDevice(): Promise<Checked> {
   ;(await cookies()).delete({ name: DEVICE_COOKIE, path: DEVICE_PATH })
   return { ok: true }
 }
@@ -129,8 +125,8 @@ export async function forgetDevice(input: { token: string }): Promise<Checked> {
 export type LineChecked = { ok: true; name: string } | Fail
 
 /** "+ Add the line": refuses an item already sent with the same kind (by anyone), naming only the item and the day. */
-export async function checkLine(input: { token: string; name: string; kind: string; others: { name: string; kind: string }[]; month: string }): Promise<LineChecked> {
-  const g = await gate(input?.token)
+export async function checkLine(input: { name: string; kind: string; others: { name: string; kind: string }[]; month: string }): Promise<LineChecked> {
+  const g = await gate()
   if (g) return g
   const email = await provedEmail()
   if (!email) return no('Confirm your email first.')
@@ -154,8 +150,8 @@ export async function checkLine(input: { token: string; name: string; kind: stri
 export type MonthChecked = { ok: true; again: string | null } | Fail
 
 /** The month picked: free, theirs to send again (returned, the number it keeps), or already sent. */
-export async function checkMonth(input: { token: string; month: string }): Promise<MonthChecked> {
-  const g = await gate(input?.token)
+export async function checkMonth(input: { month: string }): Promise<MonthChecked> {
+  const g = await gate()
   if (g) return g
   const email = await provedEmail()
   if (!email) return no('Confirm your email first.')
