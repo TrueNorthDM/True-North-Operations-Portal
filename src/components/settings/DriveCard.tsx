@@ -74,10 +74,17 @@ export function DriveCard({ data, canEdit, api, say }: {
       if (!p.ok) { say({ text: p.error, error: true }); return }
       await loadPicker()
       const g = (window as Win).google!.picker
-      const view = new g.DocsView(g.ViewId.FOLDERS)
-      view.setSelectFolderEnabled(true); view.setIncludeFolders(true); view.setMimeTypes('application/vnd.google-apps.folder')
+      // office@'s own folders, and a tab for folders someone shared with it:
+      // Tina may keep "Docs from the Portal" in her Drive and share it with
+      // office@ as an editor (owner, 31 October 2026).
+      const folders = (shared: boolean) => {
+        const v = new g.DocsView(g.ViewId.FOLDERS)
+        v.setSelectFolderEnabled(true); v.setIncludeFolders(true); v.setMimeTypes('application/vnd.google-apps.folder')
+        if (shared) { v.setOwnedByMe(false); v.setLabel('Shared with me') }
+        return v
+      }
       const b = new g.PickerBuilder()
-      b.addView(view); b.enableFeature(g.Feature.SUPPORT_DRIVES)
+      b.addView(folders(false)); b.addView(folders(true)); b.enableFeature(g.Feature.SUPPORT_DRIVES)
       b.setOAuthToken(p.token); b.setDeveloperKey(p.key); b.setAppId(p.appId)
       b.setTitle('Pick the folder for receipts and invoices')
       b.setCallback(async (r: unknown) => {
