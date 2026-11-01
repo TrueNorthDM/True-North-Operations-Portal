@@ -232,6 +232,14 @@ const QUICK: Audience[] = [
         'Only Finance marks paid, after the money left: **Mark paid**, then **Paid on**, an optional reference and note. It can be done once.',
         'Admins and Super Admins who are not Finance see what waits, but do not mark it paid.',
       ] },
+      { t: 'The invoice form (Send an invoice)', steps: [
+        'For people who send True North invoices without signing in to the portal: freelancers paid a fixed amount, or by deliverables (one line a Monday item). One link for everyone, in Admin, **Company settings**, Invoices, **Send an invoice**: **Copy** it to share; **Make a new link** stops the old address at once.',
+        'They write their name and email and press **Send me a code**: a 6-digit code by email, valid 10 minutes, 5 tries, **send it again** after a minute. The device then remembers their email for 30 days.',
+        'Their email is looked up in the Directory (True North, Good News, personal and COE addresses). Found: their name and address come from their record, with **Edit**; what they change also goes on their record. Not found: they fill them in.',
+        'One invoice a month. Fixed amount: what it covers and the amount. Deliverables: each Monday item as a **Translated page** or a **Design asset**, at the rates in **Deliverable rates** (a person’s own in People, **Rates & Costs**, **Rate / page** and **Rate / design asset**, when set). An item already sent with the same kind, by anyone, is refused with the day it was sent. Reimbursements take the same fields and rules as **New reimbursement**, and their own PDF can go with it.',
+        'A sender in the Directory gets an INV number at once; the invoice goes to its approver like any other (Approvals, **Invoice form**), and **Came from** on its page says how it came in, with their PDF. Approving it approves its reimbursements. A sender not in the Directory shows at the top of North Time, **Invoices**, under **New sender, not in the Directory**: the default approver picks the person (**Link to this person**; add them in Admin, People first if needed), and only then it gets its number.',
+        'They hear everything by email: the copy, the number, approved, returned with the reason (they fix it and send it again from the same link, same number) and paid. While North Time is closed, the form says it is not open yet.',
+      ] },
       { t: 'RMB documents', steps: [
         'A reimbursement document (like RMB-2026-001) is made when an employee’s reimbursement is approved.',
         'Find them in Requests, **Reimbursements**, **Documents**, or from Home’s **Reimbursements to pay** (**Open Reimbursements**).',
@@ -343,6 +351,8 @@ const WHERE: { what: string; where: string }[] = [
   { what: 'Hours by client, team or person', where: 'North Time, **Reports** (your own hours; Team Leaders their teams, hours only)' },
   { what: 'Invoices to pay', where: 'Home, **Invoices to pay**, or North Time, **Invoices**' },
   { what: 'Reimbursement documents', where: 'Requests, Reimbursements, **Documents**' },
+  { what: 'The invoice form link and the deliverable rates', where: 'Admin, **Company settings**, Invoices, **Send an invoice**; a person’s own rates in People, **Rates & Costs**' },
+  { what: 'Invoices from senders not in the Directory', where: 'North Time, **Invoices**, **New sender, not in the Directory**' },
   { what: 'Copies of invoices and receipts in Google Drive', where: 'The **Drive** column in Invoices and Documents; set up in Admin, **Company settings**, Integrations, **Google Drive**' },
   { what: 'A person’s rate, allowance and Reports to', where: 'Directory, the person, **Work** tab; or People, **Rates & Costs**' },
   { what: 'Job catalogue, Invoices, Reminders, North Time rollout', where: 'Admin, **Company settings**' },

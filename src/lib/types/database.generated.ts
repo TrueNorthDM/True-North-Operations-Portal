@@ -1183,8 +1183,122 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_form_codes: {
+        Row: {
+          client_key: string
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: number
+          tries: number
+          used_at: string | null
+        }
+        Insert: {
+          client_key: string
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: number
+          tries?: number
+          used_at?: string | null
+        }
+        Update: {
+          client_key?: string
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: number
+          tries?: number
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      invoice_form_submissions: {
+        Row: {
+          created_at: string
+          email: string
+          id: number
+          invoice_id: number | null
+          lines: Json
+          linked_at: string | null
+          linked_by: string | null
+          own_pdf_name: string | null
+          own_pdf_path: string | null
+          period_end: string
+          period_start: string
+          person_id: string | null
+          reimbursements: Json
+          sender: Json
+          source: string
+          state: string
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: number
+          invoice_id?: number | null
+          lines: Json
+          linked_at?: string | null
+          linked_by?: string | null
+          own_pdf_name?: string | null
+          own_pdf_path?: string | null
+          period_end: string
+          period_start: string
+          person_id?: string | null
+          reimbursements?: Json
+          sender: Json
+          source: string
+          state?: string
+          total: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: number
+          invoice_id?: number | null
+          lines?: Json
+          linked_at?: string | null
+          linked_by?: string | null
+          own_pdf_name?: string | null
+          own_pdf_path?: string | null
+          period_end?: string
+          period_start?: string
+          person_id?: string | null
+          reimbursements?: Json
+          sender?: Json
+          source?: string
+          state?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_form_submissions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_form_submissions_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_form_submissions_linked_by_fkey"
+            columns: ["linked_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_lines: {
         Row: {
+          deliverable_kind: string | null
+          deliverable_key: string | null
           amount: number
           client: string | null
           description: string
@@ -1197,6 +1311,8 @@ export type Database = {
           sort: number
         }
         Insert: {
+          deliverable_kind?: string | null
+          deliverable_key?: string | null
           amount: number
           client?: string | null
           description: string
@@ -1209,6 +1325,8 @@ export type Database = {
           sort?: number
         }
         Update: {
+          deliverable_kind?: string | null
+          deliverable_key?: string | null
           amount?: number
           client?: string | null
           description?: string
@@ -1237,6 +1355,9 @@ export type Database = {
       }
       invoice_settings: {
         Row: {
+          form_token: string | null
+          page_rate: number
+          asset_rate: number
           rct_next_number: number
           rct_number_year: number | null
           rct_prefix: string
@@ -1261,6 +1382,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          form_token?: string | null
+          page_rate?: number
+          asset_rate?: number
           rct_next_number?: number
           rct_number_year?: number | null
           rct_prefix?: string
@@ -1285,6 +1409,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          form_token?: string | null
+          page_rate?: number
+          asset_rate?: number
           rct_next_number?: number
           rct_number_year?: number | null
           rct_prefix?: string
@@ -1331,6 +1458,10 @@ export type Database = {
       }
       invoices: {
         Row: {
+          source: string | null
+          sender_email: string | null
+          own_pdf_path: string | null
+          own_pdf_name: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
@@ -1355,6 +1486,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          source?: string | null
+          sender_email?: string | null
+          own_pdf_path?: string | null
+          own_pdf_name?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -1379,6 +1514,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          source?: string | null
+          sender_email?: string | null
+          own_pdf_path?: string | null
+          own_pdf_name?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -2394,6 +2533,8 @@ export type Database = {
       }
       pay_terms: {
         Row: {
+          page_rate: number | null
+          asset_rate: number | null
           allowance_hours: number | null
           allowance_period: string | null
           pays_as: string | null
@@ -2402,6 +2543,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          page_rate?: number | null
+          asset_rate?: number | null
           allowance_hours?: number | null
           allowance_period?: string | null
           pays_as?: string | null
@@ -2410,6 +2553,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          page_rate?: number | null
+          asset_rate?: number | null
           allowance_hours?: number | null
           allowance_period?: string | null
           pays_as?: string | null

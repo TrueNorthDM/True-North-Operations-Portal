@@ -78,6 +78,19 @@ export function invoiceApprover(p: RoutePerson, s: RouteSettings): string | null
   return p.reportsTo && s.invoiceApprovers.includes(p.reportsTo) ? able(p.reportsTo, s) : s.defaultApprover
 }
 
+/**
+ * An invoice from the invoice form (migration 147): the invoice rule, as for a
+ * contractor whatever the person's type in the Directory, and the default
+ * approver when that names nobody (the Deputy Director's own, say).
+ */
+export function formApprover(p: RoutePerson, s: RouteSettings): string | null {
+  return invoiceApprover({ ...p, isContractor: true, paysAs: 'fixed_no_timesheet' }, s) ?? s.defaultApprover
+}
+
+/** Who decides an invoice with no timesheet: the form's rule when it came from the form (`source`), else the invoice rule. */
+export const loneInvoiceApprover = (p: RoutePerson, s: RouteSettings, source: string | null | undefined): string | null =>
+  source ? formApprover(p, s) : invoiceApprover(p, s)
+
 export function oneStep(p: RoutePerson, s: RouteSettings): boolean {
   return !p.isContractor || p.paysAs === 'fixed_no_timesheet' || hoursApprover(p, s) === invoiceApprover(p, s)
 }

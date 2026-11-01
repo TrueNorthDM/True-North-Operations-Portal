@@ -20,7 +20,7 @@ import { loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
 import { sentToRippling, weeksOf, type DocKind } from './pay-docs'
 import { periodLabel } from './periods'
 import { formatDuration } from './rounding'
-import { hoursApprover, invoiceApprover, oneStep, type RoutePerson, type RouteSettings } from './routing'
+import { hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson, type RouteSettings } from './routing'
 import { INVOICE_STATE, stateKey } from './invoices-view'
 
 export type PayTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal' | 'navy'
@@ -45,7 +45,7 @@ const heads = (h: string[], right: number) => h.map((label, i) => ({ label, righ
 
 // ── Contractor ──────────────────────────────────────────────────────────────
 
-type InvLite = Pick<InvRow, 'id' | 'number' | 'state' | 'total' | 'period_start' | 'period_end' | 'paid_on' | 'paid_ref' | 'approved_at' | 'submission_id' | 'kind'> & { seconds: number | null; subState?: string }
+type InvLite = Pick<InvRow, 'id' | 'number' | 'state' | 'total' | 'period_start' | 'period_end' | 'paid_on' | 'paid_ref' | 'approved_at' | 'submission_id' | 'kind' | 'source'> & { seconds: number | null; subState?: string }
 type RmbRow = { id: number; purpose: string; spent_on: string; category: string; amount: number; state: string; decision_note: string | null; invoice_id: number | null }
 
 export function buildContractorPayments(x: { name: string; invoices: InvLite[]; reimbursements: RmbRow[]; route: RoutePerson | undefined; settings: RouteSettings; nameOf: (id: string | null) => string; today: string }): PaymentsData {
@@ -53,12 +53,12 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
   const where = (i: InvLite) => {
     const st = stateKey(i, i.subState ? { id: i.submission_id ?? 0, state: i.subState } : undefined, x.route, x.settings)
     const hb = x.route ? hoursApprover(x.route, x.settings) : null
-    const ib = x.route ? invoiceApprover(x.route, x.settings) : x.settings.defaultApprover
+    const ib = x.route ? (i.submission_id ? invoiceApprover(x.route, x.settings) : loneInvoiceApprover(x.route, x.settings, i.source)) : x.settings.defaultApprover
     const text = st === 'paid' ? paidText(i.paid_on!, i.paid_ref)
       : st === 'appr' ? `Approved ${i.approved_at ? dateLabel(i.approved_at.slice(0, 10)) : ''}, waiting for Finance`
         : st === 'hrs' ? `Hours with ${x.nameOf(hb)}`
           : st === 'wait' ? (!i.submission_id || (x.route && oneStep(x.route, x.settings)) ? `With ${x.nameOf(ib)}` : `Hours approved · with ${x.nameOf(ib)}`)
-            : 'Draft: submit the timesheet again'
+            : i.source ? 'Returned: send it again through the invoice form' : 'Draft: submit the timesheet again'
     return { st, text }
   }
   const rows = x.invoices.map(i => {

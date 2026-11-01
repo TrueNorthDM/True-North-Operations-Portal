@@ -20,7 +20,7 @@ import { loadApprovedExtra } from './allowance-data'
 import { clientFolder } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type PayTerms } from './pay-terms'
 import { periodLabel } from './periods'
-import { currentStep, hoursApprover, invoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
+import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import { INV_COLS, LINE_COLS, invoiceDocOf, usd, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
@@ -204,7 +204,8 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const me = v.personId
   const isLead = v.level === 'team_leader'
   const hb = hoursApprover(route, settings)
-  const ib = invoiceApprover(route, settings)
+  // An invoice alone (no timesheet) from the invoice form follows the form's rule (migration 147).
+  const ib = !sub && inv ? loneInvoiceApprover(route, settings, inv.source) : invoiceApprover(route, settings)
   // Who opens it: the person, whoever decides it, Admins and Super Admins, and a Team Leader of the person's team.
   const ledHere = !!src.person.teamId && v.ledTeamIds.has(src.person.teamId)
   const isAdmin = v.level === 'super_admin' || v.level === 'admin'
@@ -227,6 +228,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const done = st !== 'submitted'
     const canBoth = !done && me === ib && me !== personId
     const invoiceView = money ? invoiceDocOf(i, src.invLines, period.full) : null
+    const form = !!i.source
     const result = st === 'approved'
       ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const, retry: false }
       : st === 'returned' ? { text: `Returned: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const, retry: false } : null
@@ -234,12 +236,16 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       id: i.id, kind: 'invoice', personId, who, initials: initialsOf(who), team, zoneCity,
       title: `${who}, ${period.full}`,
       state: { label: st === 'approved' ? 'Approved' : st === 'returned' ? 'Returned' : 'Waiting for approval', tone: st === 'approved' ? 'ok' : st === 'returned' ? 'bad' : 'warn' },
-      submitted: `Created by itself, ${dateLabel(localDate(i.created_at, v.zone))}`,
+      submitted: `${form ? 'Sent through the invoice form' : 'Created by itself'}, ${dateLabel(localDate(i.created_at, v.zone))}`,
       steps: [{ n: st === 'approved' ? '✓' : '1', label: `Invoice · ${nameOf(ib)}`, sub: st === 'approved' ? `Approved ${noYear(stampLabel(i.approved_at!, v.zone))}` : st === 'returned' ? 'Returned' : 'Waiting. No hours to approve', state: st === 'approved' ? 'done' : st === 'returned' ? 'bad' : 'now' }],
       result, readOnly: !canBoth && !done ? `Read only. Invoice: ${nameOf(ib)}.` : null,
-      cadenceLine: `Contractor · fixed monthly, no timesheet · reports to ${nameOf(route.reportsTo)}`,
+      cadenceLine: form ? `Came from the invoice form, ${i.source === 'form_fixed' ? 'fixed amount' : 'deliverables'} · reports to ${nameOf(route.reportsTo)}` : `Contractor · fixed monthly, no timesheet · reports to ${nameOf(route.reportsTo)}`,
       isContractor: true, stats: [], allowance: null, clients: [], calendar: [], attention: [], days: [], entryClients: [], entryCount: 0, totalText: '',
-      noTimesheet: [
+      noTimesheet: form ? [
+        `${who} sent this invoice through the invoice form on ${dateLabel(localDate(i.created_at, v.zone)).replace(/, \d{4}$/, '')}, for ${period.label}. There is no timesheet behind it.`,
+        i.source === 'form_deliverables' ? 'Each line is a Monday item at its rate; an item already sent with the same kind was refused.' : 'The amount and what it covers are as the sender wrote them.',
+        invoiceView?.reimb.length ? 'Their reimbursements are on the invoice as lines, with the receipts; approving the invoice approves them.' : 'No reimbursements on it.',
+      ] : [
         `${who} is paid a fixed amount every month and does not track time in North Time.`,
         `This invoice was made by itself on ${dateLabel(localDate(i.created_at, v.zone)).replace(/, \d{4}$/, '')} for ${period.label} and went straight to approval. Nobody submitted anything.`,
         invoiceView?.reimb.length ? 'Approved reimbursements are on the invoice as lines.' : 'Approved reimbursements would show here as lines on the invoice; there are none this month.',
@@ -248,7 +254,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       previous: money ? previousOf(src, invoiceView!, first, 0, true) : null,
       history: [
         st === 'approved' ? { text: 'Approved', when: noYear(dateLabel(localDate(i.approved_at!, v.zone))), dot: '#1E9E6A' } : { text: `Waiting for ${youOr(ib)}`, when: 'Now', dot: '#F2C40A' },
-        { text: `Created by itself for ${period.label} (fixed monthly)`, when: noYear(dateLabel(localDate(i.created_at, v.zone))), dot: '#1E7D7F' },
+        { text: form ? `Sent through the invoice form for ${period.label}` : `Created by itself for ${period.label} (fixed monthly)`, when: noYear(dateLabel(localDate(i.created_at, v.zone))), dot: '#1E7D7F' },
       ],
       payroll: null,
       act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false, reopenWarn: null },

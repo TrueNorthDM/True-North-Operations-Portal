@@ -8,8 +8,8 @@ import type { InvoiceDetail, InvoiceList } from '@/lib/timeclock/invoices-view'
 import { InvoiceDetailView } from './InvoiceDetailView'
 import { InvoicesList, type StFilter } from './InvoicesList'
 
-export function InvoicesListLive({ data, st }: { data: InvoiceList; st?: StFilter }) {
-  return <InvoicesList data={data} api={{ getInvoiceDoc, markInvoicePaid, retryDriveCopy }} initial={st ? { st } : undefined} />
+export function InvoicesListLive({ data, st, extra }: { data: InvoiceList; st?: StFilter; extra?: React.ReactNode }) {
+  return <InvoicesList data={data} api={{ getInvoiceDoc, markInvoicePaid, retryDriveCopy }} initial={st ? { st } : undefined} extra={extra} />
 }
 
 export function InvoiceDetailLive({ d, submitted, retry }: { d: InvoiceDetail; submitted: boolean; retry: boolean }) {

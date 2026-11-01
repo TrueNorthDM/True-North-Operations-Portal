@@ -27,7 +27,8 @@ import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved,
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
 import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
-import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
+import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
+import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
@@ -657,18 +658,24 @@ export async function reopenTimesheet(input: { id: number; reason: string }): Pr
   }
 }
 
-/** Fixed, no timesheet: the invoice alone, one step, its approver. */
+/**
+ * Fixed, no timesheet: the invoice alone, one step, its approver. An invoice
+ * from the invoice form (migration 147) is one of these: its approver is the
+ * form's rule (routing.ts formApprover), its reimbursements are approved with
+ * it (their decision is the invoice's, so their receipts go to Drive), and its
+ * sender hears the answer by email.
+ */
 export async function decideInvoice(input: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>> {
   const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
-    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, total, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
+    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, source, total, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
     if (e1) return notSaved(e1)
     if (!inv || inv.kind !== 'fixed_no_timesheet' || inv.state !== 'waiting') return fail(NOT_WAITING)
     const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([inv.person_id])])
     const route = routes.get(inv.person_id)
-    if (!route || invoiceApprover(route, settings) !== v.personId || inv.person_id === v.personId) return fail(NOT_WAITING)
+    if (!route || loneInvoiceApprover(route, settings, inv.source) !== v.personId || inv.person_id === v.personId) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
     if (input.decision === 'return' && !note) return fail(REASON_REQUIRED)
     const at = new Date().toISOString()
@@ -679,7 +686,12 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     if (error) return notSaved(error)
     if (!moved?.length) return fail(NOT_WAITING)
     await c.from('tc_approval_events').insert({ submission_id: null, invoice_id: inv.id, step: 'invoice', action: approve ? 'approve' : 'return', by_person: v.personId, at, note })
+    if (approve && inv.source) {
+      const { error: rErr } = await c.from('reimbursements').update({ decided_by: v.personId, decided_at: at }).eq('invoice_id', inv.id).eq('state', 'on_invoice').is('decided_at', null)
+      if (rErr) console.error('[clocky approvals] form reimbursements:', rErr.message)
+    }
     if (approve) await announceInvoiceApproved({ invoiceId: inv.id, personId: inv.person_id, number: inv.number, total: usd(Number(inv.total)), finance: settings.finance })
+    if (inv.source) await tellFormSender(inv.id, approve ? 'approved' : 'returned')
     refresh()
     return { ok: true, toast: approve ? `Approved. ${inv.number} waits for Finance to pay it.` : `Returned. ${inv.number} is back to Draft.` }
   } catch (e) {

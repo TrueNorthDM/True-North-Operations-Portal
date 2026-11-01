@@ -27,7 +27,7 @@ interface TableSpec {
 
 export const COLUMN_TABLES = {
   rates: {
-    keys: ['person', 'team', 'reports', 'joined', 'timesheet', 'paysAs', 'clientRate', 'costRate', 'beRate', 'salary', 'allowance', 'over'],
+    keys: ['person', 'team', 'reports', 'joined', 'timesheet', 'paysAs', 'clientRate', 'costRate', 'beRate', 'salary', 'allowance', 'over', 'pageRate', 'assetRate'],
     fixed: ['person'],
     defaultHidden: [],
   },

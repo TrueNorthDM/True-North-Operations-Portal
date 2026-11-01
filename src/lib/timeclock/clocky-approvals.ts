@@ -15,7 +15,7 @@ import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
 import { recordedSeconds } from './rounding'
 import { canApproveCorrection, seesEveryone } from './scope'
 import { loadRouteSettings, loadRoutes } from './pay-terms'
-import { currentStep, invoiceApprover, type TimesheetState } from './routing'
+import { currentStep, loneInvoiceApprover, type TimesheetState } from './routing'
 import type { ApprovalRow, ApprovalsData } from './clocky-types'
 import { goesToLabel, teamLeadNames, waitingOrder } from './clocky-requests'
 import { waitingRequests } from './request-cards'
@@ -107,11 +107,11 @@ export async function countWaiting(v: Viewer): Promise<number> {
   const [corr, subs, fixed, requests] = await Promise.all([
     allRows<{ person_id: string }>((a, b) => c.from('tc_correction_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Requests to add time could not be read'),
     allRows<{ person_id: string; state: TimesheetState; tc_periods: { start_date: string } | null }>((a, b) => c.from('tc_submissions').select('person_id, state, tc_periods(start_date)').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
-    allRows<{ person_id: string }>((a, b) => c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('state', 'waiting').order('id').range(a, b), 'Invoices could not be read'),
+    allRows<{ person_id: string; source: string | null }>((a, b) => c.from('invoices').select('person_id, source').eq('kind', 'fixed_no_timesheet').eq('state', 'waiting').order('id').range(a, b), 'Invoices could not be read'),
     waitingRequests(v, dir, settings),
   ])
   const routes = await loadRoutes([...new Set([...subs, ...fixed].map(x => x.person_id))])
   const sheets = subs.filter(x => x.tc_periods && x.person_id !== v.personId && routes.get(x.person_id) && currentStep(routes.get(x.person_id)!, settings, x.state)?.owner === v.personId).length
-    + fixed.filter(x => x.person_id !== v.personId && routes.get(x.person_id) && invoiceApprover(routes.get(x.person_id)!, settings) === v.personId).length
+    + fixed.filter(x => x.person_id !== v.personId && routes.get(x.person_id) && loneInvoiceApprover(routes.get(x.person_id)!, settings, x.source) === v.personId).length
   return corr.filter(r => canApproveCorrection(v, dir.target(r.person_id))).length + sheets + requests
 }

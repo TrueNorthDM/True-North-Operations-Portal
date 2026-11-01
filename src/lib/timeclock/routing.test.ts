@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currentStep, hoursApprover, invoiceApprover, isRecordedOnly, oneStep, orList, reimbursementApprovers, requestApprover, requestDeciders, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
+import { currentStep, formApprover, hoursApprover, invoiceApprover, isRecordedOnly, loneInvoiceApprover, oneStep, orList, reimbursementApprovers, requestApprover, requestDeciders, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
 
 // The README's people: Arnaldo approves invoices by default, Dave Sharpe is the
 // Deputy Director and approves the invoices of those who report to him.
@@ -141,5 +141,23 @@ describe('who decides requests (owner, 1 November 2026: "Who approves what")', (
     expect(orList(['David Sharpe'])).toBe('David Sharpe')
     expect(orList(['A', 'B'])).toBe('A or B')
     expect(orList(['X', 'Y', 'Z'])).toBe('X, Y or Z')
+  })
+})
+
+describe('an invoice from the invoice form (migration 147)', () => {
+  it('follows the invoice rule whatever the person\'s type, else the default approver', () => {
+    expect(formApprover(rock, S)).toBe('dave')
+    expect(formApprover(samuel, S)).toBe('arnaldo')
+    // An employee in the Directory still has an approver for a form invoice.
+    expect(formApprover(wendy, S)).toBe('arnaldo')
+    // The Deputy Director's own goes to the default approver, never to nobody.
+    expect(formApprover(dave, S)).toBe('arnaldo')
+    expect(formApprover(p('new', null), S)).toBe('arnaldo')
+  })
+
+  it('is the rule only for a form invoice', () => {
+    expect(loneInvoiceApprover(wendy, S, 'form_fixed')).toBe('arnaldo')
+    expect(loneInvoiceApprover(wendy, S, null)).toBeNull()
+    expect(loneInvoiceApprover(john, S, null)).toBe('dave')
   })
 })

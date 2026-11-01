@@ -124,3 +124,26 @@ export async function savePaysAndAllowance(personId: string, input: Pick<PayInpu
   revalidatePath(`/directory/${personId}`)
   return { ok: true }
 }
+
+/**
+ * A person's own deliverable rates for the invoice form (migration 147,
+ * decision G), from Rates & Costs: a translated page and a translated design
+ * asset, each empty to use the company's (Company settings > Invoices).
+ */
+export async function saveDeliverableRates(personId: string, input: { pageRate: number | null; assetRate: number | null }): Promise<Result> {
+  if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to save.' }
+  const access = await writerAccess()
+  if (!access) return { ok: false, error: 'Sign in again to save.' }
+  if (!access.can('directory') || !access.can('d-rates')) return { ok: false, error: 'Only whoever keeps Rates & Costs changes pay.' }
+  if (!UUID.test(personId)) return { ok: false, error: 'Person not found.' }
+  const ok = (n: number | null) => n === null || (Number.isFinite(n) && n > 0 && n < 10_000)
+  if (!ok(input?.pageRate ?? null) || !ok(input?.assetRate ?? null)) return { ok: false, error: 'A rate is dollars, more than 0, like 30.00, or empty for the company rate.' }
+  const c = createAdminClient()
+  const { data: person } = await c.from('people').select('id').eq('id', personId).maybeSingle()
+  if (!person) return { ok: false, error: 'Person not found.' }
+  const round = (n: number | null) => (n == null ? null : Math.round(n * 100) / 100)
+  const { error } = await c.from('pay_terms').upsert({ person_id: personId, page_rate: round(input.pageRate), asset_rate: round(input.assetRate), updated_by: access.personId, updated_at: new Date().toISOString() }, { onConflict: 'person_id' })
+  if (error) { console.error('[pay terms] deliverable rates:', error.message); return { ok: false, error: 'Not saved. Try again in a moment.' } }
+  revalidatePath('/directory')
+  return { ok: true }
+}

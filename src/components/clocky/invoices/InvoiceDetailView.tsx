@@ -16,7 +16,8 @@ import { InvoiceDoc } from './InvoiceDoc'
 import { InvoicePdfModal } from './InvoicePdfModal'
 import { InvoiceHistory, MarkPaidDialog, STATE_PILL } from './InvoiceParts'
 import type { InvoicesApi } from './InvoicesList'
-import { PAGE_TITLE, CARD } from '@/lib/ui/type'
+import { PAGE_TITLE, CARD, FIELD_LABEL } from '@/lib/ui/type'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { Pill } from '@/components/ui/Pill'
 import { DriveBox } from './DriveParts'
 
@@ -82,6 +83,14 @@ export function InvoiceDetailView({ d, api, initial }: {
               </div>
             )}
           </div>
+          {/* How it came in (the invoice form, migration 147), and their own PDF to open. */}
+          {d.cameFrom && (
+            <div className={`${CARD} p-[18px] flex flex-col gap-1.5`}>
+              <span className={FIELD_LABEL}>Came from</span>
+              <span className="text-[13.5px] text-tn-ink font-semibold">{d.cameFrom}</span>
+              {d.ownPdf && <a href={withViewAs(d.ownPdf.href)} target="_blank" rel="noreferrer" className={`${BTN.link} break-all`}>Their own invoice: {d.ownPdf.name}</a>}
+            </div>
+          )}
           {d.drive && <DriveBox data={d.drive} retry={api.retryDriveCopy} say={t => { say(t); if (!t.error) router.refresh() }} />}
           <InvoiceHistory items={d.history} />
         </div>

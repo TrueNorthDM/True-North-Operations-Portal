@@ -41,7 +41,7 @@ export async function runFixedInvoices(now = new Date()): Promise<FixedInvoicesR
   const [terms, settings] = await Promise.all([loadPayTerms(active.map(p => p.id)), loadRouteSettings()])
   const fixed = active.filter(p => terms.get(p.id)?.paysAs === 'fixed_no_timesheet')
   if (!fixed.length) return report
-  const { data: had, error: hErr } = await c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('period_start', start).in('person_id', fixed.map(p => p.id))
+  const { data: had, error: hErr } = await c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').is('source', null).eq('period_start', start).in('person_id', fixed.map(p => p.id))
   if (hErr) throw new Error(`Invoices could not be read: ${hErr.message}`)
   const done = new Set((had ?? []).map(r => r.person_id))
   for (const p of fixed) {

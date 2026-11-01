@@ -22,6 +22,8 @@ import { invoiceViewer, loadInvoiceDetail } from '@/lib/timeclock/invoices-view'
 import type { InvoiceDocView } from '@/lib/timeclock/invoice-doc'
 import type { Fail, Result } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
+import { linkSubmission, tellApprover, tellFormSender } from '@/lib/invoice-form/data'
+import { newSenderRights } from '@/lib/invoice-form/rules'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const fail = (error: string): Fail => ({ ok: false, error })
@@ -71,11 +73,48 @@ export async function markInvoicePaid(input: { id: number; paidOn: string; ref?:
     await c.from('tc_approval_events').insert({ submission_id: inv.submission_id, invoice_id: inv.id, step: 'paid', action: 'paid', by_person: v.personId, at, note })
     const month = periodLabel({ start: inv.period_start, end: inv.period_end }).label
     await announceInvoicePaid({ invoiceId: inv.id, personId: inv.person_id, number: inv.number, month, paidOn: dateLabel(paidOn), ref })
+    // From the invoice form (migration 147): its sender never signs in, so they hear it by email.
+    await tellFormSender(inv.id, 'paid')
     revalidatePath('/clocky-hours/invoices')
     const who = (inv.from_snapshot as { name?: string } | null)?.name || 'The contractor'
     return { ok: true, toast: `${inv.number} marked paid. ${who} sees it in the bell.` }
   } catch (e) {
     console.error('[clocky invoices]', e instanceof Error ? e.message : e)
+    return fail(NOT_SAVED)
+  }
+}
+
+/**
+ * "Link to this person" on an invoice the invoice form kept for a sender not
+ * in the Directory (migration 147, decision B): it becomes that person's
+ * numbered invoice, waiting for its approver, and the sender hears the number
+ * by email. The default approver, Admins and Super Admins (newSenderRights).
+ */
+export async function linkFormSender(input: { id: number; personId: string }): Promise<Result<{ toast: string }>> {
+  if (await getViewAs()) return fail('View Stage is only a preview. Close it to link an invoice.')
+  const closed = await closedRefusal(fail)
+  if (closed) return closed
+  const access = await writerAccess()
+  if (!access) return fail('Sign in again to save.')
+  if (!access.can('clocky-invoices')) return fail('Invoices is not open to your access.')
+  const v = await viewerFor(access)
+  if (!v) return fail('Your login is not linked to anyone in the Directory.')
+  try {
+    const settings = await loadInvoiceSettings()
+    if (!newSenderRights(access, settings).link) return fail('Only the default approver, Admins and Super Admins link a new sender.')
+    const personId = String(input?.personId ?? '')
+    if (!/^[0-9a-f-]{36}$/i.test(personId)) return fail('Pick the person from the Directory.')
+    const { data: p, error } = await db().from('people').select('id, full_name').eq('id', personId).maybeSingle()
+    if (error) throw error
+    if (!p) return fail('Pick the person from the Directory.')
+    const r = await linkSubmission(Number(input?.id), personId, v.personId)
+    if (!r.ok) return fail(r.error)
+    await tellApprover({ invoiceId: r.invoiceId, submissionId: null, personId, text: `${r.number} (${p.full_name}) came from the invoice form and was linked to the Directory. It waits for your approval.` })
+    revalidatePath('/clocky-hours/invoices')
+    revalidatePath('/clocky-hours/approvals')
+    return { ok: true, toast: `Linked to ${p.full_name}. It is ${r.number} now, waiting for approval; the sender hears the number by email.` }
+  } catch (e) {
+    console.error('[clocky invoices] link sender:', e instanceof Error ? e.message : e)
     return fail(NOT_SAVED)
   }
 }

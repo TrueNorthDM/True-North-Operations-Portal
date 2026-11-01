@@ -353,7 +353,7 @@ async function invoiceRows(v: Viewer, today: string, now: Date): Promise<HomeRow
     return t?.paysAs === 'fixed_no_timesheet' && !!t.fixedAmount && t.fixedAmount > 0 && invoiceApprover(t.route, settings) === v.personId
   })
   if (!fixed.length) return []
-  const { data: had, error: hErr } = await c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('period_start', start).in('person_id', fixed.map(p => p.id))
+  const { data: had, error: hErr } = await c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').is('source', null).eq('period_start', start).in('person_id', fixed.map(p => p.id))
   if (hErr) throw new Error(hErr.message)
   const made = new Set((had ?? []).map(r => r.person_id))
   const coming = fixed.filter(p => !made.has(p.id))

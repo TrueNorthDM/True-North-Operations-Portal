@@ -40,7 +40,7 @@ import type { Cadence } from '@/lib/timeclock/periods'
 import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { Select } from '@/components/ui/Select'
-import { savePaysAndAllowance } from '@/app/(app)/directory/[id]/pay-actions'
+import { saveDeliverableRates, savePaysAndAllowance } from '@/app/(app)/directory/[id]/pay-actions'
 import type { PaysAs } from '@/lib/timeclock/routing'
 import { initialsOf, formatDate, typePill, PILL_CLASS } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -107,7 +107,7 @@ export interface CadenceColumn {
  * period (before approved extra hours). Null leaves the three columns out.
  */
 export interface PayColumn {
-  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null }>
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate?: number | null; assetRate?: number | null }>
   canEdit: boolean
 }
 
@@ -185,6 +185,8 @@ function tableColumns(withCadence: boolean, withPay: boolean) {
     { key: 'beRate', label: 'Rate / break-even', ...rate(160) },
     { key: 'salary', label: 'Month / salary', ...rate(150) },
     ...(withPay ? [{ key: 'allowance', label: 'Allowance', ...fixedTrack(160) }, { key: 'over', label: 'Over', ...fixedTrack(90) }] : []),
+    // A person's own rates for the invoice form (migration 147); empty uses the company's.
+    ...(withPay ? [{ key: 'pageRate', label: 'Rate / page', ...rate(150) }, { key: 'assetRate', label: 'Rate / design asset', ...rate(160) }] : []),
   ]
 }
 
@@ -206,13 +208,22 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   const show = new Set(layout.visible.map(c => c.key))
   const gridStyle = { gridTemplateColumns: layout.template }
   // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
-  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string }>>({})
+  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string; pageRate?: string; assetRate?: string }>>({})
   const payOf = (id: string) => pay?.byPerson[id] ?? null
   const payChanged = (id: string) => {
     const d = payDraft[id]
     const now = payOf(id)
     if (!d || !now) return false
     return (d.paysAs !== undefined && d.paysAs !== now.paysAs) || (d.allowance !== undefined && d.allowance !== alKey(now.allowance))
+  }
+  // The invoice form's rates as typed: empty is the company's, else dollars.
+  const ownRate = (v: string | undefined): number | null | undefined => (v === undefined ? undefined : v.trim() === '' ? null : Number(v))
+  const ratesChanged = (id: string) => {
+    const d = payDraft[id]
+    const now = payOf(id)
+    if (!d || !now) return false
+    const p = ownRate(d.pageRate), a = ownRate(d.assetRate)
+    return (p !== undefined && p !== (now.pageRate ?? null)) || (a !== undefined && a !== (now.assetRate ?? null))
   }
   const [cadF, setCadF] = useState<'all' | Cadence | 'unset'>('all')
   const [cadDraft, setCadDraft] = useState<Record<string, Cadence>>(startCadences ?? {})
@@ -436,6 +447,14 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         const d = payDraft[p.id]
         ops.push(savePaysAndAllowance(p.id, { paysAs: d.paysAs ?? now.paysAs, allowance: d.allowance !== undefined ? alOf(d.allowance) : now.allowance }))
       }
+      for (const p of people) {
+        if (!ratesChanged(p.id)) continue
+        const now = payOf(p.id)!
+        const d = payDraft[p.id]
+        const page = ownRate(d.pageRate), asset = ownRate(d.assetRate)
+        if ((page != null && !(page > 0)) || (asset != null && !(asset > 0))) { setError(`Write ${p.name}'s rates as dollars, like 30.00, or leave them empty.`); setSaving(false); return }
+        ops.push(saveDeliverableRates(p.id, { pageRate: page === undefined ? now.pageRate ?? null : page, assetRate: asset === undefined ? now.assetRate ?? null : asset }))
+      }
     }
     if (ops.length === 0) { setEditing(false); setSaving(false); return }
     let results: { ok: boolean; error?: string }[]
@@ -571,6 +590,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             {show.has('salary') && <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />}
             {pay && show.has('allowance') && <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Allowance<NewTag size={8.5} /></span>}
             {pay && show.has('over') && <span className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Over</span>}
+            {pay && show.has('pageRate') && <span title="The invoice form's rate for a translated page; empty uses the company's (Company settings, Invoices)" className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Rate / page</span>}
+            {pay && show.has('assetRate') && <span title="The invoice form's rate for a translated design asset; empty uses the company's (Company settings, Invoices)" className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Rate / design asset</span>}
           </div>
 
           {rows.map(p => {
@@ -579,7 +600,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             const costVal = editing ? (d?.cost ?? '') : (p.costRate != null ? String(p.costRate) : '')
             const beVal = editing ? (d?.be ?? '') : (p.beRate != null ? String(p.beRate) : '')
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
-            const changed = editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id))
+            const changed = editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id) || ratesChanged(p.id))
             return (
               <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0 ${changed ? 'bg-[var(--warn-bg)]' : ''}`} style={gridStyle}>
                 {/* Person: navy avatar + name (from Directory); the name opens their page, and stays in view when the table scrolls sideways */}
@@ -682,6 +703,14 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                     ? <span className="text-right font-(family-name:--font-display) font-extrabold text-[13px] text-[#c8323d] tabular-nums lining-nums">{overText(over)}</span>
                     : <span className="text-right text-slate-300">-</span>
                 })()}
+
+                {/* Their own invoice form rates (migration 147): empty uses the company's */}
+                {pay && show.has('pageRate') && (pay.canEdit || !editing
+                  ? rateInput(payDraft[p.id]?.pageRate ?? (payOf(p.id)?.pageRate != null ? String(payOf(p.id)!.pageRate) : ''), v => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], pageRate: v } })), '#1E7D7F')
+                  : <span aria-hidden="true" />)}
+                {pay && show.has('assetRate') && (pay.canEdit || !editing
+                  ? rateInput(payDraft[p.id]?.assetRate ?? (payOf(p.id)?.assetRate != null ? String(payOf(p.id)!.assetRate) : ''), v => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], assetRate: v } })), '#1E7D7F')
+                  : <span aria-hidden="true" />)}
               </div>
             )
           })}

@@ -18,7 +18,8 @@ import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear, sta
 import { INV_COLS, LINE_COLS, invoiceDocOf, paidText, usd, type DocTone, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
 import { isFinance, loadRouteSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
-import { hoursApprover, invoiceApprover, oneStep, type RoutePerson } from './routing'
+import { hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson } from './routing'
+import { cameFrom } from '@/lib/invoice-form/rules'
 import { driveShow, folderText, historyLines, wantInvoice, type DriveBoxData, type DriveShow } from '@/lib/drive/copy-plan'
 import { copyFrom, copyRow, driveShows } from '@/lib/drive/copies'
 import { docFileName } from '@/lib/drive/file-names'
@@ -102,8 +103,8 @@ export function stateKey(i: Pick<InvRow, 'state'>, sub: SubState | undefined, ro
   return 'wait'
 }
 
-const paysOf = (kind: string, rate: number | undefined) =>
-  kind === 'fixed_no_timesheet' ? 'Fixed, no timesheet' : kind === 'fixed_monthly' ? 'Fixed monthly' : rate != null ? `${usd(rate)}/h` : 'By the hour'
+const paysOf = (kind: string, rate: number | undefined, source?: string | null) =>
+  source ? 'Invoice form' : kind === 'fixed_no_timesheet' ? 'Fixed, no timesheet' : kind === 'fixed_monthly' ? 'Fixed monthly' : rate != null ? `${usd(rate)}/h` : 'By the hour'
 
 export function buildInvoiceList(src: ListSource): InvoiceList {
   const rows: InvoiceListRow[] = src.invoices.map(i => {
@@ -111,7 +112,7 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
     const sub = i.submission_id != null ? src.subs.get(i.submission_id) : undefined
     const st = stateKey(i, sub, route, src.settings)
     const hb = route ? hoursApprover(route, src.settings) : null
-    const ib = route ? invoiceApprover(route, src.settings) : src.settings.defaultApprover
+    const ib = route ? (sub ? invoiceApprover(route, src.settings) : loneInvoiceApprover(route, src.settings, i.source)) : src.settings.defaultApprover
     const where = st === 'paid' ? paidText(i.paid_on!, i.paid_ref)
       : st === 'appr' ? `Approved ${i.approved_at ? dateLabel(i.approved_at.slice(0, 10)) : ''}`.trim()
         : st === 'hrs' ? `Hours with ${src.nameOf(hb)}`
@@ -120,7 +121,7 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
     const p = src.person(i.person_id)
     return {
       id: i.id, number: i.number, personId: i.person_id, who: p.name, initials: initialsOf(p.name), team: p.team, teamColor: p.color,
-      period: periodLabel({ start: i.period_start, end: i.period_end }).full, pays: paysOf(i.kind, src.rates.get(i.id)),
+      period: periodLabel({ start: i.period_start, end: i.period_end }).full, pays: paysOf(i.kind, src.rates.get(i.id), i.source),
       total: usd(Number(i.total)), amount: Number(i.total), st, where, paidOn: i.paid_on,
       canPay: src.finance && st === 'appr',
     }
@@ -204,6 +205,10 @@ export interface InvoiceDetail {
   pay: { who: string; line: string; total: string }
   /** The "Google Drive" box (owner, 31 October 2026): for Super Admins, Admins and Finance. */
   drive?: DriveBoxData
+  /** "The invoice form, deliverables, 3 lines" when it came from the invoice form (migration 147); null otherwise. */
+  cameFrom: string | null
+  /** Their own invoice PDF, sent with the form. */
+  ownPdf: { href: string; name: string } | null
 }
 
 type EventRow = { step: string; action: string; by_person: string | null; at: string; note: string | null }
@@ -230,10 +235,11 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
   const one = route ? oneStep(route, settings) : true
   const hist: { text: string; when: string; dot: string; t: string }[] = []
   hist.push({
-    text: inv.kind === 'fixed_no_timesheet' ? `Created by itself for ${period.full} (fixed monthly)` : `Created when the ${period.label} timesheet was submitted`,
+    text: inv.source ? `Sent through the invoice form for ${period.full}` : inv.kind === 'fixed_no_timesheet' ? `Created by itself for ${period.full} (fixed monthly)` : `Created when the ${period.label} timesheet was submitted`,
     when: at(inv.created_at), dot: '#1E7D7F', t: inv.created_at,
   })
   for (const l of src.lines.filter(x => x.kind === 'reimbursement')) {
+    if (inv.source) continue
     hist.push({ text: `Reimbursement added by itself: ${l.description} (${usd(Number(l.amount))})`, when: dateLabel(inv.issued_on ?? localDate(inv.created_at, src.zone)), dot: '#a3aebb', t: inv.created_at })
   }
   for (const e of src.events) {
@@ -241,7 +247,7 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
     if (e.action === 'return') hist.push({ text: `Returned by ${by}${inv.submission_id ? ' with the timesheet' : ''}${e.note ? `: "${e.note}"` : '.'} Back to Draft.`, when: at(e.at), dot: '#c8323d', t: e.at })
     else if (e.action === 'reopen') hist.push({ text: `Reopened by ${by}${e.note ? `: "${e.note}"` : '.'} Back to Draft.`, when: at(e.at), dot: '#c8323d', t: e.at })
     // Submitted again after a return: the same invoice, made again with the new hours.
-    else if (e.action === 'submit') hist.push({ text: `Made again when the ${period.label} timesheet was submitted again`, when: at(e.at), dot: '#1E7D7F', t: e.at })
+    else if (e.action === 'submit') hist.push({ text: inv.source ? 'Sent again through the invoice form, after the return' : `Made again when the ${period.label} timesheet was submitted again`, when: at(e.at), dot: '#1E7D7F', t: e.at })
     else if (e.action === 'approve' && e.step === 'hours') hist.push({ text: `Hours approved by ${by}`, when: at(e.at), dot: '#1E7D7F', t: e.at })
     else if (e.action === 'approve') hist.push({ text: one && inv.submission_id ? `Approved by ${by}, together with the hours` : `Invoice approved by ${by}`, when: at(e.at), dot: '#012358', t: e.at })
     else if (e.action === 'paid') hist.push({ text: `Paid on ${dateLabel(inv.paid_on ?? e.at.slice(0, 10))} by ${by}${inv.paid_ref ? `, ref. ${inv.paid_ref}` : ''}`, when: dateLabel(inv.paid_on ?? localDate(e.at, src.zone)), dot: '#1E9E6A', t: e.at })
@@ -256,6 +262,8 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
       : 'Locked. A change means reopening the timesheet, which sends this invoice back to Draft.',
     history: order.map(({ text, when, dot }) => ({ text, when, dot })),
     pay: { who: doc.from.name || src.nameOf(inv.person_id), line: `${period.full} · approved ${inv.approved_at ? dateLabel(inv.approved_at.slice(0, 10)) : ''}`.trim(), total: doc.total },
+    cameFrom: cameFrom(inv.source, src.lines.filter(l => l.kind === 'deliverable').length),
+    ownPdf: inv.source && inv.own_pdf_name ? { href: `/clocky-hours/invoices/${inv.id}/own-pdf`, name: inv.own_pdf_name } : null,
   }
 }
 

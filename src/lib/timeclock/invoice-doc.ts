@@ -12,8 +12,10 @@ export type InvRow = {
   period_start: string; period_end: string; issued_on: string; due_on: string; created_at: string
   approved_by: string | null; approved_at: string | null; paid_on: string | null; paid_ref: string | null
   from_snapshot: { name?: string; location?: string; email?: string }; to_snapshot: { name?: string; address?: string; email?: string }
+  /** 'form_fixed' or 'form_deliverables' when it came from the invoice form (migration 147), with their own PDF's name. */
+  source?: string | null; own_pdf_name?: string | null
 }
-export const INV_COLS = 'id, number, submission_id, person_id, total, kind, state, period_start, period_end, issued_on, due_on, created_at, approved_by, approved_at, paid_on, paid_ref, from_snapshot, to_snapshot'
+export const INV_COLS = 'id, number, submission_id, person_id, total, kind, state, period_start, period_end, issued_on, due_on, created_at, approved_by, approved_at, paid_on, paid_ref, from_snapshot, to_snapshot, source, own_pdf_name'
 
 export type LineRow = { kind: string; client: string | null; description: string; hours_seconds: number | null; rate: number | null; amount: number }
 export const LINE_COLS = 'kind, client, description, hours_seconds, rate, amount'

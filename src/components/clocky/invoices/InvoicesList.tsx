@@ -13,7 +13,7 @@
  * PDF in the portal does; Mark paid opens the 6G dialog.
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { failText } from '@/lib/ui/action-error'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -45,11 +45,13 @@ const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-
 /** "Waiting" counts what the strip counts: waiting for the hours or for the invoice approver. */
 const matches = (st: InvoiceStateKey, f: StFilter) => f === 'all' || st === f || (f === 'wait' && st === 'hrs')
 
-export function InvoicesList({ data, api, initial }: {
+export function InvoicesList({ data, api, initial, extra }: {
   data: InvoiceList
   api: InvoicesApi
   /** The design checks open a frame's state. */
   initial?: { pay?: number; pdf?: InvoiceDocView; st?: StFilter }
+  /** Under the title: the invoice form's new senders waiting to be linked to a person (migration 147). */
+  extra?: ReactNode
 }) {
   const router = useRouter()
   const mine = data.mode === 'mine'
@@ -126,6 +128,8 @@ export function InvoicesList({ data, api, initial }: {
         <h1 className={`${PAGE_TITLE} mt-1.5`}>{title}</h1>
         {sub && <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">{sub}</p>}
       </div>
+
+      {extra}
 
       {data.mode === 'none' && (
         <div className="max-w-[640px] bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-[18px] text-[13.5px] leading-[1.55] text-foreground">

@@ -51,6 +51,9 @@ export interface InvoiceSettings extends RouteSettings {
   reimbursementApprovers: readonly string[]
   /** Dollars a mile for a Mileage reimbursement (migration 133; Tina's spreadsheet used 0.76). */
   mileageRate: number
+  /** The invoice form's deliverable rates for everyone (migration 147): a translated page, a translated design asset. */
+  pageRate: number
+  assetRate: number
 }
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v))
@@ -76,6 +79,8 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     finance: s?.finance ?? [],
     reimbursementApprovers: s?.reimbursement_approvers ?? [],
     mileageRate: num((s as { mileage_rate?: unknown } | null)?.mileage_rate) ?? DEFAULT_MILEAGE_RATE,
+    pageRate: num((s as { page_rate?: unknown } | null)?.page_rate) ?? 30,
+    assetRate: num((s as { asset_rate?: unknown } | null)?.asset_rate) ?? 5,
   }
 }
 
@@ -169,15 +174,20 @@ export async function loadRequestDeciders(personIds: readonly string[], given?: 
  * Money-free by itself, but it sits in a money tab: call it only with d-rates.
  */
 export async function loadRatesPay(personIds: readonly string[], canEdit: boolean): Promise<{
-  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null }>
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate: number | null; assetRate: number | null }>
   canEdit: boolean
 } | null> {
   try {
     const terms = await loadPayTerms(personIds)
     const use = await loadAllowanceUse(terms)
+    // Their own rates for the invoice form (migration 147); empty uses the company's.
+    const { data: own, error: oErr } = await createAdminClient().from('pay_terms').select('person_id, page_rate, asset_rate').in('person_id', [...personIds])
+    if (oErr) console.error('[rates pay] deliverable rates:', oErr.message)
+    const ownOf = new Map((own ?? []).map(r => [r.person_id, r]))
     return {
       byPerson: Object.fromEntries([...terms.values()].map(t => [t.personId, {
         isContractor: t.route.isContractor, paysAs: t.paysAs, allowance: t.allowance, overSeconds: use.get(t.personId)?.over ?? null,
+        pageRate: num(ownOf.get(t.personId)?.page_rate), assetRate: num(ownOf.get(t.personId)?.asset_rate),
       }])),
       canEdit,
     }

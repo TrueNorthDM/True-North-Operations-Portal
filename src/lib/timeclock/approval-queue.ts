@@ -33,7 +33,7 @@ import { loadApprovedExtra } from './allowance-data'
 import { hoursByClient } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
-import { currentStep, hoursApprover, invoiceApprover, oneStep, type TimesheetState } from './routing'
+import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type TimesheetState } from './routing'
 import type { ApprovalRow } from './clocky-types'
 import { loadRequestRows, moneyViewer, type RequestCard } from './request-cards'
 
@@ -87,7 +87,7 @@ type SubRow = {
   id: number; person_id: string; state: TimesheetState; submitted_at: string | null; approved_at: string | null; approved_by: string | null
   hours_approved_at: string | null; hours_approved_by: string | null; note: string | null; tc_periods: { start_date: string; end_date: string } | null
 }
-type InvRow = { id: number; number: string; submission_id: number | null; person_id: string; total: number; kind: string; state: string; period_start: string; period_end: string; created_at: string; approved_by: string | null; approved_at: string | null }
+type InvRow = { id: number; number: string; submission_id: number | null; person_id: string; total: number; kind: string; state: string; period_start: string; period_end: string; created_at: string; approved_by: string | null; approved_at: string | null; source?: string | null }
 
 /**
  * Home's Needs you (design_handoff_home, 25 October 2026) asks for "Waiting for
@@ -106,7 +106,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
       .or(`state.in.(submitted,hours_approved),and(state.in.(approved,returned,recorded),approved_at.gte.${since}),and(state.eq.recorded,submitted_at.gte.${since})`)
       .order('id').range(a, b), 'Timesheets could not be read'),
     // Fixed, no timesheet: the invoice alone is the request.
-    allRows<InvRow>((a, b) => c.from('invoices').select('id, number, submission_id, person_id, total, kind, state, period_start, period_end, created_at, approved_by, approved_at')
+    allRows<InvRow>((a, b) => c.from('invoices').select('id, number, submission_id, person_id, total, kind, state, period_start, period_end, created_at, approved_by, approved_at, source')
       .eq('kind', 'fixed_no_timesheet').or(`state.eq.waiting,approved_at.gte.${since}`).order('id').range(a, b), 'Invoices could not be read'),
     opts.requests === false ? Promise.resolve([]) : loadRequestRows(v, dir, since, settings, now),
   ])
@@ -202,20 +202,21 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     }, step?.owner ?? null, who.teamId, s.person_id !== v.personId && [hb, ib, step?.owner, s.approved_by, s.hours_approved_by].includes(v.personId))
   }
 
-  // Fixed, no timesheet: one step, the invoice approver.
+  // Fixed, no timesheet: one step, the invoice approver. The invoice form's (migration 147) are these too.
   for (const i of noTs) {
     const t = terms.get(i.person_id)
     if (!t) continue
     const who = person(i.person_id)
-    const ib = invoiceApprover(t.route, settings)
+    const ib = loneInvoiceApprover(t.route, settings, i.source)
     const money = !isLead && seesMoney(asMoney, i.person_id, settings)
+    const form = !!i.source
     push({
       key: `n${i.id}`, type: 'ts', id: i.id, personId: i.person_id, name: who.name, initials: who.initials, team: who.team,
-      main: `${periodLabel({ start: i.period_start, end: i.period_end }).full} · fixed monthly`,
+      main: `${periodLabel({ start: i.period_start, end: i.period_end }).full} · ${form ? 'invoice form' : 'fixed monthly'}`,
       sub: money ? `Invoice ${i.number} · ${usd(Number(i.total))}` : 'No timesheet',
-      flag: { text: 'No timesheet', tone: 'neu' },
-      why: 'Fixed monthly, no timesheet.',
-      asked: `Created by itself, ${dateLabel(localDate(i.created_at, v.zone)).replace(/, \d{4}$/, '')}`,
+      flag: { text: form ? 'Invoice form' : 'No timesheet', tone: 'neu' },
+      why: form ? `Came from the invoice form, ${i.source === 'form_fixed' ? 'fixed amount' : 'deliverables'}.` : 'Fixed monthly, no timesheet.',
+      asked: `${form ? 'Sent through the form' : 'Created by itself'}, ${dateLabel(localDate(i.created_at, v.zone)).replace(/, \d{4}$/, '')}`,
       askedAt: i.created_at,
       ownerName: nameOf(ib),
       own: i.person_id === v.personId,
