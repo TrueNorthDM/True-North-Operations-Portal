@@ -111,7 +111,7 @@ const Box = ({ x, y, w = 200, name, sub, hot = false, dashed = false }: { x: num
 function Diagram() {
   return (
     <div className={`${card} p-3 overflow-x-auto`}>
-      <svg viewBox="0 0 760 620" role="img" aria-label="Every change lands on staging first and is promoted to production" className="block w-full min-w-[560px] h-auto">
+      <svg viewBox="0 0 760 620" role="img" aria-label="Every change lands on staging first and is promoted to production" className="block w-full max-w-[880px] mx-auto min-w-[560px] h-auto">
         <defs>
           <marker id="hir-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9aa6b5" /></marker>
           <marker id="hir-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#F2C40A" /></marker>
