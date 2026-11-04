@@ -2539,6 +2539,7 @@ export type Database = {
           allowance_period: string | null
           pays_as: string | null
           person_id: string
+          salaried: boolean
           updated_at: string
           updated_by: string | null
         }
@@ -2549,6 +2550,7 @@ export type Database = {
           allowance_period?: string | null
           pays_as?: string | null
           person_id: string
+          salaried?: boolean
           updated_at?: string
           updated_by?: string | null
         }
@@ -2559,6 +2561,7 @@ export type Database = {
           allowance_period?: string | null
           pays_as?: string | null
           person_id?: string
+          salaried?: boolean
           updated_at?: string
           updated_by?: string | null
         }

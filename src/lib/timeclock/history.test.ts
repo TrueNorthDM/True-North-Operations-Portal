@@ -29,7 +29,7 @@ describe('historyLines', () => {
     })
     expect(lines.map(l => l.text)).toEqual([
       'Wendy Cacka confirmed the real end time: 12:40 PM · recorded as 12:45 PM',
-      'North Time stopped the clock automatically after 5h 00m',
+      'North Time stopped the clock automatically after 12h 00m',
       `Wendy Cacka clocked in · ${job} · recorded as 8:00 AM`,
     ])
     expect(lines[0].changes).toEqual([{ field: 'End', old: '1:00 PM', new: '12:45 PM' }])

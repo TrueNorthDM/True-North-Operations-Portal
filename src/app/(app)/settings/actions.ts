@@ -84,6 +84,8 @@ export async function saveHiddenColumns(table: TableId, hidden: string[]): Promi
       console.error('[settings] columns save:', error.message)
       return { ok: false, error: NOT_SAVED }
     }
+    // Home's cards: Home is drawn again with the choice.
+    if (clean.table === 'home') revalidatePath('/')
     return { ok: true }
   } catch (e) {
     console.error('[settings] columns save:', (e as Error).message)

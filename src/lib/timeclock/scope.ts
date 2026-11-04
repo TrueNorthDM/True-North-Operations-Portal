@@ -6,9 +6,16 @@
  *   Level        Time entries        Change hours                          Approvals
  *   Super Admin  own + everyone      anything, anyone, themselves too      corrections, everyone
  *   Admin        own + everyone      anything, anyone, themselves too      corrections, everyone
- *   Team Leader  own + own team      anything, own team; their own hours   corrections, own team
- *                                    like a User: shorten only
- *   User         own only            shorten own entries only              hidden
+ *   Team Leader  own + own team      anything, own team and their own      corrections, own team
+ *   User         own only            anything on their own entries         hidden
+ *
+ * Everyone adds and changes their own hours (leadership, 4 November 2026,
+ * David's answers to the rules: "we have always allowed people to adjust their
+ * own timesheets... we run on trust"), as in TSheets. Every change still needs
+ * a reason and stays in the entry's history, the allowance still applies, and
+ * a sent timesheet is still locked. This replaces the 25 October rule that a
+ * User or a Team Leader could only shorten their own entries; the rest of this
+ * note is kept for the parts that still apply (corrections, approvals).
  *
  * A Team Leader is a person with the Lead position in a team; "own team" is
  * the people on the teams they lead, never themselves (owner: "só as do
@@ -97,11 +104,11 @@ export type ChangeRight = 'full' | 'shorten' | 'none'
  */
 export function changeRight(v: ScopeViewer, t: ScopeTarget): ChangeRight {
   if (!canView(v, t)) return 'none'
-  if (own(v, t)) return seesEveryone(v) ? 'full' : 'shorten'
+  // Their own: anything, with a reason (4 November 2026). 'shorten' is no longer given.
   return 'full'
 }
 
-/** "Add time" and the week grid: Team Leaders (their team, not themselves), Admins and Super Admins (anyone). */
+/** "Add time": everyone for themselves; Team Leaders for their team too, Admins and Super Admins for anyone. */
 export const canAddFor = (v: ScopeViewer, t: ScopeTarget): boolean => changeRight(v, t) === 'full'
 
 /** Approve or deny a time correction: the person's Team Lead, an Admin or a Super Admin, never the person. */

@@ -24,7 +24,7 @@ export const stopReasonOf = (kind: string): StopReason => (kind === 'limit_stop'
 
 /** The label on the page. */
 export const STOP_REASON_LABEL: Record<StopReason, string> = {
-  five_hours: '5-hour check',
+  five_hours: '12-hour check',
   allowance: 'Allowance reached',
 }
 

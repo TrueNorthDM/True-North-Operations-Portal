@@ -7,7 +7,7 @@
  * automatic stops waiting for an end time, the safety window, and whether
  * today's period is locked.
  *
- * "As soon as it notices": a clock past its 5-hour mark, or past the person's
+ * "As soon as it notices": a clock past its 12-hour mark, or past the person's
  * hours allowance (owner, 25 October 2026), is stopped here, when the person
  * really signed in opens the panel, as the safety job would.
  *
@@ -20,7 +20,7 @@ import { runningOf, loadSubmissions, lockOn, type EntryRow } from './clocky-stor
 import { announceClockStop, portalOrigin } from './clocky-notify'
 import { dayLabel, localDate, timeLabel, zoneAbbr } from './format'
 import { entrySeconds, roundIso, runningSeconds } from './rounding'
-import { endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
+import { STOP_AFTER_LABEL, endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
 import { clockDay, missingFields, offeredOn, type FieldKeys } from './entry-rules'
 import { weekBounds } from './clock'
 import { loadWindows, statusOf, limitStopIn, stopClockIfDue, type ClockStop } from './allowance-limit'
@@ -126,7 +126,7 @@ export async function correctionGoesTo(personId: string): Promise<string> {
 }
 
 /**
- * Stop the person's clock if its 5-hour window ran out (bell and email) or it
+ * Stop the person's clock if its 12-hour window ran out (bell and email) or it
  * reached their allowance (the bell), and tell them. null when it goes on.
  */
 export async function stopOwnIfDue(c: Db, e: EntryRow | null, now: Date): Promise<ClockStop | null> {
@@ -237,7 +237,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
         stoppedAtReal: e.ended_at_real,
         date: e.entry_date,
         stopWhen: when,
-        text: `It ran 5h 00m without an answer since you clocked in at ${timeLabel(roundIso(ws), zone)}, so it stopped at ${when}. When did you really stop working?`,
+        text: `It ran ${STOP_AFTER_LABEL} since you clocked in at ${timeLabel(roundIso(ws), zone)}, so it stopped at ${when}. When did you really stop working?`,
         options: endOptions(e.started_at!, e.ended_at!, now, false),
         laterOptions: endOptions(e.started_at!, e.ended_at!, now, true),
       }

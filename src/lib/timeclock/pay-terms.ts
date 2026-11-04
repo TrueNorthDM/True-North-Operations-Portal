@@ -31,7 +31,15 @@ export interface PayTerms {
   hourlyRate: number | null
   /** people.monthly_salary: Rates & Costs "Month / salary". Fixed invoices use it. */
   fixedAmount: number | null
+  /**
+   * The allowance that applies: null for a salaried employee (leadership, 4
+   * November 2026: salaried employees are exempt), whatever is stored.
+   */
   allowance: { hours: number; period: 'week' | 'month' } | null
+  /** What Rates & Costs stores, applied or not: for the screens that edit it. */
+  storedAllowance: { hours: number; period: 'week' | 'month' } | null
+  /** A US employee paid a salary (migration 151). Never a contractor. */
+  salaried: boolean
 }
 
 export interface InvoiceSettings extends RouteSettings {
@@ -122,30 +130,41 @@ export function paysWhat(access: Pick<Access, 'personId' | 'can' | 'isAdmin'>, s
 
 
 type PersonRow = { id: string; manager_id: string | null; employment_type: string | null; internal_rate: number | null; monthly_salary: number | null }
-type TermsRow = { person_id: string; pays_as: PaysAs | null; allowance_hours: number | null; allowance_period: 'week' | 'month' | null }
+type TermsRow = { person_id: string; pays_as: PaysAs | null; allowance_hours: number | null; allowance_period: 'week' | 'month' | null; salaried?: boolean | null }
 
 /** Pay terms and routing input for some people (all when no ids). Money included: call after seesMoney. */
 export async function loadPayTerms(personIds?: readonly string[]): Promise<Map<string, PayTerms & { route: RoutePerson }>> {
   const c = createAdminClient()
   let pq = c.from('people').select('id, manager_id, employment_type, internal_rate, monthly_salary')
-  let tq = c.from('pay_terms').select('person_id, pays_as, allowance_hours, allowance_period')
-  if (personIds) { pq = pq.in('id', [...personIds]); tq = tq.in('person_id', [...personIds]) }
-  const [{ data: people, error: e1 }, { data: terms, error: e2 }] = await Promise.all([pq, tq])
+  const cols = 'person_id, pays_as, allowance_hours, allowance_period'
+  const termsOf = (withSalaried: boolean) => {
+    let tq = c.from('pay_terms').select(withSalaried ? `${cols}, salaried` : cols)
+    if (personIds) tq = tq.in('person_id', [...personIds])
+    return tq
+  }
+  if (personIds) pq = pq.in('id', [...personIds])
+  const [{ data: people, error: e1 }, first] = await Promise.all([pq, termsOf(true)])
   if (e1) throw new Error(`People could not be read: ${e1.message}`)
+  // Before migration 151 there is no "salaried": everyone keeps their allowance.
+  const { data: terms, error: e2 } = first.error && /salaried/.test(first.error.message) ? await termsOf(false) : first
   if (e2) throw new Error(`Pay terms could not be read: ${e2.message}`)
-  const byPerson = new Map(((terms ?? []) as TermsRow[]).map(t => [t.person_id, t]))
+  const byPerson = new Map(((terms ?? []) as unknown as TermsRow[]).map(t => [t.person_id, t]))
   const out = new Map<string, PayTerms & { route: RoutePerson }>()
   for (const p of (people ?? []) as PersonRow[]) {
     const t = byPerson.get(p.id)
     const isContractor = p.employment_type === 'contractor'
     // A contractor with no row yet is paid by the hour (what everyone was until part 2).
     const paysAs: PaysAs | null = isContractor ? t?.pays_as ?? 'hourly' : null
+    const stored = t?.allowance_hours != null && t.allowance_period ? { hours: Number(t.allowance_hours), period: t.allowance_period } : null
+    const salaried = !isContractor && !!t?.salaried
     out.set(p.id, {
       personId: p.id,
       paysAs,
       hourlyRate: num(p.internal_rate),
       fixedAmount: num(p.monthly_salary),
-      allowance: t?.allowance_hours != null && t.allowance_period ? { hours: Number(t.allowance_hours), period: t.allowance_period } : null,
+      allowance: stored && !salaried ? stored : null,
+      storedAllowance: stored,
+      salaried,
       route: { personId: p.id, reportsTo: p.manager_id, isContractor, paysAs },
     })
   }
@@ -174,7 +193,7 @@ export async function loadRequestDeciders(personIds: readonly string[], given?: 
  * Money-free by itself, but it sits in a money tab: call it only with d-rates.
  */
 export async function loadRatesPay(personIds: readonly string[], canEdit: boolean): Promise<{
-  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate: number | null; assetRate: number | null }>
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; salaried: boolean; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate: number | null; assetRate: number | null }>
   canEdit: boolean
 } | null> {
   try {
@@ -186,7 +205,7 @@ export async function loadRatesPay(personIds: readonly string[], canEdit: boolea
     const ownOf = new Map((own ?? []).map(r => [r.person_id, r]))
     return {
       byPerson: Object.fromEntries([...terms.values()].map(t => [t.personId, {
-        isContractor: t.route.isContractor, paysAs: t.paysAs, allowance: t.allowance, overSeconds: use.get(t.personId)?.over ?? null,
+        isContractor: t.route.isContractor, paysAs: t.paysAs, salaried: t.salaried, allowance: t.storedAllowance, overSeconds: use.get(t.personId)?.over ?? null,
         pageRate: num(ownOf.get(t.personId)?.page_rate), assetRate: num(ownOf.get(t.personId)?.asset_rate),
       }])),
       canEdit,

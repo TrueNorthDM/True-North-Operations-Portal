@@ -9,6 +9,7 @@
  * blocked, light only. Pure.
  */
 
+import { STOP_AFTER_LABEL } from '@/lib/timeclock/safety'
 export interface ClockStoppedVars {
   /** "1:00 PM", or "1:00 PM on Mon, Oct 12" (the person's zone). */
   stoppedAt: string
@@ -29,7 +30,7 @@ export function renderClockStopped(v: ClockStoppedVars): { subject: string; html
   const title = 'Your clock stopped by itself'
   const body = `Your clock stopped by itself at ${v.stoppedAt}. Confirm when you really stopped.`
   const button = 'Confirm end time'
-  const fine = `It ran 5h 00m without an answer since you clocked in at ${v.clockedInAt}. Until you confirm, the entry shows "Auto out" and the clock button in the portal stays red.`
+  const fine = `It ran ${STOP_AFTER_LABEL} since you clocked in at ${v.clockedInAt}. Until you confirm, the entry shows "Auto out" and the clock button in the portal stays red.`
   const footer = 'Sent to you because North Time stopped your clock.'
 
   const html = `<!doctype html>

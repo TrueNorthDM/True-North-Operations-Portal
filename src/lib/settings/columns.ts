@@ -43,6 +43,15 @@ export const COLUMN_TABLES = {
     fixed: ['person'],
     defaultHidden: [],
   },
+  // Home's cards (leadership, 4 November 2026: "this must be optional, one
+  // solution does not fit all people"). Not a table, but the same choice: the
+  // cards a person hides, kept in their account. The day banner, with the
+  // clock, and the annual review card always show.
+  home: {
+    keys: ['needs', 'pay', 'agenda', 'goals', 'i7', 'publishing'],
+    fixed: [],
+    defaultHidden: [],
+  },
   // An access is who and when: both stay.
   'directory-access': {
     keys: ['person', 'email', 'when', 'device'],

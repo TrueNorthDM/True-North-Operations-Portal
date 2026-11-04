@@ -41,10 +41,10 @@ const LABEL = FIELD_LABEL
 const PERSON_GRID = 'grid grid-cols-[minmax(200px,1.4fr)_150px_150px_150px_180px_130px]'
 // The prototype's columns, with "Stopped by Clocky" and "Kept going earlier" at 150px:
 // at its 120px and 110px those headings ran into the next one. "Reason" (27
-// October 2026) tells a 5-hour stop from one at the hours allowance.
+// October 2026) tells a 12-hour stop from one at the hours allowance.
 const OCC_GRID = 'grid grid-cols-[110px_160px_minmax(210px,1fr)_190px_110px_150px_150px_90px_150px_90px]'
 
-/** The reason chip: neutral for the 5-hour check, amber for the allowance (with the allowance it reached below). */
+/** The reason chip: neutral for the 12-hour check, amber for the allowance (with the allowance it reached below). */
 function ReasonCell({ o }: { o: SafetyOccurrence }) {
   const allowance = o.reason === 'allowance'
   return (
@@ -114,7 +114,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Clock safety" />
         <h1 className={`${PAGE_TITLE} mt-0.5`}>Clock safety</h1>
-        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a clock: a forgotten one at the 5-hour check, or one that reached its hours allowance. Times in your time zone ({zoneCity(data.zone)}).</p>
+        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a clock: a forgotten one at the 12-hour check, or one that reached its hours allowance. Times in your time zone ({zoneCity(data.zone)}).</p>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">

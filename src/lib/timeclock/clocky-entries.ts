@@ -26,6 +26,7 @@ import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from 
 import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-terms'
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
+import { STOP_AFTER_LABEL } from './safety'
 
 /** The longest range one read covers: a month and a bit, so a month view always fits. */
 export const MAX_RANGE_DAYS = 62
@@ -107,7 +108,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     const label = lock ? (lock.state === 'approved' || lock.state === 'recorded' ? 'Approved' : 'Submitted') : STATE_LABEL[e.state] ?? 'Open'
     pills.push(label === 'Approved' ? PILL.ok(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : '') : PILL.neutral(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : ''))
   }
-  if (autoOut) pills.push(PILL.bad('Auto out', autoOut.confirmed ? 'Stopped by North Time after 5h 00m. Real end time confirmed.' : 'Stopped by North Time after 5h 00m. End time not confirmed.'))
+  if (autoOut) pills.push(PILL.bad('Auto out', autoOut.confirmed ? `Stopped by North Time after ${STOP_AFTER_LABEL}. Real end time confirmed.` : `Stopped by North Time after ${STOP_AFTER_LABEL}. End time not confirmed.`))
   if (e.edited_by) pills.push(PILL.neutral('Edited', `Edited by ${dir.nameOf(e.edited_by)}`))
 
   const canChange = kind !== 'absence' && !lock && right !== 'none'

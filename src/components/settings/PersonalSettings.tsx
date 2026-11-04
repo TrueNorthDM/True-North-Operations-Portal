@@ -9,8 +9,9 @@
  *   Sign-in and security  the address they sign in with, two-step sign-in, and
  *                         signing out on every device.
  *   Time and region       their time zone and the hour of the daily summary.
- *   Home and start        the page they land on after signing in, and up to
- *                         five favourite pages at the top of Home.
+ *   Home and start        the page they land on after signing in, which
+ *                         cards Home shows (4 November 2026), and up to
+ *                         five favourite pages.
  *   Privacy               whether Home and the Agenda show their birthday and anniversary.
  *
  * Every change saves on its own (saveSettings). The two server-drawn parts
@@ -27,6 +28,7 @@ import { NavIcon } from '@/components/NavIcon'
 import { Select } from '@/components/ui/Select'
 import type { NavItem } from '@/lib/access/nav'
 import type { PageGroup } from '@/lib/settings/pages'
+import type { SaveHidden } from '@/lib/settings/columns'
 import { FAVOURITES_MAX, START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
 import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
 import { BTN } from '@/lib/ui/buttons'
@@ -144,7 +146,7 @@ function Favourites({ items, groups, onChange }: { items: NavItem[]; groups: Pag
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function PersonalSettings({
-  settings, email, notifications, twoStep, signOutEverywhere, favourites: initialFavourites, groups, save, blocked, only,
+  settings, email, notifications, twoStep, signOutEverywhere, favourites: initialFavourites, groups, save, blocked, only, home, saveHome = null,
 }: {
   settings: PersonSettings
   email: string | null
@@ -163,9 +165,14 @@ export function PersonalSettings({
   blocked?: string
   /** The System manual's pictures show one section at a time, without the menu; left out, every section. */
   only?: readonly SettingsSection[]
+  /** The Home cards this person can have, and the ones they hide. Left out, the choice is not shown. */
+  home?: { cards: readonly { key: string; label: string; hint: string }[]; hidden: readonly string[] }
+  /** Null in the design check: the choice stays on the page. */
+  saveHome?: SaveHidden | null
 }) {
   const [s, setS] = useState(settings)
   const [favs, setFavs] = useState(initialFavourites)
+  const [homeHidden, setHomeHidden] = useState<readonly string[]>(home?.hidden ?? [])
   const [status, setStatus] = useState<{ key: string; state: 'saving' | 'saved' | 'error'; error?: string } | null>(null)
   const [confirmDialog, confirm] = useConfirm()
   const router = useRouter()
@@ -204,6 +211,21 @@ export function PersonalSettings({
   const setFavourites = (next: NavItem[]) => {
     const before = favs
     change('favourites', { favourites: next.map(n => n.key) }, () => setFavs(next), () => setFavs(before))
+  }
+
+  // A Home card on or off: saved on its own, like every other choice here.
+  const setHomeCard = (key: string, show: boolean) => {
+    const before = homeHidden
+    const next = show ? before.filter(k => k !== key) : [...before, key]
+    setHomeHidden(next)
+    if (blocked) { setHomeHidden(before); setStatus({ key: `home-${key}`, state: 'error', error: blocked }); return }
+    if (!saveHome) { setStatus({ key: `home-${key}`, state: 'saved' }); return }
+    setStatus({ key: `home-${key}`, state: 'saving' })
+    start(async () => {
+      const res = await saveHome('home', [...next]).catch(e => ({ ok: false, error: staleOr(e, 'Not saved. Try again in a moment.') }))
+      if (!res.ok) setHomeHidden(before)
+      setStatus({ key: `home-${key}`, state: res.ok ? 'saved' : 'error', error: res.error })
+    })
   }
 
   async function signOutAll() {
@@ -274,11 +296,16 @@ export function PersonalSettings({
           </Row>
         </Section>
 
-        <Section id="home" hidden={!!only && !only.includes('home')} title="Home and start" intro="Where you land, and the pages you reach for most.">
+        <Section id="home" hidden={!!only && !only.includes('home')} title="Home and start" intro="Where you land, what Home shows you, and the pages you reach for most.">
           <Row label="After you sign in, open" hint="The page you land on. A link you followed before signing in still takes you to that page." status={statusFor('start')}>
             <Choice label="After you sign in, open" value={s.startPage} onChange={(k: StartPage) => set('start', 'startPage', k, { startPage: k })}
               options={START_PAGES.map(p => ({ key: p.key, label: p.label }))} />
           </Row>
+          {home && home.cards.map(c => (
+            <Row key={c.key} label={`Show ${c.label} on Home`} hint={c.hint} status={statusFor(`home-${c.key}`)}>
+              <Switch on={!homeHidden.includes(c.key)} label={`Show ${c.label} on Home`} onChange={v => setHomeCard(c.key, v)} />
+            </Row>
+          ))}
           <Row label="Favourites on Home" hint={`Up to ${FAVOURITES_MAX} pages, in the order you drag them. They show at the top of Home. ${favs.length} of ${FAVOURITES_MAX}.`} status={statusFor('favourites')} />
           <div className="px-5 pb-4 -mt-1">
             <Favourites items={favs} groups={groups} onChange={setFavourites} />

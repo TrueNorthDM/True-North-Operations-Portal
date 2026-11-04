@@ -12,6 +12,9 @@
 // Off Home since this handoff: Favourites, the org chart (it has
 // /organization), Birthdays and Work anniversaries (in the Agenda now), and the
 // health banner (its alerts are Needs you rows).
+//
+// Each person may turn cards off in Settings > Home and start (leadership, 4
+// November 2026): a card turned off is neither drawn nor read (lib/home/cards.ts).
 
 import { Suspense } from 'react'
 import { DayBanner } from '@/components/home/DayBanner'
@@ -38,6 +41,9 @@ import { ReviewCard } from '@/components/review/HrParts'
 import { MyGoalsCard } from '@/components/review/MyGoalsCard'
 import { loadGoalsView, loadMyCard } from '@/lib/review/mine'
 import { currentReviewerOf, loadHrSettings, loadRoster, reviewToday } from '@/lib/review/data'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadHiddenColumns } from '@/lib/settings/columns'
+import { showsCard, type HomeCardKey } from '@/lib/home/cards'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -53,6 +59,9 @@ export default async function HomePage() {
   const seesI7 = access.canTool('i7-budget')
   const seesPublishing = access.level === 'super_admin' || access.level === 'admin' || access.level === 'team_leader'
   perf.done({ budget: seesI7 })
+  // The cards the person turned off: the same gates, then their own choice.
+  const hidden = await loadHiddenColumns(createAdminClient(), me?.id).catch(() => ({}))
+  const shows = (key: HomeCardKey) => showsCard(key, { hasClock, seesI7, seesPublishing }, hidden)
   // Needs you is read once: the card draws it, the banner's line counts it.
   const needsP = loadNeedsYou()
   // The review card is read once and drawn twice: under the banner on a phone, atop the right column on a wide screen (C1).
@@ -70,17 +79,17 @@ export default async function HomePage() {
         />
       }
       top={cardP && <Suspense fallback={null}><Review data={cardP} /></Suspense>}
-      needs={<Suspense fallback={<Skeleton h={420} label="Needs you" />}><Needs data={needsP} /></Suspense>}
-      pay={hasClock && me ? <Suspense fallback={<Skeleton h={420} label="Pay period" />}><PayPeriod personId={me.id} /></Suspense> : null}
+      needs={shows('needs') ? <Suspense fallback={<Skeleton h={420} label="Needs you" />}><Needs data={needsP} /></Suspense> : null}
+      pay={shows('pay') && me ? <Suspense fallback={<Skeleton h={420} label="Pay period" />}><PayPeriod personId={me.id} /></Suspense> : null}
       right={
         <>
           {cardP && <div className="hidden lg:contents"><Suspense fallback={null}><Review data={cardP} /></Suspense></div>}
-          <Suspense fallback={<Skeleton h={560} label="Agenda" />}><Agenda access={access} /></Suspense>
-          {me && <Suspense fallback={null}><Goals personId={me.id} /></Suspense>}
-          {seesI7 && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 /></Suspense>}
+          {shows('agenda') && <Suspense fallback={<Skeleton h={560} label="Agenda" />}><Agenda access={access} /></Suspense>}
+          {me && shows('goals') && <Suspense fallback={null}><Goals personId={me.id} /></Suspense>}
+          {shows('i7') && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 /></Suspense>}
         </>
       }
-      publishing={seesPublishing ? <Suspense fallback={<Skeleton h={705} label="Publishing goals" />}><Publishing linked={access.canTool('publishing')} /></Suspense> : null}
+      publishing={shows('publishing') ? <Suspense fallback={<Skeleton h={705} label="Publishing goals" />}><Publishing linked={access.canTool('publishing')} /></Suspense> : null}
     />
   )
 }

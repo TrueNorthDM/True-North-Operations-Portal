@@ -193,7 +193,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   // ── Clocky (16 October 2026, design handoff Design/design_handoff_clocky) ──
   // The row's text is its title, exact copy from the design; the body is empty.
   {
-    key: 'clocky-still-working', src: 'North Time', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-still-working', src: 'North Time', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: false,
+    blockedBy: 'Switched off on Nov 4, 2026: leadership dropped the "Still working?" question.',
     timings: 'instant', section: 'Clock safety', stat: 'still working?',
     example: { title: 'Still working?', body: 'Your clock has been running 4h 30m since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going.' },
     title: 'Still working? (your clock at 4h 30m)',
@@ -206,8 +207,10 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     timings: 'instant', section: 'Clock safety', stat: 'clocks stopped', statOne: 'clock stopped', alarm: true,
     example: { title: 'Your clock stopped by itself at 1:00 PM.', body: 'Confirm when you really stopped.' },
     title: 'Your clock stopped by itself',
-    description: 'Nobody answered "Still working?", so North Time stopped your clock at 5h 00m. In the bell, and the one North Time email: "Your clock stopped by itself".',
+    description: 'Your clock ran 12h 00m since you clocked in, so North Time stopped it and asks when you really stopped. Always sent: in the bell and by email ("Your clock stopped by itself").',
     who: 'You', audience: { kind: 'everyone' },
+    // The person is always told (owner, 4 November 2026): nobody can switch it off.
+    rule: { fixEnabled: true },
     button: { label: 'Confirm end time', action: 'open-clock' },
   },
   {

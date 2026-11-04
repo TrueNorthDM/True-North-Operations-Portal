@@ -3,14 +3,20 @@
  * "Rules" 4 and 5, SPEC 1I and 1L, Clock Safety.dc.html).
  *
  * The window counts the whole time on the clock since the person clocked in,
- * across every job switch: switching does not restart it, only "Keep going"
- * (a new 5-hour window from that moment) or a clock out does.
+ * across every job switch: switching does not restart it, only a clock out
+ * (or an old "Keep going") does.
  *
- *   4h 30m   "Still working?" in the panel and the bell, once per window.
- *   5h 00m   with no answer, Clocky ends the entry at the 5-hour mark (recorded
- *            on the quarter hour, the real mark kept), the top-bar button turns
- *            red until the person confirms their real end, and the occurrence
- *            is logged for Clock safety.
+ *   12h 00m  North Time ends the entry at the 12-hour mark (recorded on the
+ *            quarter hour, the real mark kept), tells the person in the bell
+ *            and by email, the top-bar button turns red until they confirm
+ *            their real end, and the occurrence is logged for Clock safety.
+ *
+ * Leadership, 4 November 2026 (David's answers to the rules): no "Still
+ * working?" question and no stop at 5 hours, which got in the way of people
+ * who clock in once in the morning. Only a clock left running by mistake is
+ * caught, and the person is always told. The "Still working?" step is kept
+ * switched off: the warning comes at the same moment as the stop, so it never
+ * shows on its own.
  *
  * A clock still open from QuickBooks Time has no window of its own: it counts
  * from its start, so it closes at the 5-hour mark too, "as soon as Clocky
@@ -22,8 +28,11 @@
 import { roundIso } from './rounding'
 import { dayLabel, localDate, timeLabel } from './format'
 
-export const WARN_AFTER_SECONDS = 4.5 * 3600
-export const STOP_AFTER_SECONDS = 5 * 3600
+export const STOP_AFTER_SECONDS = 12 * 3600
+/** No warning before the stop (4 November 2026): it would only ever come with it. */
+export const WARN_AFTER_SECONDS = STOP_AFTER_SECONDS
+/** How long a clock runs before North Time stops it, as people read it. */
+export const STOP_AFTER_LABEL = '12h 00m'
 
 /** The columns of tc_entries the window is read from. */
 export interface WindowedEntry {
@@ -33,7 +42,7 @@ export interface WindowedEntry {
   started_at: string | null
 }
 
-/** Where the current 5-hour window started: the last "Keep going", else the clock in. */
+/** Where the current 12-hour window started: the last "Keep going", else the clock in. */
 export function windowStart(e: WindowedEntry): string | null {
   return e.window_started_at ?? e.session_started_at ?? e.started_at_real ?? e.started_at ?? null
 }
@@ -45,15 +54,15 @@ export function sessionStart(e: WindowedEntry): string | null {
 
 export interface SafetyState {
   windowStartedAt: string
-  /** 4h 30m into the window. */
+  /** The warning point (now the same as the stop). */
   warnAt: string
-  /** 5h 00m into the window: where the clock stops. */
+  /** 12h 00m into the window: where the clock stops. */
   stopAt: string
   /** Seconds the window has run. */
   secondsIn: number
-  /** Past 4h 30m: "Still working?" shows. */
+  /** Past the warning point (switched off: same as `due`). */
   warn: boolean
-  /** Past 5h 00m: the clock stops now if it has not already. */
+  /** Past 12h 00m: the clock stops now if it has not already. */
   due: boolean
 }
 
@@ -71,7 +80,7 @@ export function safetyState(windowStartedAt: string, now: Date): SafetyState {
 }
 
 /**
- * Where an automatic stop ends the entry: the 5-hour mark of the window, as it
+ * Where an automatic stop ends the entry: the 12-hour mark of the window, as it
  * really was (kept in ended_at_real) and on the quarter hour (what counts).
  * Never before the entry's own recorded start: a clock switched after its
  * window ran out (the job was late) stops where the entry began.

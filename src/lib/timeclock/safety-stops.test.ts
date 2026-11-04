@@ -19,7 +19,7 @@ describe('the kinds Clock safety lists as stops', () => {
     expect(stopReasonOf('auto_stop')).toBe('five_hours')
     expect(stopReasonOf('limit_stop')).toBe('allowance')
     expect(STOP_REASON_LABEL[stopReasonOf('limit_stop')]).toBe('Allowance reached')
-    expect(STOP_REASON_LABEL[stopReasonOf('auto_stop')]).toBe('5-hour check')
+    expect(STOP_REASON_LABEL[stopReasonOf('auto_stop')]).toBe('12-hour check')
   })
 })
 

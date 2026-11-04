@@ -86,7 +86,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       typeChange,
       approvals: { rows, note },
       pay: money ? {
-        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff, contractorUntil: lastDay,
+        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.storedAllowance, timeOff, contractorUntil: lastDay,
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
       invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : p.paysAs === 'fixed_no_timesheet' ? 'Made on the 1st, no timesheet' : 'Made when they submit') : null,

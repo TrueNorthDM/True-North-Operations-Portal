@@ -15,6 +15,7 @@
 import { dayLabel, stampLabel, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import type { FieldKeys } from './entry-rules'
+import { STOP_AFTER_LABEL } from './safety'
 
 /** What the audit keeps of an entry, before and after a change. */
 export interface Snapshot {
@@ -163,7 +164,7 @@ export function historyLines(h: HistoryInput): HistoryLine[] {
       case 'auto_stop':
         out.push(line(after.ended_at_real ?? a.changed_at, 'North Time', after.allowance
           ? `North Time stopped the clock at the ${after.allowance}`
-          : 'North Time stopped the clock automatically after 5h 00m', { dot: RED }))
+          : `North Time stopped the clock automatically after ${STOP_AFTER_LABEL}`, { dot: RED }))
         break
       case 'confirm_end': {
         const real = after.ended_at_real ?? after.ended_at

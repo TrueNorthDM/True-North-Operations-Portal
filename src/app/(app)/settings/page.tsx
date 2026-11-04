@@ -25,7 +25,10 @@ import { DEFAULT_SETTINGS, loadSettings } from '@/lib/settings/person'
 import { pinnable, resolveFavourites } from '@/lib/settings/pages'
 import { saveNotificationPref, sendTestNotification } from '../notifications/actions'
 import { signOutEverywhere } from '@/app/auth/actions'
-import { saveSettings } from './actions'
+import { saveHiddenColumns, saveSettings } from './actions'
+import { hiddenFor, loadHiddenColumns } from '@/lib/settings/columns'
+import { homeCardsFor } from '@/lib/home/cards'
+import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
@@ -35,12 +38,20 @@ export default async function SettingsPage() {
   const access = await requireSurface('home')
   const [me, user, viewAs, twoStep] = await Promise.all([getCurrentPerson(), getSessionUser(), getViewAs(), checkTwoStep()])
   const db = createAdminClient()
-  const [settings, { rules, ready }, prefs, { data: memberships }] = await Promise.all([
+  const [settings, { rules, ready }, prefs, { data: memberships }, hiddenCols, ntOpen] = await Promise.all([
     me ? loadSettings(db, me.id) : Promise.resolve({ ...DEFAULT_SETTINGS }),
     loadRules(db),
     me ? loadPrefs(db, [me.id]) : Promise.resolve(new Map()),
     me ? db.from('team_members').select('position').eq('person_id', me.id) : Promise.resolve({ data: [] }),
+    loadHiddenColumns(db, me?.id),
+    northTimeOpen().catch(() => false),
   ])
+  // Home's cards this person can have (the same gates as Home), for the switches.
+  const homeCards = homeCardsFor({
+    hasClock: access.can('clocky-hours') && ntOpen,
+    seesI7: access.canTool('i7-budget'),
+    seesPublishing: access.level === 'super_admin' || access.level === 'admin' || access.level === 'team_leader',
+  })
 
   const leads = ((memberships ?? []) as { position: string | null }[]).some(m => teamPositionLeads(m.position ?? 'collaborator'))
   const mine = NOTIFICATION_TYPES.filter(t => !t.available || reaches(t, { isAdmin: access.isAdmin, leads, canTool: access.can })).map(t => t.key)
@@ -64,6 +75,8 @@ export default async function SettingsPage() {
         email={me?.email ?? user?.email ?? null}
         blocked={blocked}
         save={saveSettings}
+        home={{ cards: homeCards, hidden: hiddenFor(hiddenCols, 'home') }}
+        saveHome={saveHiddenColumns}
         signOutEverywhere={signOutEverywhere}
         favourites={resolveFavourites(rail, settings.favourites)}
         groups={pinnable(rail)}

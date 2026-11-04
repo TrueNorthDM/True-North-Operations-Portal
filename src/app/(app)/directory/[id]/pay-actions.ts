@@ -94,7 +94,7 @@ export async function savePayTerms(personId: string, input: PayInput): Promise<R
  * monthly amount are saved by the table's own fields (savePersonCostRate,
  * savePersonMonthlySalary), so this never touches money.
  */
-export async function savePaysAndAllowance(personId: string, input: Pick<PayInput, 'paysAs' | 'allowance'>): Promise<Result> {
+export async function savePaysAndAllowance(personId: string, input: Pick<PayInput, 'paysAs' | 'allowance'> & { salaried?: boolean }): Promise<Result> {
   if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to save.' }
   const access = await writerAccess()
   if (!access) return { ok: false, error: 'Sign in again to save.' }
@@ -111,12 +111,14 @@ export async function savePaysAndAllowance(personId: string, input: Pick<PayInpu
     return { ok: false, error: 'Type the hours of the allowance.' }
   }
   const { data: before } = await c.from('pay_terms').select('pays_as, allowance_hours, allowance_period').eq('person_id', personId).maybeSingle()
-  const row = { person_id: personId, pays_as: paysAs, allowance_hours: al ? al.hours : null, allowance_period: al ? al.period : null, updated_by: access.personId, updated_at: new Date().toISOString() }
+  // Salaried or hourly: US employees only (migration 151); a contractor is never salaried.
+  const salaried: { salaried?: boolean } = input.salaried === undefined ? {} : { salaried: !contractor && input.salaried }
+  const row = { person_id: personId, pays_as: paysAs, allowance_hours: al ? al.hours : null, allowance_period: al ? al.period : null, ...salaried, updated_by: access.personId, updated_at: new Date().toISOString() }
   const { error } = await c.from('pay_terms').upsert(row, { onConflict: 'person_id' })
   if (error) return { ok: false, error: 'Not saved. Try again in a moment.' }
   const { error: hErr } = await c.from('pay_terms_changes').insert({
     person_id: personId, before: before ?? null,
-    after: { pays_as: row.pays_as, allowance_hours: row.allowance_hours, allowance_period: row.allowance_period },
+    after: { pays_as: row.pays_as, allowance_hours: row.allowance_hours, allowance_period: row.allowance_period, ...salaried },
     reason: 'Updated in Rates & Costs', changed_by: access.personId,
   })
   if (hErr) console.error('[pay terms] history not written:', hErr.message)

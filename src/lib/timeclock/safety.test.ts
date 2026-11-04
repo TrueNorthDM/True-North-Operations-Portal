@@ -23,22 +23,23 @@ describe('the window, across switches', () => {
     expect(sessionStart(afterSwitch)).toBe(clockIn)
   })
 
-  it('warns at 4h 30m and stops at 5h 00m since the clock in', () => {
-    expect(safetyState(clockIn, at('16:36:59')).warn).toBe(false)
-    expect(safetyState(clockIn, at('16:37:00')).warn).toBe(true)
-    expect(safetyState(clockIn, at('17:06:59')).due).toBe(false)
-    expect(safetyState(clockIn, at('17:07:00')).due).toBe(true)
+  it('stops at 12h 00m since the clock in, with no warning before (4 November 2026)', () => {
+    expect(safetyState(clockIn, at('23:00:00')).warn).toBe(false)
+    expect(safetyState(clockIn, at('23:00:00')).due).toBe(false)
+    expect(safetyState(clockIn, new Date('2026-10-16T00:06:59.000Z')).due).toBe(false)
+    expect(safetyState(clockIn, new Date('2026-10-16T00:07:00.000Z')).due).toBe(true)
+    expect(STOP_AFTER_SECONDS).toBe(12 * 3600)
+    expect(WARN_AFTER_SECONDS).toBe(STOP_AFTER_SECONDS)
     expect(Date.parse(safetyState(clockIn, at('13:00:00')).stopAt) - Date.parse(clockIn)).toBe(STOP_AFTER_SECONDS * 1000)
     expect(Date.parse(safetyState(clockIn, at('13:00:00')).warnAt) - Date.parse(clockIn)).toBe(WARN_AFTER_SECONDS * 1000)
   })
 
-  it('restarts with "Keep going": a new 5 hours from that moment', () => {
+  it('an old "Keep going" still restarts the window from that moment', () => {
     const kept = { ...afterSwitch, window_started_at: t('16:40:00') }
     expect(windowStart(kept)).toBe(t('16:40:00'))
     expect(sessionStart(kept)).toBe(clockIn)
-    expect(safetyState(windowStart(kept)!, at('17:10:00')).due).toBe(false)
-    expect(safetyState(windowStart(kept)!, at('21:10:00')).warn).toBe(true)
-    expect(safetyState(windowStart(kept)!, at('21:40:00')).due).toBe(true)
+    expect(safetyState(windowStart(kept)!, new Date('2026-10-16T00:07:00.000Z')).due).toBe(false)
+    expect(safetyState(windowStart(kept)!, new Date('2026-10-16T04:40:00.000Z')).due).toBe(true)
   })
 
   it('counts a clock open from QuickBooks Time from its start', () => {
@@ -49,13 +50,13 @@ describe('the window, across switches', () => {
 })
 
 describe('where the clock stops', () => {
-  it('at the 5-hour mark: the real mark kept, the quarter hour recorded', () => {
-    expect(stopPoint(t('12:07:00'), t('12:00:00'))).toEqual({ real: t('17:07:00'), recorded: t('17:00:00') })
-    expect(stopPoint(t('12:08:00'), t('12:15:00'))).toEqual({ real: t('17:08:00'), recorded: t('17:15:00') })
+  it('at the 12-hour mark: the real mark kept, the quarter hour recorded', () => {
+    expect(stopPoint(t('08:07:00'), t('08:00:00'))).toEqual({ real: t('20:07:00'), recorded: t('20:00:00') })
+    expect(stopPoint(t('08:08:00'), t('08:15:00'))).toEqual({ real: t('20:08:00'), recorded: t('20:15:00') })
   })
 
   it('never before the entry began (a switch after a late job)', () => {
-    expect(stopPoint(t('12:00:00'), t('17:30:00')).recorded).toBe(t('17:30:00'))
+    expect(stopPoint(t('05:00:00'), t('17:30:00')).recorded).toBe(t('17:30:00'))
   })
 
   it('names the day when it was not today (1L)', () => {

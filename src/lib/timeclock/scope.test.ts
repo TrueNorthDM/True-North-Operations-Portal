@@ -69,9 +69,9 @@ describe('changing hours', () => {
     expect(isLeader(lead)).toBe(true)
   })
 
-  it('Team Leader: their own hours like a User, shorten only and never add (owner, 25 October 2026: "só as do time")', () => {
-    expect(changeRight(lead, wendy)).toBe('shorten')
-    expect(canAddFor(lead, wendy)).toBe(false)
+  it('Team Leader: changes and adds their own hours, like everyone (leadership, 4 November 2026)', () => {
+    expect(changeRight(lead, wendy)).toBe('full')
+    expect(canAddFor(lead, wendy)).toBe(true)
     // Their own correction goes to another Lead of their team, an Admin or a Super Admin, never to themselves.
     const otherLead = viewer('team_leader', 'rock', [WEB])
     expect(canApproveCorrection(lead, wendy)).toBe(false)
@@ -80,10 +80,11 @@ describe('changing hours', () => {
     expect(canApproveCorrection(superAdmin, wendy)).toBe(true)
   })
 
-  it('User only shortens their own entries, and never adds time', () => {
-    expect(changeRight(user, samuel)).toBe('shorten')
+  it('User changes and adds time on their own entries, never on anyone else\'s (4 November 2026)', () => {
+    expect(changeRight(user, samuel)).toBe('full')
     expect(changeRight(user, wendy)).toBe('none')
-    expect(canAddFor(user, samuel)).toBe(false)
+    expect(canAddFor(user, samuel)).toBe(true)
+    expect(canAddFor(user, wendy)).toBe(false)
     expect(isLeader(user)).toBe(false)
   })
 })
