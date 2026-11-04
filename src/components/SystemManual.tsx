@@ -60,8 +60,8 @@ const Chip = ({ k, className = '' }: { k: string; className?: string }) => (
 const Arrow = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
 
 // The contents list in three groups with a rule between them, each A to Z
-// (owner, 4 November 2026): the portal itself, how it is put together, and
-// everything else. A new section joins its group and finds its own place.
+// (owner, 4 November 2026): the portal itself (with Where do I find...), how
+// it is put together, and everything else. A new section joins its group and finds its own place.
 type TocItem = { id: string; label: string }
 const az = (items: readonly TocItem[]) => [...items].sort((a, b) => a.label.localeCompare(b.label))
 const TOC_GROUPS: TocItem[][] = [
@@ -69,13 +69,14 @@ const TOC_GROUPS: TocItem[][] = [
     { id: 'overview', label: 'Overview' },
     { id: 'navigation', label: 'Getting around' },
     { id: 'pages', label: 'Pages & sections' },
+    { id: 'where', label: 'Where do I find...' },
   ]),
   az([
     { id: 'access', label: 'Access model' },
     { id: 'monday', label: 'How Monday feeds it' },
     { id: 'sources', label: 'Data sources' },
   ]),
-  az([...NORTH_TIME_TOC, ...ANNUAL_REVIEW_TOC]),
+  az([...NORTH_TIME_TOC.filter(t => t.id !== 'where'), ...ANNUAL_REVIEW_TOC]),
 ]
 const TOC = TOC_GROUPS.flat()
 
