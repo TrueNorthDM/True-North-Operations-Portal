@@ -503,7 +503,9 @@ export default async function SettingsPage() {
       </div>
 
       {sections.some(Boolean)
-        ? <SettingsNav signedIn={signedIn} sections={sections.filter((x): x is SettingsSection => !!x)} />
+        // A to Z by label (owner, 4 November 2026), so a new section finds its
+        // own place instead of joining the end.
+        ? <SettingsNav signedIn={signedIn} sections={sections.filter((x): x is SettingsSection => !!x).sort((x, y) => x.label.localeCompare(y.label))} />
         : <p className="text-[14px] text-muted">None of the sections here is open to your access level. A Super Admin can open them on Admin &gt; Access levels.</p>}
     </div>
   )
