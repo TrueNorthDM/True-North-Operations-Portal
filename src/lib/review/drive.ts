@@ -78,28 +78,33 @@ export async function keepWhatItSays(row: { id: number; year: number; person_id:
   return { goals: found.goals.length, job: Object.keys(found.job).length }
 }
 
-/** Imports every matched file of the year not imported yet. */
-export async function importReviewFiles(year: number, by: string): Promise<{ ok: true; done: number; failed: number } | { ok: false; error: string }> {
+/**
+ * Imports the matched files of the year not imported yet: every one, or only
+ * `onlyId` (the dialog sends them one at a time, to show which it is on).
+ */
+export async function importReviewFiles(year: number, by: string, onlyId?: number): Promise<{ ok: true; done: number; failed: number; goals: number } | { ok: false; error: string }> {
   const acc = await driveAccount()
   if (!acc.ok) return { ok: false, error: acc.why }
   const token = await driveToken()
   if (!token) return { ok: false, error: `${acc.email} needs to be connected again in Agenda settings.` }
-  const rows = ((await rdb().from('review_imports').select('*').eq('year', year).is('imported_at', null).not('person_id', 'is', null).in('match', ['matched', 'check'])).data ?? []) as ImportRow[]
-  let done = 0, failed = 0
+  let q = rdb().from('review_imports').select('*').eq('year', year).is('imported_at', null).not('person_id', 'is', null).in('match', ['matched', 'check'])
+  if (onlyId !== undefined) q = q.eq('id', onlyId)
+  const rows = ((await q).data ?? []) as ImportRow[]
+  let done = 0, failed = 0, goals = 0
   for (const r of rows) {
     try {
       const doc = await asDoc(token, r.drive_file_id)
       const up = await createUploadClient().storage.from(BUCKET).upload(importPath(r.id), Buffer.from(doc.pdf), { contentType: 'application/pdf', upsert: true })
       if (up.error) throw new Error(up.error.message)
       await rdb().from('review_imports').update({ imported_at: new Date().toISOString(), imported_by: by, match: 'matched' }).eq('id', r.id)
-      await keepWhatItSays(r, doc.text, by)
+      goals += (await keepWhatItSays(r, doc.text, by)).goals
       done++
     } catch (e) {
       failed++
       console.error('[review] import:', r.file_name, e instanceof Error ? e.message : e)
     }
   }
-  return { ok: true, done, failed }
+  return { ok: true, done, failed, goals }
 }
 
 /** A stored PDF's bytes (an imported review or an approved one), or null. */

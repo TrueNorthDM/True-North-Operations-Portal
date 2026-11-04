@@ -45,7 +45,7 @@ export interface HrSettingsApi {
   hrPicker(): Promise<{ ok: true; token: string; key: string; appId: string } | { ok: false; error: string }>
   pickImportFiles(i: { year: number; files: { id: string; name: string; mimeType?: string; url?: string }[] }): Promise<Res>
   setImportPerson(i: { id: number; personId: string | null; skip?: boolean }): Promise<Res>
-  importFiles(i: { year: number }): Promise<Res>
+  importFiles(i: { year: number; importId?: number }): Promise<Res>
   saveImportGoal(i: { importId: number; goalId?: number | null; what?: string; byMonth?: string | null }): Promise<Res>
   removeImportGoal(i: { goalId: number }): Promise<Res>
 }
@@ -70,6 +70,10 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
   const [toast, setToast] = useState<ToastState | null>(null)
   const [busy, setBusy] = useState(false)
   const [importing, setImporting] = useState(false)
+  // The import, one file at a time, so the dialog says which it is on and ends
+  // with what went in (owner, 4 November 2026: the button only faded before).
+  const [progress, setProgress] = useState<{ at: number; of: number; file: string } | null>(null)
+  const [outcome, setOutcome] = useState<{ done: number; goals: number; failed: string[] } | null>(null)
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 5000) }
   const run = async (go: () => Promise<Res>) => {
     setBusy(true)
@@ -88,6 +92,20 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
     } catch (e) {
       say({ text: e instanceof Error ? e.message : 'The Picker did not open. Try again.', error: true })
     } finally { setBusy(false) }
+  }
+  const importAll = async () => {
+    const todo = data.imports.filter(r => !r.imported && r.personId && (r.match === 'matched' || r.match === 'check'))
+    const result = { done: 0, goals: 0, failed: [] as string[] }
+    setBusy(true); setOutcome(null)
+    for (const [i, r] of todo.entries()) {
+      setProgress({ at: i + 1, of: todo.length, file: r.file })
+      try {
+        const x = await api.importFiles({ year: data.year - 1, importId: r.id })
+        if (x.ok) { result.done++; result.goals += Number(x.toast) || 0 } else result.failed.push(r.file)
+      } catch { result.failed.push(r.file) }
+    }
+    setProgress(null); setBusy(false); setOutcome(result)
+    router.refresh()
   }
   const opensIn = data.dates.leaders_open_on
   const imported = data.imports.filter(i => i.imported).length
@@ -159,14 +177,16 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
 
       {importing && <ImportDialog data={data} busy={busy} api={api} onSaved={say} onClose={() => setImporting(false)} onMore={() => void pick('files')}
         onPerson={(id, personId) => void run(() => api.setImportPerson({ id, personId }))}
-        onImport={() => void run(async () => { const r = await api.importFiles({ year: data.year - 1 }); if (r.ok) setImporting(false); return r })} />}
+        progress={progress} outcome={outcome}
+        onImport={() => void importAll()} />}
       <Toast toast={toast} />
     </div>
   )
 }
 
-function ImportDialog({ data, busy, api, onSaved, onClose, onMore, onPerson, onImport }: {
-  data: HrSettingsData; busy: boolean; api: HrSettingsApi; onSaved: (t: ToastState) => void; onClose: () => void; onMore: () => void; onPerson: (id: number, personId: string | null) => void; onImport: () => void
+function ImportDialog({ data, busy, api, progress, outcome, onSaved, onClose, onMore, onPerson, onImport }: {
+  data: HrSettingsData; busy: boolean; api: HrSettingsApi; progress: { at: number; of: number; file: string } | null; outcome: { done: number; goals: number; failed: string[] } | null
+  onSaved: (t: ToastState) => void; onClose: () => void; onMore: () => void; onPerson: (id: number, personId: string | null) => void; onImport: () => void
 }) {
   const rows = data.imports
   const [checking, setChecking] = useState<number | null>(null)
@@ -209,7 +229,16 @@ function ImportDialog({ data, busy, api, onSaved, onClose, onMore, onPerson, onI
         ))}
       </div>
       <div className="-mx-[22px] -mb-[22px] px-6 py-3.5 border-t border-[#eceff3] flex flex-wrap items-center gap-2">
-        <span className="flex-1 min-w-[220px] text-[13px] text-[#5b6b82]">{count('matched')} matched · {count('check')} to check · {count('none')} {count('none') === 1 ? 'needs' : 'need'} a person · {count('skipped')} skipped</span>
+        {progress ? (
+          <span className="flex-1 min-w-[220px] flex flex-col gap-1.5" role="status" aria-live="polite">
+            <span className="text-[13px] font-bold text-tn-ink">Importing {progress.at} of {progress.of}: <span className="font-normal text-[#5b6b82]">{progress.file}</span></span>
+            <span className="h-1.5 rounded-full bg-[#eceff3] overflow-hidden"><span className="block h-full bg-[#1E9E6A] transition-[width] duration-300" style={{ width: `${Math.round(((progress.at - 1) / progress.of) * 100)}%` }} /></span>
+          </span>
+        ) : outcome ? (
+          <span className={`flex-1 min-w-[220px] text-[13px] font-bold ${outcome.failed.length ? 'text-[#b42318]' : 'text-[#0d7a4f]'}`} role="status">
+            {outcome.done} {outcome.done === 1 ? 'file' : 'files'} imported, {outcome.goals} {data.year} {outcome.goals === 1 ? 'goal' : 'goals'} read.{outcome.failed.length ? ` Not read: ${outcome.failed.join(', ')}. Import them again.` : ' Check each one\'s goals with Check.'}
+          </span>
+        ) : <span className="flex-1 min-w-[220px] text-[13px] text-[#5b6b82]">{count('matched')} matched · {count('check')} to check · {count('none')} {count('none') === 1 ? 'needs' : 'need'} a person · {count('skipped')} skipped</span>}
         <button type="button" disabled={busy} className={BTN.white} onClick={onMore}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Pick more files</button>
         <button type="button" disabled={busy || !ready} className={`${BTN.navy} disabled:opacity-50`} onClick={onImport}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>Import {ready} {ready === 1 ? 'file' : 'files'}</button>
       </div>

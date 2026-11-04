@@ -663,13 +663,17 @@ export async function removeImportGoal(input: { goalId: number }): Promise<Done>
 }
 
 /** Import: copies each matched file (as a PDF) into the portal, where it shows as the reference. */
-export async function importFiles(input: { year: number }): Promise<Done> {
+export async function importFiles(input: { year: number; importId?: number }): Promise<Done> {
   const a = await settingsWriter()
   if (!a) return no('Only Super Admins and HR import last year\'s reviews.')
   const { importReviewFiles } = await import('@/lib/review/drive')
-  const r = await importReviewFiles(Number(input?.year), a.me)
+  const one = input?.importId === undefined ? undefined : Number(input.importId)
+  const r = await importReviewFiles(Number(input?.year), a.me, one)
   revalidatePath('/admin/settings')
   if (!r.ok) return no(r.error)
+  // One file (the dialog's loop): whether it went in, and the toast carries
+  // the number of goals read, which the dialog adds up.
+  if (one !== undefined) return r.done ? { ok: true, toast: `${r.goals}` } : no('Could not be read.')
   return { ok: true, toast: `${r.done} file${r.done === 1 ? '' : 's'} imported.${r.failed ? ` ${r.failed} could not be read; try them again.` : ''}` }
 }
 
