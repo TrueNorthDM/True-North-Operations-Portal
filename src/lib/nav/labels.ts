@@ -33,6 +33,7 @@ export const NAV_LABEL = {
   '/settings': 'Settings',
   '/chat': 'Chat',
   '/emails': 'Emails',
+  '/manual': 'System manual',
   // The Tools panel's pages (22 September 2026). Tools has no landing page of
   // its own, so a trail passes through these and not through a "Tools" crumb.
   '/ops/publishing': 'Publishing Goals',

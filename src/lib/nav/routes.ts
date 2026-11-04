@@ -23,6 +23,7 @@ export const ROUTES = {
   history: '/history',
   chat: '/chat',
   emails: '/emails',
+  manual: '/manual',
 } as const
 
 /** The AAAF or HFA page list. Replaces every `/${siteCode}` in the Href Links pages. */

@@ -20,13 +20,13 @@ const rows = (rail: ResolvedEntry[], key: string) => hub(rail, key)?.groups.flat
 describe('the rail', () => {
   // The owner's order (25 October 2026): the day's work, messages, the company, Admin.
   it('gives a Super Admin everything, in the owner\'s order, with three rules', () => {
-    expect(keys(railFor('super_admin'))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin'])
+    expect(keys(railFor('super_admin'))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', 'manual', '|', 'tools', 'people', '|', 'admin'])
   })
 
   // Clocky is for every level (16 October 2026: Time entries and the clock),
   // so a user sees it in the first group; not Admin. My Hours is gone.
   it('gives a user North Time, but neither Admin nor My Hours', () => {
-    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', '|', 'tools', 'people'])
+    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', 'manual', '|', 'tools', 'people'])
   })
 
   // A rule with nothing on one side is not drawn, and never two in a row.

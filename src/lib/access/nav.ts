@@ -223,6 +223,8 @@ export const RAIL: readonly RailEntry[] = [
   { kind: 'rule' },
   { kind: 'page', key: 'chat', href: ROUTES.chat, icon: 'chat', surface: 'chat', soon: true },
   { kind: 'page', key: 'emails', href: ROUTES.emails, icon: 'emails', surface: 'emails', soon: true },
+  // The System manual, for everyone (owner, 4 November 2026; it was in Admin).
+  { kind: 'page', key: 'manual', href: ROUTES.manual, icon: 'manual', surface: 'manual' },
   { kind: 'rule' },
   {
     kind: 'hub',
@@ -292,7 +294,6 @@ export const RAIL: readonly RailEntry[] = [
         label: 'Portal',
         items: [
           { key: 'tests', label: 'Tests', href: '/admin/tests', icon: 'tests', surface: 'tests' },
-          { key: 'manual', label: 'System manual', href: '/admin/manual', icon: 'manual', surface: 'manual' },
         ],
       },
     ],

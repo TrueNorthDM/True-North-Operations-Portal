@@ -198,8 +198,12 @@ const TREE: Node[] = [
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },
-    { key: 'manual', label: 'System manual', kind: 'page', v: [1, 0, 0], ch: [
-      { key: 'man-portal', label: 'The portal', kind: 'tab', v: [1, 0, 0] },
+  ] },
+  // The System manual on the rail for everyone (owner, 4 November 2026; it was
+  // in Admin). How it runs stays Super Admin only.
+  { key: 'm-manual', label: 'System manual', kind: 'module', ch: [
+    { key: 'manual', label: 'System manual', kind: 'page', always: true, ch: [
+      { key: 'man-portal', label: 'The portal', kind: 'tab', always: true },
       { key: 'man-runs', label: 'How it runs', kind: 'tab', superOnly: true, note: 'Shows the server and where its key files live: Super Admins only (10 October 2026).' },
     ] },
   ] },

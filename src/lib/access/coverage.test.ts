@@ -42,6 +42,7 @@ describe('every page asks the access rule', () => {
   // Pages anyone signed in (or nobody) may open, and why.
   const OPEN: Record<string, string> = {
     'app/(app)/history/page.tsx': 'History is open to everyone (always)',
+    'app/(app)/admin/manual/page.tsx': 'only sends old links to /manual, which asks the access rule itself',
     'app/auth/confirm/page.tsx': 'sign-in flow',
     'app/auth/two-step/page.tsx': 'sign-in flow',
     'app/auth/two-step/setup/page.tsx': 'sign-in flow',

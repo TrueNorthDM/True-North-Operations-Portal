@@ -4,15 +4,15 @@
 // each is linkable and the page stays a server component.
 
 import Link from 'next/link'
-import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
 
 export type ManualTab = 'portal' | 'runs'
 
 const TABS: { key: ManualTab; label: string; href: string }[] = [
-  { key: 'portal', label: 'The portal', href: '/admin/manual' },
-  { key: 'runs', label: 'How it runs', href: '/admin/manual?tab=runs' },
+  { key: 'portal', label: 'The portal', href: '/manual' },
+  { key: 'runs', label: 'How it runs', href: '/manual?tab=runs' },
 ]
 
 const INTRO: Record<ManualTab, string> = {
@@ -20,11 +20,11 @@ const INTRO: Record<ManualTab, string> = {
   runs: 'Where the portal runs and how it is looked after: the server and its accounts, how a change travels through staging to production, the alerts, the backups, people, what to do when something breaks, and the keys.',
 }
 
-export function ManualHeader({ active, tabs = ['portal', 'runs'], canOpenAdmin = true }: { active: ManualTab; tabs?: readonly ManualTab[]; canOpenAdmin?: boolean }) {
+export function ManualHeader({ active, tabs = ['portal', 'runs'] }: { active: ManualTab; tabs?: readonly ManualTab[] }) {
   return (
     <div className="space-y-4">
       <div>
-        <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="System manual" />
+        <Breadcrumb self="/manual" />
         <h1 className={PAGE_TITLE}>System manual</h1>
         <p className="mt-1.5 text-muted">{INTRO[active]}</p>
       </div>

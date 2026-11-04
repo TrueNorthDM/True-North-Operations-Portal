@@ -91,7 +91,7 @@ const ACTIVE = [
 const IN_CONSTRUCTION = [
   { href: '/admin/tests', key: 'tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
   { href: '/admin/automations', key: 'automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
-  { href: '/admin/manual', key: 'manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
+  { href: '/manual', key: 'manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
   { href: '/admin/monday-links', key: 'monday-accounts', title: 'Monday accounts', icon: AutomationsIcon, description: 'Which Monday account is which person, so My Work can be filtered by team.' },
 ] as const
 
