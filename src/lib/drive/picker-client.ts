@@ -36,15 +36,18 @@ export const pickerNS = (): PickerNS => (window as Win).google!.picker
 export async function openPicker(o: { token: string; key: string; appId: string; title: string; mode: 'folder' | 'files'; onPick: (docs: NonNullable<PickerAnswer['docs']>) => void }): Promise<void> {
   await loadPicker()
   const g = pickerNS()
-  const view = (shared: boolean) => {
+  // Three tabs: office@'s own Drive, Shared with me, and the Shared drives
+  // office@ is a member of (owner, 4 November 2026: the HR files live in one).
+  const view = (tab: 'mine' | 'shared' | 'drives') => {
     const v = new g.DocsView(o.mode === 'folder' ? g.ViewId.FOLDERS : g.ViewId.DOCS)
     if (o.mode === 'folder') { v.setSelectFolderEnabled(true); v.setIncludeFolders(true); v.setMimeTypes('application/vnd.google-apps.folder') }
     else { v.setIncludeFolders(true); v.setMimeTypes('application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.google-apps.document') }
-    if (shared) { v.setOwnedByMe(false); v.setLabel('Shared with me') }
+    if (tab === 'shared') { v.setOwnedByMe(false); v.setLabel('Shared with me') }
+    if (tab === 'drives') { v.setEnableDrives(true); v.setLabel('Shared drives') }
     return v
   }
   const b = new g.PickerBuilder()
-  b.addView(view(false)); b.addView(view(true)); b.enableFeature(g.Feature.SUPPORT_DRIVES)
+  b.addView(view('mine')); b.addView(view('shared')); b.addView(view('drives')); b.enableFeature(g.Feature.SUPPORT_DRIVES)
   if (o.mode === 'files') b.enableFeature(g.Feature.MULTISELECT_ENABLED)
   b.setOAuthToken(o.token); b.setDeveloperKey(o.key); b.setAppId(o.appId)
   b.setTitle(o.title)
