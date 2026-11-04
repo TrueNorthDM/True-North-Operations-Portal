@@ -72,7 +72,10 @@ function Notice({ notice }: { notice: { text: string; error: boolean } }) {
   )
 }
 
-export function AgendaSettings({ data, notice, api }: { data: AgendaSettingsData; notice?: { text: string; error: boolean } | null; api: AgendaSettingsApi }) {
+/** The cards, for the System manual's guides, which picture one at a time (`only`). */
+export type AgendaSettingsCard = 'team' | 'accounts' | 'hours' | 'link' | 'holidays' | 'time'
+
+export function AgendaSettings({ data, notice, api, only }: { data: AgendaSettingsData; notice?: { text: string; error: boolean } | null; api: AgendaSettingsApi; only?: readonly AgendaSettingsCard[] }) {
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
@@ -88,16 +91,17 @@ export function AgendaSettings({ data, notice, api }: { data: AgendaSettingsData
       setBusy(false)
     }
   }
+  const show = (c: AgendaSettingsCard) => !only || only.includes(c)
   return (
     <div className="flex flex-col gap-[18px]">
       {notice && <Notice notice={notice} />}
-      <TeamCalendarCard data={data} busy={busy} run={run} api={api} />
-      {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
-      <AccountsCard data={data} busy={busy} run={run} api={api} />
-      <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />
-      <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />
-      <HolidaysCard country={data.country} />
-      <YourTimeCard zone={data.zone} />
+      {show('team') && <TeamCalendarCard data={data} busy={busy} run={run} api={api} />}
+      {!only && data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
+      {show('accounts') && <AccountsCard data={data} busy={busy} run={run} api={api} />}
+      {show('hours') && <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />}
+      {show('link') && <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />}
+      {show('holidays') && <HolidaysCard country={data.country} />}
+      {show('time') && <YourTimeCard zone={data.zone} />}
       <Toast toast={toast} />
     </div>
   )

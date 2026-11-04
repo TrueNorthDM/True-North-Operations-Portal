@@ -1,12 +1,11 @@
 'use client'
 
 /**
- * SystemManual: the internal docs (the System manual's "The portal" tab; the
- * header and tabs are ManualHeader), hand-built to match the handoff prototype:
- * a sticky scroll-spy table of contents on the left, richly-laid-out sections
- * on the right (cards, the left-rail reference, page cards, the access-model
- * flow, the Monday data-flow, and the data-source cards). Content is static;
- * the only client bit is the scroll-spy.
+ * SystemManual: the sections of the first, one-page manual (cards, the
+ * left-rail reference, page cards, the access-model flow, the Monday data-flow,
+ * and the data-source cards). Since 4 November 2026 each is a page of its own
+ * in the manual's frame (components/manual/ManualShell.tsx), shown by
+ * ManualSection until it is rewritten as a guide.
  *
  * Audit, 10 October 2026: the Access section is rewritten from the real model
  * (lib/access/catalogue.ts and decide.ts); it still described team grants on
@@ -29,10 +28,9 @@
  */
 
 import Link from 'next/link'
-import { Fragment, useEffect, useState } from 'react'
 import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
-import { HomeSection, NORTH_TIME_TOC, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
-import { ANNUAL_REVIEW_TOC, AnnualReviewSection } from './manual/AnnualReviewManual'
+import { HomeSection, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
+import { AnnualReviewSection } from './manual/AnnualReviewManual'
 import { Pill } from '@/components/ui/Pill'
 
 // ── Icons (line style, system look) ─────────────────────────────────
@@ -58,27 +56,6 @@ const Chip = ({ k, className = '' }: { k: string; className?: string }) => (
   </span>
 )
 const Arrow = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
-
-// The contents list in three groups with a rule between them, each A to Z
-// (owner, 4 November 2026): the portal itself (with Where do I find...), how
-// it is put together, and everything else. A new section joins its group and finds its own place.
-type TocItem = { id: string; label: string }
-const az = (items: readonly TocItem[]) => [...items].sort((a, b) => a.label.localeCompare(b.label))
-const TOC_GROUPS: TocItem[][] = [
-  az([
-    { id: 'overview', label: 'Overview' },
-    { id: 'navigation', label: 'Getting around' },
-    { id: 'pages', label: 'Pages & sections' },
-    { id: 'where', label: 'Where do I find...' },
-  ]),
-  az([
-    { id: 'access', label: 'Access model' },
-    { id: 'monday', label: 'How Monday feeds it' },
-    { id: 'sources', label: 'Data sources' },
-  ]),
-  az([...NORTH_TIME_TOC.filter(t => t.id !== 'where'), ...ANNUAL_REVIEW_TOC]),
-]
-const TOC = TOC_GROUPS.flat()
 
 const RAIL = [
   { icon: 'home', name: 'Home', desc: 'What you need to do today: your day and clock, what needs you, your pay period, the Agenda.', admin: false },
@@ -150,26 +127,12 @@ const LEVEL_ORDER = [
 ] as const
 
 /**
- * `superOnly`: the labels of the catalogue's Super Admin only items, worked out
- * on the server by app/(app)/manual/page.tsx.
+ * One of the manual's sections by its id, as a page of its own
+ * (/manual/<tab>/<slug>, components/manual/ManualContent.tsx). `superOnly`:
+ * the labels of the catalogue's Super Admin only items, worked out on the
+ * server by the manual's page.
  */
-export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
-  const [active, setActive] = useState('overview')
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        const visible = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible[0]) setActive(visible[0].target.id)
-      },
-      { rootMargin: '-12% 0px -70% 0px', threshold: 0 },
-    )
-    for (const t of TOC) { const el = document.getElementById(t.id); if (el) observer.observe(el) }
-    return () => observer.disconnect()
-  }, [])
-
-  // Each section by its id, shown in the contents list's order (owner,
-  // 4 November 2026: three groups, each A to Z).
+export function ManualSection({ id, superOnly }: { id: string; superOnly: readonly string[] }) {
   const SECTION: Record<string, React.ReactNode> = {
     'overview': (
       <>
@@ -403,39 +366,5 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
     'where': <WhereSection />,
     'annual-review': <AnnualReviewSection />,
   }
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
-        {/* Sticky scroll-spy TOC */}
-        <nav className="lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto flex flex-col gap-0.5">
-          <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-2">On this page</div>
-          {TOC_GROUPS.map((group, g) => (
-            <Fragment key={g}>
-              {g > 0 && <div className="my-2 mx-3 border-t border-slate-200" role="separator" />}
-              {group.map(t => {
-            const on = active === t.id
-            return (
-              <a
-                key={t.id}
-                href={`#${t.id}`}
-                onClick={() => setActive(t.id)}
-                className={`text-[13px] px-3 py-[7px] rounded-lg border-l-2 transition-colors ${on ? 'border-tn-teal bg-tn-teal-soft text-tn-teal font-bold' : 'border-transparent text-muted font-semibold hover:text-tn-ink hover:bg-subtle'}`}
-              >
-                {t.label}
-              </a>
-            )
-              })}
-            </Fragment>
-          ))}
-          <div className="mt-4 pt-3 px-3 border-t border-slate-200 text-xs leading-relaxed text-muted">
-            Last updated<br /><strong className="font-bold text-foreground">November 2026</strong> · v4
-          </div>
-        </nav>
-
-        {/* Content */}
-        <div className="min-w-0 flex flex-col gap-11">
-          {TOC.map(t => <Fragment key={t.id}>{SECTION[t.id]}</Fragment>)}
-        </div>
-    </div>
-  )
+  return <>{SECTION[id] ?? null}</>
 }

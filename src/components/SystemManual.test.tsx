@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { SystemManual } from './SystemManual'
+import { ManualSection } from './SystemManual'
+import { PAGES } from '@/lib/manual/registry'
+import { SECTION_OF } from './manual/ManualContent'
 
 beforeAll(() => {
-  // jsdom has no IntersectionObserver; the manual uses one for its scroll-spy.
+  // jsdom has no IntersectionObserver; some sections may use one.
   globalThis.IntersectionObserver ??= class { observe() {} unobserve() {} disconnect() {} takeRecords() { return [] } } as unknown as typeof IntersectionObserver
 })
+
+// Every section of the old one-page manual, now a page each (4 November 2026).
+const IDS = ['overview', 'navigation', 'pages', 'access', 'monday', 'sources', 'home', 'north-time', 'quick-start', 'transition', 'where', 'annual-review']
+function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
+  return <>{IDS.map(id => <ManualSection key={id} id={id} superOnly={superOnly} />)}</>
+}
 
 const SUPER = ['Access levels', 'Company settings > APIs & tokens', 'System manual > How it runs']
 
@@ -30,11 +38,12 @@ describe('SystemManual, Access section (audit, 10 October 2026)', () => {
 })
 
 describe('SystemManual, Home and North Time (27 October 2026)', () => {
-  it('has the Home, North Time, quick start, transition and Where do I find sections, each in the table of contents', () => {
+  it('has the Home, North Time, quick start, transition and Where do I find sections, each a page of the manual', () => {
     const { container } = render(<SystemManual superOnly={SUPER} />)
+    const listed = new Set(PAGES.map(p => SECTION_OF[p.slug]).filter(Boolean))
     for (const id of ['home', 'north-time', 'quick-start', 'transition', 'where']) {
       expect(container.querySelector(`section#${id}`)).not.toBeNull()
-      expect(container.querySelector(`nav a[href="#${id}"]`)).not.toBeNull()
+      expect(listed.has(id)).toBe(true)
     }
   })
 
