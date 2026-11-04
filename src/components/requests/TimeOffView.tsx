@@ -18,6 +18,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
+import { useInPicture } from '@/components/ui/in-picture'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
@@ -204,14 +205,17 @@ function Header({ onNew }: { onNew: (() => void) | null }) {
 
 function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOffRow; me: string; busy: boolean; onClose: () => void; onRetry: () => void; onCancel: () => void }) {
   const box = useRef<HTMLDivElement>(null)
-  useModal(true, box, onClose)
+  // A System manual picture draws the drawer over the picture, not the page (ui/in-picture.ts).
+  const inPicture = useInPicture()
+  useModal(!inPicture, box, onClose)
   const client = useIsClient()
-  if (!client) return null
+  if (!client && !inPicture) return null
   const d = row.drawer
-  return createPortal(
+  const at = inPicture ? 'absolute top-0' : 'fixed top-[var(--chrome-top)]'
+  const drawer = (
     <>
-      <div className="fixed inset-x-0 bottom-0 top-[var(--chrome-top)] z-[60] bg-[rgba(1,35,88,.10)]" onMouseDown={onClose} />
-      <div ref={box} role="dialog" aria-modal="true" aria-label="Time off request" className="fixed top-[var(--chrome-top)] right-0 bottom-0 w-full max-w-[441px] bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[61] flex flex-col leading-[normal]">
+      <div className={`${at} inset-x-0 bottom-0 z-[60] bg-[rgba(1,35,88,.10)]`} onMouseDown={onClose} />
+      <div ref={box} role={inPicture ? undefined : 'dialog'} aria-modal={inPicture ? undefined : true} aria-label="Time off request" className={`${at} right-0 bottom-0 w-full max-w-[441px] bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[61] flex flex-col leading-[normal]`}>
         <div className="px-[18px] pt-[18px] pb-3.5 border-b border-[var(--row-rule)] flex gap-2.5 items-start">
           <div className="flex-1 min-w-0 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
@@ -265,9 +269,9 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
           </div>
         )}
       </div>
-    </>,
-    document.body,
+    </>
   )
+  return inPicture ? drawer : createPortal(drawer, document.body)
 }
 
 // ── 7E: cancel an approved one ──────────────────────────────────────────────

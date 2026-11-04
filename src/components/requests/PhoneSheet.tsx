@@ -10,6 +10,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useModal } from '@/components/ui/useModal'
+import { useInPicture } from '@/components/ui/in-picture'
 import { Icon, useIsClient } from '@/components/clocky/entries/ui'
 
 export function PhoneSheet({ crumb, title, onBack, footer, children }: {
@@ -21,16 +22,18 @@ export function PhoneSheet({ crumb, title, onBack, footer, children }: {
   children: ReactNode
 }) {
   const box = useRef<HTMLDivElement>(null)
-  useModal(true, box, onBack)
+  // A System manual picture draws the sheet over the picture, not the page (ui/in-picture.ts).
+  const inPicture = useInPicture()
+  useModal(!inPicture, box, onBack)
   // Under the top bar, whatever its height (the staging strip adds to it).
   const client = useIsClient()
   useLayoutEffect(() => {
-    if (box.current) box.current.style.top = `${Math.max(0, document.querySelector('header')?.getBoundingClientRect().bottom ?? 0)}px`
-  }, [client])
-  if (!client) return null
-  return createPortal(
-    <div ref={box} role="dialog" aria-modal="true" aria-label={title}
-      className="fixed inset-x-0 top-0 bottom-0 z-[30] bg-white flex flex-col leading-[normal]">
+    if (box.current && !inPicture) box.current.style.top = `${Math.max(0, document.querySelector('header')?.getBoundingClientRect().bottom ?? 0)}px`
+  }, [client, inPicture])
+  if (!client && !inPicture) return null
+  const sheet = (
+    <div ref={box} role={inPicture ? undefined : 'dialog'} aria-modal={inPicture ? undefined : true} aria-label={title}
+      className={`${inPicture ? 'absolute' : 'fixed'} inset-x-0 top-0 bottom-0 z-[30] bg-white flex flex-col leading-[normal]`}>
       <div className="flex-none flex items-center gap-2 px-3 pt-1.5 pb-2.5 border-b border-slate-200">
         <button type="button" onClick={onBack} aria-label="Back"
           className="w-11 h-11 flex-none border-0 rounded-[12px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle">
@@ -43,7 +46,7 @@ export function PhoneSheet({ crumb, title, onBack, footer, children }: {
       </div>
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-3.5">{children}</div>
       <div className="flex-none px-4 pt-3 pb-[26px] border-t border-[#eceff3] bg-white">{footer}</div>
-    </div>,
-    document.body,
+    </div>
   )
+  return inPicture ? sheet : createPortal(sheet, document.body)
 }

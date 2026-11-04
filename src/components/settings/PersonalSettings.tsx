@@ -43,7 +43,10 @@ const SECTIONS = [
   { id: 'privacy', title: 'Privacy' },
 ] as const
 
-function Section({ id, title, intro, children }: { id: string; title: string; intro: string; children: React.ReactNode }) {
+export type SettingsSection = (typeof SECTIONS)[number]['id']
+
+function Section({ id, title, intro, children, hidden = false }: { id: string; title: string; intro: string; children: React.ReactNode; hidden?: boolean }) {
+  if (hidden) return null
   return (
     <section id={id} className="scroll-mt-24 rounded-[14px] border border-[var(--panel-border)] bg-white overflow-hidden">
       <div className="px-5 py-4 border-b border-[var(--row-rule)] bg-subtle">
@@ -141,7 +144,7 @@ function Favourites({ items, groups, onChange }: { items: NavItem[]; groups: Pag
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function PersonalSettings({
-  settings, email, notifications, twoStep, signOutEverywhere, favourites: initialFavourites, groups, save, blocked,
+  settings, email, notifications, twoStep, signOutEverywhere, favourites: initialFavourites, groups, save, blocked, only,
 }: {
   settings: PersonSettings
   email: string | null
@@ -158,6 +161,8 @@ export function PersonalSettings({
   save: Save | null
   /** Why nothing can be saved (View Stage, no Directory person). */
   blocked?: string
+  /** The System manual's pictures show one section at a time, without the menu; left out, every section. */
+  only?: readonly SettingsSection[]
 }) {
   const [s, setS] = useState(settings)
   const [favs, setFavs] = useState(initialFavourites)
@@ -228,9 +233,9 @@ export function PersonalSettings({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+    <div className={`grid grid-cols-1 gap-6 items-start ${only ? '' : 'lg:grid-cols-[200px_minmax(0,1fr)]'}`}>
       {confirmDialog}
-      <nav aria-label="On this page" className="hidden lg:block sticky top-24">
+      <nav aria-label="On this page" className={only ? 'hidden' : 'hidden lg:block sticky top-24'}>
         <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-muted mb-2">On this page</div>
         <ul className="list-none m-0 p-0 space-y-0.5 border-l-2 border-[var(--panel-border)]">
           {SECTIONS.map(x => (
@@ -242,11 +247,11 @@ export function PersonalSettings({
       </nav>
 
       <div className="space-y-6 min-w-0">
-        <Section id="notifications" title="Notifications" intro="What reaches you, and when: in the bell as it happens, or in the daily summary email.">
+        <Section id="notifications" hidden={!!only && !only.includes('notifications')} title="Notifications" intro="What reaches you, and when: in the bell as it happens, or in the daily summary email.">
           <div className="p-4">{notifications}</div>
         </Section>
 
-        <Section id="security" title="Sign-in and security" intro="How you get into the portal, and how to get everyone else out of your account.">
+        <Section id="security" hidden={!!only && !only.includes('security')} title="Sign-in and security" intro="How you get into the portal, and how to get everyone else out of your account.">
           <Row label="Signs in with" hint="The address your sign-in codes go to. An admin can change it.">
             <span className="text-[14px] font-semibold text-tn-ink">{email ?? '-'}</span>
           </Row>
@@ -259,7 +264,7 @@ export function PersonalSettings({
           </Row>
         </Section>
 
-        <Section id="time" title="Time and region" intro="When the daily summary reaches you, and the times in the bell.">
+        <Section id="time" hidden={!!only && !only.includes('time')} title="Time and region" intro="When the daily summary reaches you, and the times in the bell.">
           <Row label="Your time zone" hint="Your daily summary and the times in the bell follow it. Until you choose, it is New York time." status={statusFor('zone')}>
             <Select value={s.timeZone} onChange={z => set('zone', 'timeZone', z, { timeZone: z })} options={zoneOptions()} searchable ariaLabel="Your time zone" />
           </Row>
@@ -269,7 +274,7 @@ export function PersonalSettings({
           </Row>
         </Section>
 
-        <Section id="home" title="Home and start" intro="Where you land, and the pages you reach for most.">
+        <Section id="home" hidden={!!only && !only.includes('home')} title="Home and start" intro="Where you land, and the pages you reach for most.">
           <Row label="After you sign in, open" hint="The page you land on. A link you followed before signing in still takes you to that page." status={statusFor('start')}>
             <Choice label="After you sign in, open" value={s.startPage} onChange={(k: StartPage) => set('start', 'startPage', k, { startPage: k })}
               options={START_PAGES.map(p => ({ key: p.key, label: p.label }))} />
@@ -280,7 +285,7 @@ export function PersonalSettings({
           </div>
         </Section>
 
-        <Section id="privacy" title="Privacy" intro="What Home and the Agenda show the team about you.">
+        <Section id="privacy" hidden={!!only && !only.includes('privacy')} title="Privacy" intro="What Home and the Agenda show the team about you.">
           <Row label="Show my birthday on Home and in the Agenda" hint="The day and month only, never the year. Off, nobody gets the birthday bell for you either." status={statusFor('birthday')}>
             <Switch on={s.showBirthday} label="Show my birthday on Home and in the Agenda" onChange={v => set('birthday', 'showBirthday', v, { showBirthday: v })} />
           </Row>

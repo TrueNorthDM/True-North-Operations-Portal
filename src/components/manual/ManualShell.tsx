@@ -9,14 +9,14 @@ import type { ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
-import { TAB_LABEL, drawerFor, pageHref, readingOrder, type ManualPage, type ManualTab } from '@/lib/manual/registry'
+import { TAB_LABEL, drawerFor, pageHref, readingOrder, type ManualPage, type ManualTab, type ManualViewer } from '@/lib/manual/registry'
 
 const GROUP = 'font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-1.5'
 
-function Drawer({ tab, page, superAdmin }: { tab: ManualTab; page: ManualPage; superAdmin: boolean }) {
+function Drawer({ tab, page, viewer }: { tab: ManualTab; page: ManualPage; viewer: ManualViewer }) {
   return (
     <nav aria-label={TAB_LABEL[tab]} className="flex flex-col gap-0.5">
-      {drawerFor(tab, superAdmin).map((g, i) => (
+      {drawerFor(tab, viewer).map((g, i) => (
         <div key={g.group} className="flex flex-col gap-0.5">
           {i > 0 && <div className="my-2.5 mx-3 border-t border-[var(--panel-border)]" role="separator" />}
           <div className={GROUP}>{g.group}</div>
@@ -44,8 +44,8 @@ function Item({ page, on, sub = false }: { page: ManualPage; on: boolean; sub?: 
   )
 }
 
-function NextPrev({ tab, page, superAdmin }: { tab: ManualTab; page: ManualPage; superAdmin: boolean }) {
-  const order = readingOrder(tab, superAdmin)
+function NextPrev({ tab, page, viewer }: { tab: ManualTab; page: ManualPage; viewer: ManualViewer }) {
+  const order = readingOrder(tab, viewer)
   const i = order.findIndex(p => p.slug === page.slug)
   const prev = i > 0 ? order[i - 1] : null
   const next = i >= 0 && i < order.length - 1 ? order[i + 1] : null
@@ -59,9 +59,9 @@ function NextPrev({ tab, page, superAdmin }: { tab: ManualTab; page: ManualPage;
   )
 }
 
-export function ManualShell({ tab, page, superAdmin, children }: { tab: ManualTab; page: ManualPage; superAdmin: boolean; children: ReactNode }) {
+export function ManualShell({ tab, page, viewer, children }: { tab: ManualTab; page: ManualPage; viewer: ManualViewer; children: ReactNode }) {
   const tabs: ManualTab[] = ['guides', 'behind']
-  const first = (t: ManualTab) => readingOrder(t, superAdmin)[0]
+  const first = (t: ManualTab) => readingOrder(t, viewer)[0]
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -79,13 +79,13 @@ export function ManualShell({ tab, page, superAdmin, children }: { tab: ManualTa
           <span className="flex flex-col"><span className="text-[11px] text-muted">{page.group}</span><span className="font-(family-name:--font-display) font-extrabold text-[14.5px] text-tn-ink">{page.title}</span></span>
           <span className="text-[13px] font-bold text-tn-teal">All {tab === 'guides' ? 'guides' : 'pages'}</span>
         </summary>
-        <div className="px-1 pb-3"><Drawer tab={tab} page={page} superAdmin={superAdmin} /></div>
+        <div className="px-1 pb-3"><Drawer tab={tab} page={page} viewer={viewer} /></div>
       </details>
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-10 items-start">
-        <div className="hidden lg:block lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto"><Drawer tab={tab} page={page} superAdmin={superAdmin} /></div>
+        <div className="hidden lg:block lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto"><Drawer tab={tab} page={page} viewer={viewer} /></div>
         <article className="min-w-0 flex flex-col gap-6">
           {children}
-          <NextPrev tab={tab} page={page} superAdmin={superAdmin} />
+          <NextPrev tab={tab} page={page} viewer={viewer} />
         </article>
       </div>
     </div>

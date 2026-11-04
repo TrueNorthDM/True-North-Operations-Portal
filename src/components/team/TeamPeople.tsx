@@ -90,7 +90,7 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
 }
 
 export function TeamPeople({
-  people, selfId, teams = [], showTeams = false, alone = false,
+  people, selfId, teams = [], showTeams = false, alone = false, startOn = 'people',
 }: {
   people: RestrictedPerson[]
   selfId: string | null
@@ -103,9 +103,11 @@ export function TeamPeople({
    * same otherwise.
    */
   alone?: boolean
+  /** The tab it opens on. The System manual's picture of the Teams tab; the page leaves it out. */
+  startOn?: 'people' | 'teams'
 }) {
   const [q, setQ] = useState('')
-  const [tab, setTab] = useState<'people' | 'teams'>('people')
+  const [tab, setTab] = useState<'people' | 'teams'>(startOn)
 
   const needle = q.trim().toLowerCase()
   const shown = needle

@@ -41,10 +41,9 @@ describe('SystemManual, Home and North Time (27 October 2026)', () => {
   it('has the Home, North Time, quick start, transition and Where do I find sections, each a page of the manual', () => {
     const { container } = render(<SystemManual superOnly={SUPER} />)
     const listed = new Set(PAGES.map(p => SECTION_OF[p.slug]).filter(Boolean))
-    for (const id of ['home', 'north-time', 'quick-start', 'transition', 'where']) {
-      expect(container.querySelector(`section#${id}`)).not.toBeNull()
-      expect(listed.has(id)).toBe(true)
-    }
+    for (const id of ['home', 'north-time', 'quick-start', 'transition', 'where']) expect(container.querySelector(`section#${id}`)).not.toBeNull()
+    // Home and Where do I find... are guides now; North Time and the move from TSheets keep these sections.
+    for (const id of ['north-time', 'quick-start', 'transition']) expect(listed.has(id)).toBe(true)
   })
 
   it('gives a quick start to each audience', () => {

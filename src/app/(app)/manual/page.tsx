@@ -7,5 +7,5 @@ import { pageHref, readingOrder } from '@/lib/manual/registry'
 
 export default async function ManualIndex({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams
-  redirect(await previewHref(tab === 'runs' ? '/manual/behind/how-it-runs' : pageHref(readingOrder('guides', false)[0])))
+  redirect(await previewHref(tab === 'runs' ? '/manual/behind/how-it-runs' : pageHref(readingOrder('guides', { admin: false, superAdmin: false })[0])))
 }

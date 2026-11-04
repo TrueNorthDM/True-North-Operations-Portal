@@ -48,6 +48,8 @@ interface Props {
   teams?: readonly { id: string; name: string; members: readonly string[] }[]
   /** Selected team id, or '' for everyone. Lives in the URL, like the range. */
   selectedTeam?: string
+  /** The view it opens on, when not the first (the System manual's pictures). */
+  initialView?: 'numbers' | 'graphics'
 }
 
 /** The newest month the report holds, which is the ceiling every mode clamps to. */
@@ -55,10 +57,10 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'], initialView }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
-  const [view, setView] = useState<'numbers' | 'graphics' | undefined>(views[0])
+  const [view, setView] = useState<'numbers' | 'graphics' | undefined>(initialView && views.includes(initialView) ? initialView : views[0])
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
 

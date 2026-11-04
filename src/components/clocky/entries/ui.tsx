@@ -13,6 +13,7 @@ import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from
 import { createPortal } from 'react-dom'
 import { Select, type SelectOption } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
+import { useInPicture } from '@/components/ui/in-picture'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { BTN } from '@/lib/ui/buttons'
 import { TEXTAREA as FIELD_TEXTAREA, TEXTAREA_SHAPE } from '@/lib/ui/fields'
@@ -165,22 +166,25 @@ export function Modal({ label, width, onClose, children, alert = false, gap = 14
   gap?: number
 }) {
   const box = useRef<HTMLDivElement>(null)
-  useModal(true, box, onClose)
+  // A System manual picture draws the window over the picture, not the page (ui/in-picture.ts).
+  const inPicture = useInPicture()
+  useModal(!inPicture, box, onClose)
   // useModal leaves Escape to an open alertdialog, so one answers its own.
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => { if (alert && e.key === 'Escape') { e.preventDefault(); onClose() } }
   const client = useIsClient()
-  if (!client) return null
-  return createPortal(
-    <div className={`fixed inset-0 z-[70] ${MODAL_BACKDROP} flex items-center justify-center p-5`}
+  const frame = (
+    <div className={`${inPicture ? 'absolute' : 'fixed'} inset-0 z-[70] ${MODAL_BACKDROP} flex items-center justify-center p-5`}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={box} role={alert ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={label} onKeyDown={onKeyDown}
+      <div ref={box} role={inPicture ? undefined : alert ? 'alertdialog' : 'dialog'} aria-modal={inPicture ? undefined : true} aria-label={label} onKeyDown={onKeyDown}
         style={{ maxWidth: width + 44, gap }}
         className={`w-full max-h-full overflow-auto ${MODAL_PANEL} leading-[normal] p-[22px] flex flex-col`}>
         {children}
       </div>
-    </div>,
-    document.body,
+    </div>
   )
+  if (inPicture) return frame
+  if (!client) return null
+  return createPortal(frame, document.body)
 }
 
 /** The modal title lives in lib/ui/modal.ts with the overlay and the card; North Time imports it from here. */

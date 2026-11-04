@@ -1,14 +1,15 @@
 // One page of the System manual (owner, 4 November 2026): a guide or a page
 // of Behind the portal, in the manual's frame. Open to everyone (the manual
 // item is always on); the Super Admins only pages ask for How it runs
-// (man-runs), as that tab did: they name the server, its accounts and keys.
+// (man-runs), as that tab did: they name the server, its accounts and keys;
+// the Admin guides need the Admin level or above.
 
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { CATALOGUE, ITEM } from '@/lib/access/catalogue'
-import { isTab, pageOf } from '@/lib/manual/registry'
+import { canRead, isTab, pageOf } from '@/lib/manual/registry'
 import { ManualShell } from '@/components/manual/ManualShell'
 import { ManualContent } from '@/components/manual/ManualContent'
 
@@ -39,10 +40,10 @@ export default async function ManualPageRoute({ params }: { params: Params }) {
   const { tab, slug } = await params
   const page = isTab(tab) ? pageOf(tab, slug) : null
   if (!page) notFound()
-  const superAdmin = access.can('man-runs')
-  if (page.superOnly && !superAdmin) redirect(await previewHref('/manual'))
+  const viewer = { superAdmin: access.can('man-runs'), admin: access.level === 'admin' || access.level === 'super_admin' }
+  if (!canRead(page, viewer)) redirect(await previewHref('/manual'))
   return (
-    <ManualShell tab={page.tab} page={page} superAdmin={superAdmin}>
+    <ManualShell tab={page.tab} page={page} viewer={viewer}>
       <ManualContent slug={page.slug} superOnly={page.slug === 'access-model' ? superOnlyLabels() : []} />
     </ManualShell>
   )
