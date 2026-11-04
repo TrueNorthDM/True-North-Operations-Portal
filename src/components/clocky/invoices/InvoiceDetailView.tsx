@@ -6,6 +6,7 @@
  * with its History under them.
  */
 
+import { STATUS_ICON } from '@/lib/ui/status-icons'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -21,7 +22,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { Pill } from '@/components/ui/Pill'
 import { DriveBox } from './DriveParts'
 
-const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
+const EYE = STATUS_ICON.info
 
 export function InvoiceDetailView({ d, api, initial }: {
   d: InvoiceDetail
@@ -78,7 +79,7 @@ export function InvoiceDetailView({ d, api, initial }: {
             )}
             {d.locked && (
               <div className="flex gap-2 items-start text-[12.5px] text-[#5b6b82] leading-[1.5]">
-                <Icon d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" size={15} className="flex-none mt-0.5" />
+                <Icon d={STATUS_ICON.locked} size={15} className="flex-none mt-0.5" />
                 <span>{d.locked}</span>
               </div>
             )}

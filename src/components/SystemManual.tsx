@@ -23,12 +23,16 @@
  * audience, the move from TSheets and "Where do I find..." (manual/
  * NorthTimeManual.tsx); the rail in its current order, Agenda and Requests
  * with it, and the counts on its icons.
+ *
+ * 4 November 2026: the annual performance review (manual/AnnualReviewManual.tsx),
+ * and Human Resources open to everyone.
  */
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
 import { HomeSection, NORTH_TIME_TOC, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
+import { ANNUAL_REVIEW_TOC, AnnualReviewSection } from './manual/AnnualReviewManual'
 import { Pill } from '@/components/ui/Pill'
 
 // ── Icons (line style, system look) ─────────────────────────────────
@@ -59,6 +63,7 @@ const TOC = [
   { id: 'overview', label: 'Overview', eyebrow: 'Overview', heading: 'What this portal is' },
   { id: 'navigation', label: 'Getting around', eyebrow: 'Getting around', heading: 'The left rail' },
   ...NORTH_TIME_TOC,
+  ...ANNUAL_REVIEW_TOC,
   { id: 'pages', label: 'Pages & sections', eyebrow: 'Reference', heading: 'Pages & sections' },
   { id: 'access', label: 'Access model', eyebrow: 'Permissions', heading: 'Access model' },
   { id: 'monday', label: 'How Monday feeds it', eyebrow: 'Data flow', heading: 'How Monday feeds the portal' },
@@ -73,8 +78,9 @@ const RAIL = [
   { icon: 'requests', name: 'Requests', desc: 'A panel: Time off (US employees), Reimbursements and Extra hours, with Approvals under Decisions. Everyone sees their own; who decides each is set in Company settings, Invoices, Who approves what.', admin: false },
   { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },
-  { icon: 'dir', name: 'People', desc: 'A panel: the Directory, Rates & Costs, the Organization chart, Human Resources (Admins, unless Access levels says otherwise) and History.', admin: false },
+  { icon: 'dir', name: 'People', desc: 'A panel: the Directory, Rates & Costs, the Organization chart, Human Resources (everyone: their own review and goals; the anniversary badges for Admins) and History.', admin: false },
   { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Company settings, Notification rules, Tests and this manual. Its title opens the Admin page.', admin: true },
+  { icon: 'dir', name: 'Human Resources › Reviews', desc: 'The annual performance review: each person\'s self-review, the review by the one they report to, the meeting booked in the Agenda, read and agree, and approval with the PDF copied to Google Drive. My reviews and My goals for everyone, My team\'s goals for managers, the year\'s list for HR, the VP of Operations, the CISO and managers. See Annual review above.', src: 'Portal', srcKey: 'portal' as const, sub: ['My reviews', 'My goals', 'My team\'s goals', 'Reviews', 'Priorities'] },
   { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources, API tokens, timesheet periods, the job catalogue, invoices, integrations, reminders and the North Time rollout. Notification rules for everyone sit beside it.', admin: true },
 ]
 
@@ -171,7 +177,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
             )
           })}
           <div className="mt-4 pt-3 px-3 border-t border-slate-200 text-xs leading-relaxed text-muted">
-            Last updated<br /><strong className="font-bold text-foreground">October 2026</strong> · v3
+            Last updated<br /><strong className="font-bold text-foreground">November 2026</strong> · v4
           </div>
         </nav>
 
@@ -218,6 +224,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
           <QuickStartSection />
           <TransitionSection />
           <WhereSection />
+          <AnnualReviewSection />
 
           {/* Pages & sections */}
           <section id="pages" className="scroll-mt-6">

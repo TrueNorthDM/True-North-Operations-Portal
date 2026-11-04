@@ -9,6 +9,7 @@
  * (lib/timeclock/timesheet-review.ts); this draws it and sends the decision.
  */
 
+import { STATUS_ICON } from '@/lib/ui/status-icons'
 import { TEXTAREA_SHAPE } from '@/lib/ui/fields'
 import { useEffect, useRef, useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
@@ -52,7 +53,7 @@ const DAY = {
   empty: { bg: 'transparent', bd: 'transparent', fg: '#cbd2da', nfg: '#cbd2da' },
 } as const
 const HEADS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const ICONS = { check: 'M5 12l5 5 9-10', undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3', alert: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', send: 'M22 2 11 13M22 2l-7 20-4-9-9-4z', lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4', eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', refresh: 'M21 12a9 9 0 1 1-3-6.7M21 4v5h-5' }
+const ICONS = { check: 'M5 12l5 5 9-10', undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3', alert: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', send: 'M22 2 11 13M22 2l-7 20-4-9-9-4z', lock: STATUS_ICON.locked, eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', refresh: 'M21 12a9 9 0 1 1-3-6.7M21 4v5h-5' }
 const LABEL = FIELD_LABEL
 const CARD = SHARED_CARD
 const ENT_COLS = 'grid-cols-[178px_84px_minmax(220px,1.4fr)_140px_170px_100px_104px_minmax(150px,1fr)]'
