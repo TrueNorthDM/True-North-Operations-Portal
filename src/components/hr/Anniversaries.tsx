@@ -6,14 +6,14 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/tenure'
-import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
+import { HrGallery, type HrNext, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
 import type { Access } from '@/lib/access/resolve'
 import { teamKeyFromName } from '@/lib/directory/people-types'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
 import { pageHrefs } from '@/lib/directory/page-rights'
 
-export async function Anniversaries({ access }: { access: Access }) {
+export async function Anniversaries({ access, intro = true }: { access: Access; intro?: boolean }) {
   // The badges need a name, a photo, a team colour and a start date: nothing
   // else is read. Whose page a name opens is the page's own rule.
   const db = createAdminClient()
@@ -42,13 +42,24 @@ export async function Anniversaries({ access }: { access: Access }) {
   const now = new Date()
   const quarterHolders: Record<number, HrHolder[]> = { 1: [], 2: [], 3: [] }
   const yearHolders = new Map<number, HrHolder[]>()
-  let maxYear = 20
+  let maxYear = 1
+  let next: HrNext | null = null
   let underThree = 0
 
   for (const p of people) {
     if (p.status !== 'active' || !p.hireDate) continue
     const t = tenureSince(p.hireDate, now)
     const ms = milestoneOf(t)
+    // Who completes a year next, within the coming month.
+    if (t && t.years >= 0) {
+      const [, mm, dd] = p.hireDate.split('-').map(Number)
+      let at = Date.UTC(now.getFullYear(), mm - 1, dd)
+      const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+      if (at < today) at = Date.UTC(now.getFullYear() + 1, mm - 1, dd)
+      const inDays = Math.round((at - today) / 86_400_000)
+      const years = new Date(at).getUTCFullYear() - Number(p.hireDate.slice(0, 4))
+      if (years >= 1 && inDays <= 30 && (!next || inDays < next.inDays)) next = { name: p.full_name, avatarUrl: p.avatarUrl, color: p.color, years, inDays }
+    }
     const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, color: p.color, tenure: formatTenureShort(t), href: hrefFor(p.id) }
     if (ms.kind === 'quarter') quarterHolders[ms.value].push(h)
     else if (ms.kind === 'year') {
@@ -69,12 +80,12 @@ export async function Anniversaries({ access }: { access: Access }) {
   }))
 
   return (
-    <div className="space-y-9">
-      <p className="m-0 text-[15px] text-muted leading-relaxed">
+    <div className="space-y-3">
+      {intro && <p className="m-0 text-[15px] text-muted leading-relaxed">
         Anniversary badges, every service milestone and who currently holds it. A name opens that person&apos;s page.
-      </p>
+      </p>}
 
-      <HrGallery quarters={quarters} years={years} />
+      <HrGallery quarters={quarters} years={years} next={next} />
 
       {underThree > 0 && (
         <p className="text-[12.5px] text-muted">

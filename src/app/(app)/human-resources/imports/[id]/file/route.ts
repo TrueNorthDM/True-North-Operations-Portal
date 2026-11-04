@@ -26,5 +26,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const bytes = await storedPdf(importPath(row.id))
   if (!bytes) return none()
   const name = row.file_name.replace(/\.[a-z0-9]{2,5}$/i, '') + '.pdf'
-  return new Response(bytes as unknown as BodyInit, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition(name, 'inline'), 'Cache-Control': 'private, max-age=300' } })
+  return new Response(bytes as unknown as BodyInit, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition(name, 'inline'), 'Cache-Control': 'no-store' } })
 }

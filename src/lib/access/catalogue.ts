@@ -151,7 +151,8 @@ const TREE: Node[] = [
     // to everyone: each person's own review and goals. Who sees which review is
     // decided by the review itself (lib/review/data.ts), never by a tick.
     { key: 'human-resources', label: 'Human Resources', kind: 'page', always: true, note: 'Everyone: their own review and goals. The rest follows the ticks below and the roles in Company settings > Human Resources.', ch: [
-      { key: 'hr-anniversaries', label: 'Anniversaries: the service badge gallery', kind: 'tab', v: [1, 0, 0] },
+      // Open to everyone since 4 November 2026 (the owner, with the C1 screen).
+      { key: 'hr-anniversaries', label: 'Anniversaries: the service badge gallery', kind: 'tab', always: true },
       { key: 'hr-start', label: 'Start the yearly review cycle', kind: 'action', superOnly: true },
     ] },
   ] },

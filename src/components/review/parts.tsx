@@ -28,13 +28,13 @@ type Res = { ok: true; savedAt?: string; toast?: string; id?: number } | { ok: f
 export function Section({ id, title, sub, right, open, onToggle, children, tone }: {
   id: string; title: ReactNode; sub?: ReactNode; right?: ReactNode; open?: boolean; onToggle?: () => void; children?: ReactNode; tone?: 'teal' | 'locked'
 }) {
-  const edge = tone === 'teal' ? 'border-tn-teal' : ''
+  const edge = tone === 'teal' ? 'border-tn-teal shadow-[0_0_0_3px_rgba(30,125,127,.10)]' : ''
   return (
     <section id={id} data-section={id} className={`${CARD} ${edge} scroll-mt-[150px] px-[22px] py-[18px] flex flex-col gap-3`}>
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] leading-[1.25] text-tn-ink">{title}</h2>
-          {sub && <p className="m-0 text-[13px] text-muted leading-[1.5]">{sub}</p>}
+          {sub && <p className="m-0 text-[13px] text-[#5b6b82] leading-[1.5]">{sub}</p>}
         </div>
         <div className="flex-none flex items-center gap-3">
           {right}
@@ -90,12 +90,12 @@ export function QuestionField({ label, hint, initial, editable, copied, save, on
   const a = useAutosave(initial, save, onSaved, onError)
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{label}</span>
-      {editable && <span className="text-[12.5px] text-muted -mt-1">{hint}</span>}
+      <span className="text-[14px] font-bold text-tn-ink">{label}</span>
+      {editable && <span className="text-[12.5px] text-[#8593a4] -mt-1">{hint}</span>}
       {editable ? (
         <>
           <textarea value={a.value} onChange={e => a.change(e.target.value)} onBlur={a.blur} rows={rows} placeholder="Write your answer"
-            className={`${TEXTAREA} w-full text-[14px] leading-[1.55] ${copied ? 'border-tn-teal' : ''}`} />
+            className={`${TEXTAREA} w-full text-[13.5px] leading-[1.55] ${copied ? 'border-tn-teal' : ''}`} />
           {copied && <span className="text-[12px] text-tn-teal">Copied from your last review. Change anything that is different now.</span>}
         </>
       ) : (
@@ -112,14 +112,36 @@ export function PriorityGrid({ items, showGoals }: { items: PriorityView[]; show
   return (
     <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
       {items.map(p => (
-        <div key={p.id} className="rounded-[12px] bg-subtle px-4 py-3 flex flex-col gap-1.5 min-w-0">
-          <span className={`${FIELD_LABEL} text-tn-teal`}>{p.scope}</span>
+        <div key={p.id} className="rounded-[12px] bg-[#f8f7f3] px-4 py-3.5 flex flex-col gap-1.5 min-w-0">
+          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-[#1E7D7F]">{p.scope}</span>
           <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink leading-[1.3]">{p.n}. {p.title || 'Untitled'}</span>
-          {p.body && <span className="text-[12.5px] text-muted leading-[1.5]">{p.body}</span>}
-          {showGoals && <span className={`mt-auto pt-1 font-(family-name:--font-display) font-extrabold text-[12px] ${p.goals ? 'text-[var(--bdg-green-fg)]' : 'text-[var(--bdg-orange-fg)]'}`}>{p.goals ? `Served by ${p.goals} ${p.goals === 1 ? 'goal' : 'goals'}` : 'No goal yet'}</span>}
+          {p.body && <span className="text-[13px] text-[#5b6b82] leading-[1.5]">{p.body}</span>}
+          {showGoals && <span className={`text-[12px] font-bold ${p.goals ? 'text-[#0d7a4f]' : 'text-[#9a5a00]'}`}>{p.goals ? `Served by ${p.goals} ${p.goals === 1 ? 'goal' : 'goals'}` : 'No goal yet'}</span>}
         </div>
       ))}
     </div>
+  )
+}
+
+/**
+ * The priorities inside a review (design handoff, C3 and A4): a quiet block,
+ * a flag and a small capital label, folded to one line of titles when hidden.
+ */
+export function PriorityBlock({ id, label, items, showGoals, open, onToggle }: {
+  id: string; label: string; items: PriorityView[]; showGoals: boolean; open: boolean; onToggle: () => void
+}) {
+  return (
+    <section id={id} data-section={id} className={`${CARD} scroll-mt-[150px] px-[18px] py-3.5 flex flex-col gap-3.5`}>
+      <button type="button" onClick={onToggle} aria-expanded={open} className="flex items-center gap-3.5 text-left bg-transparent border-0 p-0 cursor-pointer">
+        <span className="w-[34px] h-[34px] rounded-[9px] bg-[#eaf4f4] text-[#1E7D7F] flex items-center justify-center flex-none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={FLAG} /></svg></span>
+        <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{label}</span>
+          {!open && <span className="text-[13.5px] font-bold text-tn-ink truncate">{items.length ? items.map(p => p.title || 'Untitled').join(' · ') : 'None yet'}</span>}
+        </span>
+        <span className="flex items-center gap-[5px] font-(family-name:--font-display) font-extrabold text-[12.5px] text-[#1E7D7F]">{open ? 'Hide' : 'Show'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={open ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} /></svg></span>
+      </button>
+      {open && <PriorityGrid items={items} showGoals={showGoals} />}
+    </section>
   )
 }
 
@@ -237,41 +259,33 @@ export interface PastApi {
   markGoal(i: { goalId: number; result?: GoalResult | null; comment?: string }): Promise<Res>
 }
 
-export function PastGoal({ g, year, editable, api, onSaved, onError, onRemoved }: {
-  g: GoalView; year: number; editable: boolean; api: PastApi; onSaved: Saved; onError: (e: string) => void; onRemoved: () => void
+/**
+ * A goal of the year under review (design handoff, C3 and C4): read only, as
+ * that year is closed (the owner, 4 November 2026). The person marks how it
+ * went and says why in a sentence; nothing else about the goal changes.
+ */
+export function PastGoal({ g, year, editable, api, onSaved, onError }: {
+  g: GoalView; year: number; editable: boolean; api: PastApi; onSaved: Saved; onError: (e: string) => void
 }) {
   const [result, setResult] = useState<GoalResult | null>(g.result)
   const comment = useAutosave(g.resultComment, v => api.markGoal({ goalId: g.id, comment: v }), onSaved, onError)
-  const what = useAutosave(g.what, v => api.saveGoal({ goalId: g.id, what: v }), onSaved, onError)
-  const [by, setBy] = useState(g.byMonth?.slice(0, 7) ?? '')
-  const typed = !g.fromLastReview
   const res = GOAL_RESULT.find(x => x.key === g.result)
-  const from = typed ? `From your ${year - 1} review` : `${g.how ? `${g.how} · ` : ''}`
+  const from = g.fromLastReview ? g.how : `From your ${year - 1} review`
+  const when = [from, g.byLabel ? `by ${g.byLabel}` : ''].filter(Boolean).join(' · ') + (g.term && g.fromLastReview ? `, ${TERM_LABEL[g.term]}` : '')
   return (
-    <div className="flex flex-col gap-2.5 py-3.5 border-t border-[var(--row-rule)] first:border-t-0">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex-1 min-w-[220px] flex flex-col gap-1">
-          {editable && typed ? (
-            <div className="flex items-center gap-2"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{g.n}.</span>
-              <input value={what.value} onChange={e => what.change(e.target.value)} onBlur={what.blur} placeholder={`The ${year} goal, as your ${year - 1} review says it`} className={`${INPUT} flex-1 font-semibold`} /></div>
-          ) : <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{g.n}. {g.what || 'Untitled goal'}</span>}
-          <span className="text-[12.5px] text-muted flex items-center gap-2 flex-wrap">{from}{by ? ` · by ${monthLabel(`${by}-01`)}` : ''}{g.term && !typed ? `, ${TERM_LABEL[g.term]}` : ''}
-            {editable && typed && <span className="w-[170px]"><MonthField value={by} onChange={v => { setBy(v); void api.saveGoal({ goalId: g.id, byMonth: v ? `${v}-01` : null }).then(r => r.ok ? onSaved(r.savedAt ?? '') : onError(r.error)) }} ariaLabel="By when" placeholder="By when" /></span>}
-          </span>
-        </div>
-        {editable ? (
-          <Segmented label="How it went" value={result} options={GOAL_RESULT.map(x => ({ key: x.key, label: x.label }))}
-            onChange={k => { setResult(k); void api.markGoal({ goalId: g.id, result: k }).then(r => r.ok ? onSaved(r.savedAt ?? '') : onError(r.error)) }} />
-        ) : res ? <Pill tone={res.tone} text={res.label} /> : <Pill tone="gray" text="Not marked" />}
-        {editable && typed && (
-          <button type="button" aria-label="Remove this goal" className={BTN.icon} onClick={async () => { const r = await api.removeGoal({ goalId: g.id }); if (r.ok) onRemoved(); else onError(r.error) }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-          </button>
-        )}
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2.5 items-center pt-4 pb-1 border-t border-[#f1f3f6]">
+      <div className="flex flex-col gap-[3px] min-w-0">
+        <span className="text-[14.5px] font-extrabold text-tn-ink">{g.n}. {g.what || 'Untitled goal'}</span>
+        {when && <span className="text-[13px] text-[#5b6b82]">{when}</span>}
       </div>
+      {editable ? (
+        <Segmented label="How it went" value={result} options={GOAL_RESULT.map(x => ({ key: x.key, label: x.label }))}
+          onChange={k => { setResult(k); void api.markGoal({ goalId: g.id, result: k }).then(r => r.ok ? onSaved(r.savedAt ?? '') : onError(r.error)) }} />
+      ) : <span className={`rounded-[9px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] whitespace-nowrap ${res ? 'bg-tn-ink text-[#ffffff]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{res ? res.label : 'Not marked'}</span>}
       {editable
-        ? <input value={comment.value} onChange={e => comment.change(e.target.value)} onBlur={comment.blur} placeholder="How it went, in a sentence" className={`${INPUT} w-full`} />
-        : g.resultComment && <p className="m-0 text-[13.5px] text-[#435066]">{g.resultComment}</p>}
+        ? <input value={comment.value} onChange={e => comment.change(e.target.value)} onBlur={comment.blur} placeholder="How it went, in a sentence" aria-label="How it went"
+            className="col-span-2 min-h-[44px] rounded-[10px] border border-[#e4e7ec] bg-white px-3 py-2.5 text-[13.5px] leading-[1.5] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.12)]" />
+        : g.resultComment && <p className="col-span-2 m-0 min-h-[44px] rounded-[10px] border border-[#e4e7ec] px-3 py-2.5 text-[13.5px] leading-[1.5] text-tn-ink">{g.resultComment}</p>}
     </div>
   )
 }

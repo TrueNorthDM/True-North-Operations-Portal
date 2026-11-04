@@ -14,8 +14,10 @@
 // share a column of their own, so an empty Pay period leaves no gap under
 // Needs you.
 
-export function HomeLayout({ banner, needs, pay, right, publishing }: {
+export function HomeLayout({ banner, top, needs, pay, right, publishing }: {
   banner: React.ReactNode
+  /** Below lg only, first under the banner (the review card, C1); on a wide screen it sits in the right column instead. */
+  top?: React.ReactNode
   needs: React.ReactNode
   pay: React.ReactNode
   right: React.ReactNode
@@ -26,6 +28,7 @@ export function HomeLayout({ banner, needs, pay, right, publishing }: {
     <div className="-mx-6 -mt-8 -mb-8">
       {banner}
       <div className="p-7 grid grid-cols-1 gap-y-[22px] items-start lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-x-6 lg:[&:has(>[data-slot=right]:empty)]:grid-cols-1">
+        {top && <div className="min-w-0 lg:hidden empty:hidden">{top}</div>}
         {(needs || pay) && (
           <div className="min-w-0 lg:col-start-1 lg:row-start-1 self-stretch flex flex-col gap-[22px]">
             {needs && <div className="min-w-0 lg:flex-1 flex flex-col [&>*]:flex-1 empty:hidden">{needs}</div>}

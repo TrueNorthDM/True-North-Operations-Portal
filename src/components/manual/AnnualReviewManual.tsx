@@ -29,9 +29,9 @@ function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
 }
 
 const ROLES: Block[] = [
-  { t: 'VP of Operations', d: 'Writes the **Company Priorities** with the CISO and approves each team’s priorities. Reviews only the people who report to them. Sees every review.' },
-  { t: 'CISO', d: 'Writes the Company Priorities with the VP of Operations and approves each team’s priorities. Reviews only the people who report to them. Sees every review.' },
-  { t: 'HR', d: 'Sees every review and is told by email when one is approved. Can change Company settings, Human Resources, like a Super Admin.' },
+  { t: 'VP of Operations', d: 'Writes the **Company Priorities** with the CISO and approves each team’s priorities. Reviews only the people who report to them, and sees only their reviews.' },
+  { t: 'CISO', d: 'Writes the Company Priorities with the VP of Operations and approves each team’s priorities. Reviews only the people who report to them, and sees only their reviews.' },
+  { t: 'HR', d: 'Sees every review and is told by email when one is approved. Can change Company settings, Human Resources, like a Super Admin, except the three roles.' },
   { t: 'Team Leader', d: 'Writes their team’s priorities inside their own self-review and sends them for approval on their own. Reviews, meets and approves the people on their team.' },
   { t: 'Everyone', d: 'Every employee in the Directory has a review, and anyone added in **Who takes part** (a contractor, for example). Each writes their own self-review, then reads and agrees.' },
   { t: 'Super Admin', d: 'Starts the year’s cycle in Human Resources, Reviews. Nothing opens before that.' },
@@ -53,7 +53,7 @@ const STEPS: { n: string; who: string; what: string; locks: string }[] = [
 ]
 
 const SEES: Block[] = [
-  { t: 'Human Resources, Reviews', d: 'The year’s list: the step, who it waits for, the due date and the Drive copy. HR, the VP of Operations, the CISO and Super Admins see everyone; a manager sees the people who report to them; everyone else opens only their own review.' },
+  { t: 'Human Resources, Reviews', d: 'The year’s list: the step, who it waits for, the due date and the Drive copy. HR and Super Admins see everyone; a manager sees the people who report to them; everyone else opens only their own review.' },
   { t: 'The review card', d: 'At the top of Human Resources and on Home, from the day the person’s self-review opens until 30 days after approval. Its button follows the step.' },
   { t: 'Needs you', d: 'Every step that needs someone is a row on that person’s Home: write your self-review, send or approve team priorities, review, book the meeting, read and agree, approve, update a goal, book a check-in. The row goes away when the step is done.' },
   { t: 'History', d: 'Human Resources, My reviews, and the person’s page in the Directory: every year with its PDF, and last year’s imported file. The person, the one they report to now and HR see them; a former manager stops seeing them.' },
@@ -111,7 +111,7 @@ export function AnnualReviewSection() {
       <p className="text-[13.5px] leading-relaxed text-muted">The agreed goals become Human Resources, My goals: Not started, On track, At risk, Done or No longer relevant. The person updates a goal whenever they like; the manager sees it in My team’s goals and comments. At the 6-month check-in, booked from My team’s goals in the same drawer, the manager comments on every goal and finishes it; the person gets the comments by email and in Needs you.</p>
 
       <SubHeading>First year</SubHeading>
-      <p className="text-[13.5px] leading-relaxed text-muted">The 2025 reviews are imported once from Google Drive (Company settings, Human Resources, Import last year’s reviews): each file is matched to a person by its name, kept in the portal as a PDF and shown beside that person’s 2026 self-review. In the 2026 review each person adds their 2026 goals from that file and marks them. From the 2027 review on, the history is in the portal, and the goals agreed the year before come in by themselves to be marked.</p>
+      <p className="text-[13.5px] leading-relaxed text-muted">The 2025 reviews are imported once from Google Drive (Company settings, Human Resources, Import last year’s reviews): each file is matched to a person by its name, kept in the portal as a PDF and shown beside that person’s 2026 self-review. When a file is imported the portal reads the 2026 goals it set and the Job Description, and HR checks them on the import screen; in the 2026 review those goals are already there, locked, for the person to mark. From the 2027 review on, the history is in the portal, and the goals agreed the year before come in by themselves to be marked.</p>
 
       <div className="flex gap-3 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 items-start">
         <svg className="shrink-0 mt-0.5 text-amber-700" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16v-4M12 8h.01" /><circle cx="12" cy="12" r="10" /></svg>

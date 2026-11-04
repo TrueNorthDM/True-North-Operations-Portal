@@ -8,7 +8,7 @@
 import { cardShows, cardState, dueOf, dueWords, monthLabel, statusSummary, type CardState, type GoalStatus } from './rules'
 import { answeredCount, loadReviewView } from './view'
 import {
-  loadCheckins, loadCurrentCycle, loadGoalUpdates, loadGoals, loadImports, loadPersonReviews, loadPriorities, loadTeamStates, nameIn, rdb,
+  loadCheckins, loadCurrentCycle, loadGoalUpdates, loadGoals, loadImports, loadPersonReviews, loadPriorities, loadTeamStates, nameIn, rdb, reviewToday,
   type Cycle, type ReviewViewer, type Roster,
 } from './data'
 import { fmtDay, fmtInstantDay, fmtWhen } from './format'
@@ -44,7 +44,10 @@ export async function loadMyCard(personId: string, roster: Roster, today: string
     late: () => ({ title: `Self-review was due ${fmtDay(due)}`, sub: `${dueWords(due!, today).replace(/^./, c => c.toUpperCase())}. ${reviewer} can see that it is late.`, button: 'Continue', href }),
     with_reviewer: () => ({ title: `With ${reviewer} for ${r.step === 'approval' ? 'approval' : 'review'}`, sub: r.step === 'approval' ? `You agreed on ${fmtInstantDay(r.agreed_at)}. Nothing to do now.` : `You sent your self-review on ${fmtInstantDay(r.self_sent_at).replace(/^\w+, /, '')}. Nothing to do now.`, button: 'Open your review', href }),
     booked: () => ({ title: `Meeting on ${fmtWhen(r.meeting_starts_at).replace(/, \d{4}/, '')}`, sub: `With ${reviewer}, on Google Meet. After it, you read the review and agree.`, button: 'Open your review', href }),
-    agree: () => ({ title: 'Read and agree', sub: 'The meeting is done. Read the notes and the goals, then agree.', button: 'Read and agree', href }),
+    agree: () => {
+      const held = r.meeting_ends_at ? reviewToday(new Date(r.meeting_ends_at)) : null
+      return { title: 'Read and agree', sub: `${held === today || !held ? 'The meeting was today.' : `The meeting was on ${fmtDay(held)}.`} Read the notes and the goals, then agree.`, button: 'Read and agree', href }
+    },
     approved: () => ({ title: `Approved on ${fmtInstantDay(r.approved_at)}`, sub: `Approved by ${nameIn(roster, r.approved_by)}. The PDF is ready.`, button: 'Open PDF', href }),
   }
   const cur = r.step === 'approved' ? 4 : r.step === 'waiting' ? -1 : STEPS.indexOf(r.step as (typeof STEPS)[number])
@@ -56,12 +59,14 @@ export async function loadMyCard(personId: string, roster: Roster, today: string
 
 // ── My reviews ─────────────────────────────────────────────────────────────
 
-export interface HistoryRow { key: string; year: number; kind: 'approved' | 'imported' | 'open'; line: string; href: string; pdf: boolean }
+export interface HistoryRow { key: string; year: number; kind: 'approved' | 'imported' | 'open'; line: string; href: string; pdf: boolean
+  /** The review's own page, beside its PDF (an approved review: Open and PDF, design handoff G1). */
+  page?: string }
 
 export async function loadHistory(personId: string, roster: Roster): Promise<HistoryRow[]> {
   const [reviews, imports] = await Promise.all([loadPersonReviews(personId), loadImports({ personId })])
   const out: HistoryRow[] = reviews.filter(r => r.year).map(r => r.step === 'approved'
-    ? { key: `r${r.id}`, year: r.year, kind: 'approved' as const, line: `Approved by ${nameIn(roster, r.approved_by)} on ${fmtInstantDay(r.approved_at, true)}${r.drive_status === 'saved' ? ` · in Google Drive, Annual Performance Reviews / ${r.year}` : ''}`, href: `/human-resources/reviews/${r.id}/pdf`, pdf: true }
+    ? { key: `r${r.id}`, year: r.year, kind: 'approved' as const, line: `Approved by ${nameIn(roster, r.approved_by)} on ${fmtInstantDay(r.approved_at, true)}${r.drive_status === 'saved' ? ` · in Google Drive, Annual Performance Reviews / ${r.year}` : ''}`, href: `/human-resources/reviews/${r.id}/pdf`, pdf: true, page: `/human-resources/reviews/${r.id}` }
     : { key: `r${r.id}`, year: r.year, kind: 'open' as const, line: r.step === 'waiting' ? 'Opens soon' : `In progress: ${r.step === 'self' ? 'self-review' : r.step}`, href: `/human-resources/reviews/${r.id}`, pdf: false })
   for (const i of imports) if (!out.some(o => o.year === i.year)) out.push({ key: `i${i.id}`, year: i.year, kind: 'imported', line: `The review from Google Drive · ${i.file_name}`, href: `/human-resources/imports/${i.id}/file`, pdf: true })
   return out.sort((a, b) => b.year - a.year)

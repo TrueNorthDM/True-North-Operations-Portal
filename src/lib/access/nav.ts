@@ -248,7 +248,7 @@ export const RAIL: readonly RailEntry[] = [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
         // Its own page since the part 2 handoff (Company Settings.dc.html 10A-2): Super Admins (d-rates).
         { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates', count: 'no-rate' },
-        { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'organization' },
+        // The org chart lives in Human Resources since 4 November 2026 (the owner).
         { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources' },
         // Everyone signed in, like Organization (7 October 2026).
         { key: 'history', label: NAV_LABEL['/history'], href: ROUTES.history, icon: 'history', surface: 'history' },

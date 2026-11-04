@@ -65,7 +65,6 @@ export function templateFor(year: number): Template {
 /** The person's own questions (everything but the Manager's Feedback). */
 export const ownSections = (t: Template) => t.sections.filter(s => s.key !== 'manager')
 export const managerSection = (t: Template) => t.sections.find(s => s.key === 'manager')!
-export const allKeys = (t: Template) => new Set(t.sections.flatMap(s => s.questions.map(q => q.key)))
 export const ownKeys = (t: Template) => new Set(ownSections(t).flatMap(s => s.questions.map(q => q.key)))
 export const managerKeys = (t: Template) => new Set(managerSection(t).questions.map(q => q.key))
 

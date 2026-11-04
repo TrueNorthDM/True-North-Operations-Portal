@@ -20,11 +20,11 @@
 import { revalidatePath } from 'next/cache'
 import { allowedTo, writerAccess } from '@/lib/access/resolve'
 import {
-  addLog, loadCurrentCycle, loadCycle, loadHrSettings, loadPriorities, loadReview, loadRoster, loadTeamStates, nameIn,
-  rdb, rosterParticipants, syncCycle, viewerOf, type Cycle, type Goal, type ReviewRow,
+  addLog, loadCycle, loadHrSettings, loadImports, loadPriorities, loadReview, loadRoster, loadTeamStates, nameIn,
+  currentReviewerOf, rdb, rosterParticipants, syncCycle, viewerOf, type Cycle, type Goal, type ReviewRow,
 } from '@/lib/review/data'
 import { ownKeys, managerKeys, templateFor, JOB_KEYS } from '@/lib/review/template'
-import { stepBack, type GoalResult, type GoalStatus, type Step } from '@/lib/review/rules'
+import { decidesTeam, stepBack, type GoalResult, type GoalStatus, type Step } from '@/lib/review/rules'
 import { firstName, noticeOnce } from '@/lib/review/notify'
 import { reviewMails } from '@/lib/review/emails'
 import { approveReviewWork, copyReviewToDrive, sendOpenedNotices } from '@/lib/review/service'
@@ -56,7 +56,9 @@ async function onReview(id: unknown) {
   if (!r) return { error: GONE } as const
   const cycle = (await rdb().from('review_cycles').select('*').eq('id', r.cycle_id).maybeSingle()).data as Cycle | null
   if (!cycle) return { error: GONE } as const
-  return { a, r, cycle, isPerson: r.person_id === a.me, isReviewer: !!r.reviewer_id && r.reviewer_id === a.me } as const
+  // The reviewer is whoever the person reports to NOW: a former manager keeps no hand in the review (audit, 4 November 2026).
+  const isReviewer = !!r.reviewer_id && r.reviewer_id === a.me && (r.step === 'approved' || currentReviewerOf(a.roster, a.settings, r.person_id) === a.me)
+  return { a, r, cycle, isPerson: r.person_id === a.me, isReviewer } as const
 }
 
 async function setStep(r: ReviewRow, from: Step, patch: Record<string, unknown>): Promise<boolean> {
@@ -81,7 +83,8 @@ export async function saveAnswer(input: { reviewId: number; key: string; body: s
   const now = stamp()
   const r = await rdb().from('review_answers').upsert({ review_id: x.r.id, key, body: clean(input.body, 20000), copied: false, updated_by: x.a.me, updated_at: now }, { onConflict: 'review_id,key' })
   if (r.error) { console.error('[review] answer:', r.error.message); return no(NOT_SAVED) }
-  await rdb().from('reviews').update({ updated_at: now }).eq('id', x.r.id)
+  const t2 = await rdb().from('reviews').update({ updated_at: now }).eq('id', x.r.id)
+  if (t2.error) console.error('[review] answer stamp:', t2.error.message)
   return { ok: true, savedAt: now }
 }
 
@@ -92,8 +95,12 @@ export async function copyJobDescription(input: { reviewId: number }): Promise<D
   if (!x.isPerson || x.r.step !== 'self') return no('Only you copy into your own self-review, while it is open.')
   const prev = await loadCycle(x.cycle.year - 1)
   const pr = prev ? (await rdb().from('reviews').select('id').eq('cycle_id', prev.id).eq('person_id', x.r.person_id).maybeSingle()).data as { id: number } | null : null
-  if (!pr) return no(`There is no ${x.cycle.year - 1} review in the portal to copy from.`)
-  const old = (await rdb().from('review_answers').select('key, body').eq('review_id', pr.id).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
+  // Last year's review in the portal, else what its Word file said on import (migration 150).
+  const file = pr ? null : (await loadImports({ personId: x.r.person_id })).find(i => i.year === x.cycle.year - 1 && i.found?.job)
+  if (!pr && !file) return no(`There is no ${x.cycle.year - 1} review to copy from.`)
+  const old = pr
+    ? (await rdb().from('review_answers').select('key, body').eq('review_id', pr.id).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
+    : Object.entries(file!.found!.job).map(([key, body]) => ({ key, body: body ?? '' })).filter(a => (JOB_KEYS as readonly string[]).includes(a.key))
   const have = (await rdb().from('review_answers').select('key, body').eq('review_id', x.r.id).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
   const filled = new Set((have ?? []).filter(a => a.body.trim()).map(a => a.key))
   const rows = (old ?? []).filter(a => a.body.trim() && !filled.has(a.key)).map(a => ({ review_id: x.r.id, key: a.key, body: a.body, copied: true, updated_by: x.a.me, updated_at: stamp() }))
@@ -135,7 +142,9 @@ export async function addGoal(input: { reviewId: number; past?: boolean }): Prom
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
-  if (!who || (input.past && who !== 'person')) return no('This part is locked now.')
+  if (!who) return no('This part is locked now.')
+  // The year under review is closed (the owner, 4 November 2026): its goals are only marked, never added.
+  if (input.past) return no('The year being reviewed is closed: only how each goal went can change.')
   const count = (await rdb().from('review_goals').select('id', { count: 'exact', head: true }).eq('person_id', x.r.person_id).eq('goal_year', input.past ? x.cycle.year : x.cycle.year + 1)).count ?? 0
   if (count >= 20) return no('Twenty goals is the most a year can have.')
   const row = input.past
@@ -151,7 +160,8 @@ export async function addGoal(input: { reviewId: number; past?: boolean }): Prom
 export async function saveGoal(input: { goalId: number; what?: string; how?: string; byMonth?: string | null; term?: '6m' | '1y' | null; priorityId?: number | null }): Promise<Done> {
   const g = await loadGoal(input?.goalId)
   if (!g) return no('This goal is not there any more. Reload the page.')
-  const reviewId = g.review_id ?? g.marked_in
+  if (!g.review_id) return no('The year being reviewed is closed: only how each goal went can change.')
+  const reviewId = g.review_id
   const x = await onReview(reviewId)
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
@@ -186,7 +196,8 @@ export async function saveGoal(input: { goalId: number; what?: string; how?: str
 export async function removeGoal(input: { goalId: number }): Promise<Done> {
   const g = await loadGoal(input?.goalId)
   if (!g) return { ok: true }
-  const x = await onReview(g.review_id ?? g.marked_in)
+  if (!g.review_id) return no('The year being reviewed is closed: only how each goal went can change.')
+  const x = await onReview(g.review_id)
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
   if (!who) return no('This part is locked now.')
@@ -205,6 +216,7 @@ export async function markGoal(input: { goalId: number; result?: GoalResult | nu
   const x = await onReview(g.marked_in ?? cur?.id)
   if ('error' in x) return no(x.error!)
   if (!x.isPerson || x.r.step !== 'self') return no('This part is locked now.')
+  if (g.goal_year !== x.cycle.year) return no('Only the goals of the year being reviewed are marked here.')
   const patch: Record<string, unknown> = { marked_in: x.r.id, updated_at: stamp() }
   if (input.result !== undefined) {
     if (input.result !== null && !['met', 'partly', 'not_met', 'dropped'].includes(input.result)) return no('Pick how it went.')
@@ -224,6 +236,13 @@ export async function submitSelf(input: { reviewId: number }): Promise<Done> {
   if ('error' in x) return no(x.error!)
   if (!x.isPerson || x.r.step !== 'self') return no('This self-review is not open for you to send.')
   if (!x.r.reviewer_id) return no('Nobody reviews you yet: ask a Super Admin to set "Reports to" on your Directory page.')
+  // A Team Leader sends the team's priorities first: the block lives in this self-review (audit, 4 November 2026).
+  const leads = x.a.parts.find(p => p.personId === x.a.me)?.leads ?? []
+  if (leads.length) {
+    const states = await loadTeamStates(x.cycle.id)
+    const waiting = leads.filter(t => ['draft', 'returned'].includes(states.get(t)?.state ?? 'draft'))
+    if (waiting.length) return no(`Send ${waiting.length === 1 ? `the ${x.a.roster.teams.get(waiting[0])?.name ?? 'team'}'s` : 'your teams\''} priorities for approval first, so your team can start.`)
+  }
   if (!(await setStep(x.r, 'self', { step: 'review', self_sent_at: stamp() }))) return no(NOT_SAVED)
   const who = nameIn(x.a.roster, x.r.person_id)
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'self_sent', text: `${who} sent the self-review.` })
@@ -263,12 +282,22 @@ export async function finishReview(input: { reviewId: number }): Promise<Done> {
   return { ok: true, toast: 'Saved. Now book the meeting.' }
 }
 
+/** An Agenda event the actor made with that person as a guest: the only kind that can be a review meeting or a check-in (audit, 4 November 2026). */
+async function ownEventWith(me: string, personId: string, eventId: unknown): Promise<{ id: string; starts_at: string; ends_at: string } | null> {
+  const id = String(eventId ?? '')
+  if (!/^\d+$/.test(id)) return null
+  const ev = (await rdb().from('agenda_events').select('id, starts_at, ends_at, created_by').eq('id', id).maybeSingle()).data as { id: string; starts_at: string; ends_at: string; created_by: string | null } | null
+  if (!ev || ev.created_by !== me) return null
+  const guest = await rdb().from('agenda_event_guests').select('id').eq('event_id', id).eq('person_id', personId).limit(1)
+  return guest.data?.length ? ev : null
+}
+
 /** Links the meeting booked in the Agenda's drawer to the review. */
 export async function linkMeeting(input: { reviewId: number; eventId: string }): Promise<Done> {
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
   if (!x.isReviewer || x.r.step !== 'meeting') return no('Only the reviewer books the meeting, at the meeting step.')
-  const ev = (await rdb().from('agenda_events').select('id, starts_at, ends_at').eq('id', String(input?.eventId ?? '')).maybeSingle()).data as { id: string; starts_at: string; ends_at: string } | null
+  const ev = await ownEventWith(x.a.me, x.r.person_id, input?.eventId)
   if (!ev) return no('The meeting was not found in the Agenda. Try booking it again.')
   const u = await rdb().from('reviews').update({ meeting_event_id: ev.id, meeting_starts_at: ev.starts_at, meeting_ends_at: ev.ends_at, updated_at: stamp() }).eq('id', x.r.id)
   if (u.error) return no(NOT_SAVED)
@@ -282,8 +311,8 @@ export async function saveMeetingNotes(input: { reviewId: number; notes: string 
   if ('error' in x) return no(x.error!)
   if (!x.isReviewer || x.r.step !== 'meeting') return no('The meeting notes are written by the reviewer, at the meeting step.')
   const now = stamp()
-  const u = await rdb().from('reviews').update({ meeting_notes: clean(input?.notes, 20000), updated_at: now }).eq('id', x.r.id)
-  if (u.error) return no(NOT_SAVED)
+  const u = await rdb().from('reviews').update({ meeting_notes: clean(input?.notes, 20000), updated_at: now }).eq('id', x.r.id).eq('step', 'meeting').select('id')
+  if (u.error || !u.data?.length) return no('The review moved on. Reload the page.')
   return { ok: true, savedAt: now }
 }
 
@@ -318,7 +347,7 @@ export async function retryReviewDrive(input: { reviewId: number }): Promise<Don
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
   if (x.r.step !== 'approved') return no('Only an approved review is copied to Drive.')
-  if (!x.isReviewer && !x.a.viewer.seesAll) return no('Only the reviewer, HR, the VP of Operations and the CISO try the copy again.')
+  if (!x.isReviewer && !x.a.viewer.seesAll) return no('Only the reviewer and HR try the copy again.')
   const r = await copyReviewToDrive(x.r.id)
   refresh()
   return r.ok ? { ok: true, toast: 'Saved to Drive.' } : no(r.error)
@@ -357,7 +386,10 @@ export async function savePriority(input: { cycleId: number; id?: number | null;
   const fields: Record<string, unknown> = { updated_by: x.a.me, updated_at: stamp() }
   if (input.title !== undefined) fields.title = clean(input.title, 200)
   if (input.body !== undefined) fields.body = clean(input.body, 2000)
-  if (input.supportsId !== undefined) fields.supports_id = input.supportsId
+  if (input.supportsId !== undefined) {
+    if (input.supportsId !== null && !(await loadPriorities(x.c.id)).some(p => p.id === input.supportsId && !p.team_id)) return no('Pick one of the Company Priorities.')
+    fields.supports_id = input.supportsId
+  }
   const c = rdb()
   if (existing) {
     const r = await c.from('review_priorities').update(fields).eq('id', existing.id)
@@ -401,6 +433,9 @@ export async function sendTeamPriorities(input: { cycleId: number; teamId: strin
   if ('error' in x) return no(x.error!)
   const teamId = String(input?.teamId ?? '')
   if (!leaderOf(x.a, teamId)) return no('Only the team\'s Team Leader sends its priorities.')
+  const was = (await loadTeamStates(x.c.id)).get(teamId)?.state ?? 'draft'
+  if (was === 'sent') return no('These priorities are already sent. They are waiting for approval.')
+  if (was === 'approved') return no('These priorities are approved. Only the VP of Operations and the CISO change them now.')
   const mine = (await loadPriorities(x.c.id)).filter(p => p.team_id === teamId && p.title.trim())
   if (!mine.length) return no('Write at least one priority with a title first.')
   const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'sent', sent_at: stamp(), sent_by: x.a.me, return_reason: null }, { onConflict: 'cycle_id,team_id' })
@@ -415,12 +450,17 @@ export async function sendTeamPriorities(input: { cycleId: number; teamId: strin
   return { ok: true, toast: 'Sent for approval. Your self-review stays open.' }
 }
 
+const OWN_TEAM = 'You lead this team, so the other of the VP of Operations and the CISO decides its priorities.'
+
 /** The VP of Operations or the CISO approves a team's priorities: the team's self-reviews open. */
 export async function approveTeamPriorities(input: { cycleId: number; teamId: string }): Promise<Done> {
   const x = await onCycle(input?.cycleId)
   if ('error' in x) return no(x.error!)
   if (!x.a.viewer.leads) return no('Only the VP of Operations and the CISO approve team priorities.')
   const teamId = String(input?.teamId ?? '')
+  if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
+  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members)) return no(OWN_TEAM)
+  if ((await loadTeamStates(x.c.id)).get(teamId)?.state !== 'sent') return no('These priorities are not waiting for approval.')
   const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'approved', decided_at: stamp(), decided_by: x.a.me, return_reason: null }, { onConflict: 'cycle_id,team_id' })
   if (r.error) return no(NOT_SAVED)
   const team = x.a.roster.teams.get(teamId)?.name ?? 'team'
@@ -438,7 +478,10 @@ export async function returnTeamPriorities(input: { cycleId: number; teamId: str
   const reason = clean(input?.reason, 2000).trim()
   if (!reason) return no('Write the reason: the Team Leader sees it.')
   const teamId = String(input?.teamId ?? '')
+  if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
+  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members)) return no(OWN_TEAM)
   const st = (await loadTeamStates(x.c.id)).get(teamId)
+  if (st?.state !== 'sent') return no('These priorities are not waiting for approval.')
   const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'returned', decided_at: stamp(), decided_by: x.a.me, return_reason: reason }, { onConflict: 'cycle_id,team_id' })
   if (r.error) return no(NOT_SAVED)
   const team = x.a.roster.teams.get(teamId)?.name ?? 'team'
@@ -491,6 +534,8 @@ export async function saveHrSettings(input: { vpId?: string | null; cisoId?: str
   const person = (v: unknown) => v === null || (typeof v === 'string' && a.roster.people.get(v)?.active)
   for (const [k, col] of [['vpId', 'vp_operations_id'], ['cisoId', 'ciso_id'], ['hrId', 'hr_id']] as const) {
     if (input[k] === undefined) continue
+    // The roles give access to every review and to the approvals: HR cannot hand them out (audit, 4 November 2026).
+    if (!(await allowedTo('cs-hr-edit'))) return no('Only a Super Admin picks the roles.')
     if (!person(input[k])) return no('Pick an active person.')
     patch[col] = input[k]
   }
@@ -536,6 +581,7 @@ export async function pickImportFiles(input: { year: number; files: { id: string
   const a = await settingsWriter()
   if (!a) return no('Only Super Admins and HR import last year\'s reviews.')
   const year = Number(input?.year)
+  if (!Number.isInteger(year) || year < 2020 || year > 2100) return no('That is not a year.')
   const files = (input?.files ?? []).filter(f => /^[A-Za-z0-9_-]{10,}$/.test(String(f.id))).slice(0, 300)
   if (!files.length) return no('No files were picked.')
   const { matchFile } = await import('@/lib/review/rules')
@@ -544,7 +590,8 @@ export async function pickImportFiles(input: { year: number; files: { id: string
     const m = matchFile(String(f.name), people)
     return { year, drive_file_id: f.id, file_name: String(f.name).slice(0, 300), mime_type: f.mimeType ?? null, web_link: f.url ?? null, person_id: m.personId, match: m.match }
   })
-  const r = await rdb().from('review_imports').upsert(rows, { onConflict: 'year,drive_file_id' })
+  // A file picked before keeps its row: its person may have been checked, or imported already.
+  const r = await rdb().from('review_imports').upsert(rows, { onConflict: 'year,drive_file_id', ignoreDuplicates: true })
   if (r.error) { console.error('[review] pick files:', r.error.message); return no(NOT_SAVED) }
   revalidatePath('/admin/settings')
   return { ok: true, toast: `${rows.length} file${rows.length === 1 ? '' : 's'} picked. Check the matches, then import.` }
@@ -554,19 +601,65 @@ export async function setImportPerson(input: { id: number; personId: string | nu
   const a = await settingsWriter()
   if (!a) return no('Only Super Admins and HR import last year\'s reviews.')
   if (input.personId && !a.roster.people.has(input.personId)) return no('Pick a person from the Directory.')
-  const r = await rdb().from('review_imports').update({ person_id: input.skip ? null : input.personId, match: input.skip ? 'skipped' : input.personId ? 'matched' : 'none' }).eq('id', Number(input?.id))
+  const row = (await rdb().from('review_imports').select('id, imported_at').eq('id', Number(input?.id)).maybeSingle()).data as { id: number; imported_at: string | null } | null
+  if (!row) return no('That file is not there any more. Reload the page.')
+  // Once imported, the file is served to its person and its goals are theirs: it does not move (audit, 4 November 2026).
+  if (row.imported_at) return no('This file is imported already. It stays with its person.')
+  const r = await rdb().from('review_imports').update({ person_id: input.skip ? null : input.personId, match: input.skip ? 'skipped' : input.personId ? 'matched' : 'none' }).eq('id', row.id)
   if (r.error) return no(NOT_SAVED)
   revalidatePath('/admin/settings')
   return { ok: true }
 }
 
-export async function removeImport(input: { id: number }): Promise<Done> {
+/**
+ * HR corrects the goals a file gave (migration 150): adds one the reader
+ * missed, changes its words or month, or takes one out. The person only marks
+ * them; their year is closed. Not after their review of that year is approved.
+ */
+export async function saveImportGoal(input: { importId: number; goalId?: number | null; what?: string; byMonth?: string | null }): Promise<Done> {
   const a = await settingsWriter()
-  if (!a) return no('Only Super Admins and HR import last year\'s reviews.')
-  const r = await rdb().from('review_imports').delete().eq('id', Number(input?.id)).is('imported_at', null)
+  if (!a) return no('Only Super Admins and HR correct last year\'s goals.')
+  const imp = (await rdb().from('review_imports').select('id, year, person_id, imported_at').eq('id', Number(input?.importId)).maybeSingle()).data as { id: number; year: number; person_id: string | null; imported_at: string | null } | null
+  if (!imp?.imported_at || !imp.person_id) return no('Import the file first.')
+  if (await goalsClosed(imp.person_id, imp.year + 1)) return no(`${nameIn(a.roster, imp.person_id)}'s ${imp.year + 1} review is approved: these goals are closed.`)
+  const fields: Record<string, unknown> = { updated_at: stamp() }
+  if (input.what !== undefined) fields.what = clean(input.what, 500)
+  if (input.byMonth !== undefined) {
+    if (input.byMonth !== null && !/^\d{4}-\d{2}-01$/.test(input.byMonth)) return no('Pick a month.')
+    fields.by_month = input.byMonth
+  }
+  if (input.goalId) {
+    const r = await rdb().from('review_goals').update(fields).eq('id', input.goalId).eq('import_id', imp.id)
+    if (r.error) return no(NOT_SAVED)
+  } else {
+    const count = (await rdb().from('review_goals').select('id', { count: 'exact', head: true }).eq('import_id', imp.id)).count ?? 0
+    if (count >= 20) return no('Twenty goals is the most a year can have.')
+    const r = await rdb().from('review_goals').insert({ person_id: imp.person_id, goal_year: imp.year + 1, position: count, what: '', how: '', result_comment: '', import_id: imp.id, added_by: a.me, ...fields })
+    if (r.error) return no(NOT_SAVED)
+  }
+  revalidatePath('/admin/settings')
+  return { ok: true, toast: 'Saved.' }
+}
+
+/** The goals of a year are closed once the review that marks them is approved. */
+async function goalsClosed(personId: string, goalYear: number): Promise<boolean> {
+  // No "!inner" embed: the server refuses the "!" (LiteSpeed, 2026-10).
+  const c = await loadCycle(goalYear)
+  if (!c) return false
+  const r = await rdb().from('reviews').select('id').eq('person_id', personId).eq('cycle_id', c.id).eq('step', 'approved').limit(1)
+  return (r.data?.length ?? 0) > 0
+}
+
+export async function removeImportGoal(input: { goalId: number }): Promise<Done> {
+  const a = await settingsWriter()
+  if (!a) return no('Only Super Admins and HR correct last year\'s goals.')
+  const g = (await rdb().from('review_goals').select('id, person_id, goal_year, import_id').eq('id', Number(input?.goalId)).maybeSingle()).data as { id: number; person_id: string; goal_year: number; import_id: number | null } | null
+  if (!g?.import_id) return { ok: true }
+  if (await goalsClosed(g.person_id, g.goal_year)) return no('That review is approved: these goals are closed.')
+  const r = await rdb().from('review_goals').delete().eq('id', g.id)
   if (r.error) return no(NOT_SAVED)
   revalidatePath('/admin/settings')
-  return { ok: true }
+  return { ok: true, toast: 'Goal removed.' }
 }
 
 /** Import: copies each matched file (as a PDF) into the portal, where it shows as the reference. */
@@ -589,8 +682,8 @@ export async function startCycle(input: { year: number }): Promise<Done> {
   if (!c) return no('Set the dates in Company settings > Human Resources first.')
   if (c.started_at) return no(`The ${c.year} cycle has already started.`)
   if (!c.self_due || !c.approval_due) return no('Set the dates in Company settings > Human Resources first.')
-  const u = await rdb().from('review_cycles').update({ started_at: stamp(), started_by: a.me, updated_at: stamp() }).eq('id', c.id).is('started_at', null)
-  if (u.error) return no(NOT_SAVED)
+  const u = await rdb().from('review_cycles').update({ started_at: stamp(), started_by: a.me, updated_at: stamp() }).eq('id', c.id).is('started_at', null).select('id')
+  if (u.error || !u.data?.length) return no(`The ${c.year} cycle has already started.`)
   const started = { ...c, started_at: stamp(), started_by: a.me }
   await addLog({ cycle_id: c.id, actor_id: a.me, kind: 'started', text: `${nameIn(a.roster, a.me)} started the ${c.year} cycle.` })
   const { opened } = await syncCycle(started)
@@ -644,7 +737,7 @@ export async function linkCheckin(input: { personId: string; eventId: string }):
   if (!a.viewer.reports.has(String(input?.personId))) return no('Only the person they report to books the check-in.')
   const run = await runningCycleOf(String(input.personId))
   if (!run) return no('There are no agreed goals to check in on.')
-  const ev = (await rdb().from('agenda_events').select('id, starts_at').eq('id', String(input?.eventId ?? '')).maybeSingle()).data as { id: string; starts_at: string } | null
+  const ev = await ownEventWith(a.me, String(input.personId), input?.eventId)
   if (!ev) return no('The check-in was not found in the Agenda. Try booking it again.')
   const r = await rdb().from('review_checkins').upsert({ cycle_id: run, person_id: input.personId, manager_id: a.me, event_id: ev.id, starts_at: ev.starts_at }, { onConflict: 'cycle_id,person_id' })
   if (r.error) return no(NOT_SAVED)
@@ -676,13 +769,3 @@ async function runningCycleOf(personId: string): Promise<number | null> {
 
 // ── For the page: keeps a started year current on every visit ──────────────
 
-/** Opens what is due to open (a team on "Teams open by"), from any page that shows reviews. */
-export async function touchCycle(): Promise<Done> {
-  const a = await actor()
-  if (!a) return no('Sign in again.')
-  const c = await loadCurrentCycle()
-  if (!c?.started_at) return { ok: true }
-  const { opened } = await syncCycle(c)
-  await sendOpenedNotices(c, opened)
-  return { ok: true }
-}

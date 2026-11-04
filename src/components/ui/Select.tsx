@@ -55,6 +55,8 @@ export function Select({
   id,
   defaultOpen = false,
   defaultQuery = '',
+  chevron = true,
+  placeholderIcon,
 }: {
   value: string
   onChange: (value: string) => void
@@ -80,6 +82,10 @@ export function Select({
   /** Design check only: render the menu's filter already typed into. */
   defaultQuery?: string
   id?: string
+  /** Off for a picker drawn as a button ("+ Add a person"). */
+  chevron?: boolean
+  /** Drawn before the placeholder while nothing is chosen (the "+" of an add button). */
+  placeholderIcon?: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null)
@@ -242,9 +248,10 @@ export function Select({
             how the trigger says whether it is filtering anything. */}
         <span className={`flex items-center gap-2 min-w-0 ${selected ? `text-tn-ink${strongValue ? ' font-semibold' : ''}` : mutePlaceholder ? 'text-muted' : ''}`}>
           {selected?.icon && <span className="flex-none flex">{selected.icon}</span>}
+          {!selected && placeholderIcon && <span className="flex-none flex">{placeholderIcon}</span>}
           <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
+        {chevron && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>}
       </button>
       {menu}
     </div>

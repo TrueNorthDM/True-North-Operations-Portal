@@ -45,11 +45,24 @@ export async function runReviewNotices(now = new Date()): Promise<NoticeReport> 
         const v = await loadReviewView(r.id, 'server', roster, now)
         const a = v ? answeredCount(v, 'own') : { done: 0, total: 12 }
         count(await noticeOnce(key, roster, w, o => reviewMails.selfDue({ year: cycle.year, due, days: n, answered: a.done, total: a.total, goals: v?.goals.length ?? 0, url: url(o) })))
+      } else if (r.step === 'meeting' && r.meeting_starts_at) {
+        // Booked: nothing to remind until the meeting is held, when the person is asked to agree.
+        continue
       } else if (r.step === 'meeting' && w === r.person_id) {
         count(await noticeOnce(`${key}:agree`, roster, w, o => reviewMails.agree({ year: cycle.year, manager: nameIn(roster, r.reviewer_id), url: url(o) })))
       } else {
         const what = r.step === 'review' ? 'review' : r.step === 'meeting' ? 'meeting' : 'approve'
         count(await noticeOnce(key, roster, w, o => reviewMails.toReviewer({ year: cycle.year, who: nameIn(roster, r.person_id), what, due, days: n, url: url(o) })))
+      }
+    }
+    // A Team Leader's priorities not sent yet: 1 week, 3 days and on the day of "Team Leaders due" (handoff, Reminders).
+    const nl = reminderToday(cycle.leaders_due, today)
+    if (nl !== null) {
+      for (const p of rosterParticipants(roster, settings)) {
+        const waiting = (p.leads ?? []).filter(t => ['draft', 'returned'].includes(states.get(t)?.state ?? 'draft'))
+        if (!waiting.length) continue
+        const mine = reviews.find(r => r.person_id === p.personId)
+        count(await noticeOnce(`remind:leader:${cycle.id}:${p.personId}:${nl}`, roster, p.personId, o => reviewMails.prioritiesDue({ year: cycle.year, due: cycle.leaders_due!, days: nl, teams: waiting.map(t => roster.teams.get(t)?.name ?? 'team'), url: mine ? `${o}/human-resources/reviews/${mine.id}` : `${o}/human-resources` })))
       }
     }
     // Team priorities waiting: the VP of Operations and the CISO, before "Teams open by".
@@ -98,7 +111,7 @@ export async function runReviewNotices(now = new Date()): Promise<NoticeReport> 
       for (const [m, ps] of byManager) for (const p of ps) {
         const ck = checkins.get(p)
         if (ck?.event_id || ck?.finished_at) continue
-        count(await noticeOnce(`checkin-due:${cid}:${p}:${n}`, roster, m, o => reviewMails.checkinDue({ year: c.year, who: nameIn(roster, p), by, days: n, url: `${o}/human-resources/team-goals/${p}` })))
+        count(await noticeOnce(`checkin-due:${cid}:${p}:${n}`, roster, m, o => reviewMails.checkinDue({ year: c.year, who: nameIn(roster, p), by, days: n, url: `${o}/human-resources/team-goals/${p}?book=1` })))
       }
     }
   }

@@ -54,7 +54,7 @@ export function HomeSection() {
       <Heading>Home: what to do today</Heading>
       <Lede>Home answers one question for each person: what do I need to do today? Each part reads on its own. If one cannot be read, it says so in its own card, and the rest still shows.</Lede>
       <Cards items={HOME} />
-      <p className="text-[13px] leading-relaxed text-muted mt-3">No longer on Home: favourite pages, the org chart (it is in People, Organization), birthdays and work anniversaries (they are in the Agenda) and the health banner (its alerts are Needs you rows).</p>
+      <p className="text-[13px] leading-relaxed text-muted mt-3">No longer on Home: favourite pages, the org chart (it is in People, Human Resources), birthdays and work anniversaries (they are in the Agenda) and the health banner (its alerts are Needs you rows).</p>
     </section>
   )
 }

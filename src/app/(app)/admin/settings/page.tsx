@@ -7,7 +7,7 @@
 
 import { HrSettings } from '@/components/review/HrSettings'
 import { loadHrSettingsData } from '@/lib/review/settings-data'
-import { saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles } from '@/app/(app)/human-resources/actions'
+import { saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles, saveImportGoal, removeImportGoal } from '@/app/(app)/human-resources/actions'
 import Link from 'next/link'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { WorklistSources } from '@/components/monday/WorklistSources'
@@ -488,8 +488,8 @@ export default async function SettingsPage() {
       content: (
         <div>
           <SectionHead title="Human Resources" desc="The yearly performance review: who runs it, who takes part, its dates, and where the approved PDFs go." />
-          <HrSettings data={hrSettings} canEdit={access.can('cs-hr-edit') || (!!access.personId && hrSettings.roles.hrId === access.personId)}
-            api={{ saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles }} />
+          <HrSettings data={hrSettings} canEdit={access.can('cs-hr-edit') || (!!access.personId && hrSettings.roles.hrId === access.personId)} canRoles={access.can('cs-hr-edit')}
+            api={{ saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles, saveImportGoal, removeImportGoal }} />
         </div>
       ),
     },
@@ -500,9 +500,6 @@ export default async function SettingsPage() {
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} self="/admin/settings" />
         <h1 className={PAGE_TITLE}>Company settings</h1>
-        <p className="mt-1.5 text-[15px] text-muted leading-normal">
-          Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.
-        </p>
       </div>
 
       {sections.some(Boolean)

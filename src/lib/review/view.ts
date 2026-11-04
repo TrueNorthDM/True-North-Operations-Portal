@@ -9,7 +9,7 @@ import {
   dueOf, monthLabel, waitsFor, type GoalResult, type GoalStatus, type Step,
 } from './rules'
 import {
-  canSeePerson, loadAnswers, loadCycle, loadGoals, loadImports, loadLog, loadPersonReviews, loadPriorities, loadReview, loadTeamStates,
+  canSeePerson, loadAnswers, loadCycle, loadHrSettings, loadGoals, loadImports, loadLog, loadPersonReviews, loadPriorities, loadReview, loadTeamStates,
   nameIn, prioritiesFor, type Cycle, type Goal, type ImportRow, type ReviewRow, type ReviewViewer, type Roster, type TeamPriorityState,
 } from './data'
 import { rdb } from './data'
@@ -38,10 +38,16 @@ export interface ReviewView {
   priorities: PriorityView[]
   /** The Team Leader's own review: the teams they lead, with their priorities to write. */
   teamBlocks: TeamBlock[]
+  /** Who approves team priorities: the VP of Operations and the CISO, by name. */
+  approvers: string[]
+  /** HR by name and the Drive folder the approved PDF goes to, for the approval's words (design handoff, E3). */
+  hr: string | null; driveFolder: string | null
   lastImport: (ImportRow & { url: string }) | null
   canCopyJob: boolean
   dates: { selfSent: string | null; reviewSent: string | null; agreed: string | null; approved: string | null; approvedBy: string | null; opened: string | null }
-  meeting: { eventId: string | null; startsAt: string | null; endsAt: string | null; notes: string; held: boolean }
+  meeting: { eventId: string | null; startsAt: string | null; endsAt: string | null; notes: string; held: boolean
+    /** From the Agenda event: online (Google Meet) or in person, and where. */
+    how: 'online' | 'in_person' | null; place: string | null }
   sentBack: { at: string; by: string; reason: string; from: string | null } | null
   pdf: { ready: boolean; name: string | null; drive: ReviewRow['drive_status']; driveError: string | null; driveLink: string | null }
   log: { text: string; at: string; who: string }[]
@@ -60,7 +66,7 @@ const tidy = (g: Goal, n: number, pri: Map<number, string>, roster: Roster, from
 export async function loadReviewView(id: number, viewer: ReviewViewer | 'server', roster: Roster, now = new Date()): Promise<ReviewView | null> {
   const r = await loadReview(id)
   if (!r) return null
-  if (viewer !== 'server' && !canSeePerson(viewer, r.person_id) && r.reviewer_id !== viewer.personId) return null
+  if (viewer !== 'server' && !canSeePerson(viewer, r.person_id)) return null
   const cycle = (await rdb().from('review_cycles').select('*').eq('id', r.cycle_id).maybeSingle()).data as Cycle | null
   if (!cycle) return null
   const [answers, nextGoals, pastGoalsAll, priorities, states, imports, history, log] = await Promise.all([
@@ -82,7 +88,8 @@ export async function loadReviewView(id: number, viewer: ReviewViewer | 'server'
   const priTitle = new Map(priorities.map(x => [x.id, x.title]))
   const goals = nextGoals.filter(g => g.goal_year === cycle.year + 1).map((g, i) => tidy(g, i + 1, priTitle, roster, false))
   const prev = history.find(h => h.year === cycle.year - 1) ?? null
-  const pastGoals = pastGoalsAll.filter(g => g.review_id === null ? g.marked_in === r.id : true).map((g, i) => tidy(g, i + 1, priTitle, roster, g.review_id !== null))
+  // Last year's goals: agreed in last year's review, or read from last year's file (marked_in still empty until marked).
+  const pastGoals = pastGoalsAll.filter(g => g.review_id === null ? g.marked_in === r.id || g.marked_in === null : true).map((g, i) => tidy(g, i + 1, priTitle, roster, g.review_id !== null))
   const served = (pid: number) => goals.filter(g => g.priorityId === pid).length
   const prioritiesView: PriorityView[] = visible.map((x, i) => ({
     id: x.id, n: i + 1, scope: x.team_id ? roster.teams.get(x.team_id)?.name ?? 'Team' : 'Whole company', teamId: x.team_id, title: x.title, body: x.body, goals: served(x.id),
@@ -102,7 +109,9 @@ export async function loadReviewView(id: number, viewer: ReviewViewer | 'server'
   for (const [k, a] of answers) ans[k] = { body: a.body, copied: a.copied }
 
   const teamLeader = r.phase === 2 ? nameIn(roster, r.reviewer_id) : null
+  const hrSet = await loadHrSettings()
   const held = !!r.meeting_ends_at && new Date(r.meeting_ends_at) <= now
+  const ev = r.meeting_event_id ? (await rdb().from('agenda_events').select('how, place').eq('id', r.meeting_event_id).maybeSingle()).data as { how: string | null; place: string | null } | null : null
   return {
     id: r.id, year: cycle.year, cycle, step: r.step, phase: r.phase,
     person: { id: r.person_id, name: p?.name ?? 'Someone', title: p?.title ?? null, teamName: team?.name ?? null, hireDate: p?.hireDate ?? null, avatarUrl: p?.avatarUrl ?? null, teamLeaderName: teamLeader },
@@ -116,10 +125,12 @@ export async function loadReviewView(id: number, viewer: ReviewViewer | 'server'
     goals,
     priorities: prioritiesView,
     teamBlocks,
+    hr: hrSet.hrId ? nameIn(roster, hrSet.hrId) : null, driveFolder: hrSet.driveFolderName,
+    approvers: teamBlocks.length ? await loadHrSettings().then(h => [h.vpId, h.cisoId].filter((x): x is string => !!x && x !== r.person_id).map(x => nameIn(roster, x))) : [],
     lastImport: lastImport ? { ...lastImport, url: `/human-resources/imports/${lastImport.id}/file` } : null,
-    canCopyJob: !!prev,
+    canCopyJob: !!prev || !!lastImport?.found && Object.values(lastImport.found.job ?? {}).some(Boolean),
     dates: { selfSent: r.self_sent_at, reviewSent: r.review_sent_at, agreed: r.agreed_at, approved: r.approved_at, approvedBy: r.approved_by ? nameIn(roster, r.approved_by) : null, opened: r.opened_at },
-    meeting: { eventId: r.meeting_event_id, startsAt: r.meeting_starts_at, endsAt: r.meeting_ends_at, notes: r.meeting_notes, held },
+    meeting: { eventId: r.meeting_event_id, startsAt: r.meeting_starts_at, endsAt: r.meeting_ends_at, notes: r.meeting_notes, held, how: ev?.how === 'online' || ev?.how === 'in_person' ? ev.how : null, place: ev?.place ?? null },
     sentBack: r.sent_back_at && r.sent_back_reason ? { at: r.sent_back_at, by: nameIn(roster, r.sent_back_by), reason: r.sent_back_reason, from: r.sent_back_from } : null,
     pdf: { ready: r.step === 'approved', name: r.pdf_name, drive: r.drive_status, driveError: r.drive_error, driveLink: r.drive_file_id ? `https://drive.google.com/file/d/${r.drive_file_id}/view` : null },
     log: log.map(l => ({ text: l.text, at: l.created_at, who: nameIn(roster, l.actor_id) })),

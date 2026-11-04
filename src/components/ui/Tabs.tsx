@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Page and section tabs: words in a row, a teal underline under the open one
- * (owner, 31 October 2026). One control for every page that switches between
+ * Page and section tabs: words in a row, a gold underline under the open one
+ * (owner, 31 October 2026; gold since 4 November 2026). One control for every page that switches between
  * views of itself. The look lives in lib/ui/tabs.ts.
  *
  * Keyboard as a tab list is: only the open tab is in the Tab order, Left and

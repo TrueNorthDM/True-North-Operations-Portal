@@ -28,7 +28,7 @@ export type StatusState = keyof typeof STATUS_ICON
 export const STATUS_COLOR: Record<StatusState, string> = {
   done: 'var(--bdg-green-fg)',
   progress: 'var(--bdg-orange-fg)',
-  todo: 'var(--bdg-slate-fg)',
+  todo: 'var(--muted)',
   locked: 'var(--bdg-slate-fg)',
   info: 'var(--bdg-blue-fg)',
   turn: 'var(--color-tn-ink, #012358)',

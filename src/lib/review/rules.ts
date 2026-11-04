@@ -33,6 +33,23 @@ export interface Participant {
 }
 
 /** Employees always; anyone else only when added in "Who takes part". */
+// The roles read from the Directory titles, for any role not picked by hand in
+// Company settings: one active person whose title names it, or nobody when no
+// title or more than one does.
+const ROLE_TITLES: Record<keyof Roles, RegExp> = {
+  vpId: /\b(VPO|VP of Operations|Vice President of Operations)\b/i,
+  cisoId: /\bCISO\b/i,
+  hrId: /\b(HR|Human Resources)\b/i,
+}
+export function rolesFromTitles(people: RosterPerson[], picked: Roles): Roles {
+  const find = (k: keyof Roles) => {
+    if (picked[k]) return picked[k]
+    const hits = people.filter(p => p.active && p.title && ROLE_TITLES[k].test(p.title))
+    return hits.length === 1 ? hits[0].id : null
+  }
+  return { vpId: find('vpId'), cisoId: find('cisoId'), hrId: find('hrId') }
+}
+
 export function takesPart(p: RosterPerson, extra: ReadonlySet<string>): boolean {
   if (!p.active) return false
   return p.employmentType !== 'contractor' || extra.has(p.id)
@@ -49,6 +66,14 @@ export function mainTeamOf(personId: string, members: RosterMembership[], teams:
 /** The people who lead a team (their membership position is a lead one). */
 export function leadersOf(teamId: string, members: RosterMembership[]): string[] {
   return members.filter(m => m.teamId === teamId && isLeadPosition(m.position)).map(m => m.personId)
+}
+
+/**
+ * Who may approve or send back a team's priorities: the VP of Operations or
+ * the CISO, never for a team they lead themselves (the other one decides).
+ */
+export function decidesTeam(personId: string | null, isVpOrCiso: boolean, teamId: string, members: RosterMembership[]): boolean {
+  return !!personId && isVpOrCiso && !leadersOf(teamId, members).includes(personId)
 }
 
 /** Who reviews this person: their Team Leader, else Reports to, else the VP and CISO each other. */
@@ -132,6 +157,15 @@ export function teamOpens(state: { approved: boolean } | null, teamsOpenBy: stri
 
 export const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 
+/**
+ * When a Super Admin's Home asks them to start the year's cycle: from a week
+ * before "Team Leaders open on" until someone starts it (late stays shown).
+ */
+export const START_NOTICE_DAYS = 7
+export function startRowShows(today: string, leadersOpenOn: string | null, started: boolean): boolean {
+  return !started && !!leadersOpenOn && dayDiff(today, leadersOpenOn) <= START_NOTICE_DAYS
+}
+
 /** "4 days left", "tomorrow", "today", "2 days late". */
 export function dueWords(due: string, today: string): string {
   const n = dayDiff(today, due)
@@ -185,7 +219,6 @@ export const GOAL_RESULT: { key: GoalResult; label: string; tone: 'green' | 'amb
   { key: 'dropped', label: 'No longer relevant', tone: 'gray' },
 ]
 export const statusLabel = (s: GoalStatus) => GOAL_STATUS.find(x => x.key === s)!.label
-export const resultLabel = (s: GoalResult) => GOAL_RESULT.find(x => x.key === s)!.label
 
 /** "1 on track · 1 at risk · 1 done · 1 not started", in that order, zeros left out. */
 export function statusSummary(statuses: GoalStatus[]): string {

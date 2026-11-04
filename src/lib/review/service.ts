@@ -14,7 +14,7 @@ import { reviewPdfPath, storePdf, storedPdf, writeApprovedPdf } from './drive'
 import { firstName, noticeOnce } from './notify'
 import { reviewMails } from './emails'
 
-const LETTER = { width: 816, landscape: false, allPages: true, letter: true }
+const LETTER = { width: 816, landscape: false, allPages: true, letter: true, running: true }
 
 /** The approved review as PDF bytes, printed from its print page with a one-review pass. */
 export async function printReviewPdf(id: number): Promise<Uint8Array> {
@@ -73,6 +73,11 @@ export async function copyReviewToDrive(id: number): Promise<{ ok: true } | { ok
     const roster = await loadRoster()
     const month = (cycle.started_at ?? `${cycle.year}-11-01`).slice(5, 7)
     const name = r.pdf_name ?? pdfName(cycle.year, month, nameIn(roster, r.person_id))
+    // Development only: REVIEW_DRIVE_OFF=1 keeps a local test out of the company Drive; the review shows "Waiting".
+    if (process.env.NODE_ENV !== 'production' && process.env.REVIEW_DRIVE_OFF === '1') {
+      await rdb().from('reviews').update({ pdf_name: name }).eq('id', id)
+      return { ok: true }
+    }
     const fileId = await writeApprovedPdf({ name, year: cycle.year, bytes, fileId: r.drive_file_id, folderId: settings.driveFolderId })
     await rdb().from('reviews').update({ drive_status: 'saved', drive_file_id: fileId, drive_error: null, pdf_name: name }).eq('id', id)
     return { ok: true }

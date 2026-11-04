@@ -7,6 +7,7 @@ import { BTN } from '@/lib/ui/buttons'
 import { CARD, FIELD_LABEL } from '@/lib/ui/type'
 import { fmtDay, fmtWhen } from '@/lib/review/format'
 import type { GoalsView } from '@/lib/review/mine'
+import { APR_COLORS } from '@/lib/review/colors'
 
 export function MyGoalsCard({ v }: { v: GoalsView }) {
   const open = v.goals.filter(g => g.status !== 'done' && g.status !== 'dropped' && g.by)
@@ -14,7 +15,7 @@ export function MyGoalsCard({ v }: { v: GoalsView }) {
   const key = (by: string) => { const [m, y] = by.split(' '); return Number(y) * 12 + months.indexOf(m) }
   const next = [...open].sort((a, b) => key(a.by) - key(b.by))[0]
   return (
-    <div className={`${CARD} px-5 py-4 flex flex-col gap-3`}>
+    <div style={APR_COLORS} className={`${CARD} px-5 py-4 flex flex-col gap-3`}>
       <span className={FIELD_LABEL}>My goals for {v.year}</span>
       <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{v.summary || 'No goals'}</span>
       {next && (

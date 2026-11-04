@@ -9,6 +9,8 @@
  */
 
 import type { Browser } from 'puppeteer-core'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from './browser'
 import { fitOnePage, pagePx, sheetPages, type ReceiptBox } from '@/lib/timeclock/receipt-pages'
@@ -35,8 +37,25 @@ export interface PagedSheet {
 }
 
 /** The Clocky report (Reports.dc.html 12C) is one landscape page drawn 860px wide. */
-export interface SheetLayout { width: number; landscape: boolean; /** Every page it needs (the report), not the first alone. */ allPages?: boolean; paged?: PagedSheet; /** US Letter instead of A4, portrait only (the annual review). */ letter?: boolean }
+export interface SheetLayout { width: number; landscape: boolean; /** Every page it needs (the report), not the first alone. */ allPages?: boolean; paged?: PagedSheet; /** US Letter instead of A4, portrait only (the annual review). */ letter?: boolean
+  /** The logo and the sheet's title at the top of every page, "Confidential" and
+   *  "Page X of Y" at the foot (the annual review, design handoff F1). The sheet's
+   *  own [data-running] parts, shown on screen, are left out of the print. */
+  running?: boolean }
 const PORTRAIT: SheetLayout = { width: 620, landscape: false }
+
+/** The running header and footer, drawn by Chromium in the page margins. */
+async function runningParts(title: string) {
+  const logo = (await readFile(path.join(process.cwd(), 'public/logos/true-north.png'))).toString('base64')
+  const esc = (t: string) => t.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!))
+  const font = "font-family:'Open Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-print-color-adjust:exact"
+  return {
+    headerTemplate: `<div style="width:100%;box-sizing:border-box;padding:48px 72px 0;${font}"><div style="display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #e4e7ec"><img src="data:image/png;base64,${logo}" style="height:34px;display:block"><span style="font-size:12px;color:#8593a4">${esc(title)}</span></div></div>`,
+    footerTemplate: `<div style="width:100%;box-sizing:border-box;padding:0 72px 30px;display:flex;justify-content:space-between;font-size:11.5px;color:#8593a4;${font}"><span>Confidential. True North Digital Marketing.</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`,
+    // The header row ends 48 + 34 + 14 + 1 = 97px down; the page's content starts 22px below it.
+    margin: { top: '119px', right: '0', bottom: '72px', left: '0' },
+  }
+}
 
 const text = (body: string, status: number) => new Response(body, { status, headers: { 'Content-Type': 'text/plain' } })
 
@@ -56,13 +75,17 @@ export async function printSheet(target: URL, headers: Record<string, string>, l
     if (!res || res.status() === 404) return null
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
     // The sheet alone: no rail, no top bar, no page padding around it.
-    const named = await page.evaluate(() => {
+    const running = !!layout.running
+    const named = await page.evaluate((running) => {
       const doc = document.querySelector('.print-doc')!
       document.body.replaceChildren(doc)
       document.body.style.margin = '0'
       document.body.style.background = '#fff'
-      return { title: doc.querySelector('[data-invoice-number], [data-doc-title]')?.textContent ?? 'document', file: doc.querySelector('[data-file]')?.getAttribute('data-file') ?? null }
-    })
+      const named = { title: doc.querySelector('[data-invoice-number], [data-doc-title]')?.textContent ?? 'document', file: doc.querySelector('[data-file]')?.getAttribute('data-file') ?? null }
+      // Read the title first: it sits in the on-screen header that goes.
+      if (running) for (const e of doc.querySelectorAll('[data-running]')) e.remove()
+      return named
+    }, running)
     const paged = layout.paged
     let boxes: ReceiptBox[] = []
     // The width the sheet is printed at: its own, or wider when a report is fitted on one page.
@@ -103,7 +126,8 @@ export async function printSheet(target: URL, headers: Record<string, string>, l
       }, paged.labels(docPages), docPages, Math.floor(docPages * onePage - push) - 1)
     }
     const scale = (layout.letter ? LETTER : layout.landscape ? A4_LANDSCAPE : A4) / width
-    const printed = await page.pdf({ format: layout.letter ? 'Letter' : 'A4', landscape: layout.landscape, printBackground: true, scale, margin: { top: 0, right: 0, bottom: 0, left: 0 }, ...(layout.allPages || paged ? {} : { pageRanges: '1' }) })
+    const frame = running ? { displayHeaderFooter: true, ...(await runningParts(named.title)) } : { margin: { top: 0, right: 0, bottom: 0, left: 0 } }
+    const printed = await page.pdf({ format: layout.letter ? 'Letter' : 'A4', landscape: layout.landscape, printBackground: true, scale, ...frame, ...(layout.allPages || paged ? {} : { pageRanges: '1' }) })
     // A4 is 595.28pt wide (841.89pt on its side); the sheet is drawn `width` pixels wide.
     const pdf = paged ? await paged.draw(printed, boxes, (layout.landscape ? 841.89 : 595.28) / width) : printed
     return { pdf, title: named.title, file: named.file }

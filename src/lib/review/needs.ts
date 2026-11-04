@@ -7,11 +7,16 @@
 
 import type { HomeRow } from '@/lib/home/needs-you-model'
 import { dueOnDay } from '@/lib/home/needs-you-model'
-import { checkinsOpenOn, dayDiff, dueOf, monthEnd, waitsFor } from './rules'
+import { checkinsOpenOn, dayDiff, decidesTeam, dueOf, dueWords, monthEnd, startRowShows, waitsFor } from './rules'
+import { fmtDay, fmtInstantDay } from './format'
 import {
   loadCheckins, loadCurrentCycle, loadHrSettings, loadReviews, loadRoster, loadTeamStates, nameIn, rdb, rosterParticipants, viewerOf,
   type Goal, type ReviewRow,
 } from './data'
+
+// "the Writing Team", "the Operations team": how a row names a team.
+const teamOf = (name: string | undefined) => `the ${name ?? 'team'}${name && /\bteam$/i.test(name) ? '' : ' team'}`
+const dueSub = (word: string, due: string | null, today: string) => due ? `${word} ${fmtDay(due)} · ${dueWords(due, today)}` : ''
 
 const row = (key: string, title: string, sub: string, due: HomeRow['due'], href: string, button = 'Open'): HomeRow =>
   ({ key: `review:${key}`, kind: 'review', title, sub, due, button, panel: null, href })
@@ -25,6 +30,11 @@ export async function reviewNeedsRows(access: { personId: string | null; isSuper
   const viewer = viewerOf(access, settings, parts)
   const cycle = await loadCurrentCycle()
 
+  // A Super Admin starts the year's cycle (A5): asked a week before Team Leaders open.
+  if (cycle && access.isSuperAdmin && startRowShows(today, cycle.leaders_open_on, !!cycle.started_at)) {
+    out.push(row(`start:${cycle.year}`, `Start the ${cycle.year} review cycle`, `Team Leaders open on ${fmtDay(cycle.leaders_open_on)} · Human Resources › Reviews`, dueOnDay(cycle.leaders_open_on!, today), '/human-resources/reviews', 'Start'))
+  }
+
   if (cycle?.started_at) {
     const [reviews, states] = await Promise.all([loadReviews(cycle.id), loadTeamStates(cycle.id)])
     for (const r of reviews) {
@@ -35,25 +45,26 @@ export async function reviewNeedsRows(access: { personId: string | null; isSuper
       const href = `/human-resources/reviews/${r.id}`
       const who = nameIn(roster, r.person_id)
       const by = nameIn(roster, r.reviewer_id)
-      if (r.person_id === me && r.step === 'self') out.push(row(`${r.id}:self`, r.sent_back_at ? 'Your self-review came back' : 'Write your self-review', r.sent_back_at ? `${nameIn(roster, r.sent_back_by)} sent it back with a reason` : `Your ${cycle.year} review`, d, href, 'Open'))
+      if (r.person_id === me && r.step === 'self') out.push(row(`${r.id}:self`, r.sent_back_at ? 'Your self-review came back' : 'Write your self-review', r.sent_back_at ? `${nameIn(roster, r.sent_back_by)} sent it back with a reason` : dueSub('Due', due, today) || `Your ${cycle.year} review`, d, href, 'Open'))
       else if (r.person_id === me && r.step === 'meeting') out.push(row(`${r.id}:agree`, 'Read and agree your review', `The meeting with ${by} is done`, dueOnDay(today, today), href, 'Read and agree'))
-      else if (r.step === 'review') out.push(row(`${r.id}:review`, `Review ${who}'s self-review`, `${cycle.year} review · sent ${r.self_sent_at ? r.self_sent_at.slice(0, 10) === today ? 'today' : 'on ' + new Date(r.self_sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) : ''}`, d, href, 'Review'))
-      else if (r.step === 'meeting') out.push(row(`${r.id}:meeting`, `Book the meeting with ${who}`, `${cycle.year} review`, d, href, 'Book'))
-      else if (r.step === 'approval') out.push(row(`${r.id}:approve`, `Approve ${who}'s review`, `${who} read and agreed`, d, href, 'Approve'))
+      else if (r.step === 'review') out.push(row(`${r.id}:review`, `Review ${who}'s self-review`, dueSub('Due', due, today) || `${cycle.year} review`, d, href, 'Review'))
+      else if (r.step === 'meeting' && r.meeting_starts_at) out.push(row(`${r.id}:meeting`, `Meeting with ${who}`, `Booked for ${fmtInstantDay(r.meeting_starts_at)} · write the notes after it`, null, href, 'Open'))
+      else if (r.step === 'meeting') out.push(row(`${r.id}:meeting`, `Book the meeting with ${who}`, dueSub('By', due, today) || `${cycle.year} review`, d, href, 'Book'))
+      else if (r.step === 'approval') out.push(row(`${r.id}:approve`, `Approve ${who}'s review`, dueSub('By', due, today) || `${who} read and agreed`, d, href, 'Approve'))
     }
     // A Team Leader's priorities to send (phase 1).
     const mine = reviews.find(r => r.person_id === me)
     for (const teamId of parts.find(p => p.personId === me)?.leads ?? []) {
       const st = states.get(teamId)?.state ?? 'draft'
       if (st === 'draft' || st === 'returned') {
-        out.push(row(`team:${teamId}`, `Send the ${roster.teams.get(teamId)?.name ?? 'team'}'s priorities`, st === 'returned' ? 'Sent back with a reason' : 'In your self-review, so your team can start', cycle.leaders_due ? dueOnDay(cycle.leaders_due, today) : null, mine ? `/human-resources/reviews/${mine.id}` : '/human-resources', 'Open'))
+        out.push(row(`team:${teamId}`, `Send ${teamOf(roster.teams.get(teamId)?.name)}'s priorities`, st === 'returned' ? 'Sent back with a reason' : 'In your self-review, so your team can start', cycle.leaders_due ? dueOnDay(cycle.leaders_due, today) : null, mine ? `/human-resources/reviews/${mine.id}` : '/human-resources', 'Open'))
       }
     }
     // The VP of Operations and the CISO: team priorities waiting.
     if (viewer.isVp || viewer.isCiso) {
       for (const st of states.values()) {
-        if (st.state !== 'sent') continue
-        out.push(row(`approve-team:${st.team_id}`, `Approve the ${roster.teams.get(st.team_id)?.name ?? 'team'}'s priorities`, `From ${nameIn(roster, st.sent_by)} · VP of Operations and CISO`, cycle.teams_open_by ? dueOnDay(cycle.teams_open_by, today) : null, '/human-resources/reviews/priorities', 'Approve'))
+        if (st.state !== 'sent' || !decidesTeam(me, true, st.team_id, roster.members)) continue
+        out.push(row(`approve-team:${st.team_id}`, `Approve ${teamOf(roster.teams.get(st.team_id)?.name)}'s priorities`, `From ${nameIn(roster, st.sent_by)} · VP of Operations and CISO`, cycle.teams_open_by ? dueOnDay(cycle.teams_open_by, today) : null, '/human-resources/reviews/priorities', 'Approve'))
       }
     }
   }
@@ -84,7 +95,7 @@ export async function reviewNeedsRows(access: { personId: string | null; isSuper
     const ck = (await loadCheckins(r.cycle_id, [personId])).get(personId)
     if (ck?.event_id || ck?.finished_at) continue
     const who = nameIn(roster, personId)
-    out.push(row(`checkin:${r.cycle_id}:${personId}`, `Book ${who}'s 6-month check-in`, 'Book opens the Agenda, filled in', dueOnDay(c.checkins_by, today), `/human-resources/team-goals/${personId}`, 'Book'))
+    out.push(row(`checkin:${r.cycle_id}:${personId}`, `Book ${who}'s 6-month check-in`, 'Book opens the Agenda, filled in', dueOnDay(c.checkins_by, today), `/human-resources/team-goals/${personId}?book=1`, 'Book'))
   }
   return out
 }

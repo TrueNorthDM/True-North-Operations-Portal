@@ -55,6 +55,8 @@ export default async function HomePage() {
   perf.done({ budget: seesI7 })
   // Needs you is read once: the card draws it, the banner's line counts it.
   const needsP = loadNeedsYou()
+  // The review card is read once and drawn twice: under the banner on a phone, atop the right column on a wide screen (C1).
+  const cardP = me ? readCard(me.id) : null
 
   return (
     <HomeLayout
@@ -67,11 +69,12 @@ export default async function HomePage() {
           summary={<Suspense fallback={null}><Summary data={needsP} /></Suspense>}
         />
       }
+      top={cardP && <Suspense fallback={null}><Review data={cardP} /></Suspense>}
       needs={<Suspense fallback={<Skeleton h={420} label="Needs you" />}><Needs data={needsP} /></Suspense>}
       pay={hasClock && me ? <Suspense fallback={<Skeleton h={420} label="Pay period" />}><PayPeriod personId={me.id} /></Suspense> : null}
       right={
         <>
-          {me && <Suspense fallback={null}><Review personId={me.id} /></Suspense>}
+          {cardP && <div className="hidden lg:contents"><Suspense fallback={null}><Review data={cardP} /></Suspense></div>}
           <Suspense fallback={<Skeleton h={560} label="Agenda" />}><Agenda access={access} /></Suspense>
           {me && <Suspense fallback={null}><Goals personId={me.id} /></Suspense>}
           {seesI7 && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 /></Suspense>}
@@ -113,11 +116,12 @@ function ReadFailed({ what }: { what: string }) {
 }
 
 /** The annual review's card (C1): from the day the person's review opens until 30 days after approval. */
-async function Review({ personId }: { personId: string }) {
-  const card = await loadMyCard(personId, await loadRoster(), reviewToday()).catch(e => {
-    console.error('[home] review card:', e instanceof Error ? e.message : e)
-    return 'failed' as const
-  })
+const readCard = (personId: string) => loadRoster().then(r => loadMyCard(personId, r, reviewToday())).catch(e => {
+  console.error('[home] review card:', e instanceof Error ? e.message : e)
+  return 'failed' as const
+})
+async function Review({ data }: { data: ReturnType<typeof readCard> }) {
+  const card = await data
   if (card === 'failed') return <ReadFailed what="Your review" />
   return card ? <ReviewCard c={card} compact /> : null
 }

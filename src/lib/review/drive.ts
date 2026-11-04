@@ -15,6 +15,7 @@
  * public one).
  */
 
+import { readOldReview } from './old-review'
 import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
 import { driveAccount, driveToken, ensurePath, pickedFolder, writeFile, DriveError } from '@/lib/agenda/google-drive'
 import { rdb, type ImportRow } from './data'
@@ -33,19 +34,48 @@ async function get(token: string, url: string, init: RequestInit = {}): Promise<
   return res
 }
 
-/** A Drive file as PDF bytes: a PDF as it is, a Google Doc exported, a Word file converted by Drive (a copy made, exported and removed). */
-async function asPdf(token: string, fileId: string): Promise<Uint8Array> {
+/**
+ * A Drive file as PDF bytes, and its text when Drive can give it: a PDF as it
+ * is (no text), a Google Doc exported, a Word file converted by Drive (a copy
+ * made, exported twice and removed). The text is what the portal reads the
+ * goals and the Job Description from (lib/review/old-review.ts).
+ */
+async function asDoc(token: string, fileId: string): Promise<{ pdf: Uint8Array; text: string | null }> {
   const meta = await (await get(token, `${FILES}/${encodeURIComponent(fileId)}?fields=id,name,mimeType&supportsAllDrives=true`)).json() as { mimeType: string }
-  if (meta.mimeType === 'application/pdf') return new Uint8Array(await (await get(token, `${FILES}/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`)).arrayBuffer())
-  if (meta.mimeType === 'application/vnd.google-apps.document') return new Uint8Array(await (await get(token, `${FILES}/${encodeURIComponent(fileId)}/export?mimeType=application/pdf`)).arrayBuffer())
+  if (meta.mimeType === 'application/pdf') return { pdf: new Uint8Array(await (await get(token, `${FILES}/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`)).arrayBuffer()), text: null }
+  const both = async (id: string) => ({
+    pdf: new Uint8Array(await (await get(token, `${FILES}/${encodeURIComponent(id)}/export?mimeType=application/pdf`)).arrayBuffer()),
+    text: await (await get(token, `${FILES}/${encodeURIComponent(id)}/export?mimeType=text/plain`)).text().catch(() => null),
+  })
+  if (meta.mimeType === 'application/vnd.google-apps.document') return both(fileId)
   const copy = await (await get(token, `${FILES}/${encodeURIComponent(fileId)}/copy?supportsAllDrives=true&fields=id`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mimeType: 'application/vnd.google-apps.document', name: 'Portal import (temporary)' }),
   })).json() as { id: string }
   try {
-    return new Uint8Array(await (await get(token, `${FILES}/${encodeURIComponent(copy.id)}/export?mimeType=application/pdf`)).arrayBuffer())
+    return await both(copy.id)
   } finally {
     await fetch(`${FILES}/${encodeURIComponent(copy.id)}?supportsAllDrives=true`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
   }
+}
+
+/**
+ * What a file says, kept on its import row and as the person's goals of the
+ * year after it (locked in their review; HR corrects them on the import
+ * screen). Reading again replaces what an earlier read found.
+ */
+export async function keepWhatItSays(row: { id: number; year: number; person_id: string | null }, text: string | null, by: string): Promise<{ goals: number; job: number }> {
+  const found = text ? readOldReview(text, row.year + 1) : { goals: [], job: {} }
+  const fail = (what: string, e: { message: string } | null) => { if (e) throw new Error(`${what}: ${e.message}`) }
+  fail('import row', (await rdb().from('review_imports').update({ found: { read: !!text, job: found.job, goals: found.goals.length } }).eq('id', row.id)).error)
+  fail('old goals', (await rdb().from('review_goals').delete().eq('import_id', row.id)).error)
+  if (row.person_id && found.goals.length) {
+    const rows = found.goals.map((g, i) => ({
+      person_id: row.person_id, goal_year: row.year + 1, position: i, what: g.what, how: '', by_month: g.byMonth, term: null, priority_id: null,
+      result: null, result_comment: '', import_id: row.id, added_by: by,
+    }))
+    fail('goals', (await rdb().from('review_goals').insert(rows)).error)
+  }
+  return { goals: found.goals.length, job: Object.keys(found.job).length }
 }
 
 /** Imports every matched file of the year not imported yet. */
@@ -58,10 +88,11 @@ export async function importReviewFiles(year: number, by: string): Promise<{ ok:
   let done = 0, failed = 0
   for (const r of rows) {
     try {
-      const bytes = await asPdf(token, r.drive_file_id)
-      const up = await createUploadClient().storage.from(BUCKET).upload(importPath(r.id), Buffer.from(bytes), { contentType: 'application/pdf', upsert: true })
+      const doc = await asDoc(token, r.drive_file_id)
+      const up = await createUploadClient().storage.from(BUCKET).upload(importPath(r.id), Buffer.from(doc.pdf), { contentType: 'application/pdf', upsert: true })
       if (up.error) throw new Error(up.error.message)
       await rdb().from('review_imports').update({ imported_at: new Date().toISOString(), imported_by: by, match: 'matched' }).eq('id', r.id)
+      await keepWhatItSays(r, doc.text, by)
       done++
     } catch (e) {
       failed++
@@ -94,7 +125,7 @@ export async function writeApprovedPdf(f: { name: string; year: number; bytes: U
     try {
       parent = await ensurePath(token, f.folderId, [String(f.year)])
     } catch (e) {
-      if (e instanceof DriveError && e.status === 404) throw new Error('Drive did not find the folder. Try again, or pick the folder again in Company settings.')
+      if (e instanceof DriveError && e.status === 404) throw new Error('Drive did not find the folder.')
       throw e
     }
   } else {

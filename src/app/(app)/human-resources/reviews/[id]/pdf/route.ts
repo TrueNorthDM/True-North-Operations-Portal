@@ -29,5 +29,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const name = r.pdf_name ?? 'Annual review.pdf'
   const kept = r.pdf_path ? await storedPdf(r.pdf_path) : null
   if (kept) return new Response(kept as unknown as BodyInit, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition(name), 'Cache-Control': 'no-store' } })
-  return sheetPdf(request, `/human-resources/reviews/${id}/print`, () => name, { width: 816, landscape: false, allPages: true, letter: true }, name)
+  return sheetPdf(request, `/human-resources/reviews/${id}/print`, () => name, { width: 816, landscape: false, allPages: true, letter: true, running: true }, name)
 }

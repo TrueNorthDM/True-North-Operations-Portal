@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
+import { PdfPages } from '@/components/ui/PdfPages'
 
 export interface PdfRequest {
   /** Where to fetch it from. */
@@ -28,6 +29,9 @@ export interface PdfRequest {
   title: string
   /** Used if the response carries no filename. */
   fallbackName: string
+  /** Drawn as white sheets on paper colour, read only, instead of the
+   *  browser's own viewer (the annual review, design handoff E4). */
+  sheets?: boolean
 }
 
 /**
@@ -111,11 +115,13 @@ function PdfDialog({ request, onClose }: { request: PdfRequest; onClose: () => v
           <CloseButton onClick={onClose} />
         </div>
 
-        <div className="flex-1 min-h-0 bg-subtle">
+        <div className={`flex-1 min-h-0 ${request.sheets && blobUrl && !error ? 'bg-[#f4f2ec] overflow-auto py-6 px-4 [scrollbar-width:none]' : 'bg-subtle'}`}>
           {error ? (
             <div className="h-full flex items-center justify-center p-8">
               <p className="text-[13.5px] text-[var(--bdg-red-fg)] text-center max-w-[52ch] m-0 break-words">{error}</p>
             </div>
+          ) : blobUrl && request.sheets ? (
+            <div className="w-[734px] max-w-full mx-auto"><PdfPages url={blobUrl} title={request.title} /></div>
           ) : blobUrl ? (
             <iframe src={blobUrl} title={request.title} className="w-full h-full border-0" />
           ) : (

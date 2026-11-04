@@ -61,6 +61,9 @@ const OPT = 'normal-case tracking-normal font-sans font-semibold'
 const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13.5px] text-tn-teal hover:underline'
 const SELECT = `${SELECT_FIELD} font-semibold tabular-nums`
 const TIMES = Array.from({ length: 48 }, (_, i) => i * 30).map(m => ({ value: String(m), label: clockLabel(m) }))
+/** The half hours, plus a time between them when one is set (a 45-minute review meeting ends at 10:15). */
+const timesWith = (list: { value: string; label: string }[], m: number) =>
+  list.some(o => o.value === String(m)) ? list : [...list, { value: String(m), label: clockLabel(m) }].sort((a, b) => Number(a.value) - Number(b.value))
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const fdate = (iso: string, year = false) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' })
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
@@ -76,11 +79,13 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   )
 }
 
-export function EventDrawer({ setup, editing, preset, note, today, api, onClose, onDone }: {
+export function EventDrawer({ setup, editing, preset, note, free = false, today, api, onClose, onDone }: {
   setup: DrawerSetup
   editing?: DrawerEdit | null
   /** A new event opened already filled in (the annual review's meeting and check-in). */
   preset?: Partial<Omit<DrawerEdit, 'id' | 'occurrence'>> | null
+  /** The preset's slot is free for everyone in it (a review booking): said under Find a time. */
+  free?: boolean
   /** A line at the top saying where it was booked from. */
   note?: string
   today: string
@@ -127,6 +132,8 @@ export function EventDrawer({ setup, editing, preset, note, today, api, onClose,
   // One occurrence of a series: Save and Delete first ask which ones.
   const [scopeFor, setScopeFor] = useState<'save' | 'delete' | null>(null)
 
+  // The guest's first name, when the drawer came from a review on a free slot.
+  const bothFree = preset?.guests?.length === 1 ? (setup.people.find(p => p.personId === preset.guests![0].personId)?.name.split(' ')[0] ?? null) : null
   const t = typeOf(type)
   const word = t.label.toLowerCase()
   const setType = (x: EventType) => { setTypeRaw(x); setWhen(typeOf(x).when); setTypeOpen(false) }
@@ -245,7 +252,12 @@ export function EventDrawer({ setup, editing, preset, note, today, api, onClose,
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] px-5 md:px-7 pb-6 flex flex-col gap-[22px]">
-          {note && <p className="m-0 rounded-[10px] bg-[#eaf4f4] px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-tn-ink">{note}</p>}
+          {note && (
+            <div className="flex items-start gap-2.5 rounded-[12px] bg-[#eaf4f4] px-3.5 py-2.5 text-[13px] leading-[1.5] text-[#12585a]">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg>
+              <p className="m-0">{note}</p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-3.5 items-end">
             <div className="flex flex-col gap-2 flex-1 basis-[230px] relative">
               <span className={LBL}>Type</span>
@@ -268,10 +280,10 @@ export function EventDrawer({ setup, editing, preset, note, today, api, onClose,
               {when === 'range' && <DayField label="Last day" value={end} min={date} onChange={setEnd} />}
               {when === 'time' && <>
                 <label className="flex flex-col gap-2 flex-1 basis-[150px] min-w-0"><span className={LBL}>From · Washington DC</span>
-                  <Select value={String(from)} options={TIMES} fullWidth ariaLabel="From" className={SELECT}
+                  <Select value={String(from)} options={timesWith(TIMES, from)} fullWidth ariaLabel="From" className={SELECT}
                     onChange={v => { const n = Number(v), len = Math.max(to - from, 30); setFrom(n); setTo(Math.min(n + len, 1440)) }} /></label>
                 <label className="flex flex-col gap-2 flex-1 basis-[150px] min-w-0"><span className={LBL}>To · Washington DC</span>
-                  <Select value={String(to)} options={[...TIMES.slice(1), { value: '1440', label: '12:00 AM (midnight)' }]} fullWidth ariaLabel="To" className={SELECT}
+                  <Select value={String(to)} options={timesWith([...TIMES.slice(1), { value: '1440', label: '12:00 AM (midnight)' }], to)} fullWidth ariaLabel="To" className={SELECT}
                     onChange={v => { const n = Number(v); setTo(n); if (n <= from) setFrom(Math.max(n - 60, 0)) }} /></label>
               </>}
             </div>
@@ -294,6 +306,12 @@ export function EventDrawer({ setup, editing, preset, note, today, api, onClose,
               <button type="button" className={`${LINK} self-start inline-flex items-center gap-1.5`} onClick={() => setFinding(true)}>
                 <Icon d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5" size={15} width={2.2} />Find a time when everyone is free
               </button>
+            )}
+            {/* Booked from a review on the first slot both are free (lib/review/booking.ts): said so while it is still that slot. */}
+            {when === 'time' && free && preset && date === preset.date && from === preset.from && to === preset.to && bothFree && (
+              <span className="self-start inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0d7a4f]">
+                <Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" size={15} width={2.2} />You and {bothFree} are both free then
+              </span>
             )}
           </div>
 
@@ -322,7 +340,7 @@ export function EventDrawer({ setup, editing, preset, note, today, api, onClose,
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center"><span className={LBL}>Who it&apos;s for</span>
               {count > 0 && <span className="ml-auto text-[12px] font-bold text-tn-teal">{count} invitation{count === 1 ? '' : 's'}</span>}</div>
-            {setup.audiences.length > 1 && (
+            {setup.audiences.length > 1 && !note && (
               <div className="self-start">
                 <Segmented label="Who it's for" value={audience} onChange={a => { setAudience(a); setAlso(false); setTeamOpen(a === 'teams' && !teams.length) }}
                   options={(['guests', 'teams', 'all'] as const).filter(a => setup.audiences.includes(a)).map(a => ({ key: a, label: a === 'guests' ? 'Guests' : a === 'teams' ? 'Teams' : 'True North' }))} />

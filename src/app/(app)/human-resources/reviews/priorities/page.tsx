@@ -8,8 +8,8 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { PrioritiesPage, type TeamRow } from '@/components/review/PrioritiesPage'
 import { reviewContext } from '@/lib/review/page-context'
 import { requireSurface } from '@/lib/access/resolve'
-import { loadCurrentCycle, loadLog, loadPriorities, loadTeamStates, nameIn } from '@/lib/review/data'
-import { leadersOf } from '@/lib/review/rules'
+import { ensureCurrentCycle, loadLog, loadPriorities, loadTeamStates, nameIn } from '@/lib/review/data'
+import { decidesTeam, leadersOf } from '@/lib/review/rules'
 import { fmtDay, fmtInstantDay, fmtTime } from '@/lib/review/format'
 import { approveTeamPriorities, removePriority, returnTeamPriorities, savePriority } from '../../actions'
 
@@ -19,8 +19,7 @@ export const metadata: Metadata = { title: 'Priorities' }
 export default async function PrioritiesRoute() {
   const { viewer, roster, settings } = await reviewContext(await requireSurface('human-resources'))
   if (!viewer.leads) redirect(await previewHref('/human-resources/reviews'))
-  const cycle = await loadCurrentCycle()
-  if (!cycle) redirect(await previewHref('/admin/settings#human-resources'))
+  const cycle = await ensureCurrentCycle()
   const [all, states, log] = await Promise.all([loadPriorities(cycle.id), loadTeamStates(cycle.id), loadLog({ cycleId: cycle.id }, 40)])
   const changedLine = (by: string | null, at: string) => `Changed by ${nameIn(roster, by)} on ${fmtInstantDay(at)}, ${fmtTime(at)}`
   const teams: TeamRow[] = []
@@ -34,6 +33,9 @@ export default async function PrioritiesRoute() {
     const state = st?.state ?? 'none'
     teams.push({
       teamId: t.id, name: t.name, leader: nameIn(roster, leaders[0]), state, members,
+      // A team the viewer leads is decided by the other of the two.
+      decider: decidesTeam(viewer.personId, true, t.id, roster.members) ? null
+        : nameIn(roster, [settings.vpId, settings.cisoId].find(id => id && id !== viewer.personId)) || 'the other approver',
       sentLine: st?.sent_at ? `Sent ${fmtInstantDay(st.sent_at)}, ${fmtTime(st.sent_at)}, from ${st.sent_by ? 'their' : 'the'} self-review` : null,
       line: state === 'approved' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, approved ${fmtInstantDay(st!.decided_at)}.${st?.opened_at ? ` ${t.name}'s self-reviews are open.` : ''}`
         : state === 'sent' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, sent ${fmtInstantDay(st!.sent_at)}.`
@@ -50,7 +52,8 @@ export default async function PrioritiesRoute() {
     <div className="flex flex-col gap-4">
       <Breadcrumb parents={['/human-resources', '/human-resources/reviews']} now="Priorities" />
       <PrioritiesPage cycleId={cycle.id} year={cycle.year} notice={notice}
-        intro={`Step 0 of the review. The VP of Operations${settings.vpId ? ` (${nameIn(roster, settings.vpId)})` : ''} and the CISO${settings.cisoId ? ` (${nameIn(roster, settings.cisoId)})` : ''} write the whole-company priorities before the Team Leaders start. Each Team Leader writes their team's in their own self-review, and you approve them. A person sees the whole-company priorities and their own team's.`}
+        intro="Step 0 of the review. The VP of Operations and the CISO write the whole-company priorities before the Team Leaders start. Each Team Leader writes their team's in their own self-review, and you approve them. A person sees the whole-company priorities and their own team's."
+        editors={[settings.vpId, settings.cisoId].filter((id): id is string => !!id).map(id => nameIn(roster, id))}
         company={all.filter(p => !p.team_id).map(p => ({ id: p.id, title: p.title, body: p.body, changed: p.updated_by ? changedLine(p.updated_by, p.updated_at) : null }))}
         teams={teams} noLeader={noLeader}
         log={log.filter(l => l.kind.startsWith('priority') || l.kind.startsWith('team')).map(l => ({ who: nameIn(roster, l.actor_id), text: l.text, at: l.created_at }))}

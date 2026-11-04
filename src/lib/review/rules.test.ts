@@ -1,12 +1,45 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays, cardShows, cardState, checkinsOpenOn, dueOf, dueWords, matchFile, monthEnd, monthLabel, nameInFile, participants, pdfName,
-  reminderToday, reviewerFor, statusSummary, stepBack, takesPart, teamOpens, waitsFor,
+  reminderToday, reviewerFor, rolesFromTitles, decidesTeam, startRowShows, statusSummary, stepBack, takesPart, teamOpens, waitsFor,
   type RosterMembership, type RosterPerson,
 } from './rules'
 
 const person = (id: string, over: Partial<RosterPerson> = {}): RosterPerson => ({
   id, name: id.toUpperCase(), active: true, employmentType: 'us', managerId: null, title: null, hireDate: null, ...over,
+})
+
+describe('the start row in Needs you', () => {
+  it('shows from a week before Team Leaders open until the cycle starts', () => {
+    expect(startRowShows('2026-11-01', '2026-11-09', false)).toBe(false)
+    expect(startRowShows('2026-11-02', '2026-11-09', false)).toBe(true)
+    expect(startRowShows('2026-11-12', '2026-11-09', false)).toBe(true)
+    expect(startRowShows('2026-11-04', '2026-11-09', true)).toBe(false)
+    expect(startRowShows('2026-11-04', null, false)).toBe(false)
+  })
+})
+
+describe('who decides a team\'s priorities', () => {
+  const members: RosterMembership[] = [{ personId: 'vp', teamId: 'ops', position: 'lead', isPrimary: true }, { personId: 'x', teamId: 'web', position: 'lead', isPrimary: true }]
+  it('lets the VP or the CISO decide, but never for a team they lead', () => {
+    expect(decidesTeam('vp', true, 'web', members)).toBe(true)
+    expect(decidesTeam('vp', true, 'ops', members)).toBe(false)
+    expect(decidesTeam('x', false, 'ops', members)).toBe(false)
+  })
+})
+
+describe('roles from the Directory', () => {
+  const none = { vpId: null, cisoId: null, hrId: null }
+  it('reads each role from one active title, and keeps a role picked by hand', () => {
+    const people = [person('a', { title: 'VPO' }), person('d', { title: 'CISO - Chief Innovation & Strategy Officer' }), person('t', { title: 'Executive Assistant' })]
+    expect(rolesFromTitles(people, none)).toEqual({ vpId: 'a', cisoId: 'd', hrId: null })
+    expect(rolesFromTitles(people, { ...none, vpId: 'x', hrId: 't' })).toEqual({ vpId: 'x', cisoId: 'd', hrId: 't' })
+  })
+  it('leaves a role empty when two titles name it or the person left', () => {
+    expect(rolesFromTitles([person('a', { title: 'HR Manager' }), person('b', { title: 'Human Resources' })], none).hrId).toBeNull()
+    expect(rolesFromTitles([person('a', { title: 'CISO', active: false })], none).cisoId).toBeNull()
+    expect(rolesFromTitles([person('a', { title: 'Chris Lead' })], none).hrId).toBeNull()
+  })
 })
 
 describe('who takes part', () => {

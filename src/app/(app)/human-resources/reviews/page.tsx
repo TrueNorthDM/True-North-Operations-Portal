@@ -44,7 +44,7 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   }
 
   const [reviews, states, priorities] = await Promise.all([loadReviews(cycle.id), loadTeamStates(cycle.id), loadPriorities(cycle.id)])
-  const visible = reviews.filter(r => viewer.seesAll || r.reviewer_id === viewer.personId || r.person_id === viewer.personId)
+  const visible = reviews.filter(r => viewer.seesAll || viewer.reports.has(r.person_id) || r.person_id === viewer.personId)
   if (!viewer.seesAll && !visible.some(r => r.person_id !== viewer.personId)) {
     const mine = visible.find(r => r.person_id === viewer.personId)
     redirect(await previewHref(mine ? `/human-resources/reviews/${mine.id}` : '/human-resources'))
@@ -67,24 +67,30 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   const order = { self: 0, waiting: 1, review: 2, meeting: 3, approval: 4, approved: 5 } as const
   rows.sort((a, b) => Number(b.late) - Number(a.late) || order[a.step] - order[b.step] || a.name.localeCompare(b.name))
 
-  let start: { checks: StartCheck[]; phase1: number; teamsOpenBy: string | null; canStart: boolean } | null = null
+  let start: { checks: StartCheck[]; leaders: number; noLeader: number; teamsOpenBy: string | null; canStart: boolean; canSettings: boolean; warn: string | null } | null = null
   if (!cycle.started_at && viewer.seesAll) {
     const parts = ctx.parts
     const lastYear = imported.filter(i => i.year === year - 1)
-    const needPerson = lastYear.filter(i => !i.imported_at && i.match !== 'skipped').length
     const company = priorities.filter(p => !p.team_id)
+    // A file still needs a person when nobody is on it and it was not skipped.
+    const needPerson = lastYear.filter(i => !i.imported_at && !i.person_id && i.match !== 'skipped').length
+    const done = lastYear.filter(i => i.imported_at).length
+    const writers = [...new Set(company.map(p => p.created_by).filter((x): x is string => !!x))].map(id => nameIn(roster, id))
     const datesOk = !!(cycle.leaders_open_on && cycle.self_due && cycle.review_due && cycle.meeting_due && cycle.approval_due)
     start = {
-      phase1: parts.filter(p => p.phase === 1).length,
+      leaders: parts.filter(p => p.phase === 1 && p.leads.length > 0).length,
+      noLeader: parts.filter(p => p.phase === 1 && !p.leads.length).length,
+      warn: needPerson ? `${needPerson} of the ${year - 1} reviews still ${needPerson === 1 ? 'needs' : 'need'} a person. You can fix it after starting.` : null,
       teamsOpenBy: cycle.teams_open_by,
       canStart: access.can('hr-start'),
+      canSettings: access.can('cs-hr'),
       checks: [
         { key: 'dates', label: 'Dates', ok: datesOk, href: '/admin/settings#human-resources', action: 'Change', text: datesOk ? `Team Leaders open on ${fmtDay(cycle.leaders_open_on)} · Teams open by ${fmtDay(cycle.teams_open_by)} · Approval by ${fmtDay(cycle.approval_due)}` : 'Not all set yet.' },
         { key: 'roles', label: 'Roles', ok: settings.vpId && settings.cisoId && settings.hrId ? true : 'warn', href: '/admin/settings#human-resources', action: 'Change', text: `VP of Operations: ${nameIn(roster, settings.vpId) || 'not picked'} · CISO: ${nameIn(roster, settings.cisoId) || 'not picked'} · HR: ${nameIn(roster, settings.hrId) || 'not picked'}` },
         { key: 'people', label: 'Who takes part', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: `${parts.length - settings.extra.length} employees from the Directory · ${settings.extra.length ? `${settings.extra.length} added` : 'nobody added'}` },
-        { key: 'priorities', label: `Company Priorities for ${year + 1}`, ok: company.length ? true : 'warn', href: '/human-resources/reviews/priorities', action: 'Open', text: company.length ? `${company.length} written` : 'None written yet.' },
+        { key: 'priorities', label: `Company Priorities for ${year + 1}`, ok: company.length ? true : 'warn', href: '/human-resources/reviews/priorities', action: 'Open', text: company.length ? `${company.length} written${writers.length ? ` by ${writers.join(' and ')}` : ''}` : 'None written yet.' },
         { key: 'drive', label: 'Google Drive folder', ok: settings.driveFolderId ? true : 'warn', href: '/admin/settings#human-resources', action: 'Change', text: settings.driveFolderName ? `${settings.driveFolderName} / ${year}` : 'Not picked: the PDFs go into the portal\'s Drive folder.' },
-        { key: 'last', label: "Last year's reviews", ok: !lastYear.length ? 'warn' : needPerson ? 'warn' : true, href: '/admin/settings#human-resources', action: 'Fix it', text: !lastYear.length ? `No ${year - 1} reviews imported. It does not stop the cycle.` : `${lastYear.filter(i => i.imported_at).length} of ${lastYear.length} files imported${needPerson ? ` · ${needPerson} still ${needPerson === 1 ? 'needs' : 'need'} a person. It does not stop the cycle.` : ''}` },
+        { key: 'last', label: "Last year's reviews", ok: !lastYear.length || done < lastYear.length ? 'warn' : true, href: '/admin/settings#human-resources', action: 'Fix it', text: !lastYear.length ? `No ${year - 1} reviews imported. It does not stop the cycle.` : `${done} of ${lastYear.length} files imported${needPerson ? ` · ${needPerson} still ${needPerson === 1 ? 'needs' : 'need'} a person` : ''}${done < lastYear.length ? '. It does not stop the cycle.' : ''}` },
       ],
     }
   }

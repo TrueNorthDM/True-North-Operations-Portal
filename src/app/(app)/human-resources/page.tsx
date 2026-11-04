@@ -9,9 +9,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PAGE_TITLE } from '@/lib/ui/type'
 import { BTN } from '@/lib/ui/buttons'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Tabs } from '@/components/ui/Tabs'
 import { Anniversaries } from '@/components/hr/Anniversaries'
-import { MyGoals, ReviewCard, ReviewHistory, TeamGoals } from '@/components/review/HrParts'
+import { OrgChart } from '@/components/OrgChart'
+import { getOrgChart } from '@/lib/org/data'
+import { HistoryNote, MyGoals, ReviewCard, ReviewHistory, TeamGoals } from '@/components/review/HrParts'
 import { PriorityGrid } from '@/components/review/parts'
 import { reviewContext } from '@/lib/review/page-context'
 import { requireSurface } from '@/lib/access/resolve'
@@ -38,12 +41,10 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
     { key: 'reviews', label: 'My reviews' },
     { key: 'goals', label: 'My goals' },
     ...(viewer.reports.size ? [{ key: 'team' as const, label: "My team's goals" }] : []),
-    ...(access.can('hr-anniversaries') ? [{ key: 'anniversaries' as const, label: 'Anniversaries' }] : []),
+    { key: 'anniversaries', label: 'Anniversaries' },
   ]
   const asked = (await searchParams).tab as Tab | undefined
   const tab: Tab = asked === 'priorities' || tabs.some(t => t.key === asked) ? asked! : 'reviews'
-  const sub = tab === 'goals' && goals ? `Your goals for ${goals.year}, from your ${goals.reviewYear} review.` : tab === 'team' ? 'The goals of the people who report to you, and their 6-month check-ins.' : tab === 'anniversaries' ? 'Every service milestone and who currently holds it.' : 'Your reviews and your goals.'
-
   let priorities = null
   if (tab === 'priorities' && me) {
     const c = await loadCurrentCycle()
@@ -54,10 +55,34 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
     }
   }
 
+  const sub = tab === 'goals' && goals ? `Your goals for ${goals.year}, from your ${goals.reviewYear} review.` : tab === 'team' ? 'The goals of the people who report to you, and their 6-month check-ins.' : tab === 'anniversaries' ? 'Every service milestone and who currently holds it.' : 'Your reviews and your goals.'
+
+  // Until a review of theirs is approved in the portal (the first year), the
+  // page is C1: the card, then the anniversary badges, no tabs. From then on,
+  // G1: the tabs, with the reviews and the goals they agreed. A manager whose
+  // people have goals keeps the tabs for My team's goals.
+  if (!history.some(h => h.kind === 'approved') && !team.length) return (
+    <div className="flex flex-col gap-[22px]">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex-1 min-w-[260px] flex flex-col gap-1.5">
+          <h1 className={PAGE_TITLE}>Human Resources</h1>
+          <p className="m-0 text-[15px] text-muted leading-relaxed">Your review, and the anniversary badges: every service milestone and who currently holds it.</p>
+        </div>
+        {(viewer.seesAll || viewer.reports.size > 0) && <Link href="/human-resources/reviews" className={BTN.white}>Reviews</Link>}
+      </div>
+      {card && <ReviewCard c={card} />}
+      {tab === 'priorities' && priorities && <div className="flex flex-col gap-3"><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Priorities for {priorities.year + 1}</h2><PriorityGrid items={priorities.items} showGoals={false} /></div>}
+      <Organization />
+      <Anniversaries access={access} intro={false} />
+    </div>
+  )
+
+  const crumb = tab === 'priorities' ? 'Priorities' : tabs.find(t => t.key === tab)!.label
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex-1 min-w-[260px] flex flex-col gap-1.5">
+          <Breadcrumb parents={['/human-resources']} now={crumb} />
           <h1 className={PAGE_TITLE}>Human Resources</h1>
           <p className="m-0 text-[15px] text-muted leading-relaxed">{sub}</p>
         </div>
@@ -65,13 +90,27 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
       </div>
       {card && <ReviewCard c={card} />}
       <Tabs label="Human Resources" value={tab === 'priorities' ? 'reviews' : tab} items={tabs.map(t => ({ key: t.key, label: t.label, href: `/human-resources?tab=${t.key}` }))} />
-      {tab === 'reviews' && <ReviewHistory rows={history} intro="Only you, the person you report to and HR see these." footer="Your reviews stay here for as long as you work at True North. They are also on your page in the Directory, under HR." />}
+      {tab === 'reviews' && <div className="flex flex-col gap-[18px]"><ReviewHistory rows={history} intro="Only you, the person you report to and HR see these." /><HistoryNote text="Your reviews stay here for as long as you work at True North. They are also on your page in the Directory, under HR." /></div>}
       {tab === 'goals' && (goals ? <MyGoals v={goals} api={{ updateGoal }} /> : <p className="m-0 text-[14px] text-muted">Your goals show here once a review is approved.</p>)}
       {tab === 'team' && <TeamGoals rows={team} />}
-      {tab === 'anniversaries' && <Anniversaries access={access} />}
+      {tab === 'anniversaries' && <div className="flex flex-col gap-5"><Organization /><Anniversaries access={access} intro={false} /></div>}
       {tab === 'priorities' && (priorities
         ? <div className="flex flex-col gap-3"><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Priorities for {priorities.year + 1}</h2><PriorityGrid items={priorities.items} showGoals={false} /></div>
         : <p className="m-0 text-[14px] text-muted">No priorities yet.</p>)}
     </div>
+  )
+}
+
+/** Who reports to whom (the owner, 4 November 2026): the company's org chart, the second block here, before the anniversaries. */
+async function Organization() {
+  const org = await getOrgChart()
+  return (
+    <section className="rounded-[14px] border border-[#e4e7ec] bg-white px-[22px] py-5 flex flex-col gap-3">
+      <div className="flex items-baseline gap-2.5 flex-wrap">
+        <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Organization</h2>
+        <span className="text-[12.5px] text-[#8593a4]">Who reports to whom{org.total > 0 ? `, ${org.total} people` : ''}.</span>
+      </div>
+      <OrgChart roots={org.roots} />
+    </section>
   )
 }

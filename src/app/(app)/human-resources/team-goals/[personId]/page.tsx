@@ -18,8 +18,9 @@ import { commentGoal, finishCheckin, linkCheckin } from '../../actions'
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Check-in' }
 
-export default async function CheckinRoute({ params }: { params: Promise<{ personId: string }> }) {
+export default async function CheckinRoute({ params, searchParams }: { params: Promise<{ personId: string }>; searchParams: Promise<{ book?: string }> }) {
   const { personId } = await params
+  const bookNow = (await searchParams).book === '1'
   const { access, viewer, roster } = await reviewContext(await requireSurface('human-resources'))
   if (!viewer.reports.has(personId)) notFound()
   const today = reviewToday()
@@ -37,7 +38,7 @@ export default async function CheckinRoute({ params }: { params: Promise<{ perso
       <div className="flex flex-col gap-1.5"><h1 className={PAGE_TITLE}>Check-in: {name}</h1><p className="m-0 text-[15px] text-muted">Goals for {v.year} · 6-month check-in</p></div>
       <Checkin v={v} name={name} booking={booking} today={today}
         drawerApi={booking ? { create: createDrawerEvent, update: updateDrawerEvent, remove: deleteDrawerEvent, findTime: findTimeData } : null}
-        api={{ commentGoal, linkCheckin, finishCheckin }} />
+        api={{ commentGoal, linkCheckin, finishCheckin }} bookNow={bookNow} />
     </div>
   )
 }

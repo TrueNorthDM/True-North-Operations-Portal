@@ -17,7 +17,7 @@ import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { localDate } from '@/lib/timeclock/format'
 import {
-  participants, teamOpens, type CycleDates, type GoalResult, type GoalStatus, type Participant, type Roles, type RosterMembership,
+  participants, rolesFromTitles, teamOpens, type CycleDates, type GoalResult, type GoalStatus, type Participant, type Roles, type RosterMembership,
   type RosterPerson, type RosterTeam, type Step,
 } from './rules'
 
@@ -34,6 +34,11 @@ const must = <T>(r: { data: T | null; error: { message: string } | null }, what:
   if (r.error) throw new Error(`${what}: ${r.error.message}`)
   return (r.data ?? ([] as unknown)) as T
 }
+// A single-row read: no row stays null (must's [] would pass for a row).
+const one = <T>(r: { data: T | null; error: { message: string } | null }, what: string): T | null => {
+  if (r.error) throw new Error(`${what}: ${r.error.message}`)
+  return r.data ?? null
+}
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
@@ -44,11 +49,11 @@ export interface HrSettings {
 
 export const loadHrSettings = cache(async (): Promise<HrSettings> => {
   const r = await rdb().from('hr_settings').select('*').eq('singleton_id', 1).maybeSingle()
-  const s = must<Record<string, unknown> | null>(r, 'Human Resources settings could not be read')
+  const s = one<Record<string, unknown>>(r, 'Human Resources settings could not be read')
+  const picked = { vpId: (s?.vp_operations_id as string) ?? null, cisoId: (s?.ciso_id as string) ?? null, hrId: (s?.hr_id as string) ?? null }
+  const roles = picked.vpId && picked.cisoId && picked.hrId ? picked : rolesFromTitles([...(await loadRoster()).people.values()], picked)
   return {
-    vpId: (s?.vp_operations_id as string) ?? null,
-    cisoId: (s?.ciso_id as string) ?? null,
-    hrId: (s?.hr_id as string) ?? null,
+    ...roles,
     extra: (s?.extra_people as string[]) ?? [],
     driveFolderId: (s?.drive_folder_id as string) ?? null,
     driveFolderName: (s?.drive_folder_name as string) ?? null,
@@ -67,12 +72,23 @@ export const CYCLE_COLUMNS = 'id, year, leaders_open_on, leaders_due, teams_open
 /** The latest year's cycle (the one being set up or run), or null before the first. */
 export const loadCurrentCycle = cache(async (): Promise<Cycle | null> => {
   const r = await rdb().from('review_cycles').select(CYCLE_COLUMNS).order('year', { ascending: false }).limit(1).maybeSingle()
-  return must<Cycle | null>(r, 'The review year could not be read')
+  return one<Cycle>(r, 'The review year could not be read')
 })
+
+/**
+ * The year being prepared, created empty (no dates, not started) when there is
+ * none yet: the Company Priorities are step 0 and come before any date.
+ */
+export async function ensureCurrentCycle(): Promise<Cycle> {
+  const c = await loadCurrentCycle()
+  if (c) return c
+  const r = await rdb().from('review_cycles').upsert({ year: defaultYear() }, { onConflict: 'year', ignoreDuplicates: true }).select(CYCLE_COLUMNS).maybeSingle()
+  return one<Cycle>(r, 'The review year could not be made') ?? (await loadCycle(defaultYear()))!
+}
 
 export async function loadCycle(year: number): Promise<Cycle | null> {
   const r = await rdb().from('review_cycles').select(CYCLE_COLUMNS).eq('year', year).maybeSingle()
-  return must<Cycle | null>(r, 'The review year could not be read')
+  return one<Cycle>(r, 'The review year could not be read')
 }
 
 export async function loadCycles(): Promise<Cycle[]> {
@@ -127,7 +143,7 @@ export interface ReviewViewer {
   isVp: boolean; isCiso: boolean; isHr: boolean
   /** VP of Operations or CISO: the Company Priorities and the team approvals. */
   leads: boolean
-  /** Sees every review: VP, CISO, HR, Super Admin. */
+  /** Sees every review: HR and Super Admins. The VP and the CISO see only the people who report to them (handoff, Who sees what). */
   seesAll: boolean
   /** The people who report to them now (their reviewees). */
   reports: Set<string>
@@ -141,7 +157,7 @@ export function viewerOf(access: { personId: string | null; isSuperAdmin: boolea
   return {
     personId: id, isSuperAdmin: access.isSuperAdmin, isVp, isCiso, isHr,
     leads: isVp || isCiso || access.isSuperAdmin,
-    seesAll: isVp || isCiso || isHr || access.isSuperAdmin,
+    seesAll: isHr || access.isSuperAdmin,
     reports: new Set(id ? parts.filter(p => p.reviewerId === id).map(p => p.personId) : []),
   }
 }
@@ -167,7 +183,7 @@ export async function loadReviews(cycleId: number): Promise<ReviewRow[]> {
 
 export async function loadReview(id: number): Promise<ReviewRow | null> {
   const r = await rdb().from('reviews').select('*').eq('id', id).maybeSingle()
-  return must<ReviewRow | null>(r, 'The review could not be read')
+  return one<ReviewRow>(r, 'The review could not be read')
 }
 
 export async function loadPersonReviews(personId: string): Promise<(ReviewRow & { year: number })[]> {
@@ -300,7 +316,10 @@ export async function loadLog(filter: { cycleId: number; kinds?: string[] } | { 
 
 // ── Last year's files ──────────────────────────────────────────────────────
 
-export interface ImportRow { id: number; year: number; person_id: string | null; drive_file_id: string; file_name: string; mime_type: string | null; web_link: string | null; match: 'matched' | 'check' | 'none' | 'skipped'; imported_at: string | null; created_at: string }
+export interface ImportRow { id: number; year: number; person_id: string | null; drive_file_id: string; file_name: string; mime_type: string | null; web_link: string | null; match: 'matched' | 'check' | 'none' | 'skipped'; imported_at: string | null; created_at: string
+  /** What the file said when it was read (migration 150): the Job Description answers and how many goals. */
+  found: { read: boolean; job: Partial<Record<string, string>>; goals: number } | null
+}
 export async function loadImports(filter: { year?: number; personId?: string } = {}): Promise<ImportRow[]> {
   let q = rdb().from('review_imports').select('*')
   if (filter.year) q = q.eq('year', filter.year)
@@ -317,8 +336,3 @@ export async function loadCheckins(cycleId: number, personIds?: string[]): Promi
   return new Map(must<Checkin[]>(r, 'The check-ins could not be read').map(x => [x.person_id, x]))
 }
 
-/** The approved review whose goals are running now: the latest approved one. */
-export async function runningReviewOf(personId: string): Promise<(ReviewRow & { year: number }) | null> {
-  const all = await loadPersonReviews(personId)
-  return all.find(r => r.step === 'approved') ?? null
-}
