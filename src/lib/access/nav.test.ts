@@ -67,11 +67,12 @@ describe('the rail', () => {
     }
   })
 
-  // Organization and History are for everyone signed in; the Directory,
-  // Rates & Costs (its own row since 10A-2) and Human Resources follow their ticks.
-  it('gives a user Organization and History, and a Team Leader the Directory too', () => {
-    expect(rows(railFor('user'), 'people')).toEqual(['organization', 'history'])
-    expect(rows(railFor('team_leader'), 'people')).toEqual(['directory', 'organization', 'history'])
+  // Organization, Human Resources (everyone's own review and goals, since the
+  // annual review of 3 November 2026) and History are for everyone signed in;
+  // the Directory and Rates & Costs (its own row since 10A-2) follow their ticks.
+  it('gives a user Organization, Human Resources and History, and a Team Leader the Directory too', () => {
+    expect(rows(railFor('user'), 'people')).toEqual(['organization', 'human-resources', 'history'])
+    expect(rows(railFor('team_leader'), 'people')).toEqual(['directory', 'organization', 'human-resources', 'history'])
     expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'rates', 'organization', 'human-resources', 'history'])
   })
 

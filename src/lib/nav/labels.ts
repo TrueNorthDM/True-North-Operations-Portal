@@ -26,6 +26,7 @@ export const NAV_LABEL = {
   '/directory': 'Directory',
   '/organization': 'Organization',
   '/human-resources': 'Human Resources',
+  '/human-resources/reviews': 'Reviews',
   '/history': 'History',
   '/admin': 'Admin',
   '/admin/settings': 'Company settings',

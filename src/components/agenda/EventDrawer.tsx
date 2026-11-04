@@ -32,7 +32,7 @@ import { BTN } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
 import { FIELD_LABEL } from '@/lib/ui/type'
 
-type Done = { ok: true; toast: string } | { ok: false; error: string }
+type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 export interface DrawerApi {
   create(i: DrawerInput): Promise<Done>
   update(i: DrawerInput & { id: number; occurrence?: { day: string; scope: Scope } | null }): Promise<Done>
@@ -76,38 +76,44 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   )
 }
 
-export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
+export function EventDrawer({ setup, editing, preset, note, today, api, onClose, onDone }: {
   setup: DrawerSetup
   editing?: DrawerEdit | null
+  /** A new event opened already filled in (the annual review's meeting and check-in). */
+  preset?: Partial<Omit<DrawerEdit, 'id' | 'occurrence'>> | null
+  /** A line at the top saying where it was booked from. */
+  note?: string
   today: string
   api: DrawerApi
   onClose: () => void
-  onDone: (toast: string) => void
+  /** `id`: the event just made, for a page that links to it. */
+  onDone: (toast: string, id?: number) => void
 }) {
   const start = editing ?? null
-  const firstType = start?.type ?? setup.types[0]
-  const [title, setTitle] = useState(start?.title ?? '')
+  const seed = start ?? preset ?? null
+  const firstType = seed?.type ?? setup.types[0]
+  const [title, setTitle] = useState(seed?.title ?? '')
   const [type, setTypeRaw] = useState<EventType>(firstType)
-  const [when, setWhen] = useState<When>(start?.when ?? typeOf(firstType).when)
-  const [date, setDate] = useState(start?.date ?? today)
-  const [end, setEnd] = useState(start?.end && start.end > (start?.date ?? today) ? start.end : addDays(start?.date ?? today, 2))
+  const [when, setWhen] = useState<When>(seed?.when ?? typeOf(firstType).when)
+  const [date, setDate] = useState(seed?.date ?? today)
+  const [end, setEnd] = useState(seed?.end && seed.end > (seed?.date ?? today) ? seed.end : addDays(seed?.date ?? today, 2))
   // A new event starts at the current hour in DC and lasts an hour: at 2:27 PM,
   // 2:00 to 3:00 PM (owner, 31 October 2026).
   const [hour] = useState(() => Math.floor(localOf(Date.now(), DC).minutes / 60) * 60)
-  const [from, setFrom] = useState(start?.from ?? hour)
-  const [to, setTo] = useState(start?.to ?? hour + 60)
-  const [how, setHow] = useState<'online' | 'in_person'>(start?.how ?? 'online')
-  const [place, setPlace] = useState(start?.place ?? '')
-  const [audience, setAudience] = useState<Audience>(start?.audience && setup.audiences.includes(start.audience) ? start.audience : 'guests')
-  const [teams, setTeams] = useState<string[]>(start?.teams ?? [])
-  const [guests, setGuests] = useState<Guest[]>(start?.guests ?? [])
+  const [from, setFrom] = useState(seed?.from ?? hour)
+  const [to, setTo] = useState(seed?.to ?? hour + 60)
+  const [how, setHow] = useState<'online' | 'in_person'>(seed?.how ?? 'online')
+  const [place, setPlace] = useState(seed?.place ?? '')
+  const [audience, setAudience] = useState<Audience>(seed?.audience && setup.audiences.includes(seed.audience) ? seed.audience : 'guests')
+  const [teams, setTeams] = useState<string[]>(seed?.teams ?? [])
+  const [guests, setGuests] = useState<Guest[]>(seed?.guests ?? [])
   const [also, setAlso] = useState(false)
-  const [client, setClient] = useState(start?.client ?? '')
-  const [desc, setDesc] = useState(start?.description ?? '')
-  const [showDesc, setShowDesc] = useState(!!start?.description)
+  const [client, setClient] = useState(seed?.client ?? '')
+  const [desc, setDesc] = useState(seed?.description ?? '')
+  const [showDesc, setShowDesc] = useState(!!seed?.description)
   // One account of their own is picked for them; the team calendar is only ever chosen on purpose.
   const own = setup.accounts.filter(a => !a.team)
-  const [account, setAccount] = useState<number | null>(start?.accountId ?? (own.length === 1 ? own[0].id : null))
+  const [account, setAccount] = useState<number | null>(seed?.accountId ?? (own.length === 1 ? own[0].id : null))
   const [typeOpen, setTypeOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -186,7 +192,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
     try {
       const occurrence = start?.occurrence && scope ? { day: start.occurrence, scope } : null
       const r = start ? await api.update({ ...input(), id: start.id, occurrence }) : await api.create(input())
-      if (r.ok) onDone(r.toast); else { setError(r.error); setScopeFor(null) }
+      if (r.ok) onDone(r.toast, 'id' in r ? r.id : undefined); else { setError(r.error); setScopeFor(null) }
     } catch (e) { setError(failText(e)) } finally { setBusy(false) }
   }
   const remove = async (scope?: Scope) => {
@@ -239,6 +245,7 @@ export function EventDrawer({ setup, editing, today, api, onClose, onDone }: {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] px-5 md:px-7 pb-6 flex flex-col gap-[22px]">
+          {note && <p className="m-0 rounded-[10px] bg-[#eaf4f4] px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-tn-ink">{note}</p>}
           <div className="flex flex-wrap gap-3.5 items-end">
             <div className="flex flex-col gap-2 flex-1 basis-[230px] relative">
               <span className={LBL}>Type</span>

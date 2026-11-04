@@ -5,6 +5,9 @@
 // 2026 this was /settings, in the avatar menu; that address now redirects here
 // until the personal Settings takes it.
 
+import { HrSettings } from '@/components/review/HrSettings'
+import { loadHrSettingsData } from '@/lib/review/settings-data'
+import { saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles } from '@/app/(app)/human-resources/actions'
 import Link from 'next/link'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { WorklistSources } from '@/components/monday/WorklistSources'
@@ -94,6 +97,7 @@ const InvoicesIcon = <Icon paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 
 const IntegrationsIcon = <Icon paths={['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1']} />
 const RemindersIcon = <Icon paths={['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0']} />
 // North Time rollout (owner, 27 October 2026): a flag on its day.
+const HrIcon = <Icon paths={['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M16 11l2 2 4-4']} />
 const RolloutIcon = <Icon paths={['M4 22V4', 'M4 4h12l-2 4 2 4H4']} />
 
 function SectionHead({ title, desc }: { title: string; desc: string }) {
@@ -125,6 +129,7 @@ export default async function SettingsPage() {
     invoices: access.can('cs-invoices'),
     reminders: access.can('cs-reminders'),
     rollout: access.can('cs-rollout'),
+    hr: access.can('cs-hr'),
   }
 
   const supabase = await createClient()
@@ -227,12 +232,13 @@ export default async function SettingsPage() {
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
   const ntOpen = await northTimeOpen()
   const agOpen = await agendaGoogleOpen()
-  const [integrations, invoiceSettings, reminders, jobCatalogue, rollout] = await Promise.all([
+  const [integrations, invoiceSettings, reminders, jobCatalogue, rollout, hrSettings] = await Promise.all([
     can.integrations ? loadIntegrations(zone) : null,
     can.invoices ? loadInvoiceSettingsData() : null,
     can.reminders ? loadReminders() : null,
     can.jobs ? loadCatalogueData() : null,
     can.rollout ? loadRolloutData(createAdminClient()) : null,
+    can.hr ? loadHrSettingsData() : null,
   ])
   const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
@@ -476,6 +482,20 @@ export default async function SettingsPage() {
           <SectionHead title="North Time rollout" desc="Who starts on North Time when. Wave 1 is everyone at Team Leader level or above, plus anyone added by hand; wave 2 is everyone else. Until a wave has a date, nothing changes for its people." />
           <div className="mb-[18px]"><NorthTimeOpenSwitch open={ntOpen} canChange={access.isSuperAdmin} set={setNorthTimeOpen} /></div>
           <RolloutSettings data={rollout} canEdit={access.can('cs-rollout-edit')} api={{ saveRolloutDates, moveToWave }} skippedHref="/admin/settings/tsheets-after-switch" />
+        </div>
+      ),
+    },
+    can.hr && hrSettings && {
+      id: 'human-resources',
+      label: 'Human Resources',
+      icon: HrIcon,
+      isNew: true,
+      editable: false,
+      content: (
+        <div>
+          <SectionHead title="Human Resources" desc="The yearly performance review: who runs it, who takes part, its dates, and where the approved PDFs go." />
+          <HrSettings data={hrSettings} canEdit={access.can('cs-hr-edit') || (!!access.personId && hrSettings.roles.hrId === access.personId)}
+            api={{ saveHrSettings, saveReviewDates, saveHrDriveFolder, hrPicker, pickImportFiles, setImportPerson, importFiles }} />
         </div>
       ),
     },

@@ -23,6 +23,9 @@ import { mimeOfExt, extOf } from '@/lib/drive/file-names'
 import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { DocSheet } from '@/components/clocky/invoices/DocSheet'
 import { ReceiptPages } from '@/components/clocky/invoices/ReceiptPages'
+import { ReviewDoc } from '@/components/review/ReviewDoc'
+import { loadReviewView } from '@/lib/review/view'
+import { loadRoster, reviewToday } from '@/lib/review/data'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Document', robots: { index: false, follow: false } }
@@ -32,8 +35,15 @@ const SERVER = { personId: null, isAdmin: true, zone: 'America/New_York' }
 
 export default async function DrivePrintPage({ params }: { params: Promise<{ kind: string; id: string }> }) {
   const { kind, id } = await params
-  if ((kind !== 'invoice' && kind !== 'rmb') || !/^\d+$/.test(id)) notFound()
+  if ((kind !== 'invoice' && kind !== 'rmb' && kind !== 'review') || !/^\d+$/.test(id)) notFound()
   if (!checkPass((await headers()).get(PRINT_HEADER), kind, Number(id))) notFound()
+
+  if (kind === 'review') {
+    // The approved annual review (lib/review/service.ts), read as the server: the pass is the check.
+    const v = await loadReviewView(Number(id), 'server', await loadRoster())
+    if (!v || v.step !== 'approved') notFound()
+    return <ReviewDoc v={v} today={reviewToday()} />
+  }
 
   if (kind === 'invoice') {
     const d = await loadInvoiceDetail(SERVER, Number(id))

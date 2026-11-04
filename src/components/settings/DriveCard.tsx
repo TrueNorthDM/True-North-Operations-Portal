@@ -37,26 +37,7 @@ const WHAT = [
   { k: 'Reimbursement documents (RMB)', v: 'When made; a new version when paid' },
 ]
 
-/* The few parts of Google's Picker the card uses. */
-interface PickerAnswer { action: string; docs?: { id: string; name: string }[] }
-type Obj = Record<string, (...a: unknown[]) => unknown>
-interface PickerNS { Action: { PICKED: string }; ViewId: { FOLDERS: string }; Feature: { SUPPORT_DRIVES: string }; DocsView: new (id: string) => Obj; PickerBuilder: new () => Obj }
-type Win = Window & { gapi?: { load(name: string, cb: () => void): void }; google?: { picker: PickerNS } }
-
-let loading: Promise<void> | null = null
-function loadPicker(): Promise<void> {
-  const w = window as Win
-  if (w.google?.picker) return Promise.resolve()
-  loading ??= new Promise<void>((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = 'https://apis.google.com/js/api.js'
-    s.async = true
-    s.onload = () => (window as Win).gapi?.load('picker', () => resolve())
-    s.onerror = () => { loading = null; reject(new Error('Google\'s Picker did not load. Check the connection and try again.')) }
-    document.head.appendChild(s)
-  })
-  return loading
-}
+import { loadPicker, pickerNS, type PickerAnswer, type PickerObj as Obj } from '@/lib/drive/picker-client'
 
 const ROW_BTN = `${BTN.smallWhite} disabled:opacity-50 disabled:cursor-default`
 
@@ -73,7 +54,7 @@ export function DriveCard({ data, canEdit, api, say }: {
       const p = await api.drivePicker()
       if (!p.ok) { say({ text: p.error, error: true }); return }
       await loadPicker()
-      const g = (window as Win).google!.picker
+      const g = pickerNS()
       // office@'s own folders, and a tab for folders someone shared with it:
       // Tina may keep "Docs from the Portal" in her Drive and share it with
       // office@ as an editor (owner, 31 October 2026).

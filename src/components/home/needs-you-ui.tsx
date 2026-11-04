@@ -24,6 +24,8 @@ const LOOK: Record<Exclude<HomeRow['kind'], 'mine'>, Look> = {
   // Finance's invoices and documents to pay (owner, 25 October 2026): the Invoices
   // kind's ground and icon, as the design has no colour of its own for money to pay.
   pay: { label: 'To pay', bg: '#f1f3f6', fg: '#5b6b82', icon: 'client-reports' },
+  // The annual review (handoff, 3 November 2026, B2): Human Resources' teal and icon.
+  review: { label: 'Review', bg: '#eaf4f4', fg: '#1E7D7F', icon: 'human-resources' },
 }
 
 export function typeOf(row: HomeRow): Look {

@@ -14,7 +14,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
-export type PrintKind = 'invoice' | 'rmb'
+export type PrintKind = 'invoice' | 'rmb' | 'review'
 export const PRINT_HEADER = 'x-drive-print'
 const LIFE_MS = 2 * 60_000
 

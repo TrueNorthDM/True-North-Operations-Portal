@@ -104,6 +104,16 @@ export const AUTOMATIONS: Automation[] = [
     since: '2026-10-07',
   },
   {
+    id: 'review-notices',
+    name: 'Annual review reminders',
+    kind: 'cron',
+    purpose: 'Opens each team\'s self-reviews on "Teams open by" when its priorities were not approved before, and sends the annual review\'s reminders by email 1 week before, 3 days before and on the day of every due date: each step to whoever it waits for, the team priorities to the VP of Operations and the CISO, each goal at the end of its month, and the 6-month check-ins to the managers (the list a month before "Check-ins by", then one reminder for each check-in not booked). Never twice for the same date. Nothing happens before a Super Admin starts the year\'s cycle.',
+    trigger: 'Server crontab (deploy/cron/staging.cron; deploy/cron/portal.crontab once in production)',
+    schedule: 'Once a day (0 13 * * *)',
+    location: 'src/app/api/cron/review-notices/route.ts, src/lib/review/reminders.ts',
+    since: '2026-11-04',
+  },
+  {
     id: 'health-check',
     name: 'Integration health check',
     kind: 'cron',

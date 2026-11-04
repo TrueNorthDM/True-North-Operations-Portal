@@ -41,6 +41,7 @@
  * the pages' own actions, which refuse to write during a preview.
  */
 
+import { reviewNeedsRows } from '@/lib/review/needs'
 import { loadAccess, type Access } from '@/lib/access/resolve'
 import { portalAccessState } from '@/lib/auth/portal-rule'
 import { latestHealth } from '@/lib/health/checks'
@@ -124,7 +125,7 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
   const approvalsOpen = access.can('clocky-approvals')
   const decides = approvalsOpen
   const viewerKinds = [approvalsOpen, decides, access.can('my-work'), access.can('rq-time-off'), access.can('rq-reimbursements'), access.can('rq-extra-hours'), access.can('clocky-hours'), access.can('clocky-invoices')]
-  const [system, invites, approvals, decisions, invoices, payInv, payDocs, work, ...mine] = await Promise.all([
+  const [system, invites, approvals, decisions, invoices, payInv, payDocs, reviews, work, ...mine] = await Promise.all([
     // Every System row leads to Automations: no rows for who cannot open it (audit, 25 October 2026).
     read('system', { text: 'System health could not be read just now. Open Automations to see it.', href: AUTOMATIONS }, access.can('home-health') && access.can('automations'), () => systemRows(access, zone, now)),
     read('access', { text: 'Invitations could not be read just now.' }, access.can('d-portal'), () => accessRows(access, zone, today)),
@@ -133,6 +134,8 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     read('fixed invoices', { text: 'The fixed-pay invoices of the 1st could not be read just now.' }, needsViewer(approvalsOpen), withViewer(x => invoiceRows(x, today, now))),
     read('invoices to pay', retry('Invoices to pay could not be read just now.', 'Invoices', INVOICES, true), pays.invoices, () => payInvoices(today)),
     read('documents to pay', { text: 'Reimbursement documents to pay could not be read just now.' }, pays.documents, () => payDocuments(zone, today)),
+    // The annual review (handoff, 3 November 2026, B2): every step waiting on this person.
+    read('reviews', { text: 'Your review steps could not be read just now.', href: '/human-resources' }, !!access.personId, () => reviewNeedsRows(access, localDate(now, 'America/New_York'), now)),
     read('my work', retry('My Work could not be read just now.', 'My Work', MY_WORK, true), needsViewer(access.can('my-work')), withViewer(x => workRows(x, now))),
     read('own time off', { text: 'Your time off could not be read just now.' }, needsViewer(access.can('rq-time-off')), withViewer(x => myTimeOff(x, now))),
     read('own reimbursements', { text: 'Your reimbursements could not be read just now.' }, needsViewer(access.can('rq-reimbursements')), withViewer(x => myReimbursements(x, now))),
@@ -149,7 +152,7 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     return { rows: sort ? rows.sort(sort) : rows, errors: uniqueErrors([...extra, ...parts.map(p => p.error)]) }
   }
   return {
-    needs: tab([system, invites, approvals, decisions, invoices, payInv, payDocs], byDue, unlinked && viewerKinds.some(Boolean) ? [{ text: NOT_LINKED }] : []),
+    needs: tab([system, invites, approvals, decisions, invoices, payInv, payDocs, reviews], byDue, unlinked && viewerKinds.some(Boolean) ? [{ text: NOT_LINKED }] : []),
     work: access.can('my-work') ? tab([work]) : null,
     // Waiting first, then done; each kind already newest first.
     mine: (() => {

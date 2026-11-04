@@ -11,7 +11,7 @@ import { NOTE_TO_APPROVE } from '@/lib/timeclock/entry-rules'
 import { dateLabel } from '@/lib/timeclock/format'
 
 /** What a row is, which picks its chip (README, the type chip table). */
-export type RowKind = 'approval' | 'request' | 'work' | 'system' | 'access' | 'invoices' | 'pay' | 'mine'
+export type RowKind = 'approval' | 'request' | 'work' | 'system' | 'access' | 'invoices' | 'pay' | 'review' | 'mine'
 
 export type TabKey = 'needs' | 'work' | 'mine'
 

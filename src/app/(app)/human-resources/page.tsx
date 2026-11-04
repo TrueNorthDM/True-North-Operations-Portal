@@ -1,92 +1,77 @@
-// Human Resources, for now, the anniversary badge gallery: every service
-// milestone (quarterly through the first year, then 1–20 years) with the people
-// who currently hold it. The access item Human Resources. A name opens that
-// person's page when the viewer may open it (lib/directory/page-rights.ts).
+// Human Resources (annual review handoff, 3 November 2026, C1 and G1 to G5):
+// open to everyone. On top, the card of this year's review; then the tabs:
+// My reviews (every year, with the PDF), My goals (the goals agreed in the
+// last review, to update), My team's goals (for whoever has people reporting
+// to them) and Anniversaries (the badge gallery, by its own tick). HR, the VP
+// of Operations, the CISO and managers also get the year's list (Reviews).
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/tenure'
-import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
-import { requireSurface } from '@/lib/access/resolve'
-import { teamKeyFromName } from '@/lib/directory/people-types'
-import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
-import { loadLedMemberIds } from '@/lib/directory/person-page-data'
-import { pageHrefs } from '@/lib/directory/page-rights'
+import type { Metadata } from 'next'
+import Link from 'next/link'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { BTN } from '@/lib/ui/buttons'
+import { Tabs } from '@/components/ui/Tabs'
+import { Anniversaries } from '@/components/hr/Anniversaries'
+import { MyGoals, ReviewCard, ReviewHistory, TeamGoals } from '@/components/review/HrParts'
+import { PriorityGrid } from '@/components/review/parts'
+import { reviewContext } from '@/lib/review/page-context'
+import { requireSurface } from '@/lib/access/resolve'
+import { loadGoalsView, loadHistory, loadMyCard, loadTeamGoals } from '@/lib/review/mine'
+import { currentReviewerOf, loadCurrentCycle, loadPriorities, loadTeamStates, prioritiesFor, reviewToday } from '@/lib/review/data'
+import { updateGoal } from './actions'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Human Resources' }
 
-export default async function HumanResourcesPage() {
-  const access = await requireSurface('human-resources')
-  // The badges need a name, a photo, a team colour and a start date: nothing
-  // else is read. Whose page a name opens is the page's own rule.
-  const db = createAdminClient()
-  const [{ data: rows }, { data: teamRows }, { data: memberships }, led] = await Promise.all([
-    db.from('people').select('id, full_name, avatar_url, status, hire_date'),
-    db.from('teams').select('id, name, color'),
-    db.from('team_members').select('person_id, team_id, is_primary'),
-    loadLedMemberIds(db, access.personId),
+type Tab = 'reviews' | 'goals' | 'team' | 'anniversaries' | 'priorities'
+
+export default async function HumanResourcesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { access, viewer, roster, settings } = await reviewContext(await requireSurface('human-resources'))
+  const me = access.personId
+  const today = reviewToday()
+  const [card, history, goals, team] = await Promise.all([
+    me ? loadMyCard(me, roster, today) : null,
+    me ? loadHistory(me, roster) : [],
+    me ? loadGoalsView(me, roster, today, currentReviewerOf(roster, settings, me)) : null,
+    viewer.reports.size ? loadTeamGoals(viewer, roster, today) : [],
   ])
-  const hrefFor = pageHrefs(access.can, access.personId, led)
-  const teams = (teamRows ?? []) as { id: string; name: string; color: string | null }[]
-  const palette = teamColoursFrom(teams)
-  const teamName = new Map(teams.map(t => [t.id, t.name]))
-  const primaryTeam = new Map<string, string>()
-  for (const m of (memberships ?? []) as { person_id: string; team_id: string; is_primary: boolean | null }[]) {
-    if (m.is_primary || !primaryTeam.has(m.person_id)) primaryTeam.set(m.person_id, teamName.get(m.team_id) ?? '')
-  }
-  const people = ((rows ?? []) as { id: string; full_name: string; avatar_url: string | null; status: string | null; hire_date: string | null }[]).map(p => {
-    const team = primaryTeam.get(p.id) || null
-    return {
-      id: p.id, full_name: p.full_name, avatarUrl: p.avatar_url, status: p.status === 'inactive' ? 'inactive' : 'active',
-      hireDate: p.hire_date, teamName: team, teamKey: teamKeyFromName(team ?? undefined), color: colourOf(palette, team),
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'reviews', label: 'My reviews' },
+    { key: 'goals', label: 'My goals' },
+    ...(viewer.reports.size ? [{ key: 'team' as const, label: "My team's goals" }] : []),
+    ...(access.can('hr-anniversaries') ? [{ key: 'anniversaries' as const, label: 'Anniversaries' }] : []),
+  ]
+  const asked = (await searchParams).tab as Tab | undefined
+  const tab: Tab = asked === 'priorities' || tabs.some(t => t.key === asked) ? asked! : 'reviews'
+  const sub = tab === 'goals' && goals ? `Your goals for ${goals.year}, from your ${goals.reviewYear} review.` : tab === 'team' ? 'The goals of the people who report to you, and their 6-month check-ins.' : tab === 'anniversaries' ? 'Every service milestone and who currently holds it.' : 'Your reviews and your goals.'
+
+  let priorities = null
+  if (tab === 'priorities' && me) {
+    const c = await loadCurrentCycle()
+    if (c) {
+      const [all, states] = await Promise.all([loadPriorities(c.id), loadTeamStates(c.id)])
+      const mine = roster.members.find(m => m.personId === me && m.isPrimary)?.teamId ?? roster.members.find(m => m.personId === me)?.teamId ?? null
+      priorities = { year: c.year, items: prioritiesFor(all, mine, states).map((p, i) => ({ id: p.id, n: i + 1, scope: p.team_id ? roster.teams.get(p.team_id)?.name ?? 'Team' : 'Whole company', teamId: p.team_id, title: p.title, body: p.body, goals: 0 })) }
     }
-  })
-
-  const now = new Date()
-  const quarterHolders: Record<number, HrHolder[]> = { 1: [], 2: [], 3: [] }
-  const yearHolders = new Map<number, HrHolder[]>()
-  let maxYear = 20
-  let underThree = 0
-
-  for (const p of people) {
-    if (p.status !== 'active' || !p.hireDate) continue
-    const t = tenureSince(p.hireDate, now)
-    const ms = milestoneOf(t)
-    const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, color: p.color, tenure: formatTenureShort(t), href: hrefFor(p.id) }
-    if (ms.kind === 'quarter') quarterHolders[ms.value].push(h)
-    else if (ms.kind === 'year') {
-      const arr = yearHolders.get(ms.value) ?? []
-      arr.push(h)
-      yearHolders.set(ms.value, arr)
-      if (ms.value > maxYear) maxYear = ms.value
-    } else underThree++
   }
-  for (const arr of [...Object.values(quarterHolders), ...yearHolders.values()]) arr.sort((a, b) => a.name.localeCompare(b.name))
-
-  const quarters: HrSection[] = [1, 2, 3].map(q => ({ key: `q${q}`, milestone: { kind: 'quarter', value: q }, label: `${q * 3} months`, holders: quarterHolders[q] }))
-  const years: HrSection[] = Array.from({ length: maxYear }, (_, i) => i + 1).map(y => ({
-    key: `y${y}`,
-    milestone: { kind: 'year', value: y, color: yearColor(y) },
-    label: `${y} ${y === 1 ? 'year' : 'years'}`,
-    holders: yearHolders.get(y) ?? [],
-  }))
 
   return (
-    <div className="space-y-9">
-      <div>
-        <h1 className={PAGE_TITLE}>Human Resources</h1>
-        <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          Anniversary badges, every service milestone and who currently holds it. A name opens that person&apos;s page.
-        </p>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex-1 min-w-[260px] flex flex-col gap-1.5">
+          <h1 className={PAGE_TITLE}>Human Resources</h1>
+          <p className="m-0 text-[15px] text-muted leading-relaxed">{sub}</p>
+        </div>
+        {(viewer.seesAll || viewer.reports.size > 0) && <Link href="/human-resources/reviews" className={BTN.white}>Reviews</Link>}
       </div>
-
-      <HrGallery quarters={quarters} years={years} />
-
-      {underThree > 0 && (
-        <p className="text-[12.5px] text-muted">
-          {underThree} active {underThree === 1 ? 'person has' : 'people have'} been here under 3 months, no badge yet.
-        </p>
-      )}
+      {card && <ReviewCard c={card} />}
+      <Tabs label="Human Resources" value={tab === 'priorities' ? 'reviews' : tab} items={tabs.map(t => ({ key: t.key, label: t.label, href: `/human-resources?tab=${t.key}` }))} />
+      {tab === 'reviews' && <ReviewHistory rows={history} intro="Only you, the person you report to and HR see these." footer="Your reviews stay here for as long as you work at True North. They are also on your page in the Directory, under HR." />}
+      {tab === 'goals' && (goals ? <MyGoals v={goals} api={{ updateGoal }} /> : <p className="m-0 text-[14px] text-muted">Your goals show here once a review is approved.</p>)}
+      {tab === 'team' && <TeamGoals rows={team} />}
+      {tab === 'anniversaries' && <Anniversaries access={access} />}
+      {tab === 'priorities' && (priorities
+        ? <div className="flex flex-col gap-3"><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Priorities for {priorities.year + 1}</h2><PriorityGrid items={priorities.items} showGoals={false} /></div>
+        : <p className="m-0 text-[14px] text-muted">No priorities yet.</p>)}
     </div>
   )
 }

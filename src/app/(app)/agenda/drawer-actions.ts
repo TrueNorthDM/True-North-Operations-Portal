@@ -27,7 +27,8 @@ import { answerOf, type Answer } from '@/lib/agenda/model'
 import { endBefore, fromRRule, instanceId, lastDay, restFrom, toRRule, type Scope } from '@/lib/agenda/recurrence'
 import { occurrenceOf } from '@/lib/agenda/series'
 
-type Done = { ok: true; toast: string } | { ok: false; error: string }
+/** `id`: the event, for a page that books one and links to it (the annual review). */
+type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const isDone = (x: unknown): x is Done => !!x && typeof x === 'object' && 'ok' in x
@@ -96,8 +97,8 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
   revalidatePath('/agenda')
   revalidatePath('/')
   const n = list.length
-  if (!sent) return { ok: true, toast: `${r.row.title} is on the Agenda, but Google did not take it, so no invitation went out. Open it and save again, or reconnect the account in Agenda settings.` }
-  return { ok: true, toast: `${r.row.title} is on the Agenda${n ? `. Google invitation sent to ${n} ${n === 1 ? 'person' : 'people'}` : ''}.` }
+  if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but Google did not take it, so no invitation went out. Open it and save again, or reconnect the account in Agenda settings.` }
+  return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${n ? `. Google invitation sent to ${n} ${n === 1 ? 'person' : 'people'}` : ''}.` }
 }
 
 export async function createDrawerEvent(input: DrawerInput): Promise<Done> {

@@ -22,3 +22,5 @@ SHELL=/bin/bash
 */5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/agenda-google-sync
 # The Google Drive copies (invoices, receipts, reimbursement documents), every 5 minutes; nothing while Drive is not set up.
 */5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/drive-copies
+# The annual review: teams opening on their date, and the reminders (1 week, 3 days, on the day), once a day at 13:00 UTC.
+0 13 * * *   portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/review-notices

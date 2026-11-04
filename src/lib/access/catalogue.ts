@@ -147,7 +147,13 @@ const TREE: Node[] = [
     ] },
     { key: 'organization', label: 'Organization', kind: 'page', always: true },
     { key: 'history', label: 'History', kind: 'page', always: true },
-    { key: 'human-resources', label: 'Human Resources', kind: 'page', v: [1, 0, 0] },
+    // The annual review (design handoff, 3 November 2026) opens Human Resources
+    // to everyone: each person's own review and goals. Who sees which review is
+    // decided by the review itself (lib/review/data.ts), never by a tick.
+    { key: 'human-resources', label: 'Human Resources', kind: 'page', always: true, note: 'Everyone: their own review and goals. The rest follows the ticks below and the roles in Company settings > Human Resources.', ch: [
+      { key: 'hr-anniversaries', label: 'Anniversaries: the service badge gallery', kind: 'tab', v: [1, 0, 0] },
+      { key: 'hr-start', label: 'Start the yearly review cycle', kind: 'action', superOnly: true },
+    ] },
   ] },
   { key: 'm-agenda', label: 'Agenda', kind: 'module', ch: [
     { key: 'agenda', label: 'Agenda: time off, birthdays, events and milestones', kind: 'page', always: true, ch: [
@@ -185,6 +191,9 @@ const TREE: Node[] = [
       { key: 'cs-rollout', label: 'North Time rollout: the waves, their start dates, and the TSheets entries set aside', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-rollout-decide', label: 'Decide the TSheets entries set aside after the start date: count them as hours, or discard them', kind: 'action', v: [1, 0, 0] },
       { key: 'cs-rollout-edit', label: 'Set the North Time start dates and move people between waves', kind: 'action', superOnly: true },
+      // The annual review (design handoff, 3 November 2026): the roles, who takes part, the dates, the Drive folder.
+      { key: 'cs-hr', label: 'Human Resources: the review roles, who takes part, its dates and the Drive folder', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-hr-edit', label: 'Change the Human Resources settings (the HR person picked there can too)', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },

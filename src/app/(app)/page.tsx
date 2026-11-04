@@ -34,6 +34,10 @@ import { loadNeedsYou } from '@/lib/home/needs-you'
 import { dayCounts, unreadNeedsYou, type NeedsYouData } from '@/lib/home/needs-you-model'
 import { summaryLine } from '@/lib/home/day-banner'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
+import { ReviewCard } from '@/components/review/HrParts'
+import { MyGoalsCard } from '@/components/review/MyGoalsCard'
+import { loadGoalsView, loadMyCard } from '@/lib/review/mine'
+import { currentReviewerOf, loadHrSettings, loadRoster, reviewToday } from '@/lib/review/data'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -67,7 +71,9 @@ export default async function HomePage() {
       pay={hasClock && me ? <Suspense fallback={<Skeleton h={420} label="Pay period" />}><PayPeriod personId={me.id} /></Suspense> : null}
       right={
         <>
+          {me && <Suspense fallback={null}><Review personId={me.id} /></Suspense>}
           <Suspense fallback={<Skeleton h={560} label="Agenda" />}><Agenda access={access} /></Suspense>
+          {me && <Suspense fallback={null}><Goals personId={me.id} /></Suspense>}
           {seesI7 && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 /></Suspense>}
         </>
       }
@@ -99,6 +105,30 @@ async function Needs({ data }: { data: Promise<NeedsYouData> }) {
 async function PayPeriod({ personId }: { personId: string }) {
   // Never null: a period that cannot be set up for the person says so (owner, 25 October 2026).
   return <PayPeriodCard data={await loadHomePayPeriod(personId)} />
+}
+
+/** A card whose read failed says so where it would be (never a blank). */
+function ReadFailed({ what }: { what: string }) {
+  return <div className="rounded-[14px] border border-[var(--panel-border)] bg-white px-5 py-4 text-[13px] text-muted">{what} could not be read. Reload the page in a moment.</div>
+}
+
+/** The annual review's card (C1): from the day the person's review opens until 30 days after approval. */
+async function Review({ personId }: { personId: string }) {
+  const card = await loadMyCard(personId, await loadRoster(), reviewToday()).catch(e => {
+    console.error('[home] review card:', e instanceof Error ? e.message : e)
+    return 'failed' as const
+  })
+  if (card === 'failed') return <ReadFailed what="Your review" />
+  return card ? <ReviewCard c={card} compact /> : null
+}
+
+/** "My goals" (B2): only once a review agreed them. */
+async function Goals({ personId }: { personId: string }) {
+  const v = await Promise.all([loadRoster(), loadHrSettings()])
+    .then(([roster, settings]) => loadGoalsView(personId, roster, reviewToday(), currentReviewerOf(roster, settings, personId)))
+    .catch(e => { console.error('[home] my goals:', e instanceof Error ? e.message : e); return 'failed' as const })
+  if (v === 'failed') return <ReadFailed what="Your goals" />
+  return v && v.goals.length ? <MyGoalsCard v={v} /> : null
 }
 
 async function Agenda({ access }: { access: Access }) {

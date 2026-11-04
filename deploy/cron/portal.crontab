@@ -29,3 +29,6 @@ PORTAL_DIR=/opt/tnportal/app
 # 5 * * * *                $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-reminders
 # The Agenda's two-way Google Calendar sync (owner, 30 October 2026), every 5 minutes.
 */5 * * * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/agenda-google-sync
+# The annual review (handoff, 3 November 2026): teams opening on their date and
+# the reminders, once a day at 13:00 UTC. Off until the review is in production.
+# 0 13 * * *               $PORTAL_DIR/deploy/cron/run.sh /api/cron/review-notices

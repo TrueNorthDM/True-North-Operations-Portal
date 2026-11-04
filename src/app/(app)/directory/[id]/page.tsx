@@ -6,6 +6,7 @@
 import { notFound } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { PersonPage } from '@/components/person/PersonPage'
+import { PersonReviews } from '@/components/review/PersonReviews'
 import { loadAccess } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds, loadPersonPage } from '@/lib/directory/person-page-data'
@@ -71,6 +72,8 @@ export default async function PersonRoute({
         pay={pay && { ...pay, save: savePayTerms.bind(null, id), typeApi: { schedule: scheduleEmployee.bind(null, id), cancel: cancelEmployeeChange.bind(null, id) } }}
         payments={payments && { data: payments, api: { getInvoiceDoc, getPayDoc } }}
       />
+      {/* The annual reviews (handoff, G2): under HR, or under Work for whoever has no HR tab. */}
+      {(shown === 'hr' || (shown === 'work' && !data.rights.hr)) && <PersonReviews access={access} personId={id} />}
     </div>
   )
 }
