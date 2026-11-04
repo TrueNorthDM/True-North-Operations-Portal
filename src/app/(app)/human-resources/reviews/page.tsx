@@ -14,6 +14,9 @@ import { loadCycles, loadImports, loadPriorities, loadReviews, loadTeamStates, n
 import { dueOf, dueWords, waitsFor } from '@/lib/review/rules'
 import { fmtDay } from '@/lib/review/format'
 import { startCycle } from '../actions'
+import { Tabs } from '@/components/ui/Tabs'
+import { hrTabs } from '@/lib/review/hr-tabs'
+import { loadHistory, loadTeamGoals } from '@/lib/review/mine'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Reviews' }
@@ -29,6 +32,10 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   const year = years.includes(q) ? q : years[0]
   const today = reviewToday()
   const crumbs = <Breadcrumb parents={['/human-resources']} self="/human-resources/reviews" />
+  // The same tabs as Human Resources, with Reviews on.
+  const me = viewer.personId
+  const [history, team] = await Promise.all([me ? loadHistory(me, roster) : [], viewer.reports.size ? loadTeamGoals(viewer, roster, today) : []])
+  const tabs = <Tabs label="Human Resources" value="all" items={hrTabs({ first: !history.some(h => h.kind === 'approved') && !team.length, team: viewer.reports.size > 0, all: true })} />
 
   if (!year) {
     if (!viewer.seesAll) redirect(await previewHref('/human-resources'))
@@ -40,7 +47,7 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   if (!cycle) {
     const rows: ImportListRow[] = imported.filter(i => i.year === year && i.imported_at && i.person_id && (viewer.seesAll || viewer.reports.has(i.person_id) || i.person_id === viewer.personId))
       .map(i => ({ id: i.id, name: nameIn(roster, i.person_id), file: i.file_name, when: i.imported_at })).sort((a, b) => a.name.localeCompare(b.name))
-    return <div className="flex flex-col gap-4">{crumbs}<ReviewList year={year} years={years} intro={`The ${year} reviews, imported from Google Drive.`} rows={[]} imports={rows} canPriorities={false} suggestions={0} start={null} /></div>
+    return <div className="flex flex-col gap-4">{crumbs}<ReviewList year={year} years={years} intro={`The ${year} reviews, imported from Google Drive.`} rows={[]} imports={rows} canPriorities={false} suggestions={0} start={null} tabs={tabs} /></div>
   }
 
   const [reviews, states, priorities] = await Promise.all([loadReviews(cycle.id), loadTeamStates(cycle.id), loadPriorities(cycle.id)])
@@ -101,7 +108,7 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-4">
       {crumbs}
-      <ReviewList year={year} years={years} intro={intro} rows={cycle.started_at ? rows : []} imports={null} canPriorities={viewer.leads} suggestions={suggestions} start={start} onStart={startCycle} />
+      <ReviewList year={year} years={years} intro={intro} rows={cycle.started_at ? rows : []} imports={null} canPriorities={viewer.leads} suggestions={suggestions} start={start} onStart={startCycle} tabs={tabs} />
     </div>
   )
 }

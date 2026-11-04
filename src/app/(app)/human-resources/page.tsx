@@ -6,9 +6,7 @@
 // of Operations, the CISO and managers also get the year's list (Reviews).
 
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { PAGE_TITLE } from '@/lib/ui/type'
-import { BTN } from '@/lib/ui/buttons'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Tabs } from '@/components/ui/Tabs'
 import { Anniversaries } from '@/components/hr/Anniversaries'
@@ -21,6 +19,7 @@ import { requireSurface } from '@/lib/access/resolve'
 import { loadGoalsView, loadHistory, loadMyCard, loadTeamGoals } from '@/lib/review/mine'
 import { currentReviewerOf, loadCurrentCycle, loadPriorities, loadTeamStates, prioritiesFor, reviewToday } from '@/lib/review/data'
 import { updateGoal } from './actions'
+import { hrTabs } from '@/lib/review/hr-tabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Human Resources' }
@@ -37,14 +36,10 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
     me ? loadGoalsView(me, roster, today, currentReviewerOf(roster, settings, me)) : null,
     viewer.reports.size ? loadTeamGoals(viewer, roster, today) : [],
   ])
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'reviews', label: 'My reviews' },
-    { key: 'goals', label: 'My goals' },
-    ...(viewer.reports.size ? [{ key: 'team' as const, label: "My team's goals" }] : []),
-    { key: 'anniversaries', label: 'Anniversaries' },
-  ]
+  const first = !history.some(h => h.kind === 'approved') && !team.length
+  const tabs = hrTabs({ first, team: viewer.reports.size > 0, all: viewer.seesAll || viewer.reports.size > 0 })
   const asked = (await searchParams).tab as Tab | undefined
-  const tab: Tab = asked === 'priorities' || tabs.some(t => t.key === asked) ? asked! : 'reviews'
+  const tab: Tab = asked === 'priorities' || tabs.some(t => t.key !== 'all' && t.key === (asked as string)) ? asked! : 'reviews'
   let priorities = null
   if (tab === 'priorities' && me) {
     const c = await loadCurrentCycle()
@@ -61,15 +56,15 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
   // page is C1: the card, then the anniversary badges, no tabs. From then on,
   // G1: the tabs, with the reviews and the goals they agreed. A manager whose
   // people have goals keeps the tabs for My team's goals.
-  if (!history.some(h => h.kind === 'approved') && !team.length) return (
+  if (first) return (
     <div className="flex flex-col gap-[22px]">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex-1 min-w-[260px] flex flex-col gap-1.5">
           <h1 className={PAGE_TITLE}>Human Resources</h1>
           <p className="m-0 text-[15px] text-muted leading-relaxed">Your review, and the anniversary badges: every service milestone and who currently holds it.</p>
         </div>
-        {(viewer.seesAll || viewer.reports.size > 0) && <Link href="/human-resources/reviews" className={BTN.white}>Reviews</Link>}
       </div>
+      {tabs.length > 1 && <Tabs label="Human Resources" value="reviews" items={tabs} />}
       {card && <ReviewCard c={card} />}
       {tab === 'priorities' && priorities && <div className="flex flex-col gap-3"><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Priorities for {priorities.year + 1}</h2><PriorityGrid items={priorities.items} showGoals={false} /></div>}
       <Organization />
@@ -86,10 +81,9 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
           <h1 className={PAGE_TITLE}>Human Resources</h1>
           <p className="m-0 text-[15px] text-muted leading-relaxed">{sub}</p>
         </div>
-        {(viewer.seesAll || viewer.reports.size > 0) && <Link href="/human-resources/reviews" className={BTN.white}>Reviews</Link>}
       </div>
       {card && <ReviewCard c={card} />}
-      <Tabs label="Human Resources" value={tab === 'priorities' ? 'reviews' : tab} items={tabs.map(t => ({ key: t.key, label: t.label, href: `/human-resources?tab=${t.key}` }))} />
+      <Tabs label="Human Resources" value={tab === 'priorities' ? 'reviews' : tab} items={tabs} />
       {tab === 'reviews' && <div className="flex flex-col gap-[18px]"><ReviewHistory rows={history} intro="Only you, the person you report to and HR see these." /><HistoryNote text="Your reviews stay here for as long as you work at True North. They are also on your page in the Directory, under HR." /></div>}
       {tab === 'goals' && (goals ? <MyGoals v={goals} api={{ updateGoal }} /> : <p className="m-0 text-[14px] text-muted">Your goals show here once a review is approved.</p>)}
       {tab === 'team' && <TeamGoals rows={team} />}

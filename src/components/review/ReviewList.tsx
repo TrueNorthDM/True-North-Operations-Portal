@@ -32,7 +32,9 @@ const STEP_PILL: Record<ListRow['step'], [string, PillToneName]> = {
 }
 type Filter = 'all' | 'self' | 'review' | 'meeting' | 'approved'
 
-export function ReviewList({ year, years, intro, rows, imports, canPriorities, suggestions, start, onStart }: {
+export function ReviewList({ year, years, intro, rows, imports, canPriorities, suggestions, start, onStart, tabs }: {
+  /** Human Resources' tabs: the list is its Reviews tab. */
+  tabs?: React.ReactNode
   year: number; years: number[]; intro: string; rows: ListRow[]; imports: ImportListRow[] | null
   canPriorities: boolean; suggestions: number
   start: { checks: StartCheck[]; leaders: number; noLeader: number; teamsOpenBy: string | null; canStart: boolean; /** May open Company settings: the Change links show (audit, 4 November 2026). */ canSettings: boolean; warn: string | null } | null
@@ -76,7 +78,7 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, s
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex-1 min-w-[260px] flex flex-col gap-1.5">
-          <h1 className={PAGE_TITLE}>Reviews</h1>
+          <h1 className={PAGE_TITLE}>{tabs ? 'Human Resources' : 'Reviews'}</h1>
           <p className="m-0 text-[15px] text-muted leading-relaxed">{intro}</p>
         </div>
         {years.length > 1 && <Segmented label="Year" value={year} options={years.map(y => ({ key: y, label: String(y) }))} onChange={y => router.push(withViewAs(`/human-resources/reviews?year=${y}`))} />}
@@ -87,6 +89,8 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, s
           </Link>
         )}
       </div>
+
+      {tabs}
 
       {start && (
         <div className="flex flex-wrap gap-5 items-start">
