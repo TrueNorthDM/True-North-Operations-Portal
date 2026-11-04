@@ -29,7 +29,7 @@
  */
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
 import { HomeSection, NORTH_TIME_TOC, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
 import { ANNUAL_REVIEW_TOC, AnnualReviewSection } from './manual/AnnualReviewManual'
@@ -59,16 +59,25 @@ const Chip = ({ k, className = '' }: { k: string; className?: string }) => (
 )
 const Arrow = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
 
-const TOC = [
-  { id: 'overview', label: 'Overview', eyebrow: 'Overview', heading: 'What this portal is' },
-  { id: 'navigation', label: 'Getting around', eyebrow: 'Getting around', heading: 'The left rail' },
-  ...NORTH_TIME_TOC,
-  ...ANNUAL_REVIEW_TOC,
-  { id: 'pages', label: 'Pages & sections', eyebrow: 'Reference', heading: 'Pages & sections' },
-  { id: 'access', label: 'Access model', eyebrow: 'Permissions', heading: 'Access model' },
-  { id: 'monday', label: 'How Monday feeds it', eyebrow: 'Data flow', heading: 'How Monday feeds the portal' },
-  { id: 'sources', label: 'Data sources', eyebrow: 'Connections', heading: 'Data sources' },
+// The contents list in three groups with a rule between them, each A to Z
+// (owner, 4 November 2026): the portal itself, how it is put together, and
+// everything else. A new section joins its group and finds its own place.
+type TocItem = { id: string; label: string }
+const az = (items: readonly TocItem[]) => [...items].sort((a, b) => a.label.localeCompare(b.label))
+const TOC_GROUPS: TocItem[][] = [
+  az([
+    { id: 'overview', label: 'Overview' },
+    { id: 'navigation', label: 'Getting around' },
+    { id: 'pages', label: 'Pages & sections' },
+  ]),
+  az([
+    { id: 'access', label: 'Access model' },
+    { id: 'monday', label: 'How Monday feeds it' },
+    { id: 'sources', label: 'Data sources' },
+  ]),
+  az([...NORTH_TIME_TOC, ...ANNUAL_REVIEW_TOC]),
 ]
+const TOC = TOC_GROUPS.flat()
 
 const RAIL = [
   { icon: 'home', name: 'Home', desc: 'What you need to do today: your day and clock, what needs you, your pay period, the Agenda.', admin: false },
@@ -158,12 +167,251 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
     return () => observer.disconnect()
   }, [])
 
+  // Each section by its id, shown in the contents list's order (owner,
+  // 4 November 2026: three groups, each A to Z).
+  const SECTION: Record<string, React.ReactNode> = {
+    'overview': (
+      <>
+            {/* Overview */}
+            <section id="overview" className="scroll-mt-6">
+              <Eyebrow>Overview</Eyebrow>
+              <Heading>What this portal is</Heading>
+              <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday or WordPress, it reads from them and gives the team one calm, consistent place to see status and act on it. For hours it has its own time clock, North Time, which replaces QuickBooks Time (TSheets).</Lede>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {[
+                  { t: 'Who signs in', d: 'True North staff and contractors an admin has invited, with their GoodNews address. No public access.' },
+                  { t: 'How you get in', d: 'A code or link sent by email, then the code from an authenticator app (two-step sign-in). No password to remember or reset.' },
+                  { t: 'Where data lives', d: 'Monday, WordPress and QuickBooks Time. The portal reads, it’s the source that’s the truth.' },
+                ].map(c => (
+                  <div key={c.t} className={`${card} p-4`}>
+                    <div className="font-(family-name:--font-display) font-black text-[15px] text-tn-ink">{c.t}</div>
+                    <div className="text-[13px] leading-relaxed text-muted mt-1.5">{c.d}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+      </>
+    ),
+    'navigation': (
+      <>
+            {/* Getting around */}
+            <section id="navigation" className="scroll-mt-6">
+              <Eyebrow>Getting around</Eyebrow>
+              <Heading>The left rail</Heading>
+              <Lede>Every screen shares the same navy icon rail on the left, in groups: the day’s work (Home, Agenda, My Work, North Time, Requests), messages, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K), Who’s working (Team Leaders and up), the clock button and two drawers: Messages (Chat and Email) and Notifications (Tools and System). A module’s icon carries a count of what needs your attention in it, such as approvals waiting for you or invoices to pay; the top bar’s buttons carry their own.</Lede>
+              <div className={`${card} overflow-hidden`}>
+                {RAIL.map((r, i) => (
+                  <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>
+                    <Chip k={r.icon} className="w-[38px] h-[38px]" />
+                    <div className="w-[118px] shrink-0 font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{r.name}</div>
+                    <div className="flex-1 min-w-0 text-[13px] leading-relaxed text-muted">{r.desc}</div>
+                    {r.admin && <Pill tone="amber" className="shrink-0">Admin</Pill>}
+                  </div>
+                ))}
+              </div>
+            </section>
+      </>
+    ),
+    'pages': (
+      <>
+            {/* Pages & sections */}
+            <section id="pages" className="scroll-mt-6">
+              <Eyebrow>Reference</Eyebrow>
+              <Heading>Pages &amp; sections</Heading>
+              <Lede>What each screen is for, and where its data comes from.</Lede>
+              <div className="flex flex-col gap-3">
+                {PAGES.map(p => {
+                  const s = SRC[p.srcKey]
+                  return (
+                    <div key={p.name} className={`${card} p-5 flex gap-4 items-start`}>
+                      <Chip k={p.icon} className="w-10 h-10" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-(family-name:--font-display) font-extrabold text-base text-tn-ink">{p.name}</div>
+                        <p className="text-[13.5px] leading-relaxed text-muted mt-1">{p.desc}</p>
+                        {p.sub && (
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                            {p.sub.map(x => <span key={x} className="text-[11.5px] font-semibold text-foreground bg-subtle rounded-md px-2 py-1">{x}</span>)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground rounded-full px-2.5 py-[5px] whitespace-nowrap" style={{ background: s.bg }}>
+                        <span className="w-[7px] h-[7px] rounded-full" style={{ background: s.color }} />{p.src}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+      </>
+    ),
+    'access': (
+      <>
+            {/* Access model */}
+            <section id="access" className="scroll-mt-6">
+              <Eyebrow>Permissions</Eyebrow>
+              <Heading>Access model</Heading>
+              <Lede>Every person has one of four <strong className="font-bold text-tn-ink">levels</strong>. Each level opens the items ticked for it in a <strong className="font-bold text-tn-ink">catalogue</strong> of everything the portal can show, and one rule answers every question about it, so the menus, the page guards and the Access levels page always agree. A few things adjust that for one person or one team: exceptions, and the team lists of tools.</Lede>
+
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-2 mb-3">The four levels</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {LEVEL_ORDER.map(l => (
+                  <div key={l.key} className={`${card} p-4`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-[9px] h-[9px] rounded-full" style={{ background: LEVEL_DOT[l.key] }} aria-hidden="true" />
+                      <span className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{l.label}</span>
+                    </div>
+                    <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">{LEVEL_TEXT[l.key]}</div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">The catalogue</h3>
+              <p className="text-[13.5px] leading-relaxed text-foreground mb-3">Admin, Access levels lists every item the portal can open, as a tree, with a tick per level for Admin, Team Leader and User. Super Admin always has everything.</p>
+              <div className={`${card} overflow-hidden`}>
+                {KINDS.map((k, i) => (
+                  <div key={k.name} className={`flex gap-3.5 px-[18px] py-3 ${i > 0 ? 'border-t border-slate-100' : ''}`}>
+                    <div className="w-[88px] shrink-0 font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{k.name}</div>
+                    <div className="flex-1 min-w-0 text-[13px] leading-relaxed text-muted">{k.d}</div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">How a question is answered</h3>
+              <ol className="list-decimal pl-5 space-y-1.5 text-[13.5px] leading-relaxed text-foreground">
+                <li>A <b className="text-tn-ink">Super Admin</b> opens everything.</li>
+                <li>An item that is <b className="text-tn-ink">Super Admin only</b>, or not in the catalogue at all, opens for nobody else, whatever an exception says. That is what makes a new page closed until someone decides who sees it.</li>
+                <li>A child never opens without its parent: a tab needs its page, an action its page or tool.</li>
+                <li>An <b className="text-tn-ink">exception</b> for the person and the item, still in date, decides next. If a grant and a removal are both open, the removal wins.</li>
+                <li>Items everyone has (Home, Organization, History, your own page and Settings) open.</li>
+                <li>Otherwise the <b className="text-tn-ink">level&apos;s tick</b> decides: the saved answer, or the catalogue&apos;s starting one.</li>
+                <li>A <b className="text-tn-ink">tool</b> also needs one of the person&apos;s teams on its team list (the whole team, or its Leads only), unless the list is every team.</li>
+              </ol>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                <div className={`${card} p-4`}>
+                  <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Super Admin only</div>
+                  <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">These can never be given to another level, nor by an exception:</div>
+                  <ul className="list-disc pl-4 mt-1.5 space-y-0.5 text-[12.5px] leading-relaxed text-foreground">
+                    {superOnly.map(label => <li key={label}>{label}</li>)}
+                  </ul>
+                </div>
+                <div className={`${card} p-4`}>
+                  <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Exceptions</div>
+                  <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">One person, one item, given or taken away without changing their level or their teams. Each has an end date (or lasts until removed), ends on that date by itself, and carries a reason. Kept in Access levels, Exceptions.</div>
+                </div>
+                <div className={`${card} p-4`}>
+                  <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Tools limited by team</div>
+                  <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">Each tool (Href Links, Publishing Goals, the client reports and the SEO tools) has a team list beside its ticks in Access levels, Permissions. A tool with no team yet is closed to everyone but Super Admins. Who is on a team, and who leads it, is set by a Super Admin only, so nobody can give themselves a tool.</div>
+                </div>
+                <div className={`${card} p-4`}>
+                  <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">View Stage</div>
+                  <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">Admin, View Stage (Super Admin only) shows the portal through each level side by side, each column as the first active person of that level. A preview changes what is shown, never who is signed in, and it saves nothing: every change made inside a preview is refused.</div>
+                </div>
+              </div>
+
+              <div className={`${card} p-4 mt-3`}>
+                <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">The Access levels page</div>
+                <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">
+                  Super Admin only, in five tabs. <b className="text-foreground">Permissions</b>: the ticks and the tool team lists; changes are staged, the page shows who gains and who loses what, and they are saved together with one reason. <b className="text-foreground">People and levels</b>: who is Super Admin or Admin. <b className="text-foreground">Check a person</b>: everything one person can and cannot open, and why. <b className="text-foreground">Exceptions</b>. <b className="text-foreground">Change log</b>: every change with its reason, who made it and when, with Undo.
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 items-start">
+                <svg className="shrink-0 mt-0.5 text-amber-700" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16v-4M12 8h.01" /><circle cx="12" cy="12" r="10" /></svg>
+                <div className="text-[13px] leading-relaxed text-amber-800"><strong className="font-extrabold">Signing in is separate from access.</strong> An invitation (Directory, Portal access) lets someone in with their GoodNews address and two-step sign-in. What they see inside is decided entirely by their level, their teams and any exception.</div>
+              </div>
+            </section>
+
+      </>
+    ),
+    'monday': (
+      <>
+            {/* How Monday feeds it */}
+            <section id="monday" className="scroll-mt-6">
+              <Eyebrow>Data flow</Eyebrow>
+              <Heading>How Monday feeds the portal</Heading>
+              <Lede>Monday.com is the system of record for work. The portal connects with an API token (set in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Settings → API tokens</Link>), pulls the boards it needs on a schedule, and shows them as clean, read-only views. A few actions write back to Monday.</Lede>
+              <div className={`${card} p-6 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3.5 items-center`}>
+                <div className="rounded-xl border-[1.5px] p-4" style={{ borderColor: '#7c3aed33', background: '#7c3aed0d' }}>
+                  <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: '#7c3aed' }} /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Monday boards</span></div>
+                  <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>AAAF &amp; HFA Publishing</span><span>Project &amp; page items</span><span>Assignments &amp; people</span></div>
+                </div>
+                <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
+                <div className="rounded-xl border-[1.5px] border-tn-teal bg-tn-teal-soft p-4 text-center">
+                  <span className="inline-flex w-[38px] h-[38px] items-center justify-center rounded-[10px] bg-tn-teal-soft text-tn-teal mb-2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg></span>
+                  <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Scheduled sync</div>
+                  <div className="text-[11.5px] text-muted mt-1 leading-snug">API token pulls fresh data; last sync shown in Company settings</div>
+                </div>
+                <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
+                <div className="rounded-xl border-[1.5px] border-slate-200 bg-subtle p-4">
+                  <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-full bg-tn-teal" /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Portal surfaces</span></div>
+                  <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>Publishing Goals &amp; Boards</span><span>My Work</span><span>Href Links &amp; Home · My Team</span></div>
+                </div>
+              </div>
+
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">What reads from Monday</h3>
+              <div className={`${card} overflow-hidden`}>
+                <div className="grid grid-cols-[140px_1fr_84px] sm:grid-cols-[180px_1fr_96px] gap-3.5 px-[18px] py-3 bg-subtle border-b border-slate-200 font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-wide text-muted">
+                  <span>Portal surface</span><span>Reads</span><span className="text-right">Direction</span>
+                </div>
+                {FLOWS.map(f => (
+                  <div key={f.surface} className="grid grid-cols-[140px_1fr_84px] sm:grid-cols-[180px_1fr_96px] gap-3.5 px-[18px] py-3 border-b border-slate-100 last:border-0 items-center">
+                    <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{f.surface}</span>
+                    <span className="text-[13px] text-muted leading-snug">{f.reads}</span>
+                    <span className={`justify-self-end text-[10.5px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-[3px] ${f.both ? 'bg-tn-teal-soft text-tn-teal' : 'bg-subtle text-muted'}`}>{f.both ? 'read + write' : 'read'}</span>
+                  </div>
+                ))}
+              </div>
+              <div className={`flex gap-3 mt-4 ${card} bg-subtle px-4 py-3.5 items-start`}>
+                <svg className="shrink-0 mt-0.5 text-tn-teal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Href Links, when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
+              </div>
+            </section>
+
+      </>
+    ),
+    'sources': (
+      <>
+            {/* Data sources */}
+            <section id="sources" className="scroll-mt-6">
+              <Eyebrow>Connections</Eyebrow>
+              <Heading>Data sources</Heading>
+              <Lede>Three systems feed the portal. Credentials for each live in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Company settings</Link>.</Lede>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {[
+                  { name: 'Monday.com', color: '#7c3aed', bg: '#7c3aed1a', d: 'System of record for publishing, projects and assignments. Connected by API token.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 4v16M16 4v16" /></svg> },
+                  { name: 'WordPress', color: '#2563eb', bg: '#2563eb1a', d: 'The AAAF and HFA sites where hreflang tags are published. Edited by hand from Href Links.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg> },
+                  { name: 'QuickBooks Time', color: '#059f6b', bg: '#059f6b1a', d: 'Where hours were recorded before North Time. The portal brings them in every 4 hours, and its reports read them together with North Time’s. Every figure traces back to a time entry.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg> },
+                ].map(s => (
+                  <div key={s.name} className={`${card} p-[18px]`}>
+                    <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl mb-3" style={{ background: s.bg, color: s.color }}>{s.icon}</span>
+                    <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{s.name}</div>
+                    <div className="text-[13px] leading-relaxed text-muted mt-1.5">{s.d}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+      </>
+    ),
+    'home': <HomeSection />,
+    'north-time': <NorthTimeSection />,
+    'quick-start': <QuickStartSection />,
+    'transition': <TransitionSection />,
+    'where': <WhereSection />,
+    'annual-review': <AnnualReviewSection />,
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
         {/* Sticky scroll-spy TOC */}
         <nav className="lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto flex flex-col gap-0.5">
           <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-2">On this page</div>
-          {TOC.map(t => {
+          {TOC_GROUPS.map((group, g) => (
+            <Fragment key={g}>
+              {g > 0 && <div className="my-2 mx-3 border-t border-slate-200" role="separator" />}
+              {group.map(t => {
             const on = active === t.id
             return (
               <a
@@ -175,7 +423,9 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
                 {t.label}
               </a>
             )
-          })}
+              })}
+            </Fragment>
+          ))}
           <div className="mt-4 pt-3 px-3 border-t border-slate-200 text-xs leading-relaxed text-muted">
             Last updated<br /><strong className="font-bold text-foreground">November 2026</strong> · v4
           </div>
@@ -183,215 +433,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
 
         {/* Content */}
         <div className="min-w-0 flex flex-col gap-11">
-          {/* Overview */}
-          <section id="overview" className="scroll-mt-6">
-            <Eyebrow>Overview</Eyebrow>
-            <Heading>What this portal is</Heading>
-            <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday or WordPress, it reads from them and gives the team one calm, consistent place to see status and act on it. For hours it has its own time clock, North Time, which replaces QuickBooks Time (TSheets).</Lede>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              {[
-                { t: 'Who signs in', d: 'True North staff and contractors an admin has invited, with their GoodNews address. No public access.' },
-                { t: 'How you get in', d: 'A code or link sent by email, then the code from an authenticator app (two-step sign-in). No password to remember or reset.' },
-                { t: 'Where data lives', d: 'Monday, WordPress and QuickBooks Time. The portal reads, it’s the source that’s the truth.' },
-              ].map(c => (
-                <div key={c.t} className={`${card} p-4`}>
-                  <div className="font-(family-name:--font-display) font-black text-[15px] text-tn-ink">{c.t}</div>
-                  <div className="text-[13px] leading-relaxed text-muted mt-1.5">{c.d}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Getting around */}
-          <section id="navigation" className="scroll-mt-6">
-            <Eyebrow>Getting around</Eyebrow>
-            <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same navy icon rail on the left, in groups: the day’s work (Home, Agenda, My Work, North Time, Requests), messages, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K), Who’s working (Team Leaders and up), the clock button and two drawers: Messages (Chat and Email) and Notifications (Tools and System). A module’s icon carries a count of what needs your attention in it, such as approvals waiting for you or invoices to pay; the top bar’s buttons carry their own.</Lede>
-            <div className={`${card} overflow-hidden`}>
-              {RAIL.map((r, i) => (
-                <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>
-                  <Chip k={r.icon} className="w-[38px] h-[38px]" />
-                  <div className="w-[118px] shrink-0 font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{r.name}</div>
-                  <div className="flex-1 min-w-0 text-[13px] leading-relaxed text-muted">{r.desc}</div>
-                  {r.admin && <Pill tone="amber" className="shrink-0">Admin</Pill>}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <HomeSection />
-          <NorthTimeSection />
-          <QuickStartSection />
-          <TransitionSection />
-          <WhereSection />
-          <AnnualReviewSection />
-
-          {/* Pages & sections */}
-          <section id="pages" className="scroll-mt-6">
-            <Eyebrow>Reference</Eyebrow>
-            <Heading>Pages &amp; sections</Heading>
-            <Lede>What each screen is for, and where its data comes from.</Lede>
-            <div className="flex flex-col gap-3">
-              {PAGES.map(p => {
-                const s = SRC[p.srcKey]
-                return (
-                  <div key={p.name} className={`${card} p-5 flex gap-4 items-start`}>
-                    <Chip k={p.icon} className="w-10 h-10" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-(family-name:--font-display) font-extrabold text-base text-tn-ink">{p.name}</div>
-                      <p className="text-[13.5px] leading-relaxed text-muted mt-1">{p.desc}</p>
-                      {p.sub && (
-                        <div className="flex flex-wrap gap-1.5 mt-2.5">
-                          {p.sub.map(x => <span key={x} className="text-[11.5px] font-semibold text-foreground bg-subtle rounded-md px-2 py-1">{x}</span>)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground rounded-full px-2.5 py-[5px] whitespace-nowrap" style={{ background: s.bg }}>
-                      <span className="w-[7px] h-[7px] rounded-full" style={{ background: s.color }} />{p.src}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          {/* Access model */}
-          <section id="access" className="scroll-mt-6">
-            <Eyebrow>Permissions</Eyebrow>
-            <Heading>Access model</Heading>
-            <Lede>Every person has one of four <strong className="font-bold text-tn-ink">levels</strong>. Each level opens the items ticked for it in a <strong className="font-bold text-tn-ink">catalogue</strong> of everything the portal can show, and one rule answers every question about it, so the menus, the page guards and the Access levels page always agree. A few things adjust that for one person or one team: exceptions, and the team lists of tools.</Lede>
-
-            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-2 mb-3">The four levels</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {LEVEL_ORDER.map(l => (
-                <div key={l.key} className={`${card} p-4`}>
-                  <div className="flex items-center gap-2">
-                    <span className="w-[9px] h-[9px] rounded-full" style={{ background: LEVEL_DOT[l.key] }} aria-hidden="true" />
-                    <span className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{l.label}</span>
-                  </div>
-                  <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">{LEVEL_TEXT[l.key]}</div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">The catalogue</h3>
-            <p className="text-[13.5px] leading-relaxed text-foreground mb-3">Admin, Access levels lists every item the portal can open, as a tree, with a tick per level for Admin, Team Leader and User. Super Admin always has everything.</p>
-            <div className={`${card} overflow-hidden`}>
-              {KINDS.map((k, i) => (
-                <div key={k.name} className={`flex gap-3.5 px-[18px] py-3 ${i > 0 ? 'border-t border-slate-100' : ''}`}>
-                  <div className="w-[88px] shrink-0 font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{k.name}</div>
-                  <div className="flex-1 min-w-0 text-[13px] leading-relaxed text-muted">{k.d}</div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">How a question is answered</h3>
-            <ol className="list-decimal pl-5 space-y-1.5 text-[13.5px] leading-relaxed text-foreground">
-              <li>A <b className="text-tn-ink">Super Admin</b> opens everything.</li>
-              <li>An item that is <b className="text-tn-ink">Super Admin only</b>, or not in the catalogue at all, opens for nobody else, whatever an exception says. That is what makes a new page closed until someone decides who sees it.</li>
-              <li>A child never opens without its parent: a tab needs its page, an action its page or tool.</li>
-              <li>An <b className="text-tn-ink">exception</b> for the person and the item, still in date, decides next. If a grant and a removal are both open, the removal wins.</li>
-              <li>Items everyone has (Home, Organization, History, your own page and Settings) open.</li>
-              <li>Otherwise the <b className="text-tn-ink">level&apos;s tick</b> decides: the saved answer, or the catalogue&apos;s starting one.</li>
-              <li>A <b className="text-tn-ink">tool</b> also needs one of the person&apos;s teams on its team list (the whole team, or its Leads only), unless the list is every team.</li>
-            </ol>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-              <div className={`${card} p-4`}>
-                <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Super Admin only</div>
-                <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">These can never be given to another level, nor by an exception:</div>
-                <ul className="list-disc pl-4 mt-1.5 space-y-0.5 text-[12.5px] leading-relaxed text-foreground">
-                  {superOnly.map(label => <li key={label}>{label}</li>)}
-                </ul>
-              </div>
-              <div className={`${card} p-4`}>
-                <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Exceptions</div>
-                <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">One person, one item, given or taken away without changing their level or their teams. Each has an end date (or lasts until removed), ends on that date by itself, and carries a reason. Kept in Access levels, Exceptions.</div>
-              </div>
-              <div className={`${card} p-4`}>
-                <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">Tools limited by team</div>
-                <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">Each tool (Href Links, Publishing Goals, the client reports and the SEO tools) has a team list beside its ticks in Access levels, Permissions. A tool with no team yet is closed to everyone but Super Admins. Who is on a team, and who leads it, is set by a Super Admin only, so nobody can give themselves a tool.</div>
-              </div>
-              <div className={`${card} p-4`}>
-                <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">View Stage</div>
-                <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">Admin, View Stage (Super Admin only) shows the portal through each level side by side, each column as the first active person of that level. A preview changes what is shown, never who is signed in, and it saves nothing: every change made inside a preview is refused.</div>
-              </div>
-            </div>
-
-            <div className={`${card} p-4 mt-3`}>
-              <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">The Access levels page</div>
-              <div className="text-[12.5px] leading-relaxed text-muted mt-1.5">
-                Super Admin only, in five tabs. <b className="text-foreground">Permissions</b>: the ticks and the tool team lists; changes are staged, the page shows who gains and who loses what, and they are saved together with one reason. <b className="text-foreground">People and levels</b>: who is Super Admin or Admin. <b className="text-foreground">Check a person</b>: everything one person can and cannot open, and why. <b className="text-foreground">Exceptions</b>. <b className="text-foreground">Change log</b>: every change with its reason, who made it and when, with Undo.
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 items-start">
-              <svg className="shrink-0 mt-0.5 text-amber-700" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16v-4M12 8h.01" /><circle cx="12" cy="12" r="10" /></svg>
-              <div className="text-[13px] leading-relaxed text-amber-800"><strong className="font-extrabold">Signing in is separate from access.</strong> An invitation (Directory, Portal access) lets someone in with their GoodNews address and two-step sign-in. What they see inside is decided entirely by their level, their teams and any exception.</div>
-            </div>
-          </section>
-
-          {/* How Monday feeds it */}
-          <section id="monday" className="scroll-mt-6">
-            <Eyebrow>Data flow</Eyebrow>
-            <Heading>How Monday feeds the portal</Heading>
-            <Lede>Monday.com is the system of record for work. The portal connects with an API token (set in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Settings → API tokens</Link>), pulls the boards it needs on a schedule, and shows them as clean, read-only views. A few actions write back to Monday.</Lede>
-            <div className={`${card} p-6 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3.5 items-center`}>
-              <div className="rounded-xl border-[1.5px] p-4" style={{ borderColor: '#7c3aed33', background: '#7c3aed0d' }}>
-                <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: '#7c3aed' }} /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Monday boards</span></div>
-                <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>AAAF &amp; HFA Publishing</span><span>Project &amp; page items</span><span>Assignments &amp; people</span></div>
-              </div>
-              <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
-              <div className="rounded-xl border-[1.5px] border-tn-teal bg-tn-teal-soft p-4 text-center">
-                <span className="inline-flex w-[38px] h-[38px] items-center justify-center rounded-[10px] bg-tn-teal-soft text-tn-teal mb-2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg></span>
-                <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Scheduled sync</div>
-                <div className="text-[11.5px] text-muted mt-1 leading-snug">API token pulls fresh data; last sync shown in Company settings</div>
-              </div>
-              <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
-              <div className="rounded-xl border-[1.5px] border-slate-200 bg-subtle p-4">
-                <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-full bg-tn-teal" /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Portal surfaces</span></div>
-                <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>Publishing Goals &amp; Boards</span><span>My Work</span><span>Href Links &amp; Home · My Team</span></div>
-              </div>
-            </div>
-
-            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink mt-6 mb-3">What reads from Monday</h3>
-            <div className={`${card} overflow-hidden`}>
-              <div className="grid grid-cols-[140px_1fr_84px] sm:grid-cols-[180px_1fr_96px] gap-3.5 px-[18px] py-3 bg-subtle border-b border-slate-200 font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-wide text-muted">
-                <span>Portal surface</span><span>Reads</span><span className="text-right">Direction</span>
-              </div>
-              {FLOWS.map(f => (
-                <div key={f.surface} className="grid grid-cols-[140px_1fr_84px] sm:grid-cols-[180px_1fr_96px] gap-3.5 px-[18px] py-3 border-b border-slate-100 last:border-0 items-center">
-                  <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{f.surface}</span>
-                  <span className="text-[13px] text-muted leading-snug">{f.reads}</span>
-                  <span className={`justify-self-end text-[10.5px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-[3px] ${f.both ? 'bg-tn-teal-soft text-tn-teal' : 'bg-subtle text-muted'}`}>{f.both ? 'read + write' : 'read'}</span>
-                </div>
-              ))}
-            </div>
-            <div className={`flex gap-3 mt-4 ${card} bg-subtle px-4 py-3.5 items-start`}>
-              <svg className="shrink-0 mt-0.5 text-tn-teal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-              <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Href Links, when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
-            </div>
-          </section>
-
-          {/* Data sources */}
-          <section id="sources" className="scroll-mt-6">
-            <Eyebrow>Connections</Eyebrow>
-            <Heading>Data sources</Heading>
-            <Lede>Three systems feed the portal. Credentials for each live in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Company settings</Link>.</Lede>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              {[
-                { name: 'Monday.com', color: '#7c3aed', bg: '#7c3aed1a', d: 'System of record for publishing, projects and assignments. Connected by API token.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 4v16M16 4v16" /></svg> },
-                { name: 'WordPress', color: '#2563eb', bg: '#2563eb1a', d: 'The AAAF and HFA sites where hreflang tags are published. Edited by hand from Href Links.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg> },
-                { name: 'QuickBooks Time', color: '#059f6b', bg: '#059f6b1a', d: 'Where hours were recorded before North Time. The portal brings them in every 4 hours, and its reports read them together with North Time’s. Every figure traces back to a time entry.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg> },
-              ].map(s => (
-                <div key={s.name} className={`${card} p-[18px]`}>
-                  <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl mb-3" style={{ background: s.bg, color: s.color }}>{s.icon}</span>
-                  <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{s.name}</div>
-                  <div className="text-[13px] leading-relaxed text-muted mt-1.5">{s.d}</div>
-                </div>
-              ))}
-            </div>
-          </section>
+          {TOC.map(t => <Fragment key={t.id}>{SECTION[t.id]}</Fragment>)}
         </div>
     </div>
   )
