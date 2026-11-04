@@ -421,7 +421,6 @@ export default async function SettingsPage() {
       id: 'jobs',
       label: 'Job catalogue',
       icon: JobsIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>
@@ -434,7 +433,6 @@ export default async function SettingsPage() {
       id: 'invoices',
       label: 'Invoices',
       icon: InvoicesIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>
@@ -447,7 +445,6 @@ export default async function SettingsPage() {
       id: 'integrations',
       label: 'Integrations',
       icon: IntegrationsIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>
@@ -461,7 +458,6 @@ export default async function SettingsPage() {
       id: 'reminders',
       label: 'Reminders',
       icon: RemindersIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>
@@ -474,7 +470,6 @@ export default async function SettingsPage() {
       id: 'rollout',
       label: 'North Time rollout',
       icon: RolloutIcon,
-      isNew: true,
       badge: { count: rollout.setAside, label: `${rollout.setAside} TSheets ${rollout.setAside === 1 ? 'entry' : 'entries'} to decide` },
       editable: false,
       content: (
@@ -489,7 +484,6 @@ export default async function SettingsPage() {
       id: 'human-resources',
       label: 'Human Resources',
       icon: HrIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>
