@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CODE_LIFE_MS, MAX_TRIES, MONTH_SLOT, alreadySentText, buildFormLines, cameFrom, checkSubmission, codeOf, codeVerdict, emailOf, firstDuplicate,
-  formInvoice, formRecord, itemKey, itemName, keptText, lastMonth, monthBounds, monthOk, monthState, monthTakenText, newSenderRights, overCodeCap,
-  rateFor, ratesFor, resendWait, withMonth,
+  CODES_PER_DAY, CODES_PER_DAY_VISITOR, CODES_PER_HOUR, CODE_LIFE_MS, MAX_TRIES, MONTH_SLOT, alreadySentText, buildFormLines, cameFrom, checkSubmission,
+  codeLimit, codeLimitText, codeOf, codeVerdict, emailOf, firstDuplicate,
+  formInvoice, formRecord, itemKey, itemName, keptText, lastMonth, monthBounds, monthOk, monthState, monthTakenText, newSenderRights, opensInline,
+  rateFor, ratesFor, resendWait, sniffReceipt, withMonth,
   type CheckContext, type RawSubmission,
 } from './rules'
 import { confirmText } from '@/lib/timeclock/contractor-invoice'
@@ -34,10 +35,69 @@ describe('the code', () => {
     expect(resendWait(new Date(now - 60_000).toISOString(), now)).toBe(0)
   })
 
+  // Rows of the last day, `mine` (id 0) among them, as requestCode reads them after storing its own.
+  const ago = (ms: number, id: number) => ({ id, created_at: new Date(now - ms).toISOString() })
+  const spread = (n: number, from: number, step: number, id0 = 100) => Array.from({ length: n }, (_, i) => ago(from + i * step, id0 + i))
+  const mine = ago(0, 0)
+  const lim = (e: { id: number; created_at: string }[], c: { id: number; created_at: string }[]) => codeLimit(0, e, c, now)
+
   it('caps the codes an hour for an email and for a network address', () => {
-    expect(overCodeCap(4, 4)).toBe(false)
-    expect(overCodeCap(5, 0)).toBe(true)
-    expect(overCodeCap(0, 5)).toBe(true)
+    expect(lim([mine, ...spread(4, 120_000, 60_000)], [mine])).toEqual({ kind: 'ok' })
+    expect(lim([mine, ...spread(5, 120_000, 60_000)], [mine])).toEqual({ kind: 'hour' })
+    expect(lim([mine], [mine, ...spread(CODES_PER_HOUR, 0, 60_000)])).toEqual({ kind: 'hour' })
+    // Over an hour ago no longer counts for the hour.
+    expect(lim([mine, ...spread(5, 3_601_000, 60_000)], [mine])).toEqual({ kind: 'ok' })
+  })
+
+  it('caps the codes a day for an email and for a network address', () => {
+    const emailDay = spread(CODES_PER_DAY - 1, 3_700_000, 600_000)
+    expect(lim([mine, ...emailDay], [mine])).toEqual({ kind: 'ok' })
+    expect(lim([mine, ...emailDay, ago(3_650_000, 999)], [mine])).toEqual({ kind: 'day' })
+    expect(lim([mine], [mine, ...spread(CODES_PER_DAY_VISITOR - 1, 3_700_000, 60_000)])).toEqual({ kind: 'ok' })
+    expect(lim([mine], [mine, ...spread(CODES_PER_DAY_VISITOR, 3_700_000, 60_000)])).toEqual({ kind: 'day' })
+    expect(codeLimitText({ kind: 'day' })).toBe('Too many codes in the last day. Try again later.')
+    expect(codeLimitText({ kind: 'hour' })).toBe('Too many codes in the last hour. Try again later.')
+  })
+
+  it('waits a minute after the last code of the email, its own not counted', () => {
+    expect(lim([mine], [mine])).toEqual({ kind: 'ok' })
+    expect(lim([mine, ago(20_000, 7)], [mine])).toEqual({ kind: 'wait', seconds: 40 })
+    expect(codeLimitText({ kind: 'wait', seconds: 40 })).toBe('Wait 40 seconds, then send it again.')
+  })
+
+  // requestCode stores its code, then reads, then decides (and deletes its own when refused).
+  // Played in every random order, codes asked for at once never pass more than the caps.
+  function race(reqs: { email: string; client: string }[], seed: number): number {
+    let r = seed
+    const rand = () => ((r = (r * 1103515245 + 12345) % 2 ** 31) / 2 ** 31)
+    const rows = new Map<number, { email: string; client: string }>()
+    const stage = reqs.map(() => 0)
+    const seen: { e: { id: number; created_at: string }[]; c: { id: number; created_at: string }[] }[] = []
+    let passed = 0
+    while (stage.some(s => s < 2)) {
+      const live = stage.flatMap((s, i) => (s < 2 ? [i] : []))
+      const i = live[Math.floor(rand() * live.length)]
+      if (stage[i] === 0) rows.set(i, reqs[i])
+      else {
+        const all = [...rows].map(([id, x]) => ({ id, x, created_at: new Date(now).toISOString() }))
+        seen[i] = { e: all.filter(a => a.x.email === reqs[i].email), c: all.filter(a => a.x.client === reqs[i].client) }
+        if (codeLimit(i, seen[i].e, seen[i].c, now).kind === 'ok') passed++
+        else rows.delete(i)
+      }
+      stage[i]++
+    }
+    return passed
+  }
+
+  it('lets at most one of 20 codes asked at once for one email go', () => {
+    const runs = Array.from({ length: 200 }, (_, s) => race(Array.from({ length: 20 }, () => ({ email: 'ana@example.com', client: 'k' })), s + 1))
+    expect(Math.max(...runs)).toBe(1)
+  })
+
+  it('lets at most the hourly cap go of 20 codes asked at once from one address', () => {
+    const runs = Array.from({ length: 200 }, (_, s) => race(Array.from({ length: 20 }, (_, i) => ({ email: `p${i}@example.com`, client: 'k' })), s + 1))
+    expect(Math.max(...runs)).toBeLessThanOrEqual(CODES_PER_HOUR)
+    expect(Math.max(...runs)).toBeGreaterThan(0)
   })
 
   it('reads six digits and a plain email only', () => {
@@ -251,6 +311,16 @@ describe('their own invoice (leadership, 4 November 2026)', () => {
     expect(checkSubmission({ ...own, statedTotal: '50', reimbursements: [rmb] }, ctx).ok).toBe(false)
   })
 
+  it('needs the total on their invoice to be more than the reimbursements, for deliverables too', () => {
+    const items = [{ name: 'About us', kind: 'page' }]
+    const error = 'The total on your invoice must be more than the reimbursements on it.'
+    expect(checkSubmission({ ...own, kind: 'deliverables', items, statedTotal: '50', reimbursements: [rmb] }, ctx)).toEqual({ ok: false, error })
+    expect(checkSubmission({ ...own, kind: 'deliverables', items, statedTotal: '40', reimbursements: [rmb] }, ctx)).toEqual({ ok: false, error })
+    const r = checkSubmission({ ...own, kind: 'deliverables', items, statedTotal: '80', reimbursements: [rmb] }, ctx)
+    if (!r.ok) throw new Error(r.error)
+    expect(formInvoice(r.value, rates).total).toBe(80)
+  })
+
   it('keeps the Monday items at the rates for deliverables, the total theirs', () => {
     const r = checkSubmission({ ...own, kind: 'deliverables', items: [{ name: 'About us', kind: 'page' }, { name: 'Flyer', kind: 'asset' }], statedTotal: '40' }, ctx)
     if (!r.ok) throw new Error(r.error)
@@ -321,5 +391,37 @@ describe('how it came in, and who links a new sender', () => {
     // The default approver who is not a Super Admin or Finance sees no amounts.
     expect(newSenderRights(a('david', 'admin'), s)).toEqual({ see: false, link: false })
     expect(newSenderRights({ ...a('arnaldo', 'super_admin'), can: () => false }, s)).toEqual({ see: false, link: false })
+  })
+})
+
+describe('the receipt files (audit, 5 November 2026)', () => {
+  const bytes = (...parts: (string | number[])[]) => {
+    const out: number[] = []
+    for (const p of parts) out.push(...(typeof p === 'string' ? p.split('').map(c => c.charCodeAt(0)) : p))
+    while (out.length < 16) out.push(0)
+    return new Uint8Array(out)
+  }
+
+  it('tells a photo or a PDF by its first bytes', () => {
+    expect(sniffReceipt(bytes('%PDF-1.7'))).toBe('application/pdf')
+    expect(sniffReceipt(bytes([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg')
+    expect(sniffReceipt(bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe('image/png')
+    expect(sniffReceipt(bytes('RIFF', [1, 2, 3, 4], 'WEBPVP8 '))).toBe('image/webp')
+    expect(sniffReceipt(bytes([0, 0, 0, 0x18], 'ftypheic'))).toBe('image/heic')
+    expect(sniffReceipt(bytes([0, 0, 0, 0x18], 'ftypmif1'))).toBe('image/heif')
+  })
+
+  it('refuses anything else, whatever the browser called it', () => {
+    expect(sniffReceipt(bytes('<html><script>'))).toBeNull()
+    expect(sniffReceipt(bytes('<svg xmlns="'))).toBeNull()
+    expect(sniffReceipt(bytes([0x89, 0x50, 0x4e, 0x47]))).toBeNull()
+    expect(sniffReceipt(bytes('RIFF', [1, 2, 3, 4], 'WAVE'))).toBeNull()
+    expect(sniffReceipt(bytes([0, 0, 0, 0x18], 'ftypisom'))).toBeNull()
+    expect(sniffReceipt(new Uint8Array())).toBeNull()
+  })
+
+  it('opens only photos and PDFs in the browser', () => {
+    for (const t of ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'IMAGE/PNG; x=1']) expect(opensInline(t)).toBe(true)
+    for (const t of ['text/html', 'image/svg+xml', 'application/octet-stream', '', null, 'toString']) expect(opensInline(t)).toBe(false)
   })
 })

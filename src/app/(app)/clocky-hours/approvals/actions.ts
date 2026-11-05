@@ -25,12 +25,12 @@ import { loadApprovals } from '@/lib/timeclock/clocky-approvals'
 import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceInvoiceReturned, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
-import { decisionText } from '@/lib/timeclock/reimbursement-reports'
+import { decisionText, RMB_CHANGED, RMB_VERSION_COLS, rmbVersion, type RmbVersioned } from '@/lib/timeclock/reimbursement-reports'
 import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes, seesMoney } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
 import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
-import { loadInvoiceCheck } from '@/lib/timeclock/invoice-check-data'
+import { readInvoiceCheck } from '@/lib/timeclock/invoice-check-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
@@ -50,6 +50,7 @@ const PREVIEW = 'View Stage is only a preview. Close it to decide.'
 const SIGN_IN = 'Sign in again to save.'
 const NO_ACCESS = 'Approvals is not open to your access.'
 const NOT_WAITING = 'That request is not waiting for you. It may have been decided already.'
+const CHECK_UNREAD = 'The invoice check could not be read. Try again in a moment.'
 
 const fail = (error: string, extra: Omit<Fail, 'ok' | 'error'> = {}): Fail => ({ ok: false, error, ...extra })
 function notSaved(e: unknown): Fail {
@@ -300,41 +301,57 @@ export async function retryTimeOffRippling(input: { id: number }): Promise<Resul
 // ── Reimbursements and extra hours (Requests.dc.html 9C, 10D) ───────────────
 
 /**
- * A reimbursement (9C), by anyone on the Reimbursements list (the routing), never their own. Approved:
+ * A reimbursement (9C), by anyone on the Reimbursements list (the routing), never their own, and only by
+ * who sees that person's money (Super Admins and Finance, money lockdown of 5 November 2026). Approved:
  * a contractor's waits for their next invoice, which takes it by itself; an
  * employee's goes on their open reimbursement document (a new one when none is
  * open), and Finance hears it is ready to pay. Denied: with the reason.
+ *
+ * Tied to what the decider saw (audit, 5 November 2026): the card sends its
+ * `version` (rmbVersion), and a receipt edited in place meanwhile is refused.
+ * The claim returns the row as it was claimed and is undone when that is not
+ * the version seen, so an edit between the read and the claim is caught too.
  */
-export async function decideReimbursement(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
+export async function decideReimbursement(input: { id: number; decision: 'approve' | 'deny'; note?: string; version?: string }): Promise<Result<{ toast: string }>> {
   const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
-    const { data: r, error } = await c.from('reimbursements').select('id, person_id, purpose, amount, currency, state').eq('id', Number(input.id)).maybeSingle()
+    const { data: r, error } = await c.from('reimbursements').select(`${RMB_VERSION_COLS}, person_id`).eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
     if (!r || r.state !== 'pending' || !(await routedTo(v, 'rmb', r.person_id))) return fail(NOT_WAITING)
+    const settings = await loadInvoiceSettings()
+    if (!seesMoney(v, r.person_id, settings)) return fail(NOT_WAITING)
+    const seen = typeof input.version === 'string' && input.version ? input.version : rmbVersion([r as RmbVersioned])
+    if (rmbVersion([r as RmbVersioned]) !== seen) return fail(RMB_CHANGED)
     const note = reasonOf(input.note)
     const at = new Date().toISOString()
     const dir = await loadDirectory()
     const who = dir.nameOf(r.person_id)
+    if (input.decision === 'deny' && !note) return fail(REASON_REQUIRED)
+    // Claimed first (only while still pending), then checked against the version seen.
+    const claim = input.decision === 'deny'
+      ? { state: 'denied', decided_by: v.personId, decided_at: at, decision_note: note }
+      : { state: 'approved', decided_by: v.personId, decided_at: at, decision_note: note, document_id: null }
+    const { data: moved, error: e2 } = await c.from('reimbursements').update(claim).eq('id', r.id).eq('state', 'pending').select(RMB_VERSION_COLS)
+    if (e2) return notSaved(e2)
+    if (!moved?.length) return fail(NOT_WAITING)
+    if (!sameVersion(moved as RmbVersioned[], seen)) {
+      await unclaim(c, [r.id], v.personId, at)
+      return fail(RMB_CHANGED)
+    }
     if (input.decision === 'deny') {
-      if (!note) return fail(REASON_REQUIRED)
-      const { data: moved, error: e2 } = await c.from('reimbursements').update({ state: 'denied', decided_by: v.personId, decided_at: at, decision_note: note }).eq('id', r.id).eq('state', 'pending').select('id')
-      if (e2) return notSaved(e2)
-      if (!moved?.length) return fail(NOT_WAITING)
       await announceReimbursementDecided({ id: r.id, personId: r.person_id, deciderId: v.personId, purpose: r.purpose, amount: Number(r.amount), currency: r.currency, approved: false, where: '', note })
       refresh()
       return { ok: true, toast: `Denied. ${first(who)} sees your reason.` }
     }
-    const [routes, settings] = await Promise.all([loadRoutes([r.person_id]), loadInvoiceSettings()])
+    const routes = await loadRoutes([r.person_id])
     const contractor = !!routes.get(r.person_id)?.isContractor
-    let where = 'It goes on your next invoice by itself.'
-    let toast = `Approved. It goes on ${first(who)}'s next invoice by itself.`
+    // Contractors make and send their own invoice (4 November 2026): they add it to their next one.
+    let where = 'Add it to your next invoice.'
+    let toast = `Approved. ${first(who)} adds it to their next invoice.`
     let documentId: number | null = null
     // Claimed first, then its document: a lost race never leaves an empty document behind.
-    const { data: moved, error: e2 } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: note, document_id: null }).eq('id', r.id).eq('state', 'pending').select('id')
-    if (e2) return notSaved(e2)
-    if (!moved?.length) return fail(NOT_WAITING)
     if (!contractor) {
       try {
         const doc = await openRmbDocument(c, r.person_id)
@@ -345,7 +362,7 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
         toast = `Approved. It is on ${doc.number} for Finance to pay.`
       } catch (e) {
         // No document for it: it waits again, rather than approved where Finance never sees it.
-        await c.from('reimbursements').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null }).eq('id', r.id)
+        await unclaim(c, [r.id], v.personId, at)
         return notSaved(e)
       }
     }
@@ -356,6 +373,19 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
   } catch (e) {
     return notSaved(e)
   }
+}
+
+/** The rows claimed are the version seen: claimed rows are compared as they were while waiting. */
+function sameVersion(claimed: readonly RmbVersioned[], seen: string): boolean {
+  return rmbVersion(claimed.map(x => ({ ...x, state: 'pending' }))) === seen
+}
+
+/** A claim undone: the receipts wait again, as if never decided (only this decision's, by its decider and time). */
+async function unclaim(c: ReturnType<typeof db>, ids: readonly number[], by: string, at: string): Promise<void> {
+  if (!ids.length) return
+  const { error } = await c.from('reimbursements').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null, document_id: null })
+    .in('id', [...ids]).eq('decided_by', by).eq('decided_at', at)
+  if (error) console.error('[clocky approvals] reimbursement claim not undone:', error.message)
 }
 
 /** The employee's open reimbursement document, or a new one. */
@@ -385,20 +415,28 @@ async function settleRmbDocument(c: ReturnType<typeof db>, documentId: number, i
  * approved or denied with its reason. Approved ones go where a single one would
  * (the next invoice, or the employee's open document), each on its own line.
  * The person hears it once, with what was approved and why the rest was not.
+ * Only by who sees the person's money, and only on the version the card showed
+ * (`version`, as decideReimbursement): all of it is decided, or none.
  */
-export async function decideReimbursementReport(input: { reportId: number; decisions: { id: number; decision: 'approve' | 'deny'; note?: string }[] }): Promise<Result<{ toast: string }>> {
+export async function decideReimbursementReport(input: { reportId: number; decisions: { id: number; decision: 'approve' | 'deny'; note?: string }[]; version?: string }): Promise<Result<{ toast: string }>> {
   const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
+    const reportId = Number(input.reportId)
     const [{ data: rows, error }, { data: rep }] = await Promise.all([
-      c.from('reimbursements').select('id, person_id, purpose, amount, currency, state').eq('report_id', Number(input.reportId)).order('id'),
-      c.from('reimbursement_reports').select('name').eq('id', Number(input.reportId)).maybeSingle(),
+      c.from('reimbursements').select(`${RMB_VERSION_COLS}, person_id`).eq('report_id', reportId).order('id'),
+      c.from('reimbursement_reports').select('name').eq('id', reportId).maybeSingle(),
     ])
     if (error) return notSaved(error)
     const waiting = (rows ?? []).filter(r => r.state === 'pending')
     if (!waiting.length || !(await routedTo(v, 'rmb', waiting[0].person_id))) return fail(NOT_WAITING)
     const personId = waiting[0].person_id
+    const settings = await loadInvoiceSettings()
+    if (!seesMoney(v, personId, settings)) return fail(NOT_WAITING)
+    // Tied to what the decider saw: the receipts still waiting, as the card showed them.
+    const seen = typeof input.version === 'string' && input.version ? input.version : rmbVersion(waiting as RmbVersioned[])
+    if (rmbVersion(waiting as RmbVersioned[]) !== seen) return fail(RMB_CHANGED)
     const chosen = new Map((input.decisions ?? []).map(d => [Number(d.id), d]))
     const approve: typeof waiting = [], deny: { r: (typeof waiting)[number]; note: string }[] = []
     for (const r of waiting) {
@@ -412,20 +450,34 @@ export async function decideReimbursementReport(input: { reportId: number; decis
     const at = new Date().toISOString()
     const dir = await loadDirectory()
     const who = dir.nameOf(personId)
+    // Every receipt claimed first (only while still pending), then checked against the version seen;
+    // anything short, changed or joined meanwhile undoes the whole decision.
+    const claimed: RmbVersioned[] = []
+    const undo = async (answer: Fail) => { await unclaim(c, claimed.map(x => x.id), v.personId, at); return answer }
     for (const { r, note } of deny) {
-      const { error: e } = await c.from('reimbursements').update({ state: 'denied', decided_by: v.personId, decided_at: at, decision_note: note }).eq('id', r.id).eq('state', 'pending')
-      if (e) return notSaved(e)
+      const { data: got, error: e } = await c.from('reimbursements').update({ state: 'denied', decided_by: v.personId, decided_at: at, decision_note: note }).eq('id', r.id).eq('state', 'pending').select(RMB_VERSION_COLS)
+      if (e) return undo(notSaved(e))
+      claimed.push(...((got ?? []) as RmbVersioned[]))
     }
-    let where = approve.length === 1 ? 'It goes on your next invoice by itself.' : 'They go on your next invoice by themselves, each on its own line.'
-    let toast = `${decisionText(approve.length, deny.length)}${approve.length ? ` ${approve.length === 1 ? 'It goes' : 'They go'} on ${first(who)}'s next invoice by ${approve.length === 1 ? 'itself' : 'themselves'}.` : ` ${first(who)} sees your reason${deny.length === 1 ? '' : 's'}.`}`
     if (approve.length) {
-      const [routes, settings] = await Promise.all([loadRoutes([personId]), loadInvoiceSettings()])
-      // Claimed first, then the document: a lost race never leaves an empty document behind.
-      const { data: claimed, error: e } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: null, document_id: null }).in('id', approve.map(r => r.id)).eq('state', 'pending').select('id')
-      if (e) return notSaved(e)
-      const ids = (claimed ?? []).map(x => x.id)
+      const { data: got, error: e } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: null, document_id: null }).in('id', approve.map(r => r.id)).eq('state', 'pending').select(RMB_VERSION_COLS)
+      if (e) return undo(notSaved(e))
+      claimed.push(...((got ?? []) as RmbVersioned[]))
+    }
+    if (claimed.length !== waiting.length) return undo(fail(NOT_WAITING))
+    if (!sameVersion(claimed, seen)) return undo(fail(RMB_CHANGED))
+    // A receipt that joined the request meanwhile (new/route.ts, edit/route.ts) was not seen: nothing is decided.
+    const { data: joined, error: e4 } = await c.from('reimbursements').select('id').eq('report_id', reportId).eq('state', 'pending').limit(1)
+    if (e4) return undo(notSaved(e4))
+    if (joined?.length) return undo(fail(RMB_CHANGED))
+    const ids = approve.map(r => r.id)
+    let where = approve.length === 1 ? 'Add it to your next invoice.' : 'Add them to your next invoice, each on its own line.'
+    let toast = `${decisionText(approve.length, deny.length)}${approve.length ? ` ${first(who)} adds ${approve.length === 1 ? 'it' : 'them'} to their next invoice.` : ` ${first(who)} sees your reason${deny.length === 1 ? '' : 's'}.`}`
+    if (ids.length) {
+      const routes = await loadRoutes([personId])
       let documentId: number | null = null
-      if (ids.length && !routes.get(personId)?.isContractor) {
+      // Claimed first, then the document: a lost race never leaves an empty document behind.
+      if (!routes.get(personId)?.isContractor) {
         try {
           const doc = await openRmbDocument(c, personId)
           const { error: e3 } = await c.from('reimbursements').update({ document_id: doc.id }).in('id', ids)
@@ -434,9 +486,8 @@ export async function decideReimbursementReport(input: { reportId: number; decis
           where = `${approve.length === 1 ? 'It is' : 'They are'} on reimbursement document ${doc.number}, for Finance to pay.`
           toast = `${decisionText(approve.length, deny.length)} ${approve.length === 1 ? 'It is' : 'They are'} on ${doc.number} for Finance to pay.`
         } catch (err) {
-          // No document for them: they wait again, rather than approved where Finance never sees them.
-          await c.from('reimbursements').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null }).in('id', ids)
-          return notSaved(err)
+          // No document for them: the whole request waits again, rather than approved where Finance never sees it.
+          return undo(notSaved(err))
         }
       }
       if (documentId) await settleRmbDocument(c, documentId, ids[0], personId, at, settings.finance)
@@ -550,10 +601,14 @@ export async function approveTimesheet(input: { id: number; note?: string; hours
     const note = reasonOf(input.note)
     // The invoice beside the timesheet: one that does not match is approved only with a reason.
     if ((step.step === 'both' || step.step === 'invoice') && invRes.data) {
-      const check = await loadInvoiceCheck(invRes.data.id)
+      // An approval never passes on a check nobody saw (audit, 5 November 2026).
+      const read = await readInvoiceCheck(invRes.data.id)
+      if (!read.ok) { console.error('[clocky approvals] invoice check:', read.error); return fail(CHECK_UNREAD) }
+      const check = read.check
+      if (!check) return fail(CHECK_UNREAD)
       // The figures only for who sees this person's money (money lockdown, 5 November 2026).
-      const figures = seesMoney(v, t.personId, settings) ? check?.summary ?? '' : ''
-      if (check && !check.matches && !note) return fail(`The invoice does not match the timesheet. ${figures} Write why you approve it anyway, or send the invoice back.`.replace(/\s+/g, ' ').trim())
+      const figures = seesMoney(v, t.personId, settings) ? check.summary ?? '' : ''
+      if (!check.matches && !note) return fail(`The invoice does not match the timesheet. ${figures} Write why you approve it anyway, or send the invoice back.`.replace(/\s+/g, ' ').trim())
     }
     // Over the allowance: the invoice approver decides, and says why. Rare since the allowance became a real
     // limit (owner, 25 October 2026): kept for time that was over before it, imported or old entries.
@@ -740,9 +795,13 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     // A fixed amount sent from the portal is checked against the amount on file (4 November 2026); one that
     // does not match is approved only with a reason. The form's invoices have no amount on file to check.
     if (approve && !inv.source) {
-      const check = await loadInvoiceCheck(inv.id)
-      const figures = seesMoney(v, inv.person_id, settings) ? check?.summary ?? '' : ''
-      if (check && !check.matches && !note) return fail(`The invoice does not match the amount on file. ${figures} Write why you approve it anyway, or send it back.`.replace(/\s+/g, ' ').trim())
+      // An approval never passes on a check nobody saw (audit, 5 November 2026).
+      const read = await readInvoiceCheck(inv.id)
+      if (!read.ok) { console.error('[clocky approvals] invoice check:', read.error); return fail(CHECK_UNREAD) }
+      const check = read.check
+      if (!check) return fail(CHECK_UNREAD)
+      const figures = seesMoney(v, inv.person_id, settings) ? check.summary ?? '' : ''
+      if (!check.matches && !note) return fail(`The invoice does not match the amount on file. ${figures} Write why you approve it anyway, or send it back.`.replace(/\s+/g, ' ').trim())
     }
     const { data: moved, error } = await c.from('invoices')
       .update(approve ? { state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at } : { state: 'draft', approved_by: v.personId, approved_at: at, updated_at: at, paid_note: note })

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   NO_WAVE, NO_WAVE_MESSAGE, automaticWave, beforeStart, checkDates, clockGate, hasStarted, isDay, isWave, noWaveFor, notYetMessage,
   personWave, splitByStart, startDayLabel, waveChoice,
+  START_UNREAD, NO_START_MESSAGE, clockGateOf, entryStartGate, startedOn, startsLaterMessage, startsLaterFor, startUnreadFor, noStartFor,
 } from './waves'
 
 const DATES = { 1: '2026-11-08', 2: '2026-11-22' } as const
@@ -138,3 +139,42 @@ describe('splitByStart', () => {
   })
 })
 
+
+describe('the gates fail closed and follow the start date (audit, 5 November 2026)', () => {
+  const W2 = { startsOn: '2026-11-22', noWave: false }
+
+  it('the clock: an unread start refuses with its own sentence', () => {
+    expect(clockGateOf({ startsOn: null, noWave: false, unread: true }, '2026-11-30')).toBe(START_UNREAD)
+    expect(START_UNREAD).toBe('North Time could not check your start date. Try again in a moment.')
+    expect(clockGateOf(W2, '2026-11-21')).toBe(notYetMessage('2026-11-22'))
+    expect(clockGateOf(W2, '2026-11-22')).toBeNull()
+    expect(clockGateOf({ startsOn: null, noWave: true }, '2026-11-30')).toBe(NO_WAVE_MESSAGE)
+  })
+
+  it('North Time acts on a clock only from the start date, in the person\'s own day', () => {
+    expect(startedOn(W2, '2026-11-21')).toBe(false)
+    expect(startedOn(W2, '2026-11-22')).toBe(true)
+    expect(startedOn({ startsOn: null, noWave: false }, '2026-11-30')).toBe(false)
+    expect(startedOn({ startsOn: '2026-11-08', noWave: true }, '2026-11-30')).toBe(false)
+    expect(startedOn({ startsOn: '2026-11-08', noWave: false, unread: true }, '2026-11-30')).toBe(false)
+  })
+
+  it('hours typed in: refused before the start date, for oneself and for someone else', () => {
+    expect(entryStartGate(W2, ['2026-11-21'], null)).toBe('Your North Time starts on Sunday, Nov 22. Until then, keep recording your time in TSheets.')
+    expect(entryStartGate(W2, ['2026-11-21'], 'Bo User')).toBe("Bo User's North Time starts on Sunday, Nov 22. Time before then stays in TSheets.")
+    expect(entryStartGate(W2, ['2026-11-22', '2026-11-25'], null)).toBeNull()
+    expect(entryStartGate(W2, ['2026-11-25', '2026-11-20'], 'Bo User')).toBe(startsLaterFor('Bo User', '2026-11-22'))
+    expect(startsLaterMessage('2026-11-22')).toMatch(/Sunday, Nov 22/)
+  })
+
+  it('no wave, no start date, or an unread one refuses on every day', () => {
+    expect(entryStartGate({ startsOn: null, noWave: true }, ['2026-12-01'], null)).toBe(NO_WAVE_MESSAGE)
+    expect(entryStartGate({ startsOn: null, noWave: true }, [], 'Ed Wagner')).toBe(noWaveFor('Ed Wagner'))
+    expect(entryStartGate({ startsOn: null, noWave: false }, ['2026-12-01'], null)).toBe(NO_START_MESSAGE)
+    expect(entryStartGate({ startsOn: null, noWave: false }, [], 'Ed Wagner')).toBe(noStartFor('Ed Wagner'))
+    expect(entryStartGate({ startsOn: '2026-11-08', noWave: false, unread: true }, ['2026-12-01'], null)).toBe(START_UNREAD)
+    expect(entryStartGate({ startsOn: null, noWave: false, unread: true }, [], 'Ed Wagner')).toBe(startUnreadFor('Ed Wagner'))
+    // No days to check yet: only who the person is.
+    expect(entryStartGate(W2, [], null)).toBeNull()
+  })
+})

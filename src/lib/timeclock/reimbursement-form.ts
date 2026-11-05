@@ -13,7 +13,7 @@
  */
 
 import { parsePaidOn } from './paid-on'
-import { CATEGORIES, MEAL_REASON_ERROR, MILEAGE, mealReasonMissing, mileageAmount, mileageNote, milesOf, needsReceipt } from './reimbursement-rules'
+import { amountOf, CATEGORIES, MEAL_REASON_ERROR, MILEAGE, mealReasonMissing, mileageAmount, mileageNote, milesOf, needsReceipt, withoutMileageNote } from './reimbursement-rules'
 
 export const RECEIPT_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/heif': 'heif', 'image/webp': 'webp', 'application/pdf': 'pdf' }
 export const MAX_RECEIPT = 10 * 1024 * 1024
@@ -46,12 +46,22 @@ export interface ItemRules {
   today: string
 }
 
+/** A receipt as stored, when an edit changes it: what a Mileage line keeps when its miles did not change. */
+export interface StoredLine {
+  category: string
+  amount: number | string
+  miles?: number | string | null
+  mileage_rate?: number | string | null
+}
+
 /**
  * One receipt's fields, or the refusal's words. `n` starts each refusal
  * ("Receipt 2: "); `stored` says a receipt file is already kept for it (an
- * edit), so a new one is not needed.
+ * edit), so a new one is not needed. `prev`, on an edit, is the receipt as
+ * stored: a Mileage line whose miles did not change keeps its rate and amount
+ * (audit, 5 November 2026); a new or changed one is worked out at today's rate.
  */
-export function readItem(get: (k: string) => FormDataEntryValue | null, n: string, rules: ItemRules, stored = false): RmbItem | string {
+export function readItem(get: (k: string) => FormDataEntryValue | null, n: string, rules: ItemRules, stored = false, prev: StoredLine | null = null): RmbItem | string {
   const category = String(get('category') ?? '')
   if (!CATEGORIES.includes(category)) return `${n}pick a category.`
   // Every category needs its receipt but Mileage, where a receipt is optional.
@@ -76,13 +86,17 @@ export function readItem(get: (k: string) => FormDataEntryValue | null, n: strin
     // The amount is worked out here from the miles and the company's rate, in dollars.
     miles = milesOf(String(get('miles') ?? ''))
     if (miles == null) return `${n}write the miles, like 120.`
-    rate = rules.mileageRate
-    amount = mileageAmount(miles, rate)
+    const kept = keptMileage(prev, miles)
+    rate = kept?.rate ?? rules.mileageRate
+    amount = kept?.amount ?? mileageAmount(miles, rate)
     currency = 'USD'
+    // The note the portal added is written again, never twice.
+    purpose = withoutMileageNote(purpose, miles, rate).trim() || purpose
     purpose += mileageNote(miles, rate)
   } else {
-    amount = Number(String(get('amount') ?? '').replace(/,/g, ''))
-    if (!(amount > 0 && amount < 100_000)) return `${n}write the amount, like 35.00.`
+    const typed = amountOf(String(get('amount') ?? ''))
+    if (typed == null) return `${n}write the amount, like 35.00.`
+    amount = typed
     currency = String(get('currency') ?? 'USD').toUpperCase()
     if (!/^[A-Z]{3}$/.test(currency)) return `${n}pick the currency.`
     if (rules.contractor && currency !== 'USD') return `${n}write the amount in US dollars: your invoice is in USD.`
@@ -93,6 +107,14 @@ export function readItem(get: (k: string) => FormDataEntryValue | null, n: strin
   const client = clientRaw && clientRaw !== 'None' ? clientRaw : null
   if (client && !rules.clients.includes(client)) return `${n}pick a client or project from the list.`
   return { file, ext, spentOn, category, amount: Math.round(amount * 100) / 100, currency, purpose, client, billable: !!client && get('billable') === 'yes', miles, rate }
+}
+
+/** The stored rate and amount of a Mileage line whose miles are the same; null when it is new or its miles changed. */
+export function keptMileage(prev: StoredLine | null, miles: number): { rate: number; amount: number } | null {
+  if (!prev || prev.category !== MILEAGE || prev.miles == null || prev.mileage_rate == null) return null
+  const rate = Number(prev.mileage_rate), amount = Number(prev.amount)
+  if (Number(prev.miles) !== miles || !(rate > 0) || !(amount > 0)) return null
+  return { rate, amount }
 }
 
 /** What the change history keeps of a receipt: its values, before or after (migration 153). */

@@ -317,8 +317,8 @@ function decisionRow(r: CardRow, today: string): HomeRow {
     switch (card.kind) {
       case 'off': case 'off-cancel': return { do: 'time-off' as const, id: card.id, decision, cancel: card.kind === 'off-cancel' }
       case 'xh': return { do: 'extra-hours' as const, id: card.id, decision }
-      case 'rmb': return { do: 'reimbursement' as const, id: card.id, decision }
-      case 'rmb-report': return { do: 'reimbursement-report' as const, id: card.id, ids: (card.items ?? []).filter(i => i.state === 'pending').map(i => i.id), decision }
+      case 'rmb': return { do: 'reimbursement' as const, id: card.id, decision, version: card.version }
+      case 'rmb-report': return { do: 'reimbursement-report' as const, id: card.id, ids: (card.items ?? []).filter(i => i.state === 'pending').map(i => i.id), decision, version: card.version }
     }
   }
   const panel: Panel = {

@@ -22,9 +22,10 @@ import { loadDirectory } from './clocky-context'
 import { loadInvoiceSettings, loadRequestDeciders } from './pay-terms'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
+import { cancelAskedText } from './time-off'
 import { reportTitle, totalsText, type Amount } from './reimbursement-reports'
 import {
-  clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText, timeOffCancelDecidedText, timeOffCancelAskedText,
+  clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText, timeOffCancelDecidedText,
   timesheetDecidedText, timesheetSubmittedText, invoiceMadeText, invoiceApprovedText, invoicePaidText,
   hoursApprovedForApproverText, hoursApprovedForPersonText,
 } from './notify-text'
@@ -126,13 +127,16 @@ export async function announceTimeOffRequested(r: { id: number; person_id: strin
   })
 }
 
-/** 7E: approved time off its person asks to cancel; whoever decides their time off decides. */
-export async function announceTimeOffCancelAsked(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; reason: string }): Promise<void> {
+/**
+ * 7E: approved time off its person asks to cancel; whoever decides their time off decides. Their reason
+ * stays out of the bell and the email (owner, 5 November 2026: the person and Super Admins only).
+ */
+export async function announceTimeOffCancelAsked(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string }): Promise<void> {
   await quiet('time off cancel asked', async () => {
     const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([r.person_id])])
     await notifyClockyTimeOffRequested({
       requestId: r.id, personId: r.person_id, key: `${r.id}:cancel`, to: deciders('off', r.person_id),
-      text: timeOffCancelAskedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.reason),
+      text: cancelAskedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date),
     })
   })
 }

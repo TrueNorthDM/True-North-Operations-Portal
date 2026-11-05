@@ -133,18 +133,37 @@ export async function sentBefore(keys: readonly string[], exceptInvoiceId: numbe
   return out
 }
 
-/** Whether a sender already sent the month (decision C): free, theirs to send again (returned), or taken. */
+/**
+ * The person's live invoices sent from the portal (waiting, approved or paid;
+ * not one sent back) for any period touching the month: a month with no
+ * timesheet, or a timesheet's pay period that falls in it. One invoice a
+ * person a month across both ways (audit, 5 November 2026).
+ */
+async function portalInvoicesIn(personId: string, start: string, end: string): Promise<{ id: number; number: string; state: string }[]> {
+  const { data, error } = await c().from('invoices').select('id, number, state').eq('person_id', personId).is('source', null).neq('state', 'draft')
+    .lte('period_start', end).gte('period_end', start)
+  if (error) throw new Error(`Invoices could not be read: ${error.message}`)
+  return (data ?? []) as { id: number; number: string; state: string }[]
+}
+
+/**
+ * Whether a sender already sent the month (decision C): free, theirs to send
+ * again (returned), or taken. A live invoice they sent from the portal for the
+ * month takes it too.
+ */
 export async function monthFor(email: string, personId: string | null, ym: string): Promise<MonthState> {
-  const { start } = monthBounds(ym)
-  const [inv, sub] = await Promise.all([
+  const { start, end } = monthBounds(ym)
+  const [inv, portal, sub] = await Promise.all([
     personId
       ? c().from('invoices').select('id, number, state').eq('person_id', personId).eq('period_start', start).not('source', 'is', null)
       : Promise.resolve({ data: [], error: null }),
+    personId ? portalInvoicesIn(personId, start, end) : Promise.resolve([]),
     c().from('invoice_form_submissions').select('id').ilike('email', email.replace(/[\\%_]/g, m => `\\${m}`)).eq('period_start', start).eq('state', 'waiting').limit(1),
   ])
   if (inv.error) throw new Error(`Invoices could not be read: ${inv.error.message}`)
   if (sub.error) throw new Error(`Invoice form submissions could not be read: ${sub.error.message}`)
-  return monthState((inv.data ?? []) as { id: number; number: string; state: string }[], (sub.data ?? []).length > 0)
+  // The portal's are never draft here, so any of them makes the month taken.
+  return monthState([...((inv.data ?? []) as { id: number; number: string; state: string }[]), ...portal], (sub.data ?? []).length > 0)
 }
 
 // ── Making the invoice ─────────────────────────────────────────────────────
@@ -194,11 +213,11 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
   }
 
   let id: number, number: string
-  let oldLines: number[] = [], oldRmb: { id: number; receipt_path: string | null }[] = []
+  let oldLines: OldLine[] = [], oldRmb: { id: number; receipt_path: string | null }[] = []
   let before: Omit<Before, 'id' | 'number' | 'person_id' | 'source'> | null = null
   if (x.againId) {
     const { data: ex, error } = await db.from('invoices')
-      .select('id, number, person_id, source, state, total, own_pdf_path, own_pdf_name, made_by, sent_from, sent_by, sent_at, confirmed_text, their_number, stated_hours, stated_total, covers')
+      .select('id, number, person_id, source, state, total, own_pdf_path, own_pdf_name, made_by, sent_from, sent_by, sent_at, confirmed_text, their_number, stated_hours, stated_total, covers, paid_note, approved_by, approved_at, issued_on, due_on, sender_email, from_snapshot, to_snapshot')
       .eq('id', x.againId).maybeSingle()
     if (error) throw new Error(`The invoice could not be read: ${error.message}`)
     if (!ex || ex.state !== 'draft' || ex.person_id !== x.personId || !ex.source) throw new Error('That invoice is not waiting to be sent again.')
@@ -207,13 +226,16 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
     before = {
       state: e.state, total: e.total, own_pdf_path: e.own_pdf_path, own_pdf_name: e.own_pdf_name, made_by: e.made_by, sent_from: e.sent_from, sent_by: e.sent_by,
       sent_at: e.sent_at, confirmed_text: e.confirmed_text, their_number: e.their_number, stated_hours: e.stated_hours, stated_total: e.stated_total, covers: e.covers,
+      // The reason it was sent back, who did and when, and its dates: the send clears or replaces them.
+      paid_note: e.paid_note, approved_by: e.approved_by, approved_at: e.approved_at, issued_on: e.issued_on, due_on: e.due_on, sender_email: e.sender_email,
+      from_snapshot: e.from_snapshot, to_snapshot: e.to_snapshot,
     }
     const [ol, orr] = await Promise.all([
-      db.from('invoice_lines').select('id').eq('invoice_id', ex.id),
+      db.from('invoice_lines').select(OLD_LINE_COLS).eq('invoice_id', ex.id),
       db.from('reimbursements').select('id, receipt_path').eq('invoice_id', ex.id),
     ])
     if (ol.error || orr.error) throw new Error(`The invoice lines could not be read: ${(ol.error ?? orr.error)!.message}`)
-    oldLines = (ol.data ?? []).map(l => l.id)
+    oldLines = (ol.data ?? []) as OldLine[]
     oldRmb = (orr.data ?? []) as { id: number; receipt_path: string | null }[]
     id = ex.id
     number = ex.number
@@ -275,10 +297,22 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
   }
 
   if (x.againId) {
-    // The old lines and reimbursements go once the new ones are in, and the old receipts with them.
-    if (oldLines.length) await db.from('invoice_lines').delete().in('id', oldLines)
+    // The old lines and reimbursements go once the new ones are in, and the old receipts with them. When
+    // either cannot go, the send is put back whole (the old lines too) and fails: never both versions on it.
+    if (oldLines.length) {
+      const { error } = await db.from('invoice_lines').delete().in('id', oldLines.map(l => l.id))
+      if (error) { await undo(); throw new Error(`The invoice was not saved: ${error.message}`) }
+    }
     if (oldRmb.length) {
-      await db.from('reimbursements').delete().in('id', oldRmb.map(r => r.id))
+      const { error } = await db.from('reimbursements').delete().in('id', oldRmb.map(r => r.id))
+      if (error) {
+        if (oldLines.length) {
+          const { error: back } = await db.from('invoice_lines').insert(oldLines)
+          if (back) console.error('[invoice form] the old lines were not put back:', back.message)
+        }
+        await undo()
+        throw new Error(`The invoice was not saved: ${error.message}`)
+      }
       const files = oldRmb.map(r => r.receipt_path).filter((p): p is string => !!p)
       if (files.length) await createUploadClient().storage.from('receipts').remove(files).catch(() => null)
     }
@@ -289,11 +323,20 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
   return { id, number }
 }
 
+/** An old line of a returned invoice, whole: put back as it was when the send fails after it went. */
+const OLD_LINE_COLS = 'id, invoice_id, kind, client, description, hours_seconds, rate, amount, reimbursement_id, sort, deliverable_kind, deliverable_key'
+type OldLine = {
+  id: number; invoice_id: number; kind: string; client: string | null; description: string; hours_seconds: number | null; rate: number | null
+  amount: number; reimbursement_id: number | null; sort: number; deliverable_kind: string | null; deliverable_key: string | null
+}
+
 /** A returned invoice as read before it is sent again: what the send changes, kept to put back when it fails half way. */
 type Before = {
   id: number; number: string; person_id: string; source: string | null; state: string; total: number
   own_pdf_path: string | null; own_pdf_name: string | null; made_by: string | null; sent_from: string | null; sent_by: string | null
   sent_at: string | null; confirmed_text: string | null; their_number: string | null; stated_hours: number | null; stated_total: number | null; covers: string | null
+  paid_note: string | null; approved_by: string | null; approved_at: string | null; issued_on: string; due_on: string; sender_email: string | null
+  from_snapshot: Json; to_snapshot: Json
 }
 
 /** A reimbursement riding on a form invoice: no decision of its own, approved with the invoice. */
@@ -405,6 +448,7 @@ export async function linkSubmission(id: number, personId: string, linkedBy: str
   const { data: had, error: hErr } = await db.from('invoices').select('id').eq('person_id', personId).eq('period_start', s.period_start).not('source', 'is', null).limit(1)
   if (hErr) throw new Error(`Invoices could not be read: ${hErr.message}`)
   if ((had ?? []).length) return { ok: false, error: `That person already has an invoice from the form for ${periodLabel({ start: s.period_start, end: s.period_end }).full}.` }
+  if ((await portalInvoicesIn(personId, s.period_start, s.period_end)).length) return { ok: false, error: `That person already sent an invoice from the portal for ${periodLabel({ start: s.period_start, end: s.period_end }).full}.` }
   const receipts = new Map<number, StoredFile>()
   const reimbursements = rmb.map((r, i) => {
     if (r.receipt) receipts.set(i, r.receipt)

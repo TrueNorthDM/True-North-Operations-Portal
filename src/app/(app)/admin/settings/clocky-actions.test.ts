@@ -6,11 +6,12 @@ let readFails = false
 let stored: Record<string, boolean> = {}
 const writes: Record<string, unknown>[] = []
 let people: { id: string; status: string | null; access_level: string }[] = []
+let finance: string[] = []
 
 const client = {
-  from: () => ({
+  from: (table: string) => ({
     select: () => ({
-      eq: () => ({ maybeSingle: async () => (readFails ? { data: null, error: { message: 'boom' } } : { data: { clocky_reminders: stored }, error: null }) }),
+      eq: () => ({ maybeSingle: async () => (readFails ? { data: null, error: { message: 'boom' } } : { data: table === 'invoice_settings' ? { finance } : { clocky_reminders: stored }, error: null }) }),
       in: async (_col: string, ids: string[]) => ({ data: people.filter(p => ids.includes(p.id)), error: null }),
     }),
     update: (row: Record<string, unknown>) => ({ eq: async () => { writes.push(row); return { error: null } } }),
@@ -30,6 +31,7 @@ beforeEach(() => {
   stored = {}
   writes.length = 0
   people = []
+  finance = []
 })
 
 describe('setReminder', () => {
@@ -54,6 +56,7 @@ describe('saveReimbursementApprovers', () => {
 
   it('saves the list once each, as saveFinance does', async () => {
     people = [{ id: DAVE, status: 'active', access_level: 'super_admin' }, { id: TINA, status: 'active', access_level: 'admin' }]
+    finance = [TINA]
     const r = await saveReimbursementApprovers({ personIds: [DAVE, TINA, DAVE] })
     expect(r.ok).toBe(true)
     expect(writes[0].reimbursement_approvers).toEqual([DAVE, TINA])
@@ -70,6 +73,20 @@ describe('saveReimbursementApprovers', () => {
     people = [{ id: DAVE, status: 'inactive', access_level: 'admin' }]
     expect((await saveReimbursementApprovers({ personIds: [DAVE] })).ok).toBe(false)
     expect((await saveReimbursementApprovers({ personIds: ['not-a-uuid'] })).ok).toBe(false)
+    expect(writes).toEqual([])
+  })
+
+  it('refuses a plain Admin who is not Finance: only Super Admins and Finance see reimbursements', async () => {
+    people = [{ id: DAVE, status: 'active', access_level: 'super_admin' }, { id: TINA, status: 'active', access_level: 'admin' }]
+    const r = await saveReimbursementApprovers({ personIds: [DAVE, TINA] })
+    expect(r).toEqual({ ok: false, error: 'Pick Super Admins or Finance: only they see reimbursements.' })
+    expect(writes).toEqual([])
+  })
+
+  it('writes nothing when Finance could not be read', async () => {
+    people = [{ id: DAVE, status: 'active', access_level: 'super_admin' }]
+    readFails = true
+    expect((await saveReimbursementApprovers({ personIds: [DAVE] })).ok).toBe(false)
     expect(writes).toEqual([])
   })
 })

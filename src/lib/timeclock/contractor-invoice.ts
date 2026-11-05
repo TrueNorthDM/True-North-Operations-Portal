@@ -10,6 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dueOn } from './invoice-lines'
 import { loadInvoiceSettings } from './pay-terms'
+import { periodLabel } from './periods'
 import { builderProblem, lineAmount, linesAtFileRate, payOnFile, type BuilderLine, type MadeBy, type SentFrom } from './contractor-invoice-rules'
 
 export * from './contractor-invoice-rules'
@@ -53,6 +54,21 @@ export async function recordSend(invoiceId: number, r: SendRecord, now: Date): P
   if (error) console.error('[invoice send] version not kept:', error.message)
 }
 
+/** Said when the period is already sent (two sends at once: the second one is refused). */
+export const ALREADY_SENT = 'Your invoice for this period is already sent and waiting for approval.'
+/** Said when a reimbursement they ticked went on another invoice while they were sending. */
+export const RMB_TAKEN = 'A reimbursement you chose is already on another invoice. Reload the page and send your invoice again.'
+
+/** One invoice a month across both ways: refused here when the invoice form already has one for a month this period covers. */
+export const formMonthTakenText = (monthName: string, number: string, financeEmail: string | null): string =>
+  `You already sent an invoice for ${monthName} with the invoice form (${number}). One invoice a month: to change it, write to Finance${financeEmail ? ` at ${financeEmail}` : ''}.`
+
+/** What a send changes on an invoice sent back to them, kept to put back when the send fails half way. */
+const BEFORE_COLS = [
+  'state', 'total', 'issued_on', 'due_on', 'from_snapshot', 'to_snapshot', 'approved_by', 'approved_at', 'paid_note', 'updated_at',
+  'made_by', 'sent_from', 'sent_by', 'sent_at', 'confirmed_text', 'their_number', 'stated_hours', 'stated_total', 'covers', 'own_pdf_path', 'own_pdf_name',
+] as const
+
 /**
  * A contractor's invoice sent from the portal: for a sent timesheet (hourly,
  * fixed monthly) or a month with no timesheet. A new invoice, or the same one
@@ -61,6 +77,13 @@ export async function recordSend(invoiceId: number, r: SendRecord, now: Date): P
  * Built lines are billed at the rate or amount on file, read here again
  * (owner, 5 November 2026): whatever rate or amount the record carries is
  * replaced, and the total made again from the lines and reimbursements.
+ *
+ * Safe against two sends at once (audit, 5 November 2026): a sent-back invoice
+ * is claimed out of Draft in one step, a reimbursement moves onto it only
+ * while it is still approved and on no invoice, and the old lines go only once
+ * the new ones are in. When any step fails, what this send did is put back.
+ * One invoice a person a month across both ways: refused when the invoice
+ * form already has a live one (not sent back) for a month this period covers.
  */
 export async function writeSentInvoice(x: {
   personId: string
@@ -69,26 +92,43 @@ export async function writeSentInvoice(x: {
   end: string
   kind: 'hourly' | 'fixed_monthly' | 'fixed_no_timesheet'
   record: SendRecord
-  /** Approved reimbursements they put on it. */
+  /** Approved reimbursements they put on it, and (sent again) the ones already on it they keep. */
   reimbursementIds: readonly number[]
   now?: Date
 }): Promise<{ id: number; number: string; total: number }> {
   const c = createAdminClient()
   const now = x.now ?? new Date()
-  const [settings, personRes, rmbRes] = await Promise.all([
+  const ids = [...new Set(x.reimbursementIds)]
+  // The one already there for this timesheet or month (sent back to them): sent again, same number.
+  const q = c.from('invoices').select('*').eq('person_id', x.personId)
+  const [settings, personRes, rmbRes, exRes, formRes] = await Promise.all([
     loadInvoiceSettings(),
     c.from('people').select('full_name, location, email_personal, email_true_north, internal_rate, monthly_salary').eq('id', x.personId).maybeSingle(),
-    x.reimbursementIds.length
-      ? c.from('reimbursements').select('id, category, purpose, amount, state, invoice_id, person_id').in('id', [...x.reimbursementIds])
+    ids.length
+      ? c.from('reimbursements').select('id, category, purpose, amount, state, invoice_id, person_id').in('id', ids)
       : Promise.resolve({ data: [], error: null }),
+    x.submissionId
+      ? q.eq('submission_id', x.submissionId).maybeSingle()
+      : q.is('submission_id', null).is('source', null).eq('kind', 'fixed_no_timesheet').eq('period_start', x.start).maybeSingle(),
+    // The other way: a live invoice from the invoice form (waiting, approved or paid) for a month this period covers.
+    c.from('invoices').select('id, number, period_start, period_end').eq('person_id', x.personId).not('source', 'is', null).neq('state', 'draft')
+      .lte('period_start', x.end).gte('period_end', x.start).limit(1),
   ])
   if (personRes.error) throw new Error(`The person could not be read: ${personRes.error.message}`)
   if (rmbRes.error) throw new Error(`Reimbursements could not be read: ${rmbRes.error.message}`)
+  if (exRes.error) throw new Error(`The invoice could not be read: ${exRes.error.message}`)
+  if (formRes.error) throw new Error(`Invoices could not be read: ${formRes.error.message}`)
+  const existing = exRes.data
+  if (existing && existing.state !== 'draft') throw new Error(existing.state === 'waiting' ? ALREADY_SENT : 'Your invoice for this period is already approved.')
+  const fromForm = (formRes.data ?? [])[0]
+  if (fromForm) throw new Error(formMonthTakenText(periodLabel({ start: fromForm.period_start, end: fromForm.period_end }).full, fromForm.number, settings.billingEmail))
+
   const person = personRes.data
   type R = { id: number; category: string; purpose: string; amount: number; state: string; invoice_id: number | null; person_id: string }
   const rmb = ((rmbRes.data ?? []) as R[])
-  // Only their own, approved, not on another invoice.
-  if (rmb.some(r => r.person_id !== x.personId || r.state !== 'approved')) throw new Error('A reimbursement on it is not yours to add, or is not approved.')
+  // Only their own: approved and on no invoice, or (sent again) already on this one.
+  const usable = (r: R) => (r.state === 'approved' && r.invoice_id == null) || (!!existing && r.state === 'on_invoice' && r.invoice_id === existing.id)
+  if (rmb.length !== ids.length || rmb.some(r => r.person_id !== x.personId || !usable(r))) throw new Error('A reimbursement on it is not yours to add, is not approved, or is already on another invoice.')
 
   let record = x.record
   if (record.madeBy === 'builder') {
@@ -119,22 +159,13 @@ export async function writeSentInvoice(x: {
     ...sendFields(record, now),
   }
 
-  // The one already there for this timesheet or month (sent back to them): sent again, same number.
-  const q = c.from('invoices').select('id, number, state').eq('person_id', x.personId)
-  const { data: existing, error: exErr } = x.submissionId
-    ? await q.eq('submission_id', x.submissionId).maybeSingle()
-    : await q.is('submission_id', null).is('source', null).eq('kind', 'fixed_no_timesheet').eq('period_start', x.start).maybeSingle()
-  if (exErr) throw new Error(`The invoice could not be read: ${exErr.message}`)
-  if (existing && existing.state !== 'draft') throw new Error(existing.state === 'waiting' ? 'Your invoice for this period is already sent and waiting for approval.' : 'Your invoice for this period is already approved.')
-
   let id: number, number: string
+  let oldLines: number[] = []
   if (existing) {
-    const { error } = await c.from('invoices').update(fields).eq('id', existing.id)
+    // Claimed in one step: of two sends at once, only one moves it out of Draft; the other is refused.
+    const { data: claimed, error } = await c.from('invoices').update(fields).eq('id', existing.id).eq('state', 'draft').select('id')
     if (error) throw new Error(`The invoice was not saved: ${error.message}`)
-    // The lines of the version before go: the version itself stays in invoice_sends.
-    await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', existing.id)
-    const { error: dErr } = await c.from('invoice_lines').delete().eq('invoice_id', existing.id)
-    if (dErr) throw new Error(`The invoice was not saved: ${dErr.message}`)
+    if (!claimed?.length) throw new Error(ALREADY_SENT)
     id = existing.id; number = existing.number
   } else {
     const { data: n, error: nErr } = await c.rpc('next_document_number', { p_kind: 'invoice' })
@@ -143,18 +174,62 @@ export async function writeSentInvoice(x: {
     if (error) throw new Error(`The invoice was not saved: ${error.message}`)
     id = made.id; number = made.number
   }
-  const all = [...builderRows, ...rmbRows].map(l => ({ ...l, invoice_id: id }))
-  if (all.length) {
-    const { error: lErr } = await c.from('invoice_lines').insert(all)
-    if (lErr) {
-      // Never an invoice waiting with no lines: back to the contractor to send again.
-      await c.from('invoices').update({ state: 'draft', updated_at: now.toISOString() }).eq('id', id)
-      throw new Error(`The invoice lines were not saved: ${lErr.message}`)
-    }
+
+  const before = existing ? Object.fromEntries(BEFORE_COLS.map(k => [k, existing[k]])) as Pick<typeof existing, (typeof BEFORE_COLS)[number]> : null
+  const added: number[] = [], moved: number[] = [], freed: number[] = []
+  // Put back what this send did: never an invoice waiting with half its lines, never a reimbursement on two invoices.
+  const undo = async () => {
+    const fails: string[] = []
+    const run = async (p: PromiseLike<{ error: { message: string } | null }>) => { const { error } = await p; if (error) fails.push(error.message) }
+    if (moved.length) await run(c.from('reimbursements').update({ state: 'approved', invoice_id: null }).in('id', moved).eq('invoice_id', id))
+    if (freed.length) await run(c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id }).in('id', freed).eq('state', 'approved').is('invoice_id', null))
+    if (added.length) await run(c.from('invoice_lines').delete().in('id', added))
+    // Sent back before: as it was, with its reason. New: back to the contractor (Draft, keeping its number) to send again.
+    await run(c.from('invoices').update(before ?? { state: 'draft', updated_at: now.toISOString() }).eq('id', id))
+    if (fails.length) console.error('[invoice send] not all put back:', fails.join('; '))
   }
-  if (rmb.length) {
-    const { error: rErr } = await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id }).in('id', rmb.map(r => r.id))
-    if (rErr) console.error('[invoice send] reimbursements not marked:', rErr.message)
+
+  try {
+    if (existing) {
+      const { data: ol, error } = await c.from('invoice_lines').select('id').eq('invoice_id', id)
+      if (error) throw new Error(`The invoice was not saved: ${error.message}`)
+      oldLines = (ol ?? []).map(l => l.id as number)
+    }
+    const all = [...builderRows, ...rmbRows].map(l => ({ ...l, invoice_id: id }))
+    if (all.length) {
+      const { data: ls, error } = await c.from('invoice_lines').insert(all).select('id')
+      if (error) throw new Error(`The invoice lines were not saved: ${error.message}`)
+      added.push(...(ls ?? []).map(l => l.id as number))
+    }
+    if (existing) {
+      // Sent again: the reimbursements on it they did not keep go back to waiting for an invoice.
+      const keep = rmb.filter(r => r.invoice_id === id).map(r => r.id)
+      const { data: onIt, error } = await c.from('reimbursements').select('id').eq('invoice_id', id).eq('state', 'on_invoice')
+      if (error) throw new Error(`Reimbursements could not be read: ${error.message}`)
+      const drop = (onIt ?? []).map(r => r.id as number).filter(rid => !keep.includes(rid))
+      if (drop.length) {
+        const { data: off, error: oErr } = await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).in('id', drop).eq('invoice_id', id).select('id')
+        if (oErr) throw new Error(`The reimbursements were not saved: ${oErr.message}`)
+        freed.push(...(off ?? []).map(r => r.id as number))
+      }
+    }
+    // Onto this invoice only while still approved and on no invoice: one reimbursement is never on two invoices.
+    const attach = rmb.filter(r => r.invoice_id !== id).map(r => r.id)
+    if (attach.length) {
+      const { data: on, error } = await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id })
+        .in('id', attach).eq('state', 'approved').is('invoice_id', null).select('id')
+      if (error) throw new Error(`The reimbursements were not saved: ${error.message}`)
+      moved.push(...(on ?? []).map(r => r.id as number))
+      if (moved.length < attach.length) throw new Error(RMB_TAKEN)
+    }
+    // The lines of the version before go once the new ones are in: the version itself stays in invoice_sends.
+    if (oldLines.length) {
+      const { error } = await c.from('invoice_lines').delete().in('id', oldLines)
+      if (error) throw new Error(`The invoice was not saved: ${error.message}`)
+    }
+  } catch (e) {
+    await undo()
+    throw e
   }
   await recordSend(id, record, now)
   return { id, number, total: record.total }

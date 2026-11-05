@@ -7,7 +7,7 @@
  *
  * No session here on purpose, so every action checks the rest itself: North
  * Time is open (the form follows its lock), the email was proved (the signed cookie), and nobody asks
- * too often (codes an hour for an email and for a network address). Nothing
+ * too often (codes an hour and a day for an email and for a network address). Nothing
  * of anyone else's ever comes back: an item sent before names only the item
  * and the day. Generic errors to the page, details in the server log. The
  * invoice itself is sent by the route next to the page (submit/route.ts), as
@@ -22,9 +22,10 @@ import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { periodLabel } from '@/lib/timeclock/periods'
 import { findSender, formToday, mailSender, monthFor, sentBefore } from '@/lib/invoice-form/data'
-import { CODE_LIFE_MS, MAX_TRIES, codeOf, codeVerdict, emailOf, firstDuplicate, isDeliverable, itemKey, itemName, monthBounds, monthOk, monthTakenText, overCodeCap, resendWait } from '@/lib/invoice-form/rules'
+import { CODE_LIFE_MS, CODE_PENDING, MAX_TRIES, codeLimit, codeLimitText, codeOf, codeVerdict, emailOf, firstDuplicate, isDeliverable, itemKey, itemName, monthBounds, monthOk, monthTakenText } from '@/lib/invoice-form/rules'
 import { DEVICE_COOKIE, DEVICE_MAX_AGE, DEVICE_PATH, codeHash, codeMatches, devicePass } from '@/lib/invoice-form/secrets'
 import { provedEmail } from '@/lib/invoice-form/device'
+import { visitorOf } from '@/lib/auth/send-limit'
 
 type Fail = { ok: false; error: string }
 const no = (error: string): Fail => ({ ok: false, error })
@@ -32,10 +33,10 @@ const TRY_AGAIN = 'Something went wrong. Try again in a moment.'
 const NOT_OPEN = 'The invoice form is not open yet.'
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex')
+/** The visitor as our own proxy saw them (the LAST x-forwarded-for entry): the browser cannot pick its own. */
 async function clientKey(): Promise<string> {
   const h = await headers()
-  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || h.get('x-real-ip') || 'unknown'
-  return sha(`invoice-form:${ip}`)
+  return sha(`invoice-form:${visitorOf(h.get('x-forwarded-for'))}`)
 }
 
 /** The lock, before anything else. */
@@ -53,35 +54,52 @@ export async function requestCode(input: { email: string }): Promise<CodeSent> {
   const email = emailOf(input?.email)
   if (!email) return no('Write your email, like name@example.com.')
   const c = createAdminClient()
+  const codes = () => c.from('invoice_form_codes')
+  // Stored first (not yet usable), counted after: codes asked for at once cannot all pass the caps.
+  let pending: number | null = null
+  const drop = async () => {
+    if (pending == null) return
+    const id = pending
+    pending = null
+    const { error } = await codes().delete().eq('id', id)
+    if (error) console.error('[invoice form] code drop:', error.message)
+  }
   try {
     const key = await clientKey()
-    const since = new Date(Date.now() - 3600e3).toISOString()
-    const [byEmail, byClient, last] = await Promise.all([
-      c.from('invoice_form_codes').select('id', { count: 'exact', head: true }).eq('email', email).gt('created_at', since),
-      c.from('invoice_form_codes').select('id', { count: 'exact', head: true }).eq('client_key', key).gt('created_at', since),
-      c.from('invoice_form_codes').select('created_at').eq('email', email).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    ])
-    if (byEmail.error || byClient.error || last.error) throw new Error((byEmail.error ?? byClient.error ?? last.error)!.message)
-    const wait = resendWait(last.data?.created_at ?? null)
-    if (wait > 0) return no(`Wait ${wait} seconds, then send it again.`)
-    if (overCodeCap(byEmail.count ?? 0, byClient.count ?? 0)) return no('Too many codes in the last hour. Try again later.')
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0')
+    const { data: row, error } = await codes().insert({ email, code_hash: codeHash(email, code), client_key: key, expires_at: CODE_PENDING }).select('id').single()
+    if (error || !row) throw new Error(error?.message ?? 'no row')
+    pending = row.id
+    const since = new Date(Date.now() - 86_400e3).toISOString()
+    const [byEmail, byClient] = await Promise.all([
+      codes().select('id, created_at').eq('email', email).gt('created_at', since).order('created_at', { ascending: false }).limit(200),
+      codes().select('id, created_at').eq('client_key', key).gt('created_at', since).order('created_at', { ascending: false }).limit(200),
+    ])
+    if (byEmail.error || byClient.error) throw new Error((byEmail.error ?? byClient.error)!.message)
+    const limit = codeLimit(row.id, byEmail.data ?? [], byClient.data ?? [])
+    if (limit.kind !== 'ok') {
+      await drop()
+      return no(codeLimitText(limit))
+    }
     const now = Date.now()
-    const { error } = await c.from('invoice_form_codes').insert({ email, code_hash: codeHash(email, code), client_key: key, expires_at: new Date(now + CODE_LIFE_MS).toISOString() })
-    if (error) throw new Error(error.message)
+    const { error: upErr } = await codes().update({ expires_at: new Date(now + CODE_LIFE_MS).toISOString() }).eq('id', row.id)
+    if (upErr) throw new Error(upErr.message)
+    // It stands now: it counts against the caps even when the email does not go.
+    pending = null
     // Never shown on the page, not even on the staging copy (which emails only its own list): the code is the proof.
     const sent = await mailSender(email, { kind: 'code', code }, `code:${email}:${now}`)
     if (!sent) return no(IS_STAGING ? 'This staging copy only emails the addresses on its list.' : 'The email could not be sent. Check the address and try again.')
     return { ok: true, email, waitSeconds: 60 }
   } catch (e) {
     console.error('[invoice form] code:', e instanceof Error ? e.message : e)
+    await drop().catch(() => null)
     return no(TRY_AGAIN)
   }
 }
 
 export type Checked = { ok: true } | Fail
 
-/** "Continue": the code against the newest one of that email. Right: this device remembers the email for 30 days. */
+/** "Continue": the code against the newest one of that email (one still being counted is never it). Right: this device remembers the email for 30 days. */
 export async function checkCode(input: { email: string; code: string }): Promise<Checked> {
   const g = await gate()
   if (g) return g
@@ -91,7 +109,7 @@ export async function checkCode(input: { email: string; code: string }): Promise
   if (!code) return no('The code is 6 digits.')
   const c = createAdminClient()
   try {
-    const { data: row, error } = await c.from('invoice_form_codes').select('id, code_hash, tries, expires_at, used_at').eq('email', email).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    const { data: row, error } = await c.from('invoice_form_codes').select('id, code_hash, tries, expires_at, used_at').eq('email', email).gt('expires_at', CODE_PENDING).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (error) throw new Error(error.message)
     const verdict = codeVerdict(row)
     if (verdict === 'none' || verdict === 'used') return no('Ask for a code first.')

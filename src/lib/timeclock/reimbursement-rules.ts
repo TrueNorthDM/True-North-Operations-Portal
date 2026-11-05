@@ -47,10 +47,23 @@ export const mileageText = (miles: number, rate: number): string => `${mi(miles)
 /** Added to what it was for, so invoices and documents show it: " (120 mi at $0.76 a mile)". */
 export const mileageNote = (miles: number, rate: number): string => ` (${mi(miles)} mi at ${usd(rate)} a mile)`
 
-/** Miles as typed: a number over 0 and under 10,000, at most one decimal; else null. */
+/** A plain decimal as people type it: digits, thousands commas, an optional dot. Never "1e3", "0x10" or "Infinity". */
+const PLAIN_DECIMAL = /^(\d+(\.\d*)?|\.\d+)$/
+
+/** Miles as typed: a plain number, rounded to one decimal, then over 0 and under 10,000; else null. */
 export function milesOf(raw: string): number | null {
-  const n = Number(String(raw).replace(/,/g, '').trim())
-  return n > 0 && n < 10_000 ? Math.round(n * 10) / 10 : null
+  const t = String(raw ?? '').replace(/,/g, '').trim()
+  if (!PLAIN_DECIMAL.test(t)) return null
+  const n = Math.round(Number(t) * 10) / 10
+  return n > 0 && n < 10_000 ? n : null
+}
+
+/** Money as typed: a plain number with at most 2 decimals, rounded to the cent, then over 0 and under 100,000; else null. */
+export function amountOf(raw: string): number | null {
+  const t = String(raw ?? '').replace(/,/g, '').trim()
+  if (!PLAIN_DECIMAL.test(t) || /\.\d{3,}$/.test(t)) return null
+  const n = Math.round(Number(t) * 100) / 100
+  return n > 0 && n < 100_000 ? n : null
 }
 
 /** A meal while travelling over the cap (US dollars only; another currency has no cap): allowed, flagged for review. */

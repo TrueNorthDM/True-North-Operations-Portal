@@ -9,10 +9,9 @@
 
 import type { Db } from '@/lib/supabase/types'
 import { missingTable } from '@/lib/supabase/errors'
-import { loadSubjects } from '@/lib/access/store'
+import { loadSubject, loadSubjects } from '@/lib/access/store'
 import { LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
-import { NO_DATES, NO_WAVE, isWave, personWave, type Wave, type WaveDates } from './waves'
-import { northTimeOpen } from './north-time-lock'
+import { NO_DATES, NO_WAVE, isWave, personWave, type StartRead, type Wave, type WaveDates } from './waves'
 
 /** The two dates. A missing table is "not set"; any other failed read throws (an unread date is not "no date"). */
 export async function loadWaveDates(c: Db): Promise<WaveDates> {
@@ -58,8 +57,12 @@ export async function loadNoWave(c: Db, ids?: readonly string[]): Promise<Set<st
   return new Set([...all].filter(([, o]) => o.wave === NO_WAVE).map(([id]) => id))
 }
 
-/** Where one person stands, for the clock: their start date, and whether they are in no wave. */
-export interface NorthTimeStart { startsOn: string | null; noWave: boolean }
+/**
+ * Where one person stands, for the clock: their start date, and whether they
+ * are in no wave. `unread` is set only by callers that caught a failed read
+ * (they refuse with START_UNREAD); the readers here throw instead.
+ */
+export type NorthTimeStart = StartRead
 
 /** One person's start, for the clock: their level from the caller, their override and the dates from here. */
 export async function startOf(c: Db, personId: string, who: { level: AccessLevel; leader?: boolean }): Promise<NorthTimeStart> {
@@ -74,6 +77,20 @@ export async function startOf(c: Db, personId: string, who: { level: AccessLevel
 /** One person's start date (null in no wave or with no date). */
 export async function startDateOf(c: Db, personId: string, who: { level: AccessLevel; leader?: boolean }): Promise<string | null> {
   return (await startOf(c, personId, who)).startsOn
+}
+
+/**
+ * Anyone's start, their level and teams read here as the rollout list and the
+ * import read them (Add time and the week grid for another person). Throws on
+ * a failed read; someone not in the Directory has no start date.
+ */
+export async function startOfPerson(c: Db, personId: string): Promise<NorthTimeStart> {
+  const s = await loadSubject(c, personId)
+  if (!s) {
+    const overrides = await loadWaveOverrides(c, personId)
+    return { startsOn: null, noWave: overrides.get(personId) === NO_WAVE }
+  }
+  return startOf(c, personId, { level: s.level, leader: [...s.teams.values()].some(Boolean) })
 }
 
 export interface RolloutPerson {
@@ -106,10 +123,17 @@ export async function loadRolloutPeople(c: Db, dates?: WaveDates): Promise<Rollo
  * without reading anyone (the import calls it on every run). People in no
  * wave have no start date, so they are never here: the import keeps every
  * TSheets entry of theirs.
+ *
+ * The start dates do not depend on the North Time switch (audit, 5 November
+ * 2026). Once a wave's day has passed its people record in North Time, so
+ * their TSheets entries from that day on must stay set aside even if a Super
+ * Admin closes the switch later: taking them in again would count those hours
+ * twice. To hold a wave back, clear or move its day in Company settings >
+ * North Time rollout before it arrives. And no read here fails quietly: an
+ * unread date or person throws, so the import run fails instead of reading
+ * "nobody started" and pulling in a started wave's hours as duplicates.
  */
 export async function loadStartDates(c: Db): Promise<Map<string, string>> {
-  // While North Time is closed nobody has started: the import keeps every TSheets entry.
-  if (!(await northTimeOpen())) return new Map()
   const dates = await loadWaveDates(c)
   if (!dates[1] && !dates[2]) return new Map()
   const people = await loadRolloutPeople(c, dates)

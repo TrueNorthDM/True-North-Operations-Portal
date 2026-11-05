@@ -26,9 +26,9 @@ import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { loadPayTerms, loadRequestDeciders, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { orList } from './routing'
 import { addDays } from './periods'
-import { daysText, holidaysBetween, offDays } from './time-off'
+import { daysText, holidaysBetween, offDays, readsOffReason } from './time-off'
 import { usd } from './invoice-doc'
-import { receiptsText, reportTitle, totalsText, type Amount } from './reimbursement-reports'
+import { receiptsText, reportTitle, rmbVersion, totalsText, type Amount } from './reimbursement-reports'
 import { DESCRIPTION_LABEL, MEAL_OVER_FLAG, overMealCap } from './reimbursement-rules'
 
 /** One receipt of a request with several (migration 122), decided on its own. */
@@ -70,6 +70,12 @@ export interface RequestCard {
   roText: string | null
   approveLabel: string
   denyLabel: string
+  /**
+   * Reimbursements: the version of what waits as this card shows it
+   * (reimbursement-reports.ts rmbVersion). Sent back with the decision, which
+   * is refused if the request changed meanwhile.
+   */
+  version?: string
 }
 
 export interface CardRow {
@@ -159,7 +165,7 @@ export async function waitingRequests(v: Viewer, dir: Directory, settings: Invoi
     + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, deciders('xh', r.person_id), r.person_id)).length
 }
 
-type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string | null; receipt_name: string | null; receipt_size: number | null; receipt_number: string | null; report_id: number | null }
+type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string | null; receipt_name: string | null; receipt_size: number | null; receipt_number: string | null; report_id: number | null; miles: number | null }
 type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
 type XhRow = { id: number; person_id: string; asked_by: string | null; hours: number; period: string; period_start: string; period_end: string; client: string | null; reason: string; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
 
@@ -169,7 +175,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   const [offs, rmbs, xhs, catalog] = await Promise.all([
     allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
       .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id').range(a, b), 'Time off could not be read'),
-    allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, receipt_number, report_id')
+    allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, receipt_number, report_id, miles')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Reimbursements could not be read'),
     allRows<XhRow>((a, b) => c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Extra hours could not be read'),
@@ -225,8 +231,10 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const own = r.person_id === v.personId
       const { canDecide, decides, owner, ownerName } = routed('off', r.person_id, pending)
       const label = daysText(r.start_date, r.end_date)
-      // The reason for time off: the person and Super Admins only (owner, 5 November 2026).
-      const reason = own || v.isSuperAdmin ? r.reason : null
+      // The reasons for time off (its note, why cancel): the person and Super Admins only (owner, 5 November 2026).
+      const reads = readsOffReason(v, r.person_id)
+      const reason = reads ? r.reason : null
+      const cancelReason = reads ? r.cancel_reason : null
       const doneOf = (): CardRow['done'] => {
         if (pending) return null
         if (r.state === 'cancelled') return { label: 'Cancelled', tone: 'neu', by: `${dir.nameOf(r.cancelled_by)}, ${short(r.cancelled_at!, v.zone)}` }
@@ -238,7 +246,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         key: `o${r.id}`, type: 'off', id: r.id, personId: r.person_id, ...who,
         main: `${kind} · ${formatDuration(seconds)}`, sub: label,
         flag: cancelAsk ? { text: 'Cancellation asked', tone: 'warn' } : clash.length ? { text: `${clash[0].who} is off ${dayLabel(clash[0].d)}`, tone: 'neu' } : null,
-        why: cancelAsk ? (r.cancel_reason ? `"${r.cancel_reason}"` : null) : reason ? `"${reason}"` : null,
+        why: cancelAsk ? (cancelReason ? `"${cancelReason}"` : null) : reason ? `"${reason}"` : null,
         asked: cancelAsk ? `Cancellation asked ${short(r.cancel_asked_at!, v.zone)}` : asked(r.requested_at, v.zone),
         askedAt: cancelAsk ? r.cancel_asked_at! : r.requested_at,
         ownerName, owner, decides, own,
@@ -252,7 +260,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
             { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
             { k: 'Balance in Rippling', v: `${kind}: the balance shows here once Rippling is connected.` },
-            ...(cancelAsk ? [{ k: 'Why cancel', v: `"${r.cancel_reason ?? ''}"` }] : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
+            ...(cancelAsk ? (cancelReason ? [{ k: 'Why cancel', v: `"${cancelReason}"` }] : []) : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
           ],
           allow: null,
           cal: { label: `Team calendar, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
@@ -325,10 +333,11 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           facts: [{ k: 'Client or project', v: clients.length ? clients.join(', ') : 'None, not billable to a client' }],
           allow: overs ? `${overs === 1 ? 'A meal is' : `${overs} meals are`} over the $25 meal limit. The description says why; review it before you approve.` : null, cal: null,
           after: contractor
-            ? `${who.name} is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.`
+            ? `${who.name} is a contractor. They add each receipt you approve to their next invoice, as its own line.`
             : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Deny all' : 'Deny',
+          ...(pending ? { version: rmbVersion(waiting) } : {}),
         },
       })
     }
@@ -365,10 +374,11 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           ],
           allow: over ? `${MEAL_OVER_FLAG}. The description says why; review it before you approve.` : null, cal: null,
           after: contractor
-            ? `${who.name} is a contractor. Approving puts it on their next invoice by itself.`
+            ? `${who.name} is a contractor. Approved, they add it to their next invoice.`
             : `${who.name} is an employee. Approving puts it on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: 'Approve', denyLabel: 'Deny',
+          ...(pending ? { version: rmbVersion([r]) } : {}),
         },
       })
     }

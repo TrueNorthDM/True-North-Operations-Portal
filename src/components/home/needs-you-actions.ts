@@ -36,8 +36,8 @@ export const runPanelOp: Runner = async (op, note, paid) => {
     case 'invoice': return done(await decideInvoice({ id: op.id, decision: op.decision, note }))
     case 'correction': return done(await decideCorrection({ id: op.id, decision: op.decision, note }))
     case 'time-off': return done(await (op.cancel ? decideTimeOffCancel : decideTimeOff)({ id: op.id, decision: op.decision, note }))
-    case 'reimbursement': return done(await decideReimbursement({ id: op.id, decision: op.decision, note }))
-    case 'reimbursement-report': return done(await decideReimbursementReport({ reportId: op.id, decisions: op.ids.map(id => ({ id, decision: op.decision, note })) }))
+    case 'reimbursement': return done(await decideReimbursement({ id: op.id, decision: op.decision, note, version: op.version }))
+    case 'reimbursement-report': return done(await decideReimbursementReport({ reportId: op.id, decisions: op.ids.map(id => ({ id, decision: op.decision, note })), version: op.version }))
     case 'extra-hours': return done(await decideExtraHours({ id: op.id, decision: op.decision, note }))
     case 'resend-invite': {
       const r = await invitePerson(op.id)

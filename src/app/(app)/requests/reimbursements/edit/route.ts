@@ -32,7 +32,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { announceReimbursementChanged } from '@/lib/timeclock/clocky-notify'
 import { allWaiting, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { changedFields, snapshotOf, type RmbSnapshot } from '@/lib/timeclock/reimbursement-form'
-import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt, type RmbChange } from '@/lib/timeclock/reimbursement-store'
+import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt, uncommitted, type RmbChange } from '@/lib/timeclock/reimbursement-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   const target = /^(report|item):(\d+)$/.exec(String(form.get('target') ?? ''))
   if (!target) return no('Pick the request to change.')
   const c = createAdminClient()
-  const cols = 'id, person_id, report_id, state, spent_on, category, amount, currency, purpose, client, billable, miles, receipt_path, receipt_name, receipt_number'
+  const cols = 'id, person_id, report_id, state, spent_on, category, amount, currency, purpose, client, billable, miles, mileage_rate, receipt_path, receipt_name, receipt_number'
   const read = target[1] === 'report'
     ? await c.from('reimbursements').select(cols).eq('report_id', Number(target[2])).order('id')
     : await c.from('reimbursements').select(cols).eq('id', Number(target[2])).is('report_id', null)
@@ -82,7 +82,8 @@ export async function POST(request: Request) {
     ridOf.push(id)
   }
   const keeps = (i: number) => ridOf[i] != null && form.get(`keep_${i}`) === 'yes' && !!byId.get(ridOf[i]!)?.receipt_path
-  const checked = readItems(form, await itemRules(v), keeps)
+  // A Mileage line whose miles did not change keeps its stored rate and amount; new or changed ones use today's rate.
+  const checked = readItems(form, await itemRules(v), keeps, i => (ridOf[i] != null ? byId.get(ridOf[i]!) ?? null : null))
   if (typeof checked === 'string') return no(checked)
   const { items } = checked
   const name = String(form.get('name') ?? '').trim().slice(0, 120) || null
@@ -116,9 +117,12 @@ export async function POST(request: Request) {
   const changes: RmbChange[] = []
   if (madeReport) changes.push({ action: 'edited', reimbursementId: null, reportId: madeReport, reason: name ? `Named "${name}"` : 'More receipts: now one request' })
   const dropLater: (string | null)[] = []
+  // New files written into a row (updated or added): those stay on a later failure, as their row does.
+  const committed = new Set<string>()
   const fail = async (msg: string, e?: { message: string } | null) => {
     if (e) console.error('[reimbursement edit]', e.message)
-    await dropReceipts(stored)
+    // Only the new files no row took; and the old files of rows already changed or removed, which nothing uses now.
+    await dropReceipts([...uncommitted(stored, committed), ...dropLater])
     // A report made for this edit goes (its receipts' report_id goes empty with it); what was saved before stays, with its history.
     if (madeReport) { await c.from('reimbursements').update({ report_id: null }).eq('report_id', madeReport); await c.from('reimbursement_reports').delete().eq('id', madeReport) }
     await logRmbChanges(v.personId, at, madeReport ? changes.slice(1) : changes)
@@ -150,12 +154,14 @@ export async function POST(request: Request) {
       const { data, error } = await c.from('reimbursements').update({ ...values, ...(receipt ?? {}) }).eq('id', prev.id).eq('person_id', v.personId).eq('state', 'pending').select('id')
       if (error) return fail(NOT_SAVED, error)
       if (!data?.length) return fail(DECIDED)
+      if (f) committed.add(f.path)
       if (receipt && receipt.receipt_path !== prev.receipt_path) dropLater.push(prev.receipt_path)
       if (differs) changes.push({ action: 'edited', reimbursementId: prev.id, reportId, before, after })
     } else {
       const row = { ...values, ...(receipt ?? NONE), person_id: v.personId, state: 'pending' }
       const { data, error } = await c.from('reimbursements').insert(row).select('id').single()
       if (error) return fail(NOT_SAVED, error)
+      if (f) committed.add(f.path)
       changes.push({ action: 'receipt_added', reimbursementId: data.id, reportId, after: snapshotOf(row) })
     }
   }

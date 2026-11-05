@@ -4,7 +4,9 @@
  *
  * The window counts the whole time on the clock since the person clocked in,
  * across every job switch: switching does not restart it, only a clock out
- * (or an old "Keep going") does.
+ * does. "Keep going" is retired (audit, 5 November 2026): a clock left running
+ * stops at 12h with no question; a window an old "Keep going" moved is still
+ * read from window_started_at.
  *
  *   12h 00m  North Time ends the entry at the 12-hour mark (recorded on the
  *            quarter hour, the real mark kept), tells the person in the bell
@@ -18,9 +20,9 @@
  * switched off: the warning comes at the same moment as the stop, so it never
  * shows on its own.
  *
- * A clock still open from QuickBooks Time has no window of its own: it counts
- * from its start, so it closes at the 12-hour mark too, "as soon as Clocky
- * notices", and asks for the real end the same way (SPEC 1L).
+ * Only North Time's own clocks are stopped, from the person's start date
+ * (audit, 5 November 2026): a clock still open in TSheets, copied in by the
+ * import, is TSheets' to end (clocky-safety-run.ts, clocky-panel.ts).
  *
  * Pure: the job, the actions and the panel ask the same questions.
  */
@@ -42,7 +44,7 @@ export interface WindowedEntry {
   started_at: string | null
 }
 
-/** Where the current 12-hour window started: the last "Keep going", else the clock in. */
+/** Where the current 12-hour window started: an old "Keep going", else the clock in. */
 export function windowStart(e: WindowedEntry): string | null {
   return e.window_started_at ?? e.session_started_at ?? e.started_at_real ?? e.started_at ?? null
 }
@@ -95,16 +97,19 @@ export function stopPoint(windowStartedAt: string, recordedStart: string | null)
 // ── What the person reads ───────────────────────────────────────────────────
 
 /**
- * N1, the bell (no email): "Still working? Your clock has been running 4h 30m
- * since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going."
- * The time is the start of the window, on the quarter hour, in the person's zone.
+ * N1, the bell (no email), kept for its old callers: the warning point is the
+ * stop now, so the safety job no longer sends it. Says the rule in force: the
+ * time is the start of the window, on the quarter hour, in the person's zone.
  */
 export const stillWorkingText = (windowStartedAt: string, zone: string): string =>
-  `Still working? Your clock has been running 4h 30m since you clocked in at ${timeLabel(roundIso(windowStartedAt), zone)}. It stops at 5h 00m unless you keep it going.`
+  `Your clock has been running since you clocked in at ${timeLabel(roundIso(windowStartedAt), zone)}. It stops by itself at ${STOP_AFTER_LABEL}.`
 
-/** 1I, the panel's warn card (Clock Panel.dc.html): the same, naming what is running now. */
+/** 1I, the panel's card (Clock Panel.dc.html): the same, naming what is running now. */
 export const stillWorkingPanelText = (windowStartedAt: string, zone: string, runningLabel: string): string =>
-  `Your clock has been running for 4h 30m since you clocked in at ${timeLabel(roundIso(windowStartedAt), zone)}, now on ${runningLabel}. It will stop by itself at 5h 00m unless you tell us you are still on it.`
+  `Your clock has been running since you clocked in at ${timeLabel(roundIso(windowStartedAt), zone)}, now on ${runningLabel}. It stops by itself at ${STOP_AFTER_LABEL}.`
+
+/** What "Keep going" answers now that it is retired (audit, 5 November 2026). */
+export const KEEP_GOING_RETIRED = `Keep going is retired: a clock left running stops by itself at ${STOP_AFTER_LABEL}. Clock out when you finish.`
 
 /** "1:00 PM", or "1:00 PM on Mon, Oct 12" when the stop was on another day than `today` (1L). */
 export function stopWhen(stoppedAtRecorded: string, zone: string, today: string): string {
@@ -115,14 +120,6 @@ export function stopWhen(stoppedAtRecorded: string, zone: string, today: string)
 /** N2, the bell and the email: "Your clock stopped by itself at 1:00 PM. Confirm when you really stopped." */
 export const stoppedText = (when: string): string =>
   `Your clock stopped by itself at ${when}. Confirm when you really stopped.`
-
-/** The done line on a "Still working?" bell row after "Keep going" (Clock Safety.dc.html). */
-export const keptGoingNote = (at: Date, zone: string): string =>
-  `You kept going at ${timeLabel(at, zone)}. North Time asks again in 4h 30m.`
-
-/** The toast after "Keep going": from the panel, and from the bell. */
-export const KEEP_GOING_TOAST_PANEL = 'Got it. Your clock runs another 5h from now.'
-export const KEEP_GOING_TOAST_BELL = 'Keep going. Your clock runs another 5h from now.'
 
 /**
  * Every 1L time picker option, newest first, on 15-minute steps: from a quarter

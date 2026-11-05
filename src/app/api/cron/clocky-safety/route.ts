@@ -1,8 +1,10 @@
 /**
  * GET /api/cron/clocky-safety, Clocky's safety net (every 5 minutes, from the
- * server's crontab). "Still working?" at 4h 30m, the automatic stop at 5h 00m
- * with its one email, clocks still open from QuickBooks Time included, and
- * once a day the Super Admins' line about yesterday's automatic clock-outs.
+ * server's crontab). The automatic stop at 12h (leadership, 4 November 2026: no
+ * "Still working?" question) or at the weekly allowance, with its one email,
+ * on North Time's own clocks only: a clock copied from TSheets, or of someone
+ * whose start date has not come, is never touched (audit, 5 November 2026).
+ * Once a day, the Super Admins' line about yesterday's automatic clock-outs.
  * See src/lib/timeclock/clocky-safety-run.ts.
  */
 

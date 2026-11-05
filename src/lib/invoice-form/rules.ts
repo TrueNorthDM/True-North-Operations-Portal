@@ -24,8 +24,17 @@ export const MAX_TRIES = 5
 export const RESEND_AFTER_MS = 60_000
 /** At most five codes an hour for one email, and for one network address. */
 export const CODES_PER_HOUR = 5
+/** And over a day (audit, 5 November 2026): 15 for one email, 30 for one network address. */
+export const CODES_PER_DAY = 15
+export const CODES_PER_DAY_VISITOR = 30
 /** The device remembers the email for 30 days. */
 export const DEVICE_DAYS = 30
+/**
+ * The expiry a code is stored with while its caps are checked: it is stored
+ * first and counted after, so codes asked for at once cannot all pass. Until
+ * it passes it can never be typed in (checkCode looks only past this).
+ */
+export const CODE_PENDING = new Date(0).toISOString()
 
 export type CodeVerdict = 'ok' | 'none' | 'expired' | 'used' | 'locked'
 
@@ -44,8 +53,36 @@ export function resendWait(lastSentAt: string | null, now = Date.now()): number 
   return Math.max(0, Math.ceil((Date.parse(lastSentAt) + RESEND_AFTER_MS - now) / 1000))
 }
 
-/** Too many codes in the last hour, for the email or for the network address. */
-export const overCodeCap = (forEmail: number, forClient: number): boolean => forEmail >= CODES_PER_HOUR || forClient >= CODES_PER_HOUR
+export type CodeLimit = { kind: 'ok' } | { kind: 'wait'; seconds: number } | { kind: 'hour' } | { kind: 'day' }
+
+/**
+ * Whether the code just stored (`mine`) may go, from the codes of the last
+ * day for its email and for its network address, its own row included. It is
+ * stored before it is counted, so of codes asked for at once the later ones
+ * always see the earlier ones: never more than the caps go, and never two
+ * inside the minute. The same answer whether the email is in the Directory or not.
+ */
+export function codeLimit(
+  mine: number,
+  forEmail: readonly { id: number; created_at: string }[],
+  forClient: readonly { id: number; created_at: string }[],
+  now = Date.now(),
+): CodeLimit {
+  const newest = forEmail.filter(r => r.id !== mine).reduce((m, r) => Math.max(m, Date.parse(r.created_at) || 0), 0)
+  const wait = resendWait(newest ? new Date(newest).toISOString() : null, now)
+  if (wait > 0) return { kind: 'wait', seconds: wait }
+  const within = (rows: readonly { id: number; created_at: string }[], ms: number) =>
+    rows.filter(r => r.id !== mine && Date.parse(r.created_at) > now - ms).length + 1
+  if (within(forEmail, 86_400e3) > CODES_PER_DAY || within(forClient, 86_400e3) > CODES_PER_DAY_VISITOR) return { kind: 'day' }
+  if (within(forEmail, 3600e3) > CODES_PER_HOUR || within(forClient, 3600e3) > CODES_PER_HOUR) return { kind: 'hour' }
+  return { kind: 'ok' }
+}
+
+/** The page's words for a code that cannot go. */
+export function codeLimitText(l: Exclude<CodeLimit, { kind: 'ok' }>): string {
+  if (l.kind === 'wait') return `Wait ${l.seconds} seconds, then send it again.`
+  return l.kind === 'day' ? 'Too many codes in the last day. Try again later.' : 'Too many codes in the last hour. Try again later.'
+}
 
 /** Six digits, as typed (spaces allowed); else null. */
 export function codeOf(raw: unknown): string | null {
@@ -241,6 +278,35 @@ export const MAX_TOTAL_FILES = 45 * 1024 * 1024
 /** The receipt file types the portal keeps (the receipts bucket, migration 117). */
 export const RECEIPT_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/heif': 'heif', 'image/webp': 'webp', 'application/pdf': 'pdf' }
 
+/** The first bytes needed to tell a receipt's type. */
+export const SNIFF_BYTES = 16
+
+/** The HEIF family's brands (ISO BMFF "ftyp"): what phones write for HEIC and HEIF photos. */
+const HEIF_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs', 'mif1', 'msf1'])
+
+/**
+ * What a file's first bytes say it is, among the receipt types; null when it
+ * is none of them. The browser's declared type is never trusted alone (audit,
+ * 5 November 2026): a page or a script labelled image/png is refused.
+ */
+export function sniffReceipt(head: Uint8Array): keyof typeof RECEIPT_TYPES | null {
+  const at = (i: number, s: string) => s.split('').every((ch, k) => head[i + k] === ch.charCodeAt(0))
+  if (at(0, '%PDF-')) return 'application/pdf'
+  if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'image/jpeg'
+  if ([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => head[i] === b)) return 'image/png'
+  if (at(0, 'RIFF') && at(8, 'WEBP')) return 'image/webp'
+  if (at(4, 'ftyp')) {
+    const brand = String.fromCharCode(...head.slice(8, 12))
+    if (HEIF_BRANDS.has(brand)) return brand.startsWith('he') ? 'image/heic' : 'image/heif'
+  }
+  return null
+}
+
+/** Whether a stored file may open in the browser (images and PDFs of the receipt types); anything else downloads. */
+export function opensInline(type: string | null | undefined): boolean {
+  return Object.prototype.hasOwnProperty.call(RECEIPT_TYPES, String(type ?? '').split(';')[0].trim().toLowerCase())
+}
+
 export interface SenderInput { name: string; line1: string; line2: string; city: string; state: string; zip: string; country: string }
 
 /** What the page sends with the files, as the browser sent it (unchecked). */
@@ -390,10 +456,11 @@ export function checkSubmission(raw: RawSubmission, ctx: CheckContext): { ok: tr
     })
   }
 
-  if (own && work.kind === 'fixed') {
+  // Their total holds the reimbursements, for both kinds: there must be work left in it.
+  if (own) {
     const rest = cents(own.statedTotal) - reimbursements.reduce((n, r) => n + cents(r.amount), 0)
     if (rest <= 0) return no('The total on your invoice must be more than the reimbursements on it.')
-    work = { ...work, amount: money(rest) }
+    if (work.kind === 'fixed') work = { ...work, amount: money(rest) }
   }
 
   // Never sent without the box ticked (the page asks the same; the route builds the sentence itself).

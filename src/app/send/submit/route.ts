@@ -40,7 +40,7 @@ import {
   type StoredFile,
 } from '@/lib/invoice-form/data'
 import {
-  MAX_FILE, MAX_RECEIPTS, MAX_TOTAL_FILES, RECEIPT_TYPES, checkSubmission, firstDuplicate, formInvoice, formRecord, itemKey, monthBounds, monthTakenText, ratesFor,
+  MAX_FILE, MAX_RECEIPTS, MAX_TOTAL_FILES, RECEIPT_TYPES, SNIFF_BYTES, checkSubmission, firstDuplicate, formInvoice, formRecord, itemKey, monthBounds, monthTakenText, ratesFor, sniffReceipt,
   type RawSubmission,
 } from '@/lib/invoice-form/rules'
 
@@ -64,15 +64,18 @@ export async function POST(request: Request) {
   try { raw = JSON.parse(dataRaw) as RawSubmission } catch { return no('The invoice could not be read. Try again.') }
 
   // The files: each receipt and their PDF, checked before anything is stored.
-  const receiptFiles = new Map<number, { file: File; ext: string }>()
+  const receiptFiles = new Map<number, { file: File; type: string; ext: string }>()
   let totalSize = 0
   for (let i = 0; i < MAX_RECEIPTS; i++) {
     const f = form.get(`receipt_${i}`)
     if (!(f instanceof File) || !f.size) continue
-    const ext = RECEIPT_TYPES[f.type]
-    if (!ext) return no(`Receipt ${i + 1}: send a photo (JPG, PNG, HEIC) or a PDF.`)
+    const notReceipt = `Receipt ${i + 1}: send a photo (JPG, PNG, HEIC) or a PDF.`
+    if (!RECEIPT_TYPES[f.type]) return no(notReceipt)
     if (f.size > MAX_FILE) return no(`Receipt ${i + 1}: the file is over 10 MB. Send a smaller photo or PDF.`)
-    receiptFiles.set(i, { file: f, ext })
+    // The type the browser declared is never trusted alone: the first bytes must be a photo or a PDF, and the file is kept as what they show.
+    const type = sniffReceipt(new Uint8Array(await f.slice(0, SNIFF_BYTES).arrayBuffer()))
+    if (!type) return no(notReceipt)
+    receiptFiles.set(i, { file: f, type, ext: RECEIPT_TYPES[type] })
     totalSize += f.size
   }
   const pdfRaw = form.get('own_pdf')
@@ -120,10 +123,10 @@ export async function POST(request: Request) {
     // Stored under the person, as the portal's own receipts are, or under form/ until a new sender is linked.
     const folder = sender ? sender.personId : 'form'
     const receipts = new Map<number, StoredFile>()
-    for (const [i, { file, ext }] of receiptFiles) {
+    for (const [i, { file, type, ext }] of receiptFiles) {
       if (!sub.reimbursements.some(r => r.file === i)) continue
       const path = `${folder}/${randomUUID()}.${ext}`
-      const { error } = await files.storage.from('receipts').upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false })
+      const { error } = await files.storage.from('receipts').upload(path, Buffer.from(await file.arrayBuffer()), { contentType: type, upsert: false })
       if (error) throw new Error(`upload: ${error.message}`)
       stored.push(path)
       receipts.set(i, { path, name: file.name.slice(0, 200) || `receipt.${ext}`, size: file.size })

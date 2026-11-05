@@ -19,7 +19,8 @@
  * One approval for the same event (owner, 5 November 2026): a request whose
  * event or trip has the name of one the person still has entirely waiting
  * (case and spaces ignored) joins it, so its decider approves the whole event
- * at once. One already partly decided gets a new request, as before.
+ * at once. One already partly decided gets a new request, as before, also
+ * when it was decided while the receipts were joining it (checked again after).
  *
  * Each receipt gets its number (RCT-2026-005, migration 145), the name of its
  * file in downloads and in Google Drive; the name it was sent with is kept.
@@ -37,7 +38,7 @@ import { allRows, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { announceReimbursementChanged, announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
-import { joinableReport, joinedToast, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { allWaiting, joinableReport, joinedToast, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { snapshotOf } from '@/lib/timeclock/reimbursement-form'
 import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt } from '@/lib/timeclock/reimbursement-store'
 
@@ -121,6 +122,26 @@ export async function POST(request: Request) {
     console.error('[reimbursement] insert:', error?.message)
     await undo(made)
     return no('Not saved. Try again in a moment.', 500)
+  }
+
+  // Joined, then checked again (audit, 5 November 2026): a request decided between the read above and the
+  // insert is no longer all waiting, and the new receipts could never be edited there. They become their own.
+  if (joinId) {
+    const { data: after, error: aErr } = await c.from('reimbursements').select('id, state').eq('report_id', joinId)
+    if (aErr) console.error('[reimbursement] same event, again:', aErr.message)
+    if (aErr || !allWaiting(after ?? [])) {
+      const ids = data.map(d => d.id)
+      const { data: rep, error: rErr } = await c.from('reimbursement_reports').insert({ person_id: v.personId, name }).select('id').single()
+      const moved = rErr ? null : await c.from('reimbursements').update({ report_id: rep.id }).in('id', ids).eq('state', 'pending').select('id')
+      if (rErr || !moved || moved.error) {
+        console.error('[reimbursement] own request:', (rErr ?? moved?.error)?.message)
+        await c.from('reimbursements').delete().in('id', ids).eq('state', 'pending')
+        await undo(rErr ? null : rep.id)
+        return no('Not saved. Try again in a moment.', 500)
+      }
+      joinId = null
+      reportId = rep.id
+    }
   }
 
   if (joinId) {

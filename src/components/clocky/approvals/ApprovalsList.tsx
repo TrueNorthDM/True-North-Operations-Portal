@@ -28,6 +28,7 @@ import type { DecideBody } from '../entries/api'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CorrectionReview } from '../entries/Dialogs'
 import { RequestCard, type ItemDecision } from './RequestCard'
+import { RMB_CHANGED } from '@/lib/timeclock/reimbursement-reports'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
@@ -40,8 +41,9 @@ export interface QueueApi {
   decideCorrection(i: DecideBody): Promise<Result<{ entryId?: number; toast: string }>>
   decideTimeOff(i: DecideBody): Promise<Result>
   decideTimeOffCancel(i: DecideBody): Promise<Result<{ toast: string }>>
-  decideReimbursement(i: DecideBody): Promise<Result<{ toast: string }>>
-  decideReimbursementReport(i: { reportId: number; decisions: ItemDecision[] }): Promise<Result<{ toast: string }>>
+  /** `version`: what the card showed (request-cards.ts); a request changed since is refused. */
+  decideReimbursement(i: DecideBody & { version?: string }): Promise<Result<{ toast: string }>>
+  decideReimbursementReport(i: { reportId: number; decisions: ItemDecision[]; version?: string }): Promise<Result<{ toast: string }>>
   decideExtraHours(i: DecideBody): Promise<Result<{ toast: string }>>
 }
 
@@ -141,9 +143,13 @@ export function ApprovalsList({ initialData, api, initial }: {
       const body = { id: r.id, decision, note }
       // Several receipts: each one's decision, or all of them one way (the row's Approve, the card's Deny all).
       const res = k === 'rmb-report'
-        ? await api.decideReimbursementReport({ reportId: r.id, decisions: items ?? (r.request?.items ?? []).filter(i => i.state === 'pending').map(i => ({ id: i.id, decision, note })) })
-        : k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement(body) : await api.decideExtraHours(body)
-      if (!res.ok) return say(res.error, true)
+        ? await api.decideReimbursementReport({ reportId: r.id, decisions: items ?? (r.request?.items ?? []).filter(i => i.state === 'pending').map(i => ({ id: i.id, decision, note })), version: r.request?.version })
+        : k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement({ ...body, version: r.request?.version }) : await api.decideExtraHours(body)
+      if (!res.ok) {
+        // Changed since it was opened: the list reads it again, so the next look is the request as it is now.
+        if (res.error === RMB_CHANGED) { setReq(null); void reload() }
+        return say(res.error, true)
+      }
       setReq(null)
       const first = r.name.split(' ')[0]
       say('toast' in res && typeof res.toast === 'string' ? res.toast : decision === 'approve' ? `Time off approved. ${first} gets a notification.` : `Time off denied. ${first} gets the reason.`)

@@ -68,6 +68,8 @@ export interface WaitingItem {
   billable: boolean
   /** The stored file: its name and its small line ("PDF, 96 KB"); null for a Mileage line with none. */
   receipt: { name: string; label: string } | null
+  /** A Mileage line's stored rate: kept while its miles stay the same (audit, 5 November 2026). */
+  rate?: number | null
 }
 
 /** The viewer's own request still entirely waiting: "report:<id>" or "item:<id>". */
@@ -169,6 +171,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'can'>, zo
         amount: r.category === MILEAGE ? '' : Number(r.amount).toFixed(2), miles: r.miles != null ? String(Number(r.miles)) : '', currency: r.currency,
         what: withoutMileageNote(r.purpose, r.miles, r.mileage_rate), client: r.client, billable: r.billable,
         receipt: r.receipt_path ? { name: r.receipt_name ?? 'receipt', label: receiptLabel(r.receipt_name, r.receipt_size) } : null,
+        rate: r.category === MILEAGE && r.mileage_rate != null ? Number(r.mileage_rate) : null,
       })),
     }
   }
@@ -196,7 +199,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'can'>, zo
     } else if (d) {
       st = { label: 'Approved', tone: 'teal' }
       info = `Approved ${day(r.decided_at)}. On reimbursement document ${d.number}, ${d.state === 'paid' ? 'paid' : 'waiting for Finance'}.`
-    } else { st = { label: 'Approved', tone: 'teal' }; info = `Approved ${day(r.decided_at)}. It goes on ${mine ? 'your' : 'their'} next invoice by itself.` }
+    } else { st = { label: 'Approved', tone: 'teal' }; info = `Approved ${day(r.decided_at)}. ${mine ? 'Add it to your' : 'They add it to their'} next invoice.` }
     const mates = r.report_id != null ? list.filter(x => x.report_id === r.report_id) : []
     const report = r.report_id != null ? {
       id: r.report_id, first: mates[0]?.id === r.id,

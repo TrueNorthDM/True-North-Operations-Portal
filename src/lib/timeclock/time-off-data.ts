@@ -14,7 +14,7 @@ import { loadRequestDeciders, loadRoutes } from './pay-terms'
 import { orList } from './routing'
 import { IS_STAGING } from '@/lib/environment'
 import { addDays } from './periods'
-import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pillOf, stepsOf, type OffCheck, type OffRequest, type OffStep, type OffTone } from './time-off'
+import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pillOf, readsOffReason, stepsOf, type OffCheck, type OffRequest, type OffStep, type OffTone } from './time-off'
 
 /**
  * Time off nobody asks for here (Tina, 29 October 2026): company holidays are
@@ -90,13 +90,14 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
   const deciders = await loadRequestDeciders([v.personId, ...((data ?? []) as Raw[]).map(r => r.person_id)])
   const whoDecides = (personId: string) => orList(deciders('off', personId).map(id => dir.nameOf(id)))
   const kindOf = (jobcodeId: number) => { const j = catalog.jobs.get(jobcodeId); return j?.short || j?.path || 'Time off' }
-  // The reason for time off: the person and Super Admins only (owner, 5 November 2026), never anyone else who sees the row.
+  // The reasons for time off (its note, why cancel): the person and Super Admins only (owner, 5 November 2026), never anyone else who sees the row.
   const rows = ((data ?? []) as Raw[]).map(r => {
+    const reads = readsOffReason(v, r.person_id)
     const req: OffRequest = {
       id: r.id, personId: r.person_id, who: dir.nameOf(r.person_id), type: kindOf(r.jobcode_id), start: r.start_date, end: r.end_date,
-      hoursPerDay: Number(r.hours_per_day), state: r.state as OffRequest['state'], note: r.person_id === v.personId || v.isSuperAdmin ? r.reason : null, askedAt: r.requested_at,
+      hoursPerDay: Number(r.hours_per_day), state: r.state as OffRequest['state'], note: reads ? r.reason : null, askedAt: r.requested_at,
       decidedAt: r.decided_at, decidedBy: r.decided_by, decisionNote: r.decision_note, rippling: r.rippling_state, ripplingError: r.rippling_error,
-      ripplingSentAt: r.rippling_sent_at, calendar: r.calendar_state, entriesWrittenAt: r.entries_written_at, cancelAskedAt: r.cancel_asked_at, cancelReason: r.cancel_reason,
+      ripplingSentAt: r.rippling_sent_at, calendar: r.calendar_state, entriesWrittenAt: r.entries_written_at, cancelAskedAt: r.cancel_asked_at, cancelReason: reads ? r.cancel_reason : null,
     }
     const days = offDays(req.start, req.end, holidays).days.length
     const seconds = Math.round(days * req.hoursPerDay * 3600)

@@ -35,7 +35,7 @@ import { usePhone } from '@/components/clocky/clock/hooks'
 import { PhoneSheet } from './PhoneSheet'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { RmbDocsList, type DocFilter, type MarkRmbPaid } from './RmbDocsList'
-import { CATEGORIES, DESCRIPTION_LABEL, MEAL_HINT, MEAL_OVER_FLAG, MEAL_OVER_WARNING, MEALS_TRAVEL, MILEAGE, mealReasonMissing, mileageAmount, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+import { CATEGORIES, DESCRIPTION_LABEL, MEAL_HINT, MEAL_OVER_FLAG, MEAL_OVER_WARNING, MEALS_TRAVEL, MILEAGE, mealReasonMissing, mileageAmount, mileageText, milesOf, needsReceipt, overMealCap, amountOf as readAmount } from '@/lib/timeclock/reimbursement-rules'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Tabs } from '@/components/ui/Tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
@@ -122,7 +122,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const sub = docs && docs.finance ? 'Every employee reimbursement document. You are Finance: you pay them outside Rippling payroll, then mark them paid.'
     : docs ? 'Every employee reimbursement document. Made when an employee\'s reimbursement is approved, paid by Finance outside Rippling payroll.'
-    : data.contractor ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
+    : data.contractor ? 'Ask for money you spent for work, with the receipt. Approved, you add it to your next invoice.'
     : 'Ask for money you spent for work, with the receipt. Approved, Finance pays it with a reimbursement document.'
 
   return (
@@ -241,7 +241,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
       )}
 
       {form && <NewReimbursement key={editing?.key ?? 'new'} data={data} draft={editing ? undefined : initial?.draft} edit={editing ?? undefined} send={send} onClose={() => { setForm(false); setEditing(null) }}
-        onSent={sent => { setForm(false); setEditing(null); say({ text: sent ?? (data.contractor ? 'Sent. Approved, each receipt goes on your next invoice by itself.' : 'Sent. Approved, Finance pays it with a reimbursement document.') }); router.refresh() }} />}
+        onSent={sent => { setForm(false); setEditing(null); say({ text: sent ?? (data.contractor ? 'Sent. Approved, you add each receipt to your next invoice.' : 'Sent. Approved, Finance pays it with a reimbursement document.') }); router.refresh() }} />}
       {leaving && withdraw && <WithdrawDialog w={leaving} withdraw={withdraw} onClose={() => setLeaving(null)}
         onDone={t => { setLeaving(null); say({ text: t }); router.refresh() }} />}
       <Toast toast={toast} />
@@ -257,13 +257,14 @@ export interface Draft { file: File | null; fileLabel: string; date: string; cat
  * Editing a waiting request (owner, 5 November 2026): `rid` is the receipt it was, and
  * `stored` the name of its file kept on the server (no new file picked).
  */
-interface Item { key: number; file: File | null; fileLabel: string; date: string; category: string; amount: string; miles: string; currency: string; what: string; client: string | null; billable: 'yes' | 'no'; rid?: number; stored?: string }
+interface Item { key: number; file: File | null; fileLabel: string; date: string; category: string; amount: string; miles: string; currency: string; what: string; client: string | null; billable: 'yes' | 'no'; rid?: number; stored?: string; kept?: { miles: number; rate: number } }
 
 const today = () => { const d = new Date(); return `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` }
 const size = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
 const labelOf = (f: File, fromCamera = false) => `${f.type === 'application/pdf' ? 'PDF' : fromCamera ? 'Photo from the camera' : 'Photo'}, ${size(f.size)}`
-const amountOk = (a: string) => Number(a.replace(/,/g, '')) > 0
-const amountOf = (a: string) => Number(a.replace(/,/g, ''))
+// As the server reads it (reimbursement-rules.ts amountOf): a plain number, at most 2 decimals, over 0 once rounded.
+const amountOk = (a: string) => readAmount(a) != null
+const amountOf = (a: string) => readAmount(a) ?? 0
 const isMileage = (it: Pick<Item, 'category'>) => it.category === MILEAGE
 /** Its stored file stays: an edited receipt with no new file picked and the old one not removed. */
 const keeps = (it: Item) => it.rid != null && !it.file && !!it.stored && !!it.fileLabel
@@ -285,6 +286,8 @@ function fromWaiting(w: WaitingRequest, blank: (p: Partial<Item>) => Item): { cl
     client: one ? w.items[0].client ?? 'None' : 'None', billable: one ? yn(w.items[0].billable) : 'no',
     items: w.items.map(x => blank({
       rid: x.id, stored: x.receipt?.name, fileLabel: x.receipt?.label ?? '', date: x.date, category: x.category, amount: x.amount, miles: x.miles, currency: x.currency, what: x.what,
+      // A Mileage line keeps its stored rate while its miles stay the same (the server decides the same way).
+      ...(x.rate != null && x.miles ? { kept: { miles: Number(x.miles), rate: x.rate } } : {}),
       ...(one ? {} : { client: x.client ?? 'None', billable: yn(x.billable) }),
     })),
   }
@@ -369,11 +372,12 @@ function NewReimbursement({ data, draft, edit, send, onClose, onSent }: { data: 
   const currencies = data.contractor ? ['USD'] : CURRENCIES
   const usdNote = 'In US dollars: your invoice is in USD. Paid in another currency? Convert it, and write the amount you paid in the description.'
   const afterLine = data.contractor
-    ? (many ? 'Approved, each receipt goes on your next invoice by itself, as its own line. If that invoice is already approved, they go on the one after.' : 'Approved, it goes on your next invoice by itself. If that invoice is already approved, it goes on the one after.')
+    ? (many ? 'Approved, you add each receipt to your next invoice, as its own line. If that invoice is already approved, they go on the one after.' : 'Approved, you add it to your next invoice. If that invoice is already approved, it goes on the one after.')
     : (many ? 'Approved, the portal puts each receipt on a reimbursement document and Finance pays you, outside Rippling payroll.' : 'Approved, the portal puts it on a reimbursement document and Finance pays you, outside Rippling payroll.')
+  const rateOf = (it: Item, m: number | null) => (it.kept && m != null && it.kept.miles === m ? it.kept.rate : data.mileageRate)
   const rate = data.mileageRate
   const valueOf = (it: Item) => {
-    if (isMileage(it)) { const m = milesOf(it.miles); return m == null ? null : { amount: mileageAmount(m, rate), currency: 'USD' } }
+    if (isMileage(it)) { const m = milesOf(it.miles); return m == null ? null : { amount: mileageAmount(m, rateOf(it, m)), currency: 'USD' } }
     return amountOk(it.amount) ? { amount: amountOf(it.amount), currency: it.currency } : null
   }
   const total = totalsText(items.map(valueOf).filter((x): x is { amount: number; currency: string } => !!x))
@@ -381,7 +385,7 @@ function NewReimbursement({ data, draft, edit, send, onClose, onSent }: { data: 
   const lineHint = (it: Item) => {
     if (isMileage(it)) {
       const m = milesOf(it.miles)
-      return <div className="text-[12px] text-tn-teal font-semibold tabular-nums lining-nums">{m == null ? `Miles times $${rate} a mile, in US dollars. No receipt needed.` : `${mileageText(m, rate)}. No receipt needed.`}</div>
+      return <div className="text-[12px] text-tn-teal font-semibold tabular-nums lining-nums">{m == null ? `Miles times $${rate} a mile, in US dollars. No receipt needed.` : `${mileageText(m, rateOf(it, m))}. No receipt needed.`}</div>
     }
     if (it.category === MEALS_TRAVEL) {
       // Over the $25 it still goes, for review, with a description that says why (owner, 5 November 2026).

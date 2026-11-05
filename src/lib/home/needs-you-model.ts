@@ -26,8 +26,8 @@ export type PanelOp =
   | { do: 'invoice'; id: number; decision: 'approve' | 'return' }
   | { do: 'correction'; id: number; decision: 'approve' | 'deny' }
   | { do: 'time-off'; id: number; decision: 'approve' | 'deny'; cancel: boolean }
-  | { do: 'reimbursement'; id: number; decision: 'approve' | 'deny' }
-  | { do: 'reimbursement-report'; id: number; ids: number[]; decision: 'approve' | 'deny' }
+  | { do: 'reimbursement'; id: number; decision: 'approve' | 'deny'; version?: string }
+  | { do: 'reimbursement-report'; id: number; ids: number[]; decision: 'approve' | 'deny'; version?: string }
   | { do: 'extra-hours'; id: number; decision: 'approve' | 'deny' }
   | { do: 'resend-invite'; id: string }
   | { do: 'run-checks' }

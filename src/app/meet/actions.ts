@@ -27,6 +27,7 @@ import { sampleMeetLink } from '@/lib/agenda/sample-plan'
 import { DC, localOf } from '@/lib/agenda/time'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
 import { notifyAgendaBooking } from '@/lib/notifications/run'
+import { visitorOf } from '@/lib/auth/send-limit'
 
 type Fail = { ok: false; error: string }
 const no = (error: string): Fail => ({ ok: false, error })
@@ -36,10 +37,10 @@ const NOT_TAKING = 'This booking page is not taking bookings right now.'
 const PER_CLIENT = 8, PER_EMAIL = 4, MAX_EMAILS = 3
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex')
+/** The visitor as our own proxy saw them (the LAST x-forwarded-for entry): the browser cannot pick its own. */
 async function clientKey(): Promise<string> {
   const h = await headers()
-  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || h.get('x-real-ip') || 'unknown'
-  return sha(`agenda-booking:${ip}`)
+  return sha(`agenda-booking:${visitorOf(h.get('x-forwarded-for'))}`)
 }
 
 export interface HoldPreview { subject: string; link: string; html: string }

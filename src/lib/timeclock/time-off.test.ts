@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checksOf, countText, holidaysBetween, offDays, pillOf, stepsOf, type OffRequest } from './time-off'
+import { cancelAskedText, checksOf, countText, historyOf, holidaysBetween, offDays, pillOf, readsOffReason, stepsOf, type OffRequest } from './time-off'
 
 const req = (o: Partial<OffRequest> = {}): OffRequest => ({
   id: 1, personId: 'p', who: 'Tina Gennette', type: 'Vacation', start: '2026-11-23', end: '2026-11-25', hoursPerDay: 8, state: 'pending',
@@ -50,5 +50,24 @@ describe('time off (Requests.dc.html 7A to 7E)', () => {
     const r = req({ state: 'approved', rippling: 'sent', calendar: 'done', cancelAskedAt: '2026-11-03T14:32:00Z' })
     expect(pillOf(r)).toEqual({ label: 'Cancellation asked', tone: 'warn' })
     expect(checksOf(r, 'Arnaldo Oliveira')).toEqual([{ t: 'Waiting for Arnaldo Oliveira', tone: 'neu', icon: 'clock' }])
+  })
+})
+
+describe('why cancel: the person and Super Admins only (owner, 5 November 2026)', () => {
+  it('is read by the person and Super Admins, never an Admin, Team Leader or other decider', () => {
+    expect(readsOffReason({ personId: 'p', isSuperAdmin: false }, 'p')).toBe(true)
+    expect(readsOffReason({ personId: 'arnaldo', isSuperAdmin: true }, 'p')).toBe(true)
+    expect(readsOffReason({ personId: 'dave', isSuperAdmin: false }, 'p')).toBe(false)
+    expect(readsOffReason({ personId: null, isSuperAdmin: false }, 'p')).toBe(false)
+  })
+  it('stays out of the bell and the email to whoever decides', () => {
+    expect(cancelAskedText('Tina Gennette', 'Vacation', '2026-12-28', '2026-12-31')).toBe('Tina Gennette asked to cancel approved time off: Vacation, Mon, Dec 28 to Thu, Dec 31. Decide it in Approvals.')
+  })
+  it('the history shows it only when it was read', () => {
+    const stamp = () => 'Nov 3'
+    const nameOf = () => 'Arnaldo Oliveira'
+    const r = req({ state: 'approved', decidedAt: '2026-11-02T22:00:00Z', cancelAskedAt: '2026-11-03T14:32:00Z' })
+    expect(historyOf({ ...r, cancelReason: 'Plans changed.' }, { stamp, nameOf })[0].t).toBe('Cancellation asked by Tina Gennette: "Plans changed."')
+    expect(historyOf({ ...r, cancelReason: null }, { stamp, nameOf })[0].t).toBe('Cancellation asked by Tina Gennette')
   })
 })

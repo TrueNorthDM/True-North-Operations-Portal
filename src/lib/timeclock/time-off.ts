@@ -70,8 +70,21 @@ export interface OffRequest {
   calendar: 'waiting_connection' | 'queued' | 'done' | 'failed' | null
   entriesWrittenAt: string | null
   cancelAskedAt: string | null
+  /** Why its person asks to cancel: for them and Super Admins only, as the note (owner, 5 November 2026); else null. */
   cancelReason: string | null
 }
+
+/** Who may read a time off's reasons (its note, why cancel): the person and Super Admins (owner, 5 November 2026). */
+export const readsOffReason = (v: { personId: string | null; isSuperAdmin: boolean }, personId: string): boolean =>
+  v.personId === personId || v.isSuperAdmin
+
+/**
+ * The bell and email to whoever decides, when approved time off is asked to be
+ * cancelled (7E). No reason: a decider who is not a Super Admin may not read it
+ * (owner, 5 November 2026); a Super Admin reads it on the card in Approvals.
+ */
+export const cancelAskedText = (name: string, kind: string, start: string, end: string): string =>
+  `${name} asked to cancel approved time off: ${kind}, ${daysText(start, end)}. Decide it in Approvals.`
 
 export interface OffCheck { t: string; tone: OffTone; icon: 'check' | 'x' | 'clock' }
 

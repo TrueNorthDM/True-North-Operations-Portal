@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  STOP_AFTER_SECONDS, WARN_AFTER_SECONDS, endOptions, keptGoingNote, safetyState, sessionStart, stillWorkingPanelText,
+  KEEP_GOING_RETIRED, STOP_AFTER_SECONDS, WARN_AFTER_SECONDS, endOptions, safetyState, sessionStart, stillWorkingPanelText,
   stillWorkingText, stopPoint, stopWhen, stoppedText, windowStart,
 } from './safety'
 
@@ -66,22 +66,28 @@ describe('where the clock stops', () => {
 })
 
 describe('what the person reads (Clock Safety.dc.html, Clock Panel.dc.html)', () => {
-  it('N1, the bell at 4h 30m', () => {
+  it('N1, the bell, says the rule in force: no 4h 30m, no 5h, no keep going', () => {
     expect(stillWorkingText(t('12:07:00'), NY))
-      .toBe('Still working? Your clock has been running 4h 30m since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going.')
+      .toBe('Your clock has been running since you clocked in at 8:00 AM. It stops by itself at 12h 00m.')
   })
 
   it('1I, the panel', () => {
     expect(stillWorkingPanelText(t('12:00:00'), NY, 'i7 Web Dev'))
-      .toBe('Your clock has been running for 4h 30m since you clocked in at 8:00 AM, now on i7 Web Dev. It will stop by itself at 5h 00m unless you tell us you are still on it.')
+      .toBe('Your clock has been running since you clocked in at 8:00 AM, now on i7 Web Dev. It stops by itself at 12h 00m.')
+  })
+
+  it('no copy still promises the old 5-hour rule', () => {
+    for (const s of [stillWorkingText(t('12:00:00'), NY), stillWorkingPanelText(t('12:00:00'), NY, 'x'), KEEP_GOING_RETIRED]) {
+      expect(s).not.toMatch(/5h|4h 30m|keep it going|another/)
+    }
   })
 
   it('N2, the clock stopped', () => {
     expect(stoppedText('1:00 PM')).toBe('Your clock stopped by itself at 1:00 PM. Confirm when you really stopped.')
   })
 
-  it('the done line after "Keep going"', () => {
-    expect(keptGoingNote(at('16:31:00'), NY)).toBe('You kept going at 12:31 PM. North Time asks again in 4h 30m.')
+  it('"Keep going" is retired, and says why', () => {
+    expect(KEEP_GOING_RETIRED).toBe('Keep going is retired: a clock left running stops by itself at 12h 00m. Clock out when you finish.')
   })
 })
 

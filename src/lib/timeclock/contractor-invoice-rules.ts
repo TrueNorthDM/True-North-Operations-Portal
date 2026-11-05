@@ -57,11 +57,30 @@ export interface BuilderLine {
 
 const cents = (n: number) => Math.round(n * 100) / 100
 
+/**
+ * Hours as an invoice line carries them: to the hundredth (35h 20m is 35.33).
+ * The builder opens with these and the check expects them, so the two agree.
+ */
+export const lineHours = (seconds: number): number => Math.round(seconds / 36) / 100
+
+/** Hours times rate, in dollars and cents: what one line of hours costs. */
+export const hoursAmount = (hours: number, rate: number): number => cents(hours * rate)
+
+/**
+ * What the timesheet comes to at a rate, the way the builder bills it: each
+ * client's hours to the hundredth times the rate, in cents, then added up.
+ * 35h 20m at $50 is 35.33 x $50 = $1,766.50, never $1,766.67.
+ */
+export function timesheetAmount(byClient: readonly { seconds: number }[], rate: number): number {
+  const c = byClient.filter(x => x.seconds > 0).reduce((n, x) => n + Math.round(hoursAmount(lineHours(x.seconds), rate) * 100), 0)
+  return c / 100
+}
+
 /** A line's amount: hours times rate, or the amount they wrote. Null when it cannot be read. */
 export function lineAmount(l: BuilderLine): number | null {
   if (l.hours != null || l.rate != null) {
     if (l.hours == null || l.rate == null || !(l.hours > 0) || !(l.rate >= 0)) return null
-    return cents(l.hours * l.rate)
+    return hoursAmount(l.hours, l.rate)
   }
   return l.amount != null && l.amount > 0 ? cents(l.amount) : null
 }
@@ -130,7 +149,7 @@ export function linesFromTimesheet(byClient: readonly { client: string; seconds:
   return byClient.filter(c => c.seconds > 0).map(c => ({
     description: `${c.client}, ${periodName}`,
     client: c.client,
-    hours: Math.round(c.seconds / 36) / 100,
+    hours: lineHours(c.seconds),
     rate: onFile(rate),
     amount: null,
   }))
@@ -192,9 +211,12 @@ const hm = (seconds: number) => {
 }
 const usd = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const signed = (n: number, f: (x: number) => string) => (n > 0 ? `+${f(n)}` : `-${f(n)}`)
-/** A minute either way is the same hour (lines are typed to two decimals). */
-const sameSeconds = (a: number, b: number) => Math.abs(a - b) < 60
-const sameMoney = (a: number, b: number) => Math.abs(a - b) < 0.005
+/** The same hours as a line carries them: equal to the hundredth of an hour (lineHours). */
+const sameSeconds = (a: number, b: number) => Math.round(a / 36) === Math.round(b / 36)
+/** The invoice's hours less the timesheet's, in seconds, as the lines read them (to the hundredth). */
+const gap = (timesheet: number, invoice: number) => (Math.round(invoice / 36) - Math.round(timesheet / 36)) * 36
+const sameMoney = (a: number, b: number) => Math.round(a * 100) === Math.round(b * 100)
+const sumCents = (xs: readonly number[]) => xs.reduce((n, x) => n + Math.round(x * 100), 0)
 
 /** The invoice beside the timesheet, row by row: what the approver reads before deciding. */
 export function compareInvoice(x: CompareInput): Comparison {
@@ -213,15 +235,15 @@ export function compareInvoice(x: CompareInput): Comparison {
       if (iv === undefined) { rows.push({ label: client, timesheet: hm(t), invoice: '-', difference: signed(-t, hm), check: 'only-timesheet' }); diffs.push(`leaves out ${hm(t)} on ${client}`); continue }
       if (!t) { rows.push({ label: client, timesheet: '-', invoice: hm(iv), difference: signed(iv, hm), check: 'only-invoice' }); diffs.push(`bills ${hm(iv)} on ${client}, which is not on the timesheet`); continue }
       const same = sameSeconds(t, iv)
-      rows.push({ label: client, timesheet: hm(t), invoice: hm(iv), difference: same ? '' : signed(iv - t, hm), check: same ? 'match' : 'differs' })
-      if (!same) diffs.push(`bills ${hm(iv - t)} ${iv > t ? 'more' : 'less'} on ${client}`)
+      rows.push({ label: client, timesheet: hm(t), invoice: hm(iv), difference: same ? '' : signed(gap(t, iv), hm), check: same ? 'match' : 'differs' })
+      if (!same) diffs.push(`bills ${hm(gap(t, iv))} ${iv > t ? 'more' : 'less'} on ${client}`)
     }
     if (own && x.invoice.hours != null) {
       const t = x.timesheet.reduce((n, c) => n + c.seconds, 0)
       const iv = Math.round(x.invoice.hours * 3600)
       const same = sameSeconds(t, iv)
-      rows.push({ label: 'Hours in all', timesheet: hm(t), invoice: hm(iv), difference: same ? '' : signed(iv - t, hm), check: same ? 'match' : 'differs' })
-      if (!same) diffs.push(`says ${hm(iv - t)} ${iv > t ? 'more' : 'fewer'} hours than the timesheet`)
+      rows.push({ label: 'Hours in all', timesheet: hm(t), invoice: hm(iv), difference: same ? '' : signed(gap(t, iv), hm), check: same ? 'match' : 'differs' })
+      if (!same) diffs.push(`says ${hm(gap(t, iv))} ${iv > t ? 'more' : 'fewer'} hours than the timesheet`)
     }
   }
 
@@ -231,11 +253,11 @@ export function compareInvoice(x: CompareInput): Comparison {
     if (!on) diffs.push(`leaves out reimbursement ${r.label}`)
   }
 
-  const reimb = x.reimbursements.filter(r => x.invoice.reimbursements.includes(r.label)).reduce((n, r) => n + r.amount, 0)
-  const tSeconds = x.timesheet.reduce((n, c) => n + c.seconds, 0)
+  // In cents, as the builder adds its lines: each client's hours to the hundredth at the rate (timesheetAmount).
+  const reimb = sumCents(x.reimbursements.filter(r => x.invoice.reimbursements.includes(r.label)).map(r => r.amount))
   const expected = x.pay.kind === 'hourly'
-    ? (x.pay.rate == null ? null : cents(tSeconds / 3600 * x.pay.rate + reimb))
-    : (x.pay.amount == null ? null : cents(x.pay.amount + reimb))
+    ? (x.pay.rate == null ? null : (Math.round(timesheetAmount(x.timesheet, x.pay.rate) * 100) + reimb) / 100)
+    : (x.pay.amount == null ? null : (Math.round(x.pay.amount * 100) + reimb) / 100)
   const sameTotal = expected != null && sameMoney(expected, x.invoice.total)
   const total: CompareRow = {
     label: x.pay.kind === 'hourly' ? `Total${x.pay.rate != null ? ` (rate on file ${usd(x.pay.rate)})` : ''}` : 'Total (amount on file)',
@@ -355,7 +377,7 @@ export function invoiceDetails(x: DetailsInput, cmp: Comparison = compareInvoice
       else {
         const same = sameSeconds(t, iv)
         row.check = same ? 'match' : 'differs'
-        row.checkText = checkWord(row.check, same ? '' : signed(iv - t, hm))
+        row.checkText = checkWord(row.check, same ? '' : signed(gap(t, iv), hm))
         row.checkSub = `Timesheet ${hm(t)}${several ? `, ${hm(iv)} on its lines` : ''}`
       }
     } else if (hourly) { row.check = 'on-file'; row.checkText = checkWord('on-file') }

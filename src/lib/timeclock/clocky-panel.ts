@@ -9,7 +9,9 @@
  *
  * "As soon as it notices": a clock past its 12-hour mark, or past the person's
  * hours allowance (owner, 25 October 2026), is stopped here, when the person
- * really signed in opens the panel, as the safety job would.
+ * really signed in opens the panel, as the safety job would. Only North
+ * Time's own clocks, from the person's start date (ownClockActs): a clock the
+ * import copied from TSheets is never stopped or marked changed here.
  *
  * Not a "use server" file: app/(app)/clocky-hours/clock-actions.ts serves it.
  */
@@ -29,7 +31,7 @@ import { addDays, lockedMessage, periodContaining, periodLabel } from './periods
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
 import { catalogueRows } from './job-catalogue'
 import { startOf, type NorthTimeStart } from './waves-data'
-import { clockGate } from './waves'
+import { clockGateOf, startedOn } from './waves'
 import { northTimeOpen } from './north-time-lock'
 
 export interface ComboRow { id: number; name: string; jobcode_id: number; fields: Record<string, string>; notes: string | null; position: number }
@@ -126,11 +128,28 @@ export async function correctionGoesTo(personId: string): Promise<string> {
 }
 
 /**
- * Stop the person's clock if its 12-hour window ran out (bell and email) or it
- * reached their allowance (the bell), and tell them. null when it goes on.
+ * Whether North Time may stop this clock by itself: only its own clocks (made
+ * in the portal, never one the import copied from TSheets, which TSheets
+ * owns), and only once the person's start date has arrived in their zone
+ * (never in no wave, never on a failed read). Pure.
  */
-export async function stopOwnIfDue(c: Db, e: EntryRow | null, now: Date): Promise<ClockStop | null> {
-  if (!e) return null
+export function ownClockActs(e: Pick<EntryRow, 'source'>, start: NorthTimeStart, today: string): boolean {
+  return e.source === 'portal' && startedOn(start, today)
+}
+
+/**
+ * Stop the person's clock if its 12-hour window ran out (bell and email) or it
+ * reached their allowance (the bell), and tell them. null when it goes on, and
+ * always for a TSheets clock or before the person's start date (ownClockActs).
+ * `start` saves a read when the caller has it.
+ */
+export async function stopOwnIfDue(
+  c: Db, e: EntryRow | null, now: Date,
+  who: Pick<Viewer, 'personId' | 'level' | 'leader' | 'zone'>, start?: NorthTimeStart,
+): Promise<ClockStop | null> {
+  if (!e || e.source !== 'portal') return null
+  const s = start ?? await northTimeStart(who)
+  if (!ownClockActs(e, s, localDate(now, who.zone))) return null
   const [dir, catalog] = await Promise.all([loadDirectory(), loadCatalog()])
   const st = await stopClockIfDue(c, e, now, dir, catalog)
   if (!st) return null
@@ -146,9 +165,17 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const today = localDate(now, zone)
   const keys = catalog.keys
 
+  // Before the person's North Time start date (their wave, Company settings >
+  // North Time rollout), the clock does not start: they still clock in TSheets.
+  // In no wave it never starts (migration 154); an unread start refuses too.
+  const start = await northTimeStart(viewer)
+  const notYet = clockGateOf(start, today)
+  const acts = (e: EntryRow) => ownClockActs(e, start, today)
+
   let running = await runningOf(c, me)
-  // Stopping a clock is a write: never while North Time is closed (a TSheets clock mirrored by the import is not ours to stop).
-  if (running && opts.act && await northTimeOpen() && await stopOwnIfDue(c, running, now)) running = null
+  // Stopping a clock is a write: never while North Time is closed, never a TSheets clock mirrored by the
+  // import, never before the person's start date (stopOwnIfDue checks the last two).
+  if (running && opts.act && await northTimeOpen() && await stopOwnIfDue(c, running, now, viewer, start)) running = null
 
   const week = weekBounds(today, settings.weekStart)
   const since = addDays(today, -365)
@@ -211,7 +238,8 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
       missing: missingFields(fields, running.notes, keysOfJob(catalog, job), !!job?.isI7),
       imported: running.source === 'tsheets',
     }
-    const ws = windowStart(running)
+    // The safety card only for a clock North Time would stop: a TSheets clock is TSheets' to end.
+    const ws = acts(running) ? windowStart(running) : null
     if (ws) {
       const st = safetyState(ws, now)
       safety = {
@@ -280,11 +308,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const rules = rulesFor(me, changes, settings)
   const period = periodContaining(today, rules)
   const lock = lockOn([today], subs.get(me) ?? [])
-  // Before the person's North Time start date (their wave, Company settings >
-  // North Time rollout), the clock does not start: they still clock in TSheets.
-  // In no wave it never starts (migration 154).
-  const { startsOn, noWave } = await northTimeStart(viewer)
-  const notYet = clockGate(startsOn, today, noWave)
+  const startsOn = start.startsOn
 
   // What each job fills in: the person's own history first, then the job
   // catalogue's defaults (Company, Project, billable by default; 11A).
@@ -340,15 +364,16 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
 
 /**
  * The person's North Time start date, or null (no wave date set: no gate), and
- * whether a Super Admin put them in no wave (the clock never starts). A failed
- * read leaves the clock as it was rather than lock everyone out of it.
+ * whether a Super Admin put them in no wave (the clock never starts). Fails
+ * closed (audit, 5 November 2026): a failed read comes back `unread`, and the
+ * clock refuses with START_UNREAD rather than run with no gate at all.
  */
 export async function northTimeStart(v: Pick<Viewer, 'personId' | 'level' | 'leader'>): Promise<NorthTimeStart> {
   try {
     return await startOf(db(), v.personId, { level: v.level, leader: v.leader })
   } catch (e) {
     console.error('[clocky] North Time start date:', e instanceof Error ? e.message : e)
-    return { startsOn: null, noWave: false }
+    return { startsOn: null, noWave: false, unread: true }
   }
 }
 

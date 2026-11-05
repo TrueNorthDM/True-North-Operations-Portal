@@ -7,8 +7,10 @@
  *   - every action that records or decides hours refuses, for everyone,
  *     Super Admins included (clock, Add time, week grid, requests, approvals,
  *     invoices, Count it on set-aside TSheets entries);
- *   - North Time's scheduled jobs do nothing, and the import ignores the wave
- *     dates, so it keeps taking every TSheets entry;
+ *   - North Time's scheduled jobs do nothing. The import does NOT follow the
+ *     switch (audit, 5 November 2026): from a wave's day on it keeps setting
+ *     aside that wave's TSheets entries, open or closed, so closing the switch
+ *     never brings hours in twice (waves-data.ts, loadStartDates);
  *   - the top-bar clock, Home's clock and timesheet cards and the person-facing
  *     North Time rows are not shown (a Super Admin still opens the pages).
  *

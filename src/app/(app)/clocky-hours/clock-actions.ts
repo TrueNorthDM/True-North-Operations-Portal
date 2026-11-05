@@ -4,7 +4,7 @@
  * Clocky's clock (design handoff of 16 October 2026, SPEC section 6, Clock
  * Panel.dc.html): the panel's data, clock in, switch, clock out (and Undo for
  * 10 seconds), the running entry's notes and fields saved as they are typed,
- * "Keep going", the real end time after an automatic stop, the saved
+ * "Keep going" (retired: it refuses), the real end time after an automatic stop, the saved
  * combinations, and asking for time off.
  *
  * Every write is the person's own clock, for the person really signed in
@@ -30,11 +30,11 @@ import {
   runningOf, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
 import { entrySeconds, labelFor, loadClockPanel, loadCombos, northTimeStart, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
-import { clockGate } from '@/lib/timeclock/waves'
+import { clockGateOf } from '@/lib/timeclock/waves'
 import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
 import { QUARTER, formatDuration, recordedSeconds, roundIso } from '@/lib/timeclock/rounding'
 import { FIELD_LABEL, END_AFTER_START, clockDay, gateText, missingFields, offeredOn, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
-import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionStart, windowStart } from '@/lib/timeclock/safety'
+import { KEEP_GOING_RETIRED, sessionStart, windowStart } from '@/lib/timeclock/safety'
 import { lockedMessage } from '@/lib/timeclock/periods'
 import { limitRefusal, type ClockStop } from '@/lib/timeclock/allowance-limit'
 import type { ClockChoice, ClockPanelData, Fail, Result } from '@/lib/timeclock/clocky-types'
@@ -72,16 +72,19 @@ async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
 }
 const isFail = (x: unknown): x is Fail => !!x && typeof x === 'object' && (x as Fail).ok === false
 
-/** A clock that stopped by itself: at its 5-hour mark (the person confirms the end, 1L), or at the allowance (the sentence). */
+/** A clock that stopped by itself: at its 12-hour mark (the person confirms the end, 1L), or at the allowance (the sentence). */
 const stoppedFail = (st: ClockStop): Fail =>
   st.kind === 'limit' ? fail(st.text, { stopped: true, allowance: true }) : fail(STOPPED, { stopped: true })
 
-/** The running entry, stopped first if it ran past its 5-hour mark or the person's allowance. */
+/**
+ * The running entry, stopped first if it ran past its 12-hour mark or the
+ * person's allowance (North Time's own clocks only, from the start date).
+ */
 async function running(v: Viewer, now: Date): Promise<EntryRow | Fail> {
   const c = db()
   const e = await runningOf(c, v.personId)
   if (!e) return fail(NOT_CLOCKED_IN)
-  const st = await stopOwnIfDue(c, e, now)
+  const st = await stopOwnIfDue(c, e, now, v)
   if (st) return stoppedFail(st)
   return e
 }
@@ -91,12 +94,10 @@ const limitAt = (v: Viewer, day: string, now: Date) => limitRefusal(v.personId, 
 
 /**
  * Before the person's North Time start date (in their zone) no clock starts:
- * the sentence saying the day, else null. In no wave, never (migration 154).
+ * the sentence saying the day, else null. In no wave, never (migration 154);
+ * an unread start date refuses too (fails closed).
  */
-const notStarted = async (v: Viewer, now: Date) => {
-  const { startsOn, noWave } = await northTimeStart(v)
-  return clockGate(startsOn, localDate(now, v.zone), noWave)
-}
+const notStarted = async (v: Viewer, now: Date) => clockGateOf(await northTimeStart(v), localDate(now, v.zone))
 
 // ── The panel ───────────────────────────────────────────────────────────────
 
@@ -152,7 +153,7 @@ export async function clockIn(input: ClockInput): Promise<Result<{ entryId: numb
     if (isFail(choice)) return choice
     const open = await runningOf(c, v.personId)
     if (open) {
-      const st = await stopOwnIfDue(c, open, now)
+      const st = await stopOwnIfDue(c, open, now, v)
       return st ? stoppedFail(st) : fail(ALREADY)
     }
 
@@ -389,46 +390,25 @@ export async function saveRunningDetails(input: Finish): Promise<Result<{ missin
 }
 
 /**
- * "Keep going" (1I, N1): a new 5-hour window from now. The bell's row says so.
- * From the bell it names its row: an older "Still working?" (its clock already
- * stopped or went on) is only marked read, never applied to today's clock.
+ * "Keep going" is retired (audit, 5 November 2026): a clock left running stops
+ * at 12h with no question (leadership, 4 November 2026), so nothing may move
+ * its window any more. Kept as an action only so the bell and a panel opened
+ * before the change get a sentence, not an error: it always refuses, and an
+ * old "Still working?" row named by the bell is only marked read.
  */
 export async function keepGoing(input?: { notificationId?: string }): Promise<Result<{ windowStartedAt: string; toast: string; toastFromBell: string; done: string }>> {
   const v = await actor()
   if (isFail(v)) return v
   try {
-    const now = new Date()
-    const c = db()
-    const cur = await running(v, now)
-    const old = isFail(cur) ? null : windowStart(cur) ?? cur.started_at!
     if (input?.notificationId) {
-      const { data: row } = await c.from('notifications').select('dedupe_key')
-        .eq('id', input.notificationId).eq('person_id', v.personId).eq('type_key', 'clocky-still-working').maybeSingle()
-      if (!row || (row as { dedupe_key: string | null }).dedupe_key !== old) {
-        await c.from('notifications').update({ read_at: now.toISOString() }).eq('id', input.notificationId).eq('person_id', v.personId)
-        return fail('That reminder is for an earlier clock, so there is nothing to keep going.')
-      }
+      const { error } = await db().from('notifications').update({ read_at: new Date().toISOString() })
+        .eq('id', String(input.notificationId)).eq('person_id', v.personId).eq('type_key', 'clocky-still-working')
+      if (error) console.error('[clocky clock] still working row:', error.message)
     }
-    if (isFail(cur) || !old) return isFail(cur) ? cur : fail(NOT_CLOCKED_IN)
-    const { error, data } = await c.from('tc_entries').update({ window_started_at: now.toISOString(), updated_at: now.toISOString() })
-      .eq('id', cur.id).is('ended_at', null).select('id')
-    if (error) return notSaved(error)
-    if (!data?.length) return fail(NOT_CLOCKED_IN)
-    const ev = await c.from('tc_safety_events').upsert({
-      person_id: v.personId, entry_id: cur.id, kind: 'keep_going', at: now.toISOString(), window_started_at: old,
-      session_started_at: sessionStart(cur), jobcode_id: cur.jobcode_id,
-    }, { onConflict: 'person_id,kind,window_started_at' })
-    if (ev.error) console.error('[clocky clock] keep going event:', ev.error.message)
-    await audit(c, [{ entryId: cur.id, action: 'keep_going', by: v.personId, before: { window_started_at: old }, after: { window_started_at: now.toISOString() } }])
-    // The "Still working?" row in the bell shows what was done about it.
-    const note = await c.from('notifications').update({ done_note: keptGoingNote(now, v.zone), read_at: now.toISOString() })
-      .eq('person_id', v.personId).eq('type_key', 'clocky-still-working').eq('dedupe_key', old)
-    if (note.error) console.error('[clocky clock] still working row:', note.error.message)
-    refresh()
-    return { ok: true, windowStartedAt: now.toISOString(), toast: KEEP_GOING_TOAST_PANEL, toastFromBell: KEEP_GOING_TOAST_BELL, done: keptGoingNote(now, v.zone) }
   } catch (e) {
-    return notSaved(e)
+    console.error('[clocky clock] still working row:', e instanceof Error ? e.message : e)
   }
+  return fail(KEEP_GOING_RETIRED)
 }
 
 /**

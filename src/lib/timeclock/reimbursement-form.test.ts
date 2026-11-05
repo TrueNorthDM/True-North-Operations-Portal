@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changedFields, readItem, snapshotOf, type ItemRules } from './reimbursement-form'
+import { changedFields, keptMileage, readItem, snapshotOf, type ItemRules } from './reimbursement-form'
 import { MEALS_TRAVEL, MILEAGE } from './reimbursement-rules'
 
 const RULES: ItemRules = { clients: ['2 - i7 Marketing'], contractor: false, mileageRate: 0.76, today: '2026-11-05' }
@@ -45,5 +45,28 @@ describe('what an edit keeps in the history', () => {
     expect(changedFields(before, snapshotOf({ ...row, amount: 45 }))).toEqual([])
     expect(changedFields(before, snapshotOf({ ...row, amount: 48, purpose: 'Figma, two seats' }))).toEqual(['amount', 'purpose'])
     expect(changedFields(before, snapshotOf({ ...row, receipt_number: 'RCT-2026-009', receipt_name: 'figma-2.pdf' }))).toEqual(['receipt_number', 'receipt_name'])
+  })
+})
+
+describe('amounts and mileage on an edit (audit, 5 November 2026)', () => {
+  it('refuses an amount that is not a plain number, or rounds to nothing', () => {
+    for (const amount of ['1e3', '0.004', '12.345', 'Infinity']) {
+      expect(readItem(fields({ ...base, amount, receipt: pdf() }), '', RULES), amount).toBe('write the amount, like 35.00.')
+    }
+  })
+
+  const stored = { category: MILEAGE, amount: '84.00', miles: '120.0', mileage_rate: '0.700' }
+  const mileage = (miles: string) => fields({ ...base, category: MILEAGE, miles, purpose: 'Office to ASI (120 mi at $0.70 a mile)' })
+
+  it('keeps the stored rate and amount of a Mileage line whose miles did not change', () => {
+    expect(keptMileage(stored, 120)).toEqual({ rate: 0.7, amount: 84 })
+    expect(readItem(mileage('120'), '', RULES, false, stored)).toMatchObject({ amount: 84, rate: 0.7, miles: 120, purpose: 'Office to ASI (120 mi at $0.70 a mile)' })
+  })
+
+  it('works out a new or changed Mileage line at today\'s rate', () => {
+    expect(keptMileage(stored, 130)).toBeNull()
+    expect(readItem(fields({ ...base, category: MILEAGE, miles: '130', purpose: 'Office to ASI' }), '', RULES, false, stored)).toMatchObject({ amount: 98.8, rate: 0.76 })
+    expect(readItem(fields({ ...base, category: MILEAGE, miles: '120', purpose: 'Office to ASI' }), '', RULES)).toMatchObject({ amount: 91.2, rate: 0.76 })
+    expect(keptMileage({ category: 'Software', amount: 45, miles: null, mileage_rate: null }, 120)).toBeNull()
   })
 })

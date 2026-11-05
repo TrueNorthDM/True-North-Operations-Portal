@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allWaiting, decisionText, eventKey, joinableReport, joinedToast, receiptsText, reportTitle, totalsText } from './reimbursement-reports'
+import { allWaiting, decisionText, eventKey, joinableReport, joinedToast, receiptsText, reportTitle, rmbVersion, totalsText } from './reimbursement-reports'
 
 describe('a reimbursement request with several receipts', () => {
   it('adds the receipts up, dollars first, each currency apart', () => {
@@ -48,5 +48,21 @@ describe('one approval for the same event (owner, 5 November 2026)', () => {
     expect(allWaiting([{ state: 'pending' }, { state: 'pending' }])).toBe(true)
     expect(allWaiting([{ state: 'pending' }, { state: 'denied' }])).toBe(false)
     expect(allWaiting([])).toBe(false)
+  })
+})
+
+describe('the version a decider saw (audit, 5 November 2026)', () => {
+  const row = { id: 1, state: 'pending', spent_on: '2026-10-30', category: 'Software', amount: 45, currency: 'USD', purpose: 'Figma', client: null, billable: false, miles: null, receipt_path: 'a/1.pdf', report_id: 7 }
+  it('is the same however the database writes the numbers, and in any order', () => {
+    expect(rmbVersion([{ ...row, amount: '45.00' }])).toBe(rmbVersion([row]))
+    const two = { ...row, id: 2, purpose: 'Hotel' }
+    expect(rmbVersion([two, row])).toBe(rmbVersion([row, two]))
+  })
+  it('changes with anything the decider is shown or decides on', () => {
+    const v = rmbVersion([row])
+    for (const change of [{ amount: 45.01 }, { purpose: 'Figma, two seats' }, { receipt_path: 'a/9.pdf' }, { category: 'Other' }, { spent_on: '2026-10-29' }, { client: '2 - i7 Marketing' }, { billable: true }, { miles: 10 }, { currency: 'KES' }, { state: 'approved' }]) {
+      expect(rmbVersion([{ ...row, ...change }]), JSON.stringify(change)).not.toBe(v)
+    }
+    expect(rmbVersion([row, { ...row, id: 2 }])).not.toBe(v)
   })
 })

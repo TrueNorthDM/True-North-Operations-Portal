@@ -61,3 +61,43 @@ export const joinedToast = (name: string, n: number): string => `Added to your w
 
 /** A request still waiting is entirely pending: what may be edited or withdrawn. */
 export const allWaiting = (items: readonly { state: string }[]): boolean => items.length > 0 && items.every(i => i.state === 'pending')
+
+// ── The version a decider saw (audit, 5 November 2026) ──────────────────────
+
+/** The columns a reimbursement's version is made of: what its decider is shown and decides on. */
+export const RMB_VERSION_COLS = 'id, state, spent_on, category, amount, currency, purpose, client, billable, miles, receipt_path, report_id'
+
+export interface RmbVersioned {
+  id: number; state: string; spent_on: string; category: string; amount: number | string; currency: string; purpose: string
+  client: string | null; billable: boolean; miles?: number | string | null; receipt_path: string | null; report_id?: number | null
+}
+
+/** 53-bit string hash (cyrb53): short, stable, the same on the server and in the browser. */
+function hash53(text: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ ch, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
+}
+
+/**
+ * The version of one or more receipts as their decider is shown them: an edit
+ * made in place (same id, edit/route.ts), a receipt added or removed, all give
+ * another. Approvals sends it with each decision, and the decision is refused
+ * when what waits is no longer what was seen. Order does not matter.
+ */
+export function rmbVersion(rows: readonly RmbVersioned[]): string {
+  const line = (r: RmbVersioned) => JSON.stringify([
+    Number(r.id), r.state, r.spent_on, r.category, Number(r.amount).toFixed(2), r.currency, r.purpose, r.client ?? null,
+    !!r.billable, r.miles == null ? null : Number(r.miles).toFixed(1), r.receipt_path ?? null, r.report_id ?? null,
+  ])
+  return hash53([...rows].sort((a, b) => Number(a.id) - Number(b.id)).map(line).join('\n'))
+}
+
+/** The refusal when it changed. */
+export const RMB_CHANGED = 'This request changed since you opened it. Look again before deciding.'

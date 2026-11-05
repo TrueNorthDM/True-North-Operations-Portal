@@ -18,7 +18,9 @@
  * clock works as before and the import keeps taking their TSheets hours.
  *
  * From the start date, in the person's own time zone:
- *   - the North Time clock starts for them (before it, Clock in says the day);
+ *   - the North Time clock starts for them (before it, Clock in says the day),
+ *     and its 12-hour and allowance stops act on their own clocks;
+ *   - Add time and the week grid take hours dated from it (entryStartGate);
  *   - the TSheets import stops taking their entries dated on or after it and
  *     sets them aside in tc_import_skipped for someone to decide;
  *
@@ -123,6 +125,63 @@ export function noWaveFor(name: string): string {
 export function clockGate(startsOn: string | null, today: string, noWave = false): string | null {
   if (noWave) return NO_WAVE_MESSAGE
   return beforeStart(startsOn, today) ? notYetMessage(startsOn!) : null
+}
+
+/** A person's start as read from the database; `unread` when the read failed. */
+export interface StartRead { startsOn: string | null; noWave: boolean; unread?: boolean }
+
+/** What North Time says when it could not read a start date: it fails closed, never "no gate". */
+export const START_UNREAD = 'North Time could not check your start date. Try again in a moment.'
+
+/** The same, about someone else's start date. */
+export function startUnreadFor(name: string): string {
+  return `North Time could not check ${name}'s start date. Try again in a moment.`
+}
+
+/** The clock's gate from a read start: a failed read refuses, as no wave and a day before the start do. */
+export function clockGateOf(s: StartRead, today: string): string | null {
+  if (s.unread) return START_UNREAD
+  return clockGate(s.startsOn, today, s.noWave)
+}
+
+/**
+ * Whether North Time acts on a person's clock today (the 12-hour stop, the
+ * allowance stop): only once their start date has arrived in their own zone,
+ * never in no wave, never on a failed read.
+ */
+export function startedOn(s: StartRead, today: string): boolean {
+  return !s.unread && !s.noWave && hasStarted(s.startsOn, today)
+}
+
+/** "Your North Time starts on Sunday, Nov 22. Until then, keep recording your time in TSheets." */
+export function startsLaterMessage(startsOn: string): string {
+  return `Your North Time starts on ${startDayLabel(startsOn)}. Until then, keep recording your time in TSheets.`
+}
+
+/** The same, about someone else. */
+export function startsLaterFor(name: string, startsOn: string): string {
+  return `${name}'s North Time starts on ${startDayLabel(startsOn)}. Time before then stays in TSheets.`
+}
+
+/** No start date yet (their wave has no day): TSheets keeps every hour. */
+export const NO_START_MESSAGE = 'Your North Time start date is not set yet. Keep recording your time in TSheets.'
+
+export function noStartFor(name: string): string {
+  return `${name} has no North Time start date yet: their time stays in TSheets.`
+}
+
+/**
+ * The gate on hours typed in (Add time, the week grid, and a person's own
+ * edits and deletes): refused for anyone in no wave or with no start date,
+ * and for any of `days` before the start date. TSheets owns those hours and
+ * the import copies them, so an entry here would count them twice. `name` is
+ * null for one's own hours ("Your..."), else the person's name. Pure.
+ */
+export function entryStartGate(s: StartRead, days: readonly string[], name: string | null): string | null {
+  if (s.unread) return name ? startUnreadFor(name) : START_UNREAD
+  if (s.noWave) return name ? noWaveFor(name) : NO_WAVE_MESSAGE
+  if (!s.startsOn) return name ? noStartFor(name) : NO_START_MESSAGE
+  return days.some(d => d < s.startsOn!) ? (name ? startsLaterFor(name, s.startsOn) : startsLaterMessage(s.startsOn)) : null
 }
 
 /** A valid start day: a real calendar date, YYYY-MM-DD. */

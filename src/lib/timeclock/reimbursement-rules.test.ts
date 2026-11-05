@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CATEGORIES, DESCRIPTION_LABEL, MEAL_CAP, MEAL_HINT, MEAL_OVER_FLAG, MEAL_OVER_WARNING, MEALS_TRAVEL, MILEAGE, mealReasonMissing, mileageAmount, mileageNote, mileageText, milesOf, needsReceipt, overMealCap, withoutMileageNote } from './reimbursement-rules'
+import { CATEGORIES, DESCRIPTION_LABEL, MEAL_CAP, MEAL_HINT, MEAL_OVER_FLAG, MEAL_OVER_WARNING, MEALS_TRAVEL, MILEAGE, mealReasonMissing, amountOf, mileageAmount, mileageNote, mileageText, milesOf, needsReceipt, overMealCap, withoutMileageNote } from './reimbursement-rules'
 
 describe('reimbursement lines (Tina, 29 October 2026)', () => {
   it('lists the categories in the agreed order', () => {
@@ -55,5 +55,29 @@ describe('reimbursement lines (Tina, 29 October 2026)', () => {
     expect(withoutMileageNote(`Office to ASI and back${mileageNote(120, 0.76)}`, 120, 0.76)).toBe('Office to ASI and back')
     expect(withoutMileageNote('Office to ASI and back', 120, 0.76)).toBe('Office to ASI and back')
     expect(withoutMileageNote('Uber (20 mi)', null, null)).toBe('Uber (20 mi)')
+  })
+})
+
+describe('numbers as typed (audit, 5 November 2026)', () => {
+  it('reads miles as a plain number, rounded before the more than 0 check', () => {
+    expect(milesOf('1e3')).toBeNull()
+    expect(milesOf('0x10')).toBeNull()
+    expect(milesOf('Infinity')).toBeNull()
+    expect(milesOf('0.04')).toBeNull()
+    expect(milesOf('0.05')).toBe(0.1)
+    expect(milesOf('.5')).toBe(0.5)
+    expect(milesOf(' 120 ')).toBe(120)
+  })
+  it('reads money as a plain number with at most 2 decimals, rounded before the more than 0 check', () => {
+    expect(amountOf('35.00')).toBe(35)
+    expect(amountOf('1,250.5')).toBe(1250.5)
+    expect(amountOf('.99')).toBe(0.99)
+    expect(amountOf('1e3')).toBeNull()
+    expect(amountOf('12.345')).toBeNull()
+    expect(amountOf('0.00')).toBeNull()
+    expect(amountOf('-5')).toBeNull()
+    expect(amountOf('$5')).toBeNull()
+    expect(amountOf('100000')).toBeNull()
+    expect(amountOf('')).toBeNull()
   })
 })

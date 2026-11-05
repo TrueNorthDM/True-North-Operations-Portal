@@ -16,7 +16,7 @@ import { localDate } from './format'
 import { loadInvoiceSettings, loadRequestDeciders, loadRoutes } from './pay-terms'
 import { loadClients } from './requests-data'
 import { orList } from './routing'
-import { MAX_RECEIPTS, MAX_TOTAL, readItem, type ItemRules, type RmbItem, type RmbSnapshot } from './reimbursement-form'
+import { MAX_RECEIPTS, MAX_TOTAL, readItem, type ItemRules, type RmbItem, type RmbSnapshot, type StoredLine } from './reimbursement-form'
 
 export const no = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status })
 
@@ -29,10 +29,11 @@ export async function itemRules(v: Viewer): Promise<ItemRules> {
 /**
  * The numbered receipts of a form (count, then receipt_0, date_0, ...), or one
  * with plain field names (as before). `stored(i)`: receipt i already has a
- * file kept (an edit). The refusal's words when any is wrong: all are checked
- * before any is stored.
+ * file kept (an edit); `prevOf(i)`: the receipt it was, as stored (an edit:
+ * a Mileage line whose miles did not change keeps its rate). The refusal's
+ * words when any is wrong: all are checked before any is stored.
  */
-export function readItems(form: FormData, rules: ItemRules, stored: (i: number) => boolean = () => false): { items: RmbItem[]; count: number } | string {
+export function readItems(form: FormData, rules: ItemRules, stored: (i: number) => boolean = () => false, prevOf: (i: number) => StoredLine | null = () => null): { items: RmbItem[]; count: number } | string {
   const numbered = form.has('count')
   const count = numbered ? Number(form.get('count')) : 1
   if (!Number.isInteger(count) || count < 1) return 'Add at least one receipt.'
@@ -40,7 +41,7 @@ export function readItems(form: FormData, rules: ItemRules, stored: (i: number) 
   const items: RmbItem[] = []
   let total = 0
   for (let i = 0; i < count; i++) {
-    const it = readItem(k => form.get(numbered ? `${k}_${i}` : k), count > 1 ? `Receipt ${i + 1}: ` : '', rules, stored(i))
+    const it = readItem(k => form.get(numbered ? `${k}_${i}` : k), count > 1 ? `Receipt ${i + 1}: ` : '', rules, stored(i), prevOf(i))
     if (typeof it === 'string') return it.charAt(0).toUpperCase() + it.slice(1)
     total += it.file?.size ?? 0
     items.push(it)
@@ -67,6 +68,9 @@ export async function dropReceipts(paths: readonly (string | null | undefined)[]
   const { error } = await receiptFiles().remove(list)
   if (error) console.error('[reimbursement] remove files:', error.message)
 }
+
+/** The new files a failed edit leaves unused: every one stored but those already written into a row. */
+export const uncommitted = (stored: readonly string[], committed: ReadonlySet<string>): string[] => stored.filter(p => !committed.has(p))
 
 /**
  * A receipt's own number (owner, 31 October 2026): RCT-2026-005, under the

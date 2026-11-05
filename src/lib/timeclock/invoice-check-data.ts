@@ -33,13 +33,37 @@ export interface InvoiceCheck extends Comparison {
   details?: InvoiceDetails
 }
 
-/** The comparison for one invoice; null when it has no person or cannot be read. */
+/**
+ * The check as a gate reads it (audit, 5 November 2026): `check` null only when
+ * no check applies (no such invoice), and an error apart when it could not be
+ * read, so an approval never takes "could not read" for "nothing to check".
+ */
+export type InvoiceCheckRead = { ok: true; check: InvoiceCheck | null } | { ok: false; error: string }
+
+/** The comparison for one invoice, for the approval gates: a read error is said, never a pass. */
+export async function readInvoiceCheck(invoiceId: number, now = new Date()): Promise<InvoiceCheckRead> {
+  try {
+    return { ok: true, check: await checkOrThrow(invoiceId, now) }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** The comparison for one invoice, for the screens; null when there is none or it cannot be read. */
 export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Promise<InvoiceCheck | null> {
+  const r = await readInvoiceCheck(invoiceId, now)
+  if (!r.ok) console.error('[invoice check]', r.error)
+  return r.ok ? r.check : null
+}
+
+/** Null when there is no such invoice; throws when any part cannot be read. */
+async function checkOrThrow(invoiceId: number, now: Date): Promise<InvoiceCheck | null> {
   const c = createAdminClient()
   const { data: inv, error } = await c.from('invoices')
     .select('id, person_id, submission_id, period_start, period_end, kind, made_by, stated_hours, stated_total, their_number, covers, confirmed_text, total, sent_at, created_at')
     .eq('id', invoiceId).maybeSingle()
-  if (error || !inv) return null
+  if (error) throw new Error(`The invoice could not be read: ${error.message}`)
+  if (!inv) return null
   const [terms, timesheet, linesRes, rmbRes] = await Promise.all([
     loadPayTerms([inv.person_id]),
     inv.submission_id && inv.kind !== 'fixed_no_timesheet' ? hoursByClient(inv.person_id, inv.period_start, inv.period_end, now) : Promise.resolve([]),
@@ -49,7 +73,8 @@ export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Pro
     c.from('reimbursements').select('id, receipt_number, purpose, amount, state, invoice_id, decided_at').eq('person_id', inv.person_id)
       .or(`invoice_id.eq.${invoiceId},and(state.eq.approved,invoice_id.is.null,document_id.is.null)`),
   ])
-  if (linesRes.error || rmbRes.error) return null
+  if (linesRes.error) throw new Error(`The invoice lines could not be read: ${linesRes.error.message}`)
+  if (rmbRes.error) throw new Error(`Reimbursements could not be read: ${rmbRes.error.message}`)
   const t = terms.get(inv.person_id)
   const lines = linesRes.data ?? []
   const byClient = new Map<string, number>()

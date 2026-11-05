@@ -206,7 +206,7 @@ const RMB_ITEMS: NonNullable<RequestCard['items']> = [
 const RMB_CARD: RequestCard = {
   kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'Northwind Foods visit, Nov 3 to 4, 3 receipts, $340.82', width: 760, twoCols: false, receipt: null, items: RMB_ITEMS,
   facts: [{ k: 'Client or project', v: 'Northwind Foods' }], allow: null, cal: null,
-  after: 'Jordan Lee is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.',
+  after: 'Jordan Lee is a contractor. They add each receipt you approve to their next invoice, as its own line.',
   canDecide: true, roText: null, approveLabel: 'Approve all 3', denyLabel: 'Deny all',
 }
 

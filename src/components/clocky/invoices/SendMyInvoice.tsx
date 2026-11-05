@@ -26,6 +26,7 @@ import { usd } from '@/lib/timeclock/invoice-doc'
 import { AMOUNT_NOTE, RATE_NOTE, builderProblem, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, missingOnFile, payOnFile, type BuilderLine, type MadeBy, type PayOnFile } from '@/lib/timeclock/contractor-invoice-rules'
 import type { InvoiceToSend } from '@/lib/timeclock/send-invoice-data'
 import type { SendInvoiceData } from '@/lib/timeclock/send-invoice-data'
+import { reimbursementsFor } from '@/lib/timeclock/send-invoice-reimbursements'
 
 const MAX_PDF = 10 * 1024 * 1024
 const TRY = 'Something went wrong. Check the connection and try again.'
@@ -67,7 +68,8 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
   const [total, setTotal] = useState('')
   const [covers, setCovers] = useState('')
   const [pdf, setPdf] = useState<File | null>(null)
-  const [rmb, setRmb] = useState<number[]>([])
+  // The ones still on an invoice sent back start ticked: they were on it before.
+  const [rmb, setRmb] = useState<number[]>(() => (period?.returned?.reimbursements ?? []).map(r => r.id))
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +79,8 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
   const pay = payOf(period, data)
   const missing = missingOnFile(pay)
   const lines = rows.map(r => toLine(r, pay))
-  const rTotal = data.reimbursements.filter(r => rmb.includes(r.id)).reduce((s, r) => s + r.amount, 0)
+  const offered = period ? reimbursementsFor(data, period) : data.reimbursements
+  const rTotal = offered.filter(r => rmb.includes(r.id)).reduce((s, r) => s + r.amount, 0)
   const builtTotal = Math.round((lines.reduce((s, l) => s + (lineAmount(l) ?? 0), 0) + rTotal) * 100) / 100
   const builtHours = lines.reduce((s, l) => s + (l.hours ?? 0), 0)
 
@@ -138,7 +141,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
       {data.toSend.length > 1 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Which period">
           {data.toSend.map(p => (
-            <button key={p.start} type="button" aria-pressed={p.start === start} onClick={() => { setStart(p.start); setRows(startRows(p, data)); setRmb([]); setConfirmed(false) }}
+            <button key={p.start} type="button" aria-pressed={p.start === start} onClick={() => { setStart(p.start); setRows(startRows(p, data)); setRmb((p.returned?.reimbursements ?? []).map(r => r.id)); setConfirmed(false) }}
               className={p.start === start ? BTN.smallNavy : BTN.smallWhite}>{p.label}</button>
           ))}
         </div>
@@ -236,11 +239,11 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
               </>
             )}
 
-            {data.reimbursements.length > 0 && (
+            {offered.length > 0 && (
               <div className="flex flex-col gap-2 pt-3 border-t border-[var(--row-rule)]">
                 <span className={FIELD_LABEL}>Reimbursements {mode === 'own_file' ? 'on it' : 'to add'}</span>
                 <p className="m-0 text-[12.5px] text-muted">{mode === 'own_file' ? 'Your approved reimbursements waiting for an invoice. Tick the ones your invoice includes.' : 'Your approved reimbursements waiting for an invoice.'}</p>
-                {data.reimbursements.map(r => (
+                {offered.map(r => (
                   <label key={r.id} className="flex items-center gap-2.5 text-[13.5px]">
                     <input type="checkbox" className={CHECKBOX} checked={rmb.includes(r.id)} onChange={e => setRmb(xs => (e.target.checked ? [...xs, r.id] : xs.filter(x => x !== r.id)))} />
                     <span className="flex-1">{r.label}{r.purpose && !r.label.includes(r.purpose) ? `, ${r.purpose}` : ''}</span>

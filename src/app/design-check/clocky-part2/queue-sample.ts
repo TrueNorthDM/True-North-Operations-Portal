@@ -107,7 +107,7 @@ function tripRow(sup: boolean): QueueRow {
     request: {
       kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'São Paulo trip, Oct 12 to 15, 4 receipts, $873.00', width: 760, twoCols: false, receipt: null, items: TRIP_ITEMS,
       facts: [{ k: 'Client or project', v: '2 - i7 Marketing' }], allow: null, cal: null,
-      after: 'Justus Tsofa is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.',
+      after: 'Justus Tsofa is a contractor. They add each receipt you approve to their next invoice, as its own line.',
       canDecide: sup, roText: sup ? null : 'Read only. Arnaldo Oliveira decides it.', approveLabel: 'Approve all 4', denyLabel: 'Deny all',
     },
   }

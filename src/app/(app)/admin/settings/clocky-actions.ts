@@ -329,7 +329,9 @@ export async function saveFinance(input: { personIds: string[] }): Promise<Done>
  * Reimbursements (owner, 1 November 2026, Who approves what): the people who
  * decide reimbursements, anyone on the list, never their own. Super Admins
  * only; at least one person, all active Admins or Super Admins (who can open
- * Approvals). Saved as saveFinance saves Finance.
+ * Approvals), and each a Super Admin or in Finance (the only ones who see
+ * reimbursements, money lockdown of 5 November 2026). Saved as saveFinance
+ * saves Finance.
  */
 export async function saveReimbursementApprovers(input: { personIds: string[] }): Promise<Done> {
   if (!(await allowedTo('cs-invoices-edit'))) return no('Only Super Admins choose who approves reimbursements.')
@@ -341,6 +343,11 @@ export async function saveReimbursementApprovers(input: { personIds: string[] })
   if (e1) { console.error('[settings] reimbursement approvers:', e1.message); return no(NOT_SAVED) }
   if ((found ?? []).length !== ids.length || (found ?? []).some(p => p.status && p.status !== 'active')) return no('Pick active people from the Directory.')
   if ((found ?? []).some(p => p.access_level !== 'admin' && p.access_level !== 'super_admin')) return no('Pick Admins or Super Admins: only they open Approvals to decide.')
+  // Reimbursements are money (money lockdown, 5 November 2026): Approvals shows them only to Super Admins and Finance.
+  const { data: inv, error: e2 } = await c.from('invoice_settings').select('finance').eq('singleton_id', 1).maybeSingle()
+  if (e2) { console.error('[settings] reimbursement approvers:', e2.message); return no(NOT_SAVED) }
+  const finance = new Set(((inv?.finance ?? []) as string[]).map(String))
+  if ((found ?? []).some(p => p.access_level !== 'super_admin' && !finance.has(p.id))) return no('Pick Super Admins or Finance: only they see reimbursements.')
   const me = await getRealPerson()
   const { error } = await c.from('invoice_settings').update({ reimbursement_approvers: ids, updated_by: me?.id ?? null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
   if (error) { console.error('[settings] reimbursement approvers:', error.message); return no(NOT_SAVED) }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { builderProblem, compareInvoice, invoiceDetails, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, madeByLine, missingOnFile, payOnFile } from './contractor-invoice-rules'
+import { builderProblem, compareInvoice, invoiceDetails, confirmText, fixedLine, lineAmount, lineHours, linesAtFileRate, linesFromTimesheet, madeByLine, missingOnFile, payOnFile, timesheetAmount } from './contractor-invoice-rules'
 
 // The contractor makes and sends their own invoice (leadership, 4 November 2026).
 
@@ -191,5 +191,83 @@ describe('Invoice details submitted (owner, 5 November 2026)', () => {
     expect(d.lines).toEqual([{ description: '2 - i7 Marketing, October 2026', sub: null, hours: '59h 00m', rate: '$44.78', amount: '$2,642.02', check: null, checkText: '', checkSub: null }])
     expect(d.note).toBe("Made by the portal from this timesheet before November 4, 2026: the hours are the timesheet's.")
     expect(d.total.checkText).toBe('Matches')
+  })
+})
+
+describe('timesheets with hours that are not whole (audit, 5 November 2026)', () => {
+  const m = (hours: number, minutes: number) => hours * 3600 + minutes * 60
+  // What the builder opens with, then what the invoice keeps (hours_seconds) and checks.
+  const asSent = (byClient: { client: string; seconds: number }[], rate: number) => {
+    const lines = linesFromTimesheet(byClient, 'October 2026', rate)
+    return {
+      byClient: lines.map(l => ({ client: l.client!, seconds: Math.round(l.hours! * 3600) })),
+      hours: lines.reduce((n, l) => n + l.hours!, 0),
+      total: Math.round(lines.reduce((n, l) => n + lineAmount(l)!, 0) * 100) / 100,
+    }
+  }
+
+  it('a line carries the hours to the hundredth, and the timesheet comes to what the lines do', () => {
+    expect(lineHours(m(35, 20))).toBe(35.33)
+    expect(lineHours(m(12, 40))).toBe(12.67)
+    expect(lineHours(m(0, 1))).toBe(0.02)
+    // 35.33 x $50, not 35.3333 x $50 ($1,766.67).
+    expect(timesheetAmount([{ seconds: m(35, 20) }], 50)).toBe(1766.5)
+    // 35.33 x 44.78 = 1,582.08 and 12.67 x 44.78 = 567.36.
+    expect(timesheetAmount([{ seconds: m(35, 20) }, { seconds: m(12, 40) }, { seconds: 0 }], 44.78)).toBe(2149.44)
+  })
+
+  it('35h 20m at $50, built from the timesheet, matches: $1,766.50 on both sides', () => {
+    const ts = [{ client: 'i7 Marketing', seconds: m(35, 20) }]
+    const sent = asSent(ts, 50)
+    expect(sent.total).toBe(1766.5)
+    const c = compareInvoice({ timesheet: ts, pay: { kind: 'hourly', rate: 50 }, reimbursements: [], invoice: { madeBy: 'builder', ...sent, reimbursements: [] } })
+    expect(c.total).toMatchObject({ timesheet: '$1,766.50', invoice: '$1,766.50', check: 'match', difference: '' })
+    expect(c.rows).toEqual([{ label: 'i7 Marketing', timesheet: '35h 20m', invoice: '35h 20m', difference: '', check: 'match' }])
+    expect(c.matches).toBe(true)
+  })
+
+  it('several clients with odd minutes and a reimbursement match to the cent', () => {
+    const ts = [{ client: 'i7 Marketing', seconds: m(35, 20) }, { client: 'COE Group', seconds: m(12, 40) }, { client: 'True North Internal', seconds: m(3, 10) }]
+    const sent = asSent(ts, 44.78)
+    // 3h 10m is 3.17 x 44.78 = 141.95.
+    expect(sent.total).toBe(2291.39)
+    const c = compareInvoice({ timesheet: ts, pay: { kind: 'hourly', rate: 44.78 }, reimbursements: [{ label: 'RCT-1', amount: 84.2 }],
+      invoice: { madeBy: 'builder', ...sent, total: 2375.59, reimbursements: ['RCT-1'] } })
+    expect(c.matches).toBe(true)
+    expect(c.total.timesheet).toBe('$2,375.59')
+  })
+
+  it('a hundredth of an hour more on a line differs, on the line and in the total', () => {
+    const ts = [{ client: 'i7 Marketing', seconds: m(35, 20) }]
+    const c = compareInvoice({ timesheet: ts, pay: { kind: 'hourly', rate: 50 }, reimbursements: [],
+      invoice: { madeBy: 'builder', byClient: [{ client: 'i7 Marketing', seconds: Math.round(35.34 * 3600) }], hours: 35.34, total: 1767, reimbursements: [] } })
+    expect(c.rows[0]).toMatchObject({ check: 'differs', difference: '+0h 01m' })
+    expect(c.total).toMatchObject({ check: 'differs', difference: '+$0.50' })
+    // A cent off the total is a difference too.
+    const cent = compareInvoice({ timesheet: ts, pay: { kind: 'hourly', rate: 50 }, reimbursements: [],
+      invoice: { madeBy: 'builder', byClient: [{ client: 'i7 Marketing', seconds: Math.round(35.33 * 3600) }], hours: 35.33, total: 1766.51, reimbursements: [] } })
+    expect(cent.total).toMatchObject({ check: 'differs', difference: '+$0.01' })
+  })
+
+  it('their own file with 35.33 hours and $1,766.50 matches the timesheet', () => {
+    const ts = [{ client: 'i7 Marketing', seconds: m(35, 20) }]
+    const c = compareInvoice({ timesheet: ts, pay: { kind: 'hourly', rate: 50 }, reimbursements: [],
+      invoice: { madeBy: 'own_file', byClient: [], hours: 35.33, total: 1766.5, reimbursements: [] } })
+    expect(c.rows.find(r => r.label === 'Hours in all')).toMatchObject({ check: 'match' })
+    expect(c.matches).toBe(true)
+  })
+
+  it("the details read the same: each built line matches, and the total is expected at the lines' cents", () => {
+    const ts = [{ client: 'i7 Marketing', seconds: m(35, 20) }, { client: 'COE Group', seconds: m(12, 40) }]
+    const lines = linesFromTimesheet(ts, 'October 2026', 50).map(l => ({ kind: 'hours', client: l.client, description: l.description, hoursSeconds: Math.round(l.hours! * 3600), rate: 50, amount: lineAmount(l)! }))
+    const total = lines.reduce((n, l) => n + l.amount, 0)
+    expect(total).toBe(2400)
+    const d = invoiceDetails({
+      timesheet: ts, pay: { kind: 'hourly', rate: 50 }, reimbursements: [], lines, confirmed: null,
+      stated: { theirNumber: null, hours: null, total: null, covers: null },
+      invoice: { madeBy: 'builder', byClient: lines.map(l => ({ client: l.client!, seconds: l.hoursSeconds })), hours: 48, total, reimbursements: [] },
+    })
+    expect(d.lines.map(l => [l.hours, l.amount, l.checkText])).toEqual([['35h 20m', '$1,766.50', 'Matches'], ['12h 40m', '$633.50', 'Matches']])
+    expect(d.total).toMatchObject({ amount: '$2,400.00', check: 'match' })
   })
 })

@@ -15,6 +15,10 @@
  *     (lib/timeclock/scope.ts);
  *   - nobody's hours go past their allowance plus the extra hours approved,
  *     whoever adds them (owner, 25 October 2026; allowance-limit.ts);
+ *   - nothing typed in for anyone in no wave, with no start date, or dated
+ *     before their North Time start date: TSheets keeps those hours and the
+ *     import copies them (audit, 5 November 2026; waves.ts entryStartGate);
+ *     a person's own edits and deletes follow the same rule;
  *   - no overlaps, no entry over 24 hours;
  *   - a submitted or approved period is locked for everyone; a Super Admin
  *     reopens it first.
@@ -49,8 +53,8 @@ import { canAddFor, changeRight } from '@/lib/timeclock/scope'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
-import { loadNoWave } from '@/lib/timeclock/waves-data'
-import { NO_WAVE_MESSAGE, noWaveFor } from '@/lib/timeclock/waves'
+import { startOfPerson } from '@/lib/timeclock/waves-data'
+import { entryStartGate, type StartRead } from '@/lib/timeclock/waves'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
@@ -83,18 +87,30 @@ async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
 }
 
 /**
- * A person in no wave (Company settings > North Time rollout, migration 154)
- * is not on North Time: no time is added for them here, by anyone. A failed
- * read leaves Add time as it was, as the clock does.
+ * The target person's North Time start (Company settings > North Time
+ * rollout), read as the import reads it. A failed read comes back `unread`:
+ * the gate then refuses (fails closed, audit 5 November 2026).
  */
-async function noWaveRefusal(v: Viewer, personId: string, dir: { nameOf: (id: string) => string }): Promise<Fail | null> {
+async function startOfTarget(personId: string): Promise<StartRead> {
   try {
-    if (!(await loadNoWave(db(), [personId])).has(personId)) return null
+    return await startOfPerson(db(), personId)
   } catch (e) {
-    console.error('[clocky entries] no wave:', e instanceof Error ? e.message : e)
-    return null
+    console.error('[clocky entries] North Time start date:', e instanceof Error ? e.message : e)
+    return { startsOn: null, noWave: false, unread: true }
   }
-  return fail(personId === v.personId ? NO_WAVE_MESSAGE : noWaveFor(dir.nameOf(personId)))
+}
+
+/**
+ * Hours TSheets owns are not typed in here, by anyone (audit, 5 November
+ * 2026): nothing for a person in no wave (migration 154) or with no start
+ * date, and nothing dated before their start date. The import copies those
+ * from TSheets, so an entry here would count them twice. `days` are the
+ * entry's days; the sentence names the person when it is someone else's.
+ */
+async function startRefusal(v: Viewer, personId: string, dir: { nameOf: (id: string) => string }, days: readonly string[], start?: StartRead): Promise<Fail | null> {
+  const s = start ?? await startOfTarget(personId)
+  const why = entryStartGate(s, days, personId === v.personId ? null : dir.nameOf(personId))
+  return why ? fail(why) : null
 }
 
 async function reader(key = 'clocky-hours'): Promise<Viewer | Fail> {
@@ -306,8 +322,10 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
     if (!canAddFor(v, dir.target(personId))) return fail(NOT_YOURS)
-    const noWave = await noWaveRefusal(v, personId, dir)
-    if (noWave) return noWave
+    // No wave, no start date or an unread one: refused before anything else, whoever adds.
+    const ntStart = await startOfTarget(personId)
+    const notOn = await startRefusal(v, personId, dir, [], ntStart)
+    if (notOn) return notOn
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const job = catalog.jobs.get(Number(input.jobcodeId))
@@ -317,6 +335,9 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const zone = dir.zoneOf(personId)
     const times = parseTimes(input, zone, now, false)
     if (isFail(times)) return times
+    // Not dated before the person's start date: TSheets keeps those hours.
+    const before = await startRefusal(v, personId, dir, [input.date, ...(times.kind === 'range' ? [localDate(times.start, zone)] : [])], ntStart)
+    if (before) return before
 
     const lock = lockOn([input.date], (await loadSubmissions(c, [personId])).get(personId) ?? [])
     if (lock) return fail(lockedMessage(lock))
@@ -371,6 +392,10 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
     if (!e) return fail(GONE)
     if (e.kind === 'absence') return fail('Time off changes through its request.')
     if (changeRight(v, dir.target(e.person_id)) === 'none') return fail(NOT_YOURS)
+    // One's own hours from before the start date (or in no wave) are TSheets': not changed here.
+    // Team Leaders, Admins and Super Admins keep their rights on others' entries.
+    const own = e.person_id === v.personId ? await startRefusal(v, e.person_id, dir, [e.entry_date, String(input.date ?? e.entry_date)]) : null
+    if (own) return own
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const zone = dir.zoneOf(e.person_id)
@@ -462,6 +487,9 @@ export async function deleteEntry(input: { id: number; reason: string }): Promis
     if (!e) return fail(GONE)
     if (e.kind === 'absence') return fail('Time off changes through its request.')
     if (changeRight(v, dir.target(e.person_id)) === 'none') return fail(NOT_YOURS)
+    // One's own entry from before the start date (or in no wave) is TSheets': not deleted here. Others keep their rights.
+    const own = e.person_id === v.personId ? await startRefusal(v, e.person_id, dir, [e.entry_date]) : null
+    if (own) return own
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const lock = lockOn([e.entry_date], (await loadSubmissions(c, [e.person_id])).get(e.person_id) ?? [], e.state)
@@ -506,8 +534,10 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
     if (!canAddFor(v, dir.target(personId))) return fail(NOT_YOURS)
-    const noWave = await noWaveRefusal(v, personId, dir)
-    if (noWave) return noWave
+    // No wave, no start date or an unread one: no cell is saved, whoever types it.
+    const ntStart = await startOfTarget(personId)
+    const notOn = await startRefusal(v, personId, dir, [], ntStart)
+    if (notOn) return notOn
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.weekStart ?? ''))) return fail('Pick a week.')
@@ -545,6 +575,9 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
         const here = week.filter(e => e.entry_date === day && keyOf(e.jobcode_id, (e.fields ?? {}) as Record<string, string>) === key)
         const mine = here.filter(gridOwned)
         if (mine.reduce((s, e) => s + e.duration_seconds, 0) === seconds) continue
+        // A changed cell before the start date is refused, duration-only as it is: TSheets keeps that day.
+        const before = await startRefusal(v, personId, dir, [day], ntStart)
+        if (before) return before
         if (here.some(e => !gridOwned(e))) {
           return fail('Cells with a clock come from clocked entries; change those in the List or the Day timeline.')
         }

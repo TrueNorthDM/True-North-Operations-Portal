@@ -3,7 +3,7 @@
  * 10P-2): what they were paid and what waits.
  *
  *   contractor   their invoices (paid date and reference, PDF) and their
- *                reimbursements, which go on the next invoice by themselves
+ *                reimbursements, which they add to the next invoice they send
  *   employee     the pay periods sent to Rippling (worked, time off, the
  *                payroll summary PDF) and their reimbursement documents
  *
@@ -93,8 +93,8 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
       { label: 'Last payment', val: last ? dateLabel(last.paid_on!) : '-', sub: last?.paid_ref ? `Ref. ${last.paid_ref}` : '', fg: '#012358' },
     ],
     tables: [
-      { title: 'Invoices', sub: 'One a month, made when the timesheet is submitted.', heads: heads(['Number', 'Period', 'Hours', 'Total', 'State', 'Paid', ''], 3), rows, empty: 'No invoices yet. The first one is made when the timesheet is submitted.' },
-      { title: 'Reimbursements', sub: 'Approved ones go on the next invoice by themselves.', heads: heads(['Item', 'Date', 'Category', 'Amount', 'State', 'Where it is', ''], 3), rows: rmbRows, empty: 'No reimbursements.' },
+      { title: 'Invoices', sub: 'One a month, the one you send.', heads: heads(['Number', 'Period', 'Hours', 'Total', 'State', 'Paid', ''], 3), rows, empty: 'No invoices yet. The first one appears when you send your invoice.' },
+      { title: 'Reimbursements', sub: 'Approved ones wait for you to add them to your next invoice.', heads: heads(['Item', 'Date', 'Category', 'Amount', 'State', 'Where it is', ''], 3), rows: rmbRows, empty: 'No reimbursements.' },
     ],
     note: `Only ${first}, Super Admins and Finance see this tab. Every PDF opens in a preview first.`,
   }

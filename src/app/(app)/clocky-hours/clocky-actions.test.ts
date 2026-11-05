@@ -140,6 +140,14 @@ describe('the full audit of 20 October 2026', () => {
     expect(body(clock, 'confirmEnd')).toMatch(/type_key', 'clocky-stopped'\)\.eq\('dedupe_key', `stop:\$\{e\.id\}`\)/)
     expect(body(clock, 'keepGoing')).toMatch(/input\?\.notificationId/)
   })
+
+  it('Keep going is retired: it always refuses and never moves a clock\'s window (audit, 5 November 2026)', () => {
+    const k = body(read('clock-actions.ts'), 'keepGoing')
+    expect(k).toMatch(/return fail\(KEEP_GOING_RETIRED\)/)
+    expect(k).not.toMatch(/window_started_at/)
+    expect(k).not.toMatch(/from\('tc_entries'\)/)
+    expect(k).not.toMatch(/ok: true/)
+  })
 })
 
 describe('the allowance is a real limit (owner, 25 October 2026)', () => {
@@ -149,7 +157,7 @@ describe('the allowance is a real limit (owner, 25 October 2026)', () => {
     expect(body(clock, 'switchTo')).toMatch(/limitAt\(v, date, now\)/)
     expect(body(clock, 'confirmEnd')).toMatch(/limitRefusal\(v\.personId, \{ add, exclude: \[e\.id\] \}/)
     // Every action that finds the running clock asks first whether it is due to stop.
-    expect(clock).toMatch(/const st = await stopOwnIfDue\(c, e, now\)\n\s+if \(st\) return stoppedFail\(st\)/)
+    expect(clock).toMatch(/const st = await stopOwnIfDue\(c, e, now, v\)\n\s+if \(st\) return stoppedFail\(st\)/)
   })
 
   it('adding, lengthening, the week grid and approving a correction are refused past it, whoever does it', () => {
@@ -205,5 +213,34 @@ describe('a 2026 project\'s Billable is the project\'s, on every row (audit 2026
   it('entries and pending corrections alike', () => {
     const src = readFileSync(join(DIR, '../../../lib/timeclock/clocky-entries.ts'), 'utf8')
     expect(src.match(/billable: job\?\.structure === 2 \? \(job\.billable \? 'yes' : 'no'\)/g)).toHaveLength(2)
+  })
+})
+
+describe('hours TSheets owns are not typed in here (audit, 5 November 2026)', () => {
+  const e = read('entries-actions.ts')
+
+  it('Add time and the week grid check the start date for anyone, before the reason', () => {
+    for (const name of ['addTime', 'saveWeekGrid']) {
+      const b = body(e, name)
+      expect(b, name).toMatch(/const ntStart = await startOfTarget\(personId\)/)
+      expect(b, name).toMatch(/startRefusal\(v, personId, dir, \[\], ntStart\)/)
+      expect(b.indexOf('startRefusal('), name).toBeLessThan(b.indexOf('reasonOf(input.reason)'))
+      expect(b, name).not.toMatch(/noWaveRefusal/)
+    }
+    // Add time: the entry's own day; the grid: every changed cell, duration-only included.
+    expect(body(e, 'addTime')).toMatch(/startRefusal\(v, personId, dir, \[input\.date, /)
+    const grid = body(e, 'saveWeekGrid')
+    expect(grid).toMatch(/startRefusal\(v, personId, dir, \[day\], ntStart\)/)
+    expect(grid.indexOf('[day], ntStart')).toBeLessThan(grid.indexOf('changes.push('))
+  })
+
+  it('one\'s own edits and deletes follow the start date; others keep their rights', () => {
+    expect(body(e, 'editEntry')).toMatch(/e\.person_id === v\.personId \? await startRefusal\(v, e\.person_id, dir, \[e\.entry_date, String\(input\.date/)
+    expect(body(e, 'deleteEntry')).toMatch(/e\.person_id === v\.personId \? await startRefusal\(v, e\.person_id, dir, \[e\.entry_date\]\)/)
+  })
+
+  it('an unread start date refuses (fails closed)', () => {
+    expect(e).toMatch(/return \{ startsOn: null, noWave: false, unread: true \}/)
+    expect(e).not.toMatch(/loadNoWave/)
   })
 })

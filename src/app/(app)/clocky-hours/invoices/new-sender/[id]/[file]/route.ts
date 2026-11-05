@@ -3,7 +3,8 @@
  * sent through the invoice form by someone not in the Directory yet (their
  * PDF, 'pdf', or a receipt, 'r0', 'r1'...), so it can be read before it is
  * linked to a person. To Super Admins and Finance only, as it is money
- * (newSenderRights, owner, 5 November 2026).
+ * (newSenderRights, owner, 5 November 2026). Only photos and PDFs open in
+ * the browser, with nosniff; anything else downloads (audit, 5 November 2026).
  */
 
 import { NextResponse } from 'next/server'
@@ -12,7 +13,7 @@ import { contentDisposition } from '@/lib/drive/file-names'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { submissionFile } from '@/lib/invoice-form/data'
-import { newSenderRights } from '@/lib/invoice-form/rules'
+import { newSenderRights, opensInline } from '@/lib/invoice-form/rules'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,5 +28,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!f) return missing()
   const { data, error } = await createAdminClient().storage.from('receipts').download(f.path)
   if (error || !data) return new NextResponse('The file could not be opened. Try again in a moment.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
-  return new NextResponse(data, { headers: { 'Content-Type': data.type || 'application/octet-stream', 'Content-Disposition': contentDisposition(f.name, 'inline'), 'Cache-Control': 'private, no-store' } })
+  // Only photos and PDFs open in the browser; anything else downloads, and the browser never guesses a type.
+  const inline = opensInline(data.type)
+  return new NextResponse(data, {
+    headers: {
+      'Content-Type': inline ? data.type : 'application/octet-stream',
+      'Content-Disposition': contentDisposition(f.name, inline ? 'inline' : 'attachment'),
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, no-store',
+    },
+  })
 }

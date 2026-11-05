@@ -20,7 +20,7 @@ import { getSessionUser } from '@/lib/auth/session'
 import { createUploadClient } from '@/lib/supabase/admin'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { builderProblem, confirmText, lineAmount, linesAtFileRate, payOnFile, writeSentInvoice, type BuilderLine, type MadeBy, type SendRecord } from '@/lib/timeclock/contractor-invoice'
-import { loadInvoicesToSend } from '@/lib/timeclock/send-invoice-data'
+import { loadInvoicesToSend, reimbursementsFor } from '@/lib/timeclock/send-invoice-data'
 import { announceInvoiceReceived, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { loadDirectory, db } from '@/lib/timeclock/clocky-context'
 import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
@@ -67,9 +67,10 @@ export async function POST(req: Request) {
   if (!period) return no('There is no invoice waiting for that period. Reload the page.')
   if (!b.confirmed) return no('Tick "This is my invoice" to send it.')
 
-  // Reimbursements: only their own approved ones still waiting for an invoice.
-  const rIds = [...new Set((b.reimbursementIds ?? []).map(Number))].filter(id => data.reimbursements.some(r => r.id === id))
-  const rTotal = data.reimbursements.filter(r => rIds.includes(r.id)).reduce((n, r) => n + r.amount, 0)
+  // Reimbursements: only their own approved ones still waiting for an invoice, and (sent again) the ones still on it.
+  const offered = reimbursementsFor(data, period)
+  const rIds = [...new Set((b.reimbursementIds ?? []).map(Number))].filter(id => offered.some(r => r.id === id))
+  const rTotal = offered.filter(r => rIds.includes(r.id)).reduce((n, r) => n + r.amount, 0)
 
   let lines: BuilderLine[] = []
   let total: number
@@ -124,7 +125,8 @@ export async function POST(req: Request) {
   } catch (e) {
     if (ownPdf) await files.storage.from('receipts').remove([ownPdf.path]).catch(() => null)
     console.error('[send invoice]', e instanceof Error ? e.message : e)
-    return no(e instanceof Error && /already/.test(e.message) ? e.message : 'Your invoice was not sent. Try again in a moment.', 500)
+    // Already sent, a month the invoice form already has, a reimbursement already on another invoice: said as it is.
+    return e instanceof Error && /already/.test(e.message) ? no(e.message, 409) : no('Your invoice was not sent. Try again in a moment.', 500)
   }
 
   const at = now.toISOString()
