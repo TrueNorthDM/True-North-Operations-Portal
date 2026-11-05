@@ -14,6 +14,7 @@ import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { projectsExportKeys } from '@/lib/tsheets/export-keys'
+import { seesReportMoney } from '@/lib/tsheets/report-money'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectHistory, loadProjectTracking } from '@/lib/timeclock/projects'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -53,6 +54,8 @@ export default async function ProjectHoursPrintPage({ searchParams }: Props) {
   const { month, type } = await searchParams
   // An export: the Export tick, and the items whose figures this file carries.
   if (!projectsExportKeys(type === 'internal' ? 'internal' : type === 'history' ? 'history' : 'client').every(k => access.can(k))) redirect(await previewHref('/'))
+  // Every layout but the internal one carries costs: Super Admins and Finance only (report-money.ts).
+  if (type !== 'internal' && !(await seesReportMoney())) redirect(await previewHref('/'))
 
   const selected = resolveMonth(month)
   const kind = type === 'internal' ? 'internal' : 'client'

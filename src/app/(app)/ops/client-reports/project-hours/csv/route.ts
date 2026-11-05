@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { projectsExportKeys } from '@/lib/tsheets/export-keys'
+import { seesReportMoney } from '@/lib/tsheets/report-money'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { peopleView } from '@/lib/timeclock/project-people'
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
   const q = new URL(request.url).searchParams
   // An export: the Export tick, and the items whose figures this file carries.
   if (!projectsExportKeys(q.get('type') === 'internal' ? 'internal' : 'client').every(k => access.can(k))) redirect(await previewHref('/'))
+  // The client file carries costs: Super Admins and Finance only (report-money.ts).
+  if (q.get('type') !== 'internal' && !(await seesReportMoney())) redirect(await previewHref('/'))
   const legacy = q.get('month') ?? undefined
   const months = availableMonths(new Date())
   const newest = months.includes(currentYearMonth()) ? currentYearMonth() : months[0]

@@ -17,6 +17,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
+import { requireReportMoney } from '@/lib/tsheets/report-money'
 import { costShares, isMMEProject as isMME } from '@/lib/tsheets/i7-view'
 import { I7_EXPORT_KEYS } from '@/lib/tsheets/export-keys'
 import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
@@ -39,6 +40,9 @@ function newestMonth(): string {
 export async function GET(request: Request) {
   const denied = await requirePrivileged(...I7_EXPORT_KEYS)
   if (denied) return denied
+  // Both files carry costs by line: Super Admins and Finance only (report-money.ts).
+  const noMoney = await requireReportMoney()
+  if (noMoney) return noMoney
 
   const url = new URL(request.url)
   const q = url.searchParams

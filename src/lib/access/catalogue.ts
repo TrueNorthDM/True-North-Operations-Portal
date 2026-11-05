@@ -99,19 +99,19 @@ const TREE: Node[] = [
     // Whoever opens it sees the whole report, budget included, and the budget
     // widget on Home (owner's decision, 7 October 2026).
     { key: 'i7-budget', label: 'Client Report · i7', kind: 'tool', group: 'Operations', v: [1, 1, 1], ch: [
-      { key: 'i7-numbers', label: 'In Numbers', kind: 'tab', v: [1, 1, 1] },
+      { key: 'i7-numbers', label: 'In Numbers', kind: 'tab', v: [1, 1, 1], note: "Hours per person, budget hours and the month's budget, used and left for everyone. Budget used and Budget avail. by line, and the i7 rate, only for Super Admins and Finance. Owner, Nov 5, 2026: beside each person's hours they give away that person's rate." },
       { key: 'i7-graphics', label: 'In Graphics', kind: 'tab', v: [1, 1, 1] },
       { key: 'i7-guide', label: 'Guide', kind: 'tab', v: [1, 1, 1] },
-      { key: 'i7-export', label: 'Export (PDF, CSV and the printable page)', kind: 'action', v: [1, 0, 0] },
+      { key: 'i7-export', label: 'Export (PDF, CSV and the printable page)', kind: 'action', v: [1, 0, 0], note: 'The PDFs and CSVs carry costs by line, so they open only for Super Admins and Finance; the Full history CSV (month totals) for everyone ticked.' },
       { key: 'report-team-update', label: 'Team Update, the shareable budget image', kind: 'action', v: [1, 0, 0] },
       { key: 'i7-manual', label: 'Add manual hours', kind: 'action', v: [0, 0, 0] },
       { key: 'i7-note', label: "Edit the month's note", kind: 'action', v: [0, 0, 0] },
     ] },
     { key: 'grant-pass-report', label: 'Client Report · Project Hours & Others', kind: 'tool', group: 'Operations', v: [1, 1, 1], ch: [
-      { key: 'ph-costs', label: 'Costs', kind: 'tab', v: [1, 1, 1] },
+      { key: 'ph-costs', label: 'Costs', kind: 'tab', v: [1, 1, 1], note: "Worked out from what each person is paid, so only Super Admins and Finance see it, whatever the tick, and the month by month table with it. Owner, Nov 5, 2026: beside each person's hours they give away that person's rate." },
       { key: 'ph-people', label: 'People', kind: 'tab', v: [1, 1, 1] },
       { key: 'ph-money', label: 'Money in and donation records', kind: 'action', v: [1, 0, 0] },
-      { key: 'ph-export', label: 'Export (PDF, CSV and the printable page)', kind: 'action', v: [1, 0, 0] },
+      { key: 'ph-export', label: 'Export (PDF, CSV and the printable page)', kind: 'action', v: [1, 0, 0], note: 'Client and Month by month carry costs: Super Admins and Finance only. Internal (hours by person) for everyone ticked.' },
       { key: 'ph-manual', label: 'Add manual hours', kind: 'action', v: [0, 0, 0] },
     ] },
   ] },

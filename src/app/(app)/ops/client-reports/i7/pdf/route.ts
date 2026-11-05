@@ -21,6 +21,7 @@ import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
+import { requireReportMoney } from '@/lib/tsheets/report-money'
 import { I7_EXPORT_KEYS, projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { spanWording } from '@/lib/tsheets/range'
 import { monthName } from '@/lib/timeclock/periods'
@@ -57,6 +58,12 @@ export async function GET(request: Request) {
   // checks the same again.
   const denied = await requirePrivileged(...(report === 'projects' ? projectsExportKeys(type) : I7_EXPORT_KEYS))
   if (denied) return denied
+  // Every PDF but Project Hours' by person carries costs by line: Super Admins
+  // and Finance only (report-money.ts).
+  if (!(report === 'projects' && type === 'internal')) {
+    const noMoney = await requireReportMoney()
+    if (noMoney) return noMoney
+  }
   const printPath = report === 'projects'
     ? `${ROUTES.projectHours}/print`
     : `${ROUTES.i7}/print`

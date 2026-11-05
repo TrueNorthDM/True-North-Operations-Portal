@@ -21,6 +21,7 @@
  */
 
 import { allowedTo } from '@/lib/access/resolve'
+import { seesReportMoney } from '@/lib/tsheets/report-money'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -38,6 +39,10 @@ type Json = Record<string, unknown>
 export async function GET(request: Request) {
   if (!(await allowedTo('cs-clients'))) {
     return new Response('Admins only.', { status: 403 })
+  }
+  // Its cost parts read the rates and cost by project: Super Admins and Finance only (report-money.ts).
+  if (!(await seesReportMoney())) {
+    return new Response('Super Admins and Finance only.', { status: 403 })
   }
 
   const supabase = createAdminClient()

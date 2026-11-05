@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { projectsExportKeys } from '@/lib/tsheets/export-keys'
+import { seesReportMoney } from '@/lib/tsheets/report-money'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectHistory } from '@/lib/timeclock/projects'
 import { historyCsvRows } from '@/lib/timeclock/project-history-rows'
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect(await previewHref('/'))
   // An export: the Export tick, and the items whose figures this file carries.
-  if (!projectsExportKeys('history').every(k => access.can(k))) redirect(await previewHref('/'))
+  // Costs by month: Super Admins and Finance only (report-money.ts).
+  if (!projectsExportKeys('history').every(k => access.can(k)) || !(await seesReportMoney())) redirect(await previewHref('/'))
 
   const q = new URL(request.url).searchParams
   const legacy = q.get('month') ?? undefined

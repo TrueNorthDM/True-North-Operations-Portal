@@ -34,6 +34,8 @@ interface Props {
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
+  /** Costs by line (Budget used, Budget avail.): Super Admins and Finance only (report-money.ts). */
+  lineMoney?: boolean
   /** Hand-entry, opened from here rather than from the foot of the page. */
   manual?: { rows: ManualRow[]; options: ManualOptions; blurb: string }
   canExport?: boolean                     // the file exports (PDF, CSV, print)
@@ -57,7 +59,7 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'], initialView }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, lineMoney = true, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'], initialView }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics' | undefined>(initialView && views.includes(initialView) ? initialView : views[0])
@@ -90,8 +92,8 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
   const hasBudget = Object.keys(projectHours).length > 0
   const showBudgetHrs = hasBudget
   const showHrsAvail = hasBudget
-  const showBudgetAvail = hasBudget && data.hasRates && stdRate > 0   // $ available needs a rate
-  const showCost = data.hasRates
+  const showBudgetAvail = lineMoney && hasBudget && data.hasRates && stdRate > 0   // $ available needs a rate
+  const showCost = lineMoney && data.hasRates
   const totalBudgetHours = sumBudgetHours(projectHours)
   const totalHrsAvail = totalBudgetHours - data.totalHours
   const projectOnlyCols = (showBudgetHrs ? 1 : 0) + (showHrsAvail ? 1 : 0) + (showBudgetAvail ? 1 : 0)

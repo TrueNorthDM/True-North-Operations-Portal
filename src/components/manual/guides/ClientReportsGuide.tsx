@@ -59,7 +59,7 @@ export function ClientReportI7Guide() {
 
       <Step n={4} title="Open a project">
         <p className="m-0">The table lists each <strong>Project · Job code · Activity</strong>. Click a project to see its job codes, and a job code to see its activities. <strong>Expand all</strong> and <strong>Collapse all</strong>, under the table, open or close everything.</p>
-        <p className="m-0"><strong>Budget hrs</strong> is the project&apos;s planned hours for the month, <strong>Hrs avail.</strong> what is left of them, <strong>Budget avail.</strong> those hours in dollars at the i7 rate, and <strong>Budget used</strong> each person&apos;s hours times their rate. Then one column per person, and <strong>Hours used</strong>.</p>
+        <p className="m-0"><strong>Budget hrs</strong> is the project&apos;s planned hours for the month, <strong>Hrs avail.</strong> what is left of them, <strong>Budget avail.</strong> those hours in dollars at the i7 rate, and <strong>Budget used</strong> each person&apos;s hours times their rate. Then one column per person, and <strong>Hours used</strong>. Budget avail. and Budget used are shown only to Super Admins and Finance: beside each person&apos;s hours they would give that person&apos;s rate away.</p>
       </Step>
 
       <Step n={5} title="See it in charts" picture={<Picture caption="The same month on In Graphics." height={620}><I7ReportPicture view="graphics" /></Picture>}>
@@ -76,7 +76,7 @@ export function ClientReportI7Guide() {
       </Step>
 
       <Step n={8} title="Export the report">
-        <p className="m-0"><strong>Export</strong> opens two versions, each as a PDF or a CSV. <strong>Internal</strong> is per person, with costs and rates. <strong>Client</strong> is the summary with no names, the one to send to the client. A PDF opens in a preview first, and you download it from there; the PDFs need a single month, while the CSVs cover whatever is on screen.</p>
+        <p className="m-0"><strong>Export</strong> opens two versions, each as a PDF or a CSV. <strong>Internal</strong> is per person, with costs and rates. <strong>Client</strong> is the summary with no names, the one to send to the client. A PDF opens in a preview first, and you download it from there; the PDFs need a single month, while the CSVs cover whatever is on screen. Both carry costs, so Export is there only for Super Admins and Finance.</p>
       </Step>
 
       <Step n={9} title="Look back over the year" picture={<Picture caption="Full history, January to the current month." height={520}><I7HistoryPicture /></Picture>}>
@@ -104,7 +104,7 @@ export function ClientReportProjectHoursGuide() {
       </Step>
 
       <Step n={2} title="Read the costs" picture={<Picture caption="The Costs tab." height={620}><ProjectHoursPicture /></Picture>}>
-        <p className="m-0">Four cards sum up the period: <strong>Worked this month</strong>, <strong>Costs this month</strong>, <strong>Total costs</strong> for the year and <strong>Prepaid hours left</strong> for Grants Pass. On the <strong>Costs</strong> tab, each project shows its <strong>Prepaid hours</strong> (Carried in, Prepaid, Remaining), its <strong>Employee</strong> and <strong>Contractor</strong> costs, <strong>Donations / billed</strong> and <strong>Net</strong>, then the year to date.</p>
+        <p className="m-0">Four cards sum up the period: <strong>Worked this month</strong>, <strong>Costs this month</strong>, <strong>Total costs</strong> for the year and <strong>Prepaid hours left</strong> for Grants Pass. On the <strong>Costs</strong> tab, each project shows its <strong>Prepaid hours</strong> (Carried in, Prepaid, Remaining), its <strong>Employee</strong> and <strong>Contractor</strong> costs, <strong>Donations / billed</strong> and <strong>Net</strong>, then the year to date. The Costs tab is worked out from what each person is paid, so only Super Admins and Finance see it; everyone else opens on People.</p>
         <p className="m-0">Costs are hours times each person&apos;s break-even rate: what a project consumed, not what left the bank. The prepaid columns stay blank for projects that do not buy hours.</p>
       </Step>
 
@@ -122,7 +122,7 @@ export function ClientReportProjectHoursGuide() {
       </Step>
 
       <Step n={6} title="Export">
-        <p className="m-0"><strong>Export</strong> offers <strong>Client</strong> (projects, costs and donations), <strong>Internal</strong> (per person, with names) and <strong>Month by month</strong>, as PDF or CSV. The Client and Internal PDFs need a single month; the CSVs and the month by month PDF cover whatever is on screen.</p>
+        <p className="m-0"><strong>Export</strong> offers <strong>Client</strong> (projects, costs and donations), <strong>Internal</strong> (per person, with names) and <strong>Month by month</strong>, as PDF or CSV. The Client and Internal PDFs need a single month; the CSVs and the month by month PDF cover whatever is on screen. Client and Month by month carry costs, so they are there only for Super Admins and Finance.</p>
       </Step>
 
       <Step n={7} title="Look back over the year" picture={<Picture caption="The year, month by month." height={520}><ProjectHistoryPicture /></Picture>}>

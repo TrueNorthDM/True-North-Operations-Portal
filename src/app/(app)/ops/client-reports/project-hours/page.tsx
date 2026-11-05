@@ -12,6 +12,7 @@
 import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
+import { seesReportMoney } from '@/lib/tsheets/report-money'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -69,7 +70,11 @@ export default async function ProjectHoursPage({
   // and that is the rule an admin can actually see.
   // Cut to the person's access before anything is sent (project-narrow.ts):
   // costs, money in and hours per person are items of their own.
-  const rights = { costs: access.can('ph-costs'), money: access.can('ph-money'), people: access.can('ph-people') }
+  // Costs are worked out from what each person is paid, so beside the hours per
+  // person they give that pay away: Super Admins and Finance only, whatever the
+  // tick (owner, 5 November 2026; report-money.ts).
+  const money = await seesReportMoney()
+  const rights = { costs: money && access.can('ph-costs'), money: access.can('ph-money'), people: access.can('ph-people') }
   const data = narrowProjects(await loadProjectTracking(createAdminClient(), range.from, range.to), rights)
   const views = (['costs', 'people'] as const).filter(v => rights[v])
 
@@ -157,7 +162,7 @@ export default async function ProjectHoursPage({
             {/* The file exports, on the same grant the i7 ones use: this carries
                 the same figures and, for the internal one, the same names. */}
             {access.can('ph-export') && (
-              <ProjectExportMenu range={range} monthly={range.from === range.to} />
+              <ProjectExportMenu range={range} monthly={range.from === range.to} costs={rights.costs} />
             )}
           </div>
         </div>

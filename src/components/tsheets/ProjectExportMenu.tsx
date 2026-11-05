@@ -40,7 +40,8 @@ const CALENDAR = (ink: string) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
 )
 
-export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: boolean }) {
+/** `costs`: the Client and Month by month files carry costs, which only Super Admins and Finance see (report-money.ts). */
+export function ProjectExportMenu({ range, monthly, costs = true }: { range: Range; monthly: boolean; costs?: boolean }) {
   const [open, setOpen] = useState(false)
   const [pdf, setPdf] = useState<PdfRequest | null>(null)
 
@@ -86,21 +87,21 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
               {([
                 { key: 'client', name: 'Client', sub: 'Projects · costs & donations', tint: 'bg-[#fdf6dc]', ink: '#B8790A', hover: 'hover:border-[#B8790A] hover:bg-[#fdf6dc]' },
                 { key: 'internal', name: 'Internal', sub: 'Per person · names', tint: 'bg-tn-teal-soft', ink: '#1E7D7F', hover: 'hover:border-tn-teal hover:bg-tn-teal-soft' },
-              ] as const).map(r => (
+              ] as const).filter(r => costs || r.key === 'internal').map(r => (
                 <Row key={r.key} r={r} icon={BARS(r.ink)} monthly={monthly} onPdf={() => preview(r.key)} csv={csv(r.key)} onCsv={() => setOpen(false)} />
               ))}
 
               {/* A line between the report and the table under it: the rows
                   above export what the tabs show, this one the year below. */}
-              <div className="col-span-3 border-t border-slate-100" aria-hidden="true" />
-              <Row
+              {costs && <div className="col-span-3 border-t border-slate-100" aria-hidden="true" />}
+              {costs && <Row
                 r={{ key: 'history', name: 'Month by month', sub: `Projects · ${tableMonths}`, tint: 'bg-[rgba(1,35,88,0.07)]', ink: '#012358', hover: 'hover:border-tn-primary hover:bg-[rgba(1,35,88,0.05)]' }}
                 icon={CALENDAR('#012358')}
                 monthly
                 onPdf={() => preview('history')}
                 csv={`${ROUTES.projectHours}/history/csv?from=${range.from}&to=${range.to}`}
                 onCsv={() => setOpen(false)}
-              />
+              />}
             </div>
 
             {/* Said once, under the things it applies to, rather than in three

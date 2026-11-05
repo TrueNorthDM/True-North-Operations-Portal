@@ -23,6 +23,7 @@ import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { resolveRange, spanWording, type Range } from '@/lib/tsheets/range'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { seesReportMoney, withoutLineCosts } from '@/lib/tsheets/report-money'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
@@ -201,7 +202,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
     )
   }
 
-  const access = await loadAccess()
+  const [access, money] = await Promise.all([loadAccess(), seesReportMoney()])
 
   // Whoever opens the report sees all of it, budget included (owner's
   // decision, 7 October 2026): the i7 tool's level and team list decide who
@@ -219,7 +220,12 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   // dead-end message. This keeps the report reachable and the month filter
   // usable even before the current month has any hours, matching the dashboard
   // widget, which already shows the budget for such months.
-  const full = data?.report ?? emptyReport(range, (data?.stdRate ?? 0) > 0)
+  const whole = data?.report ?? emptyReport(range, (data?.stdRate ?? 0) > 0)
+  // Costs by line and the i7 rate only for Super Admins and Finance (owner,
+  // 5 November 2026): beside each person's hours they give away that person's
+  // rate. Everyone else keeps the hours, the budget hours and the month's
+  // budget, used and left (report-money.ts).
+  const full = money ? whole : withoutLineCosts(whole)
 
   // Admins only: these hours reach a client invoice. Loaded here so the dialog
   // in the toolbar opens with its lists already in hand.
@@ -245,10 +251,12 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         projectHours={data?.projectHours ?? {}}
         // The carryover panel is In Numbers' alone.
         carryover={views.includes('numbers') ? data?.carryover ?? null : null}
-        stdRate={data?.stdRate ?? 0}
+        stdRate={money ? data?.stdRate ?? 0 : 0}
+        lineMoney={money}
         views={views}
         manual={manual}
-        canExport={access.can('i7-export')}
+        // Every file but the month by month history carries costs by line.
+        canExport={money && access.can('i7-export')}
         canTeamUpdate={access.can('report-team-update')}
         teams={teams.map(t => ({ id: t.id, name: t.name, members: teamLabels(t.memberIds) }))}
         selectedTeam={selectedTeam}
