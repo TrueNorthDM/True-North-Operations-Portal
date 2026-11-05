@@ -17,7 +17,7 @@ import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
 import { choiceRow, choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, runningJobOf, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
-import { AutoView, isAfterStop, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, SwitchBar, type NoteStatus } from './ClockViews'
+import { AllowanceLine, AutoView, isAfterStop, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, SwitchBar, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
@@ -410,6 +410,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
           </>
         )}
 
+        {/* Clocked out: the week's allowance still shows ("This week 12h of 40h"), as it does under the running timer. */}
+        {mode === 'off' && data.allowance && <div className="flex justify-center"><AllowanceLine a={data.allowance} zone={zone} /></div>}
         {mode === 'off' && (
           <OffView data={data} phone={phone} more={ui.more} busy={busy || !!lockedLine} draft={ui.draft}
             onPickProject={id => { const job = data.jobs.find(j => j.id === id); if (job) set({ draft: draftFor(data, job) }) }}

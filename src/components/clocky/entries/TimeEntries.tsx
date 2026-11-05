@@ -599,7 +599,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           items={[{ key: 'list', label: 'List' }, { key: 'grid', label: 'Week grid' }, { key: 'timeline', label: 'Day timeline' }] as const}
           onChange={k => go({ tab: k, period: k === 'timeline' ? 'day' : k === 'grid' ? 'week' : ui.period, drag: null })} />
         <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums lining-nums whitespace-nowrap">
-          <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}</span>
+          <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}
+            {/* Their own week, the same week as the allowance: "of 40h" (a contractor's Weekly hours, plus extra hours approved). */}
+            {ui.who === 'my' && viewer.allowance && range.from === viewer.allowance.from && range.to === viewer.allowance.to && <> of {formatDuration(viewer.allowance.limit)}</>}</span>
           <span className="text-[var(--faint)]">·</span>
           <span>Billable {formatDuration(totals.billable)}</span>
           <span className="text-[var(--faint)]">·</span>

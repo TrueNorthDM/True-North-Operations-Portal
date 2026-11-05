@@ -608,7 +608,7 @@ const hrs = (seconds: number) => (seconds % 3600 === 0 ? `${seconds / 3600}h` : 
  * Quiet under 90%, a warning pill from 90%, an alert with the way to ask once over. From 90%
  * the pill also says when the clock stops by itself at the allowance (owner, 25 October 2026).
  */
-function AllowanceLine({ a, zone }: { a: NonNullable<ClockPanelData['allowance']>; zone: string }) {
+export function AllowanceLine({ a, zone }: { a: NonNullable<ClockPanelData['allowance']>; zone: string }) {
   const period = a.period === 'month' ? 'this month' : 'this week'
   if (a.state === 'over') {
     return (

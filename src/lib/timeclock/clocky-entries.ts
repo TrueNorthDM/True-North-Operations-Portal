@@ -26,6 +26,7 @@ import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from 
 import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-terms'
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
+import { loadWindows, statusOf } from './allowance-limit'
 import { STOP_AFTER_LABEL } from './safety'
 
 /** The longest range one read covers: a month and a bit, so a month view always fits. */
@@ -289,6 +290,13 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
   const myRules = rulesFor(v.personId, changes, settings)
   const period = await submitTarget(c, v.personId, today, myRules, subs.get(v.personId) ?? [])
   const mine = (subs.get(v.personId) ?? []).find(s => s.start === period.start && s.end === period.end)
+  // The viewer's own hours allowance this week (a contractor's Weekly hours, plus extra hours approved): "This week: 12h 00m of 40h".
+  const myTerms = (await loadPayTerms([v.personId])).get(v.personId)
+  let myAllowance: EntriesData['viewer']['allowance'] = null
+  if (myTerms?.allowance) {
+    const w = (await loadWindows(v.personId, myTerms.allowance, [today], now)).get(today)
+    if (w) myAllowance = { from: w.from, to: w.to, limit: statusOf(w).limit }
+  }
 
   const peopleList = [...dir.people.values()]
     .filter(p => p.active && canView(v, dir.target(p.id)))
@@ -299,7 +307,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
   return {
     viewer: {
       personId: v.personId, zone: v.zone, level: v.level, leader: v.leader, who: whoChoice(v),
-      cadence: cadenceOn(today, myRules).cadence, canSubmit: v.can('clocky-hours'),
+      cadence: cadenceOn(today, myRules).cadence, canSubmit: v.can('clocky-hours'), allowance: myAllowance,
     },
     range: { from: q.from, to: q.to },
     rows,

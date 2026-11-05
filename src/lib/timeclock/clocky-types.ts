@@ -299,6 +299,8 @@ export interface EntriesData {
     who: 'all' | 'team' | null
     cadence: Cadence
     canSubmit: boolean
+    /** The viewer's own hours allowance for the window around today (seconds, extra hours included); null without one. */
+    allowance: { from: string; to: string; limit: number } | null
   }
   range: { from: string; to: string }
   rows: EntryView[]

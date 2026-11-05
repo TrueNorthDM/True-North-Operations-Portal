@@ -380,7 +380,7 @@ export function entriesData(store: Store, q: { from: string; to: string; who: 'm
   const mine = store.recs.filter(x => x.who === me && x.kind === 'work' && x.date >= sp.start && x.date <= sp.end)
   const submitted = mine.length > 0 && mine.every(x => x.status !== 'Open')
   return {
-    viewer: { personId: pid(me), zone: ET, level: ACCESS[level], leader: level !== 'user', who: level === 'user' ? null : level === 'lead' ? 'team' : 'all', cadence: sp.kind === 'pay_period' ? 'biweekly' : 'monthly', canSubmit: true },
+    viewer: { personId: pid(me), zone: ET, level: ACCESS[level], leader: level !== 'user', who: level === 'user' ? null : level === 'lead' ? 'team' : 'all', cadence: sp.kind === 'pay_period' ? 'biweekly' : 'monthly', canSubmit: true, allowance: null },
     range: { from: q.from, to: q.to },
     rows,
     days: [...new Set(rows.map(r => r.date))].sort().reverse().map(date => ({ date, label: dayLabel(date), seconds: rows.filter(r => r.date === date && r.rowType === 'entry').reduce((s, r) => s + r.seconds, 0), people: new Set(rows.filter(r => r.date === date).map(r => r.personId)).size })),
