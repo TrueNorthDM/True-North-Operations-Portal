@@ -19,7 +19,7 @@ import { CHECKBOX, INPUT } from '@/lib/ui/fields'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 import { CARD, CARD_TITLE, FIELD_LABEL, SECTION_TITLE } from '@/lib/ui/type'
 import { usd } from '@/lib/timeclock/invoice-doc'
-import { builderProblem, confirmText, lineAmount, linesFromTimesheet, type BuilderLine, type MadeBy } from '@/lib/timeclock/contractor-invoice'
+import { builderProblem, confirmText, lineAmount, linesFromTimesheet, type BuilderLine, type MadeBy } from '@/lib/timeclock/contractor-invoice-rules'
 import type { SendInvoiceData } from '@/lib/timeclock/send-invoice-data'
 
 const MAX_PDF = 10 * 1024 * 1024

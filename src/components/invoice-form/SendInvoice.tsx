@@ -48,7 +48,7 @@ import {
   DELIVERABLE_LABEL, DELIVERABLE_TAG, MAX_FILE, MAX_STATED, RECEIPT_TYPES, buildFormLines, codeOf, emailOf, itemName, keptText, withMonth,
   type Deliverable, type FormKind, type Rates,
 } from '@/lib/invoice-form/rules'
-import type { MadeBy } from '@/lib/timeclock/contractor-invoice'
+import type { MadeBy } from '@/lib/timeclock/contractor-invoice-rules'
 
 export interface SendContext {
   email: string
