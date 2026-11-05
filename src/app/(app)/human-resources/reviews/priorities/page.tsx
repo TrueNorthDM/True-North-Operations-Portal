@@ -16,6 +16,9 @@ import { approveTeamPriorities, removePriority, returnTeamPriorities, savePriori
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Priorities' }
 
+/** "Ed Wagner, Arnaldo Oliveira and David Sharpe". */
+const listOf = (names: string[]) => names.length < 2 ? names[0] ?? '' : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+
 export default async function PrioritiesRoute() {
   const { viewer, roster, settings } = await reviewContext(await requireSurface('human-resources'))
   if (!viewer.leads) redirect(await previewHref('/human-resources/reviews'))
@@ -32,10 +35,11 @@ export default async function PrioritiesRoute() {
     const members = roster.members.filter(m => m.teamId === t.id && !leaders.includes(m.personId) && roster.people.get(m.personId)?.active).length
     const state = st?.state ?? 'none'
     teams.push({
-      teamId: t.id, name: t.name, leader: nameIn(roster, leaders[0]), state, members,
-      // A team the viewer leads is decided by the other of the two.
-      decider: decidesTeam(viewer.personId, true, t.id, roster.members) ? null
-        : nameIn(roster, [settings.vpId, settings.cisoId].find(id => id && id !== viewer.personId)) || 'the other approver',
+      // A team may have several leaders (Leadership has three): all of them, in the Directory's order.
+      teamId: t.id, name: t.name, leader: listOf(leaders.map(id => nameIn(roster, id))), state, members,
+      // A team the viewer leads is decided by the other of the two (the CISO, when both lead it).
+      decider: decidesTeam(viewer.personId, true, t.id, roster.members, settings) ? null
+        : nameIn(roster, [settings.cisoId, settings.vpId].find(id => id && id !== viewer.personId && decidesTeam(id, true, t.id, roster.members, settings))) || 'the other approver',
       sentLine: st?.sent_at ? `Sent ${fmtInstantDay(st.sent_at)}, ${fmtTime(st.sent_at)}, from ${st.sent_by ? 'their' : 'the'} self-review` : null,
       line: state === 'approved' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, approved ${fmtInstantDay(st!.decided_at)}.${st?.opened_at ? ` ${t.name}'s self-reviews are open.` : ''}`
         : state === 'sent' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, sent ${fmtInstantDay(st!.sent_at)}.`

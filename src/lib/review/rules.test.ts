@@ -26,6 +26,15 @@ describe('who decides a team\'s priorities', () => {
     expect(decidesTeam('vp', true, 'ops', members)).toBe(false)
     expect(decidesTeam('x', false, 'ops', members)).toBe(false)
   })
+  it('gives a team both of them lead to the CISO', () => {
+    const both: RosterMembership[] = [{ personId: 'vp', teamId: 'lead', position: 'lead', isPrimary: true }, { personId: 'ciso', teamId: 'lead', position: 'lead', isPrimary: true }, { personId: 'ciso', teamId: 'sec', position: 'lead', isPrimary: false }]
+    const roles = { vpId: 'vp', cisoId: 'ciso' }
+    expect(decidesTeam('ciso', true, 'lead', both, roles)).toBe(true)
+    expect(decidesTeam('vp', true, 'lead', both, roles)).toBe(false)
+    // A team only the CISO leads is still the VP's.
+    expect(decidesTeam('ciso', true, 'sec', both, roles)).toBe(false)
+    expect(decidesTeam('vp', true, 'sec', both, roles)).toBe(true)
+  })
 })
 
 describe('roles from the Directory', () => {
@@ -53,11 +62,14 @@ describe('who takes part', () => {
 
 describe('who reviews', () => {
   const roles = { vpId: 'vp', cisoId: 'ciso', hrId: 'hr' }
-  it('is the Team Leader, then Reports to, then the VP and CISO each other', () => {
+  it('is the CISO for the VP, nobody for the CISO, else the Team Leader, then Reports to', () => {
     expect(reviewerFor('amy', 'laura', 'vp', roles)).toBe('laura')
     expect(reviewerFor('laura', null, 'vp', roles)).toBe('vp')
     expect(reviewerFor('vp', null, null, roles)).toBe('ciso')
-    expect(reviewerFor('ciso', null, null, roles)).toBe('vp')
+    expect(reviewerFor('ciso', null, null, roles)).toBeNull()
+    // The CISO reviews the VP even when the VP has a Team Leader or reports to someone.
+    expect(reviewerFor('vp', 'laura', 'x', roles)).toBe('ciso')
+    expect(reviewerFor('ciso', 'laura', 'vp', roles)).toBeNull()
     expect(reviewerFor('x', null, null, roles)).toBeNull()
     expect(reviewerFor('x', 'x', 'x', roles)).toBeNull()
   })

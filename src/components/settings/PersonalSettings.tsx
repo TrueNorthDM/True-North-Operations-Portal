@@ -24,12 +24,9 @@ import { useRouter } from 'next/navigation'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { Switch } from '@/components/ui/Switch'
 import { Segmented as Choice } from '@/components/ui/Segmented'
-import { NavIcon } from '@/components/NavIcon'
 import { Select } from '@/components/ui/Select'
-import type { NavItem } from '@/lib/access/nav'
-import type { PageGroup } from '@/lib/settings/pages'
 import type { SaveHidden } from '@/lib/settings/columns'
-import { FAVOURITES_MAX, START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
+import { START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
 import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
 import { BTN } from '@/lib/ui/buttons'
 import { SECTION_TITLE } from '@/lib/ui/type'
@@ -73,80 +70,8 @@ function Row({ label, hint, status, children }: { label: string; hint: string; s
   )
 }
 
-// ── Favourites: the list in order, drag to reorder, and the page picker ─────
-
-function Favourites({ items, groups, onChange }: { items: NavItem[]; groups: PageGroup[]; onChange: (next: NavItem[]) => void }) {
-  const [open, setOpen] = useState(false)
-  const [drag, setDrag] = useState<number | null>(null)
-  const chosen = new Set(items.map(i => i.key))
-  const full = items.length >= FAVOURITES_MAX
-
-  const move = (from: number, to: number) => {
-    if (from === to || to < 0 || to >= items.length) return
-    const next = [...items]
-    const [it] = next.splice(from, 1)
-    next.splice(to, 0, it)
-    onChange(next)
-  }
-
-  return (
-    <div className="w-full space-y-2.5">
-      {items.length > 0 && (
-        <ol className="list-none m-0 p-0 space-y-1.5">
-          {items.map((it, i) => (
-            <li key={it.key} draggable onDragStart={() => setDrag(i)} onDragEnd={() => setDrag(null)}
-              onDragOver={e => e.preventDefault()} onDrop={() => { if (drag !== null) move(drag, i); setDrag(null) }}
-              className={`flex items-center gap-3 rounded-[10px] border bg-white px-3 py-2 ${drag === i ? 'border-tn-teal opacity-60' : 'border-[var(--panel-border)]'}`}>
-              <span className="cursor-grab text-[#b3bcc8] select-none" aria-hidden>⋮⋮</span>
-              <span className="w-7 h-7 rounded-[8px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center shrink-0"><NavIcon name={it.icon} size={15} /></span>
-              <span className="flex-1 min-w-0 text-[13.5px] font-semibold text-tn-ink">{it.label}</span>
-              <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={`Move ${it.label} up`} className="w-7 h-7 rounded-[7px] text-muted hover:bg-subtle disabled:opacity-30">↑</button>
-              <button type="button" onClick={() => move(i, i + 1)} disabled={i === items.length - 1} aria-label={`Move ${it.label} down`} className="w-7 h-7 rounded-[7px] text-muted hover:bg-subtle disabled:opacity-30">↓</button>
-              <button type="button" onClick={() => onChange(items.filter(x => x.key !== it.key))} aria-label={`Remove ${it.label}`} className="w-7 h-7 rounded-[7px] text-muted hover:bg-subtle hover:text-[#b3271f] text-[17px] leading-none">×</button>
-            </li>
-          ))}
-        </ol>
-      )}
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} disabled={full && !open}
-        className="inline-flex items-center gap-2 rounded-[10px] border border-dashed border-[#b3bcc8] px-3.5 py-2 text-[13px] font-bold text-tn-teal hover:border-tn-teal disabled:opacity-50">
-        + Add a page
-      </button>
-      {open && (
-        <div className="rounded-[12px] border border-[var(--panel-border)] bg-subtle p-4 space-y-4">
-          <p className="text-[12.5px] text-muted m-0">
-            {`Only pages you can open are listed. ${full ? `You have all ${FAVOURITES_MAX}: remove one to add another.` : `Pick up to ${FAVOURITES_MAX - items.length} more.`}`}
-          </p>
-          {groups.map(g => (
-            <div key={g.label}>
-              <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted mb-1.5">{g.label}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {g.rows.map(r => {
-                  const on = chosen.has(r.key)
-                  return (
-                    <button key={r.key} type="button" aria-pressed={on} disabled={!on && full}
-                      onClick={() => onChange(on ? items.filter(x => x.key !== r.key) : [...items, r])}
-                      className={`inline-flex items-center gap-1.5 rounded-[9px] border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-40 ${
-                        on ? 'border-tn-teal bg-[rgba(30,125,127,.08)] text-tn-ink' : 'border-[var(--panel-border)] bg-white text-foreground hover:border-tn-teal'}`}>
-                      <NavIcon name={r.icon} size={13} />
-                      {r.label}
-                      {on && <span className="text-[10.5px] font-bold text-tn-teal">On Home</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-          <button type="button" onClick={() => setOpen(false)} className={BTN.navy}>Done</button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── The page ────────────────────────────────────────────────────────────────
-
 export function PersonalSettings({
-  settings, email, notifications, twoStep, signOutEverywhere, favourites: initialFavourites, groups, save, blocked, only, home, saveHome = null,
+  settings, email, notifications, twoStep, signOutEverywhere, save, blocked, only, home, saveHome = null,
 }: {
   settings: PersonSettings
   email: string | null
@@ -156,9 +81,6 @@ export function PersonalSettings({
   twoStep: React.ReactNode
   /** Null in the design check. Answers only when it could not sign out (otherwise it goes to the sign-in page). */
   signOutEverywhere: (() => Promise<{ ok: false; error: string }>) | null
-  favourites: NavItem[]
-  /** What can be pinned: the pages this person can open. */
-  groups: PageGroup[]
   /** Null in the design check: changes stay on the page. */
   save: Save | null
   /** Why nothing can be saved (View Stage, no Directory person). */
@@ -171,7 +93,6 @@ export function PersonalSettings({
   saveHome?: SaveHidden | null
 }) {
   const [s, setS] = useState(settings)
-  const [favs, setFavs] = useState(initialFavourites)
   const [homeHidden, setHomeHidden] = useState<readonly string[]>(home?.hidden ?? [])
   const [status, setStatus] = useState<{ key: string; state: 'saving' | 'saved' | 'error'; error?: string } | null>(null)
   const [confirmDialog, confirm] = useConfirm()
@@ -207,10 +128,6 @@ export function PersonalSettings({
   const set = <K extends keyof PersonSettings>(key: string, field: K, value: PersonSettings[K], patch: SettingsPatch) => {
     const before = s[field]
     change(key, patch, () => setS(x => ({ ...x, [field]: value })), () => setS(x => ({ ...x, [field]: before })))
-  }
-  const setFavourites = (next: NavItem[]) => {
-    const before = favs
-    change('favourites', { favourites: next.map(n => n.key) }, () => setFavs(next), () => setFavs(before))
   }
 
   // A Home card on or off: saved on its own, like every other choice here.
@@ -306,10 +223,6 @@ export function PersonalSettings({
               <Switch on={!homeHidden.includes(c.key)} label={`Show ${c.label} on Home`} onChange={v => setHomeCard(c.key, v)} />
             </Row>
           ))}
-          <Row label="Favourites on Home" hint={`Up to ${FAVOURITES_MAX} pages, in the order you drag them. They show at the top of Home. ${favs.length} of ${FAVOURITES_MAX}.`} status={statusFor('favourites')} />
-          <div className="px-5 pb-4 -mt-1">
-            <Favourites items={favs} groups={groups} onChange={setFavourites} />
-          </div>
         </Section>
 
         <Section id="privacy" hidden={!!only && !only.includes('privacy')} title="Privacy" intro="What Home and the Agenda show the team about you.">

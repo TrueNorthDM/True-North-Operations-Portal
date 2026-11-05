@@ -5,8 +5,8 @@
  * A review is always between two levels: the person and the one they report
  * to. That is their Team Leader (who leads their main team) or, with none,
  * the person they report to in the Directory (people.manager_id). The VP of
- * Operations and the CISO, picked in Company settings, review each other when
- * nobody else is above them.
+ * Operations and the CISO, picked in Company settings, stand apart: the CISO
+ * reviews the VP, and nobody reviews the CISO, who has no review.
  *
  * Phase 1: the Team Leaders and everyone with no Team Leader go first, when
  * the cycle starts. Phase 2: each team's people open when the team's
@@ -71,24 +71,34 @@ export function leadersOf(teamId: string, members: RosterMembership[]): string[]
 /**
  * Who may approve or send back a team's priorities: the VP of Operations or
  * the CISO, never for a team they lead themselves (the other one decides).
+ * A team both of them lead (Leadership: owner, 4 November 2026) is the
+ * CISO's to decide, as the CISO is the one nobody reviews.
  */
-export function decidesTeam(personId: string | null, isVpOrCiso: boolean, teamId: string, members: RosterMembership[]): boolean {
-  return !!personId && isVpOrCiso && !leadersOf(teamId, members).includes(personId)
+export function decidesTeam(personId: string | null, isVpOrCiso: boolean, teamId: string, members: RosterMembership[], roles?: Pick<Roles, 'vpId' | 'cisoId'>): boolean {
+  if (!personId || !isVpOrCiso) return false
+  const leaders = leadersOf(teamId, members)
+  if (!leaders.includes(personId)) return true
+  return !!roles && personId === roles.cisoId && !!roles.vpId && leaders.includes(roles.vpId)
 }
 
-/** Who reviews this person: their Team Leader, else Reports to, else the VP and CISO each other. */
+/**
+ * Who reviews this person (owner, 4 November 2026): the CISO reviews the VP
+ * of Operations and nobody reviews the CISO; everyone else, their Team
+ * Leader, else who they report to.
+ */
 export function reviewerFor(personId: string, teamLeaderId: string | null, managerId: string | null, roles: Roles): string | null {
+  if (personId === roles.cisoId) return null
+  if (personId === roles.vpId) return roles.cisoId
   if (teamLeaderId && teamLeaderId !== personId) return teamLeaderId
   if (managerId && managerId !== personId) return managerId
-  if (personId === roles.vpId && roles.cisoId) return roles.cisoId
-  if (personId === roles.cisoId && roles.vpId) return roles.vpId
   return null
 }
 
 export function participants(people: RosterPerson[], members: RosterMembership[], teams: RosterTeam[], roles: Roles, extra: ReadonlySet<string>): Participant[] {
   const teamMap = new Map(teams.map(t => [t.id, t]))
   const active = new Set(people.filter(p => p.active).map(p => p.id))
-  return people.filter(p => takesPart(p, extra)).map(p => {
+  // The CISO has no review of their own: nobody reviews them (owner, 4 November 2026).
+  return people.filter(p => takesPart(p, extra) && p.id !== roles.cisoId).map(p => {
     const teamId = mainTeamOf(p.id, members, teamMap)
     const leaders = teamId ? leadersOf(teamId, members).filter(id => id !== p.id && active.has(id)) : []
     const iLead = teamId ? leadersOf(teamId, members).includes(p.id) : false

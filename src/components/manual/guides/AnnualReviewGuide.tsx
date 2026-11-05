@@ -102,7 +102,7 @@ export function AnnualReviewGuide() {
 
       <Tip title="Any step can go back one.">Always with a reason the other person reads: the review back to the self-review, the meeting back to the review, the approval back to the meeting.</Tip>
 
-      <Part title="For HR, the VP of Operations and the CISO">The roles are picked in Admin, Company settings, Human Resources. HR sees every review and is told when one is approved. The VP of Operations and the CISO write the Company Priorities and approve each team&apos;s; each reviews only the people who report to them.</Part>
+      <Part title="For HR, the VP of Operations and the CISO">The roles are picked in Admin, Company settings, Human Resources. HR sees every review and is told when one is approved. The CISO reviews the VP of Operations, and nobody reviews the CISO, who has no review of their own. The VP of Operations and the CISO write the Company Priorities and approve each team&apos;s; each reviews only the people who report to them.</Part>
 
       <Step n={14} title="Set up the year">
         <p className="m-0">In <strong>Company settings</strong>, <strong>Human Resources</strong>: the <strong>Roles</strong>, <strong>Who takes part</strong> (every employee in the Directory, plus anyone added there, a contractor for example), the <strong>Dates</strong> (Team Leaders open on, Team Leaders&apos; self-review by, Teams open by, Self-review by, Review by, Meeting by, Approval by, Check-ins by) and the <strong>Google Drive</strong> folder for the PDFs. A Super Admin and the HR person change them.</p>

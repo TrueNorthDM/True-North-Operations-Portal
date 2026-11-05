@@ -63,7 +63,7 @@ export async function reviewNeedsRows(access: { personId: string | null; isSuper
     // The VP of Operations and the CISO: team priorities waiting.
     if (viewer.isVp || viewer.isCiso) {
       for (const st of states.values()) {
-        if (st.state !== 'sent' || !decidesTeam(me, true, st.team_id, roster.members)) continue
+        if (st.state !== 'sent' || !decidesTeam(me, true, st.team_id, roster.members, settings)) continue
         out.push(row(`approve-team:${st.team_id}`, `Approve ${teamOf(roster.teams.get(st.team_id)?.name)}'s priorities`, `From ${nameIn(roster, st.sent_by)} · VP of Operations and CISO`, cycle.teams_open_by ? dueOnDay(cycle.teams_open_by, today) : null, '/human-resources/reviews/priorities', 'Approve'))
       }
     }

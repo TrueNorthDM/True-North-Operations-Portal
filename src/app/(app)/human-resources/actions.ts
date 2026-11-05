@@ -450,7 +450,7 @@ export async function sendTeamPriorities(input: { cycleId: number; teamId: strin
   return { ok: true, toast: 'Sent for approval. Your self-review stays open.' }
 }
 
-const OWN_TEAM = 'You lead this team, so the other of the VP of Operations and the CISO decides its priorities.'
+const OWN_TEAM = 'You lead this team, so the other of the VP of Operations and the CISO decides its priorities (the CISO, when both lead it).'
 
 /** The VP of Operations or the CISO approves a team's priorities: the team's self-reviews open. */
 export async function approveTeamPriorities(input: { cycleId: number; teamId: string }): Promise<Done> {
@@ -459,7 +459,7 @@ export async function approveTeamPriorities(input: { cycleId: number; teamId: st
   if (!x.a.viewer.leads) return no('Only the VP of Operations and the CISO approve team priorities.')
   const teamId = String(input?.teamId ?? '')
   if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
-  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members)) return no(OWN_TEAM)
+  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members, x.a.settings)) return no(OWN_TEAM)
   if ((await loadTeamStates(x.c.id)).get(teamId)?.state !== 'sent') return no('These priorities are not waiting for approval.')
   const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'approved', decided_at: stamp(), decided_by: x.a.me, return_reason: null }, { onConflict: 'cycle_id,team_id' })
   if (r.error) return no(NOT_SAVED)
@@ -479,7 +479,7 @@ export async function returnTeamPriorities(input: { cycleId: number; teamId: str
   if (!reason) return no('Write the reason: the Team Leader sees it.')
   const teamId = String(input?.teamId ?? '')
   if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
-  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members)) return no(OWN_TEAM)
+  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members, x.a.settings)) return no(OWN_TEAM)
   const st = (await loadTeamStates(x.c.id)).get(teamId)
   if (st?.state !== 'sent') return no('These priorities are not waiting for approval.')
   const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'returned', decided_at: stamp(), decided_by: x.a.me, return_reason: reason }, { onConflict: 'cycle_id,team_id' })

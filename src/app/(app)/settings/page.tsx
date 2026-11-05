@@ -11,8 +11,6 @@ import { NotificationSettings } from '@/components/NotificationSettings'
 import { PersonalSettings } from '@/components/settings/PersonalSettings'
 import { TwoStepSelf } from '@/components/mfa/TwoStepSelf'
 import { requireSurface } from '@/lib/access/resolve'
-import { buildRail } from '@/lib/access/nav'
-import { loadNavFacts } from '@/lib/access/nav-facts'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { checkTwoStep } from '@/lib/auth/two-step'
@@ -22,7 +20,6 @@ import { teamPositionLeads } from '@/lib/directory/people-types'
 import { NOTIFICATION_TYPES, reaches } from '@/lib/notifications/catalogue'
 import { loadPrefs, loadRules } from '@/lib/notifications/store'
 import { DEFAULT_SETTINGS, loadSettings } from '@/lib/settings/person'
-import { pinnable, resolveFavourites } from '@/lib/settings/pages'
 import { saveNotificationPref, sendTestNotification } from '../notifications/actions'
 import { signOutEverywhere } from '@/app/auth/actions'
 import { saveHiddenColumns, saveSettings } from './actions'
@@ -55,7 +52,6 @@ export default async function SettingsPage() {
 
   const leads = ((memberships ?? []) as { position: string | null }[]).some(m => teamPositionLeads(m.position ?? 'collaborator'))
   const mine = NOTIFICATION_TYPES.filter(t => !t.available || reaches(t, { isAdmin: access.isAdmin, leads, canTool: access.can })).map(t => t.key)
-  const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access) })
   const twoStepDays = !twoStep.hasFactor && twoStep.deadline ? twoStepDaysLeft(twoStep.deadline, new Date()) : null
   const blocked = viewAs ? 'View Stage is only a preview. Close it to change settings.' : !me ? 'Your login is not linked to anyone in the Directory.' : undefined
 
@@ -78,8 +74,6 @@ export default async function SettingsPage() {
         home={{ cards: homeCards, hidden: hiddenFor(hiddenCols, 'home') }}
         saveHome={saveHiddenColumns}
         signOutEverywhere={signOutEverywhere}
-        favourites={resolveFavourites(rail, settings.favourites)}
-        groups={pinnable(rail)}
         twoStep={viewAs ? <p className="m-0 text-[13px] text-muted">Not shown in View Stage: two-step sign-in belongs to the account, not the level.</p> : <TwoStepSelf since={twoStep.since} daysLeft={twoStepDays} blocked={blocked} />}
         notifications={
           <NotificationSettings

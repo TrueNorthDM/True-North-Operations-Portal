@@ -72,7 +72,7 @@ export function AnnualReviewSection() {
       <Cards items={ROLES} cols={3} />
 
       <SubHeading>Two levels</SubHeading>
-      <p className="text-[13.5px] leading-relaxed text-muted">A review is always between a person and the one they report to: their Team Leader or, for someone with no Team Leader, the person they report to in the Directory (Work, Reports to). Nobody above that manager takes part. The VP of Operations and the CISO review each other when nobody is above them. Only the Company Priorities reach everyone.</p>
+      <p className="text-[13.5px] leading-relaxed text-muted">A review is always between a person and the one they report to: their Team Leader or, for someone with no Team Leader, the person they report to in the Directory (Work, Reports to). Nobody above that manager takes part. The CISO reviews the VP of Operations, and nobody reviews the CISO, who has no review of their own. Only the Company Priorities reach everyone.</p>
 
       <SubHeading>The year, in order</SubHeading>
       <div className="flex flex-col sm:flex-row gap-2">

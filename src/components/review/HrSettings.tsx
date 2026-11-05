@@ -60,8 +60,8 @@ const DATES: { key: DateKey; label: string }[] = [
   { key: 'meeting_due', label: 'Meeting by' }, { key: 'approval_due', label: 'Approval by' }, { key: 'checkins_by', label: 'Check-ins by' },
 ]
 const ROLES = [
-  { key: 'vpId', label: 'VP of Operations', what: "Writes the Company Priorities with the CISO and approves each team's. Reviews only the people who report to them." },
-  { key: 'cisoId', label: 'CISO', what: "Writes the Company Priorities with the VP of Operations and approves each team's. Reviews only the people who report to them." },
+  { key: 'vpId', label: 'VP of Operations', what: "Writes the Company Priorities with the CISO and approves each team's. Reviews only the people who report to them. Reviewed by the CISO." },
+  { key: 'cisoId', label: 'CISO', what: "Writes the Company Priorities with the VP of Operations and approves each team's. Reviews the VP of Operations and the people who report to them. Nobody reviews the CISO, who has no review of their own." },
   { key: 'hrId', label: 'HR', what: 'Sees every review. Told when one is approved.' },
 ] as const
 

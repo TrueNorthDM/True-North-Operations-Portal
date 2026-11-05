@@ -23,7 +23,6 @@ import { PersonPage } from '@/components/person/PersonPage'
 import { dayCounts } from '@/lib/home/needs-you-model'
 import { summaryLine } from '@/lib/home/day-banner'
 import { defaultRule } from '@/lib/notifications/catalogue'
-import { pinnable, resolveFavourites } from '@/lib/settings/pages'
 import {
   BELL, EMAIL, FIRST_NAME, I7_MONTH, I7_SAMPLE, NAME, NEEDS_YOU, NOW, PUBLISHING_SAMPLE, RAIL_COUNTS, SETTINGS_SAMPLE, ZONE,
   homeAgendaSample, notificationTypesSample, profileSample, railSample,
@@ -131,8 +130,6 @@ export function SettingsPicture({ only }: { only: readonly SettingsSection[] }) 
       email={EMAIL}
       save={null}
       signOutEverywhere={null}
-      favourites={resolveFavourites(RAIL, SETTINGS_SAMPLE.favourites)}
-      groups={pinnable(RAIL)}
       only={only}
       twoStep={<TwoStepSelf since="2026-09-30" daysLeft={null} />}
       notifications={

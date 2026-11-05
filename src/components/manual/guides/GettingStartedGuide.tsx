@@ -188,7 +188,7 @@ export function ProfileSettingsGuide() {
 
       <Step n={5} title="Your time zone and start page" picture={<Picture caption="Settings, Time and region."><SettingsPicture only={['time']} /></Picture>}>
         <p className="m-0">Pick <strong>Your time zone</strong> and when the <strong>Daily summary</strong> arrives: the bell and the summary follow it. Until you choose, it is New York time.</p>
-        <p className="m-0">Under <strong>Home and start</strong>, <strong>After you sign in, open</strong> chooses the page you land on (Home or My Work), and <strong>Favourites on Home</strong> keeps up to five pages you reach for most: <strong>+ Add a page</strong>, then drag them into order.</p>
+        <p className="m-0">Under <strong>Home and start</strong>, <strong>After you sign in, open</strong> chooses the page you land on (Home or My Work).</p>
       </Step>
 
       <Step n={6} title="Your privacy" picture={<Picture caption="Settings, Privacy."><SettingsPicture only={['privacy']} /></Picture>}>
