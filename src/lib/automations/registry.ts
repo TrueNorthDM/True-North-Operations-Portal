@@ -96,7 +96,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'daily-summary',
     name: 'Daily summary emails',
     kind: 'cron',
-    purpose: 'Sends each person the notifications they chose for the daily summary, at their summary hour (8:00 unless they chose 6:00 to 10:00) in their own time zone, Monday to Friday except US federal holidays: one email for Tools and one for System at most, never an empty one. After a weekend or a holiday the next summary catches up on the days in between. Most runs find nothing to do.',
+    purpose: 'Sends each person the notifications they chose for the daily summary, at their summary hour (8:00 unless they chose 6:00 to 10:00) in their own time zone, Monday to Friday except the company holidays: one email for Tools and one for System at most, never an empty one. After a weekend or a holiday the next summary catches up on the days in between. Most runs find nothing to do.',
     trigger: 'Server crontab (deploy/cron/portal.crontab)',
     schedule: 'Every 15 minutes (*/15 * * * *)',
     location: 'src/app/api/cron/daily-summary/route.ts, src/lib/notifications/summary.ts, src/lib/email/summary.ts',

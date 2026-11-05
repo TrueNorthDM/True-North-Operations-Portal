@@ -93,7 +93,7 @@ export function ReportGuide() {
       </Step>
 
       <Step n={7} title="Method" picture={<Picture caption="The Method tab." height={480}><ReportPicture tab="method" /></Picture>}>
-        <p className="m-0">Where every number comes from and how often it refreshes, the rules it follows (held time is working days, Monday to Friday without US federal holidays; late means finished after the due date in New York), and <strong>Who sees what</strong>, with your own reach marked.</p>
+        <p className="m-0">Where every number comes from and how often it refreshes, the rules it follows (held time is working days, Monday to Friday without the company holidays; late means finished after the due date in New York), and <strong>Who sees what</strong>, with your own reach marked.</p>
       </Step>
 
       <Step n={8} title="Export">

@@ -168,7 +168,7 @@ const QUICK: Audience[] = [
         'Pick the **Type** and the **Dates** (one day or a range), full days or hours a day, and add a note if you like.',
         '**Who else is off** shows who on your team is off those days.',
         'Press **Send request**. The message names who decides it (Company settings, **Who approves what**), and you get a notification.',
-        'Company holidays are off for everyone and are not asked for. Vacation, Sick, Holiday and Jury duty are never clocked.',
+        'Company holidays are off for everyone and are not asked for: the seven company holidays (New Year’s Day, Memorial Day, Independence Day, Labor Day, Thanksgiving Day, the day after Thanksgiving and Christmas Day); one that falls on a Saturday is observed the Friday before, on a Sunday the Monday after. Full-time employees are paid for them. Vacation, Sick, Holiday and Jury duty are never clocked.',
       ] },
       { t: 'Reimbursements', steps: [
         'Open Requests, **Reimbursements**, and press **New request**.',

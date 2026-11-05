@@ -61,7 +61,7 @@ function HowItCounts() {
         How it counts
       </h3>
       <ul className="m-0 pl-4 flex flex-col gap-1.5 text-[12.5px] text-foreground leading-[1.55]">
-        <li>Held time is working days, Monday to Friday without US federal holidays, from the moment a step lands on someone to the moment it is marked done.</li>
+        <li>Held time is working days, Monday to Friday without the company holidays, from the moment a step lands on someone to the moment it is marked done.</li>
         <li>Late means finished after the end of its due date in New York. A step with no due date is neither on time nor late.</li>
         <li>A step reopened and finished again counts once, on its last finish.</li>
         <li>Switched-off boards, switched-off steps and hidden Monday accounts are left out of the past as well as the present.</li>

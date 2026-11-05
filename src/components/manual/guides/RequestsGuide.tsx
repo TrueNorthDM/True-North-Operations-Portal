@@ -46,7 +46,7 @@ export function TimeOffGuide() {
         <p className="m-0">Time off that has already started cannot be cancelled here: tell a Super Admin.</p>
       </Step>
 
-      <Tip title="Company holidays are not asked for.">They are off for everyone, and the calendar skips them when it counts your days.</Tip>
+      <Tip title="Company holidays are not asked for.">They are off for everyone, and the calendar skips them when it counts your days: New Year&apos;s Day, Memorial Day, Independence Day, Labor Day, Thanksgiving Day, the day after Thanksgiving and Christmas Day (on a weekend, the Friday before or the Monday after).</Tip>
     </div>
   )
 }

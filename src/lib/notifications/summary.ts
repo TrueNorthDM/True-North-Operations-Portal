@@ -5,7 +5,7 @@
  * A daily-summary notification lands in the bell at 8:00 in its person's time
  * zone. Each run looks for the ones that landed and have not been emailed, and
  * for each person whose own calendar says it is a working day (Monday to
- * Friday, not a US federal holiday) and past their summary hour (8:00 unless
+ * Friday, not a company holiday) and past their summary hour (8:00 unless
  * they chose another), sends them one email: Tools. System notifications
  * stay in the bell and are not emailed (decided 13 October 2026: the System
  * email read as the portal talking about itself). On a day off nothing

@@ -1,11 +1,19 @@
 /**
- * The working calendar the summary email follows (7 October 2026): Monday to
- * Friday, minus the US federal holidays. On a day off no summary goes out; the
- * next working day's summary covers the days in between ("what you missed").
+ * The company's working calendar: Monday to Friday, minus the company
+ * holidays. It is the one list every part of the portal reads: the days a
+ * time off request counts, the holidays on the Agenda, the reminders and the
+ * summary email (on a day off no summary goes out; the next working day's
+ * covers the days in between, "what you missed").
  *
- * The holidays are worked out, not listed, so no year ever needs adding: the
- * fixed-date ones move to Friday or Monday when they fall on a weekend, the
- * way the federal government observes them. Pure, and tested.
+ * The company holidays are the employee handbook's (section 16, Company
+ * Holidays; Tina, 2 November 2026, applied by the owner 5 November 2026),
+ * seven days: New Year's Day, Memorial Day, Independence Day, Labor Day,
+ * Thanksgiving Day, the day after Thanksgiving and Christmas Day. Until then
+ * the portal used the 11 US federal holidays.
+ *
+ * They are worked out, not listed, so no year ever needs adding: a fixed-date
+ * one that falls on a Saturday is observed the Friday before, on a Sunday the
+ * Monday after, as the handbook says. Pure, and tested.
  */
 
 import { addDays } from './schedule'
@@ -34,21 +42,18 @@ function observed(day: string): string {
 
 const CACHE = new Map<number, Map<string, string>>()
 
-/** The US federal holidays of a year, as observed: day -> name. */
-export function usHolidays(year: number): ReadonlyMap<string, string> {
+/** The company holidays of a year, as observed: day -> name. */
+export function companyHolidays(year: number): ReadonlyMap<string, string> {
   const hit = CACHE.get(year)
   if (hit) return hit
+  const thanksgiving = nth(year, 11, 4, 4)
   const list: [string, string][] = [
     [observed(iso(year, 1, 1)), "New Year's Day"],
-    [nth(year, 1, 1, 3), 'Martin Luther King Jr. Day'],
-    [nth(year, 2, 1, 3), "Washington's Birthday"],
     [nth(year, 5, 1, -1), 'Memorial Day'],
-    [observed(iso(year, 6, 19)), 'Juneteenth'],
     [observed(iso(year, 7, 4)), 'Independence Day'],
     [nth(year, 9, 1, 1), 'Labor Day'],
-    [nth(year, 10, 1, 2), 'Columbus Day'],
-    [observed(iso(year, 11, 11)), 'Veterans Day'],
-    [nth(year, 11, 4, 4), 'Thanksgiving Day'],
+    [thanksgiving, 'Thanksgiving Day'],
+    [addDays(thanksgiving, 1), 'Day after Thanksgiving'],
     [observed(iso(year, 12, 25)), 'Christmas Day'],
   ]
   const out = new Map(list)
@@ -59,9 +64,12 @@ export function usHolidays(year: number): ReadonlyMap<string, string> {
   return out
 }
 
+/** The name every caller used while the list was the federal one: the same company holidays. */
+export const usHolidays = companyHolidays
+
 /** The holiday a day is, if any. */
 export function holidayOn(day: string): string | null {
-  return usHolidays(Number(day.slice(0, 4))).get(day) ?? null
+  return companyHolidays(Number(day.slice(0, 4))).get(day) ?? null
 }
 
 /** A day the summary email goes out on. */

@@ -7,7 +7,7 @@
 //   Report showed more late work than My Work did.
 //
 //   Held time counts working time only: Monday to Friday, minus the US
-//   federal holidays (the calendar the summary email follows). A step that
+//   company holidays (the calendar the summary email follows). A step that
 //   lands on Friday at 5pm and is done on Monday at 10am was held for 17 hours
 //   of working days, about 0.7 of a day, not three days. The Report measures
 //   how long work sat with someone, and a weekend is not them sitting on it.

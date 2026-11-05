@@ -5,8 +5,8 @@
  * time-off-data.ts reads, the page and the actions use these.
  *
  * The company holidays are the company holiday list the Agenda shows; today
- * that list is the US federal holidays the portal already keeps
- * (notifications/calendar.ts). They are off for everyone and never asked for.
+ * that list is the seven of the employee handbook (5 November 2026), kept in
+ * notifications/calendar.ts. They are off for everyone and never asked for.
  */
 
 import { usHolidays } from '@/lib/notifications/calendar'

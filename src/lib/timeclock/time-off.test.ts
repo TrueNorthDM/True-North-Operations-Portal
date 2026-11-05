@@ -11,7 +11,8 @@ describe('time off (Requests.dc.html 7A to 7E)', () => {
   it('counts weekdays and leaves the company holidays out', () => {
     const h = holidaysBetween('2026-11-23', '2026-11-27')
     expect(h.get('2026-11-26')).toBe('Thanksgiving Day')
-    expect(offDays('2026-11-23', '2026-11-27', h)).toEqual({ days: ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-27'], skipped: ['2026-11-26'] })
+    expect(h.get('2026-11-27')).toBe('Day after Thanksgiving')
+    expect(offDays('2026-11-23', '2026-11-27', h)).toEqual({ days: ['2026-11-23', '2026-11-24', '2026-11-25'], skipped: ['2026-11-26', '2026-11-27'] })
     expect(offDays('2026-11-28', '2026-11-29', h).days).toEqual([])
     expect(countText(3, 24 * 3600)).toBe('3 working days, 24h 00m')
     expect(countText(1, 8 * 3600)).toBe('1 working day, 8h 00m')
