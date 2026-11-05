@@ -6,7 +6,7 @@
  *
  * Brought up to the rules leadership decided on 4 November 2026: a clock left
  * running stops at 12h (no "Still working?"), everyone adds and changes their
- * own hours, salaried employees are outside the allowance, contractors make
+ * own hours, US employees (all salaried) are outside the allowance, contractors make
  * and send their own invoice (checked against the timesheet on approval, with
  * an "Invoice record" page on the PDF), Home's cards are each person's choice,
  * and the breaks and lunch policy.
@@ -72,11 +72,11 @@ export function HomeSection() {
 const NT: Block[] = [
   { t: 'The clock', d: 'The clock button in the top bar opens the clock panel. Pick **Resume** (your last job), one of **My combinations**, a **Recent** one, or search under **Something else** (**Browse** shows every job). Check the details and press **Clock in**. **Switch to** ends one entry and starts the next at the same second. The clock has no break button: to take a break off the clock, clock out. Times are kept on the nearest 15 minutes.' },
   { t: 'A clock left running', d: 'If you forget to clock out, the clock stops by itself after **12h 00m** on the clock, counted from the clock in across every switch. There is no question before it. You are always told, in the bell and by email (a notification nobody can turn off), and the clock button turns red until you confirm when you really stopped. Admins see every automatic stop in **Clock safety**.' },
-  { t: 'Breaks and lunch', d: 'Longer breaks are encouraged, never required. A break under 15 minutes needs no clock out. Hourly employees and contractors clock out for lunch; salaried employees do not have to. The portal does not watch your computer and never clocks you out for being idle.' },
+  { t: 'Breaks and lunch', d: 'Longer breaks are encouraged, never required. A break under 15 minutes needs no clock out. Contractors clock out for lunch; US employees, who are all salaried, do not have to. The portal does not watch your computer and never clocks you out for being idle.' },
   { t: 'The 2026 job structure', d: 'From the switch date you pick a project as **Client › Division › Project**, then its **Activity**, grouped by family. **Billable** comes from the project and shows read only, “from the project”. **Notes** are required for **Other** and **Meeting: Other**. Before the switch date you pick the TSheets jobs, as before. **Which job?** lists every job and when to use it, with the TSheets list one choice away for people still on TSheets.' },
   { t: 'Combinations', d: 'Your favourites: a job with its Activity and note, saved under a name. Use **Save as combination** in the details, or the star on a Recent row. The panel shows the first 6; **More** shows the rest. **Manage** reorders, edits and deletes them. A combination on a TSheets job stops showing from the switch date; it is not deleted.' },
   { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Everyone adds and changes their own hours, as in TSheets: **Add time**, or edit an entry. Team Leaders also change their team’s hours; Admins and Super Admins everyone’s. Every change needs a reason and stays in the entry’s history. The allowance still applies, and a sent timesheet stays locked.' },
-  { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over. Salaried US employees are outside the allowance (People, **Rates & Costs**, **Pays as**: **Salaried (Rippling)** shows **Exempt (salaried)**); hourly employees and contractors keep it. Overtime only with extra hours approved first.' },
+  { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over. US employees are all salaried and outside the allowance (People, **Rates & Costs** shows them as **Salaried (Rippling)** and **Exempt (salaried)**); contractors keep it. Overtime only with extra hours approved first.' },
   { t: 'Timesheets and approvals', d: 'Each person submits monthly or every 2 weeks. Hours are approved by the person they report to (Directory, Work tab, **Reports to**); a contractor’s invoice by the invoice approver in Company settings, Invoices; when it is the same person it is one step. The hours can be approved before the invoice arrives. A submitted period is locked until it is returned or a Super Admin reopens it.' },
   { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Who decides is set in Company settings, Invoices, **Who approves what**: time off and extra hours follow the invoice rule (the person’s Reports to when they approve invoices, else the default approver); reimbursements go to the people on the **Reimbursements** list. Nobody decides their own.' },
   { t: 'Invoices and documents', d: 'Contractors make and send their own invoice: the portal no longer makes one from the timesheet, nor on the 1st. After sending the timesheet, they send it from North Time, **Invoices**, **Send your invoice**: their own PDF, or one they build here. The approver checks it against the timesheet, client by client. Its PDF has a second page, **Invoice record**: who made it, the check and the history. An employee’s approved reimbursements go on a reimbursement document. Finance pays both outside Rippling payroll and marks them paid.' },
@@ -139,7 +139,7 @@ const QUICK: Audience[] = [
       { t: 'Breaks and lunch', steps: [
         'Longer breaks are encouraged, never required.',
         'A break under 15 minutes needs no clock out.',
-        'Hourly employees and contractors clock out for lunch. Salaried employees do not have to.',
+        'Contractors clock out for lunch. US employees, who are all salaried, do not have to.',
         'The portal does not watch your computer and never clocks you out for being idle.',
       ] },
       { t: 'Request extra hours', steps: [
@@ -153,7 +153,7 @@ const QUICK: Audience[] = [
         'From 90% it shows the hours left and, while the clock runs, the time it will stop by itself.',
         'When the allowance is used, your clock stops, and **Clock in**, **Switch** and adding time are refused.',
         'Ask for extra hours before you need them, not after.',
-        'Salaried US employees have no allowance: their hours are never stopped or flagged as over.',
+        'US employees are all salaried and have no allowance: their hours are never stopped or flagged as over.',
       ] },
       { t: 'Submit your timesheet', steps: [
         'When your period closes, Home’s **Pay period** card turns amber (red once it is late).',

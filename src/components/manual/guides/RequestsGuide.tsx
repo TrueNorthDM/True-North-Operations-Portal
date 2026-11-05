@@ -106,7 +106,7 @@ export function ExtraHoursGuide() {
   return (
     <div className="flex flex-col gap-7">
       <GuideHeader eyebrow="Requests" title="Extra hours" minutes={3}>
-        If you have an hours allowance and need more, ask here before you go over it, not after: overtime needs approval first. Salaried US employees have no allowance. Team Leaders can also ask for someone on the teams they lead.
+        If you have an hours allowance and need more, ask here before you go over it, not after: overtime needs approval first. US employees are salaried and have no allowance. Team Leaders can also ask for someone on the teams they lead.
       </GuideHeader>
 
       <Step n={1} title="Open Extra hours" picture={<Picture caption="Extra hours, with one request waiting."><ExtraHoursPicture show="page" /></Picture>}>

@@ -208,13 +208,13 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   const show = new Set(layout.visible.map(c => c.key))
   const gridStyle = { gridTemplateColumns: layout.template }
   // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
-  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; salaried?: boolean; allowance?: string; pageRate?: string; assetRate?: string }>>({})
+  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string; pageRate?: string; assetRate?: string }>>({})
   const payOf = (id: string) => pay?.byPerson[id] ?? null
   const payChanged = (id: string) => {
     const d = payDraft[id]
     const now = payOf(id)
     if (!d || !now) return false
-    return (d.paysAs !== undefined && d.paysAs !== now.paysAs) || (d.salaried !== undefined && d.salaried !== !!now.salaried) || (d.allowance !== undefined && d.allowance !== alKey(now.allowance))
+    return (d.paysAs !== undefined && d.paysAs !== now.paysAs) || (d.allowance !== undefined && d.allowance !== alKey(now.allowance))
   }
   // The invoice form's rates as typed: empty is the company's, else dollars.
   const ownRate = (v: string | undefined): number | null | undefined => (v === undefined ? undefined : v.trim() === '' ? null : Number(v))
@@ -445,7 +445,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         if (!payChanged(p.id)) continue
         const now = payOf(p.id)!
         const d = payDraft[p.id]
-        ops.push(savePaysAndAllowance(p.id, { paysAs: d.paysAs ?? now.paysAs, allowance: d.allowance !== undefined ? alOf(d.allowance) : now.allowance, salaried: d.salaried ?? now.salaried }))
+        ops.push(savePaysAndAllowance(p.id, { paysAs: d.paysAs ?? now.paysAs, allowance: d.allowance !== undefined ? alOf(d.allowance) : now.allowance }))
       }
       for (const p of people) {
         if (!ratesChanged(p.id)) continue
@@ -664,15 +664,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {pay && show.has('paysAs') && (() => {
                   const now = payOf(p.id)
                   if (!now) return <span className="text-slate-300">-</span>
-                  // US employees (Rippling): salaried or hourly (leadership, 4 November 2026). Salaried are outside the allowance.
-                  if (!now.isContractor) {
-                    const sal = payDraft[p.id]?.salaried ?? !!now.salaried
-                    return editing && pay.canEdit
-                      ? <Select value={sal ? 'salaried' : 'hourly'} ariaLabel={`How ${p.name} is paid`} className="text-[12.5px]"
-                          options={[{ value: 'salaried', label: 'Salaried (Rippling)' }, { value: 'hourly', label: 'Hourly (Rippling)' }]}
-                          onChange={k => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], salaried: k === 'salaried' } }))} />
-                      : <span className="text-[13px] text-muted">{sal ? 'Salaried (Rippling)' : 'Hourly (Rippling)'}</span>
-                  }
+                  // Every US employee is salaried, through Rippling (owner, 5 November 2026): nothing to choose.
+                  if (!now.isContractor) return <span className="text-[13px] text-muted">Salaried (Rippling)</span>
                   const v = payDraft[p.id]?.paysAs ?? now.paysAs ?? 'hourly'
                   return editing && pay.canEdit
                     ? <Select value={v} ariaLabel={`How ${p.name} is paid`} className="text-[12.5px]"
@@ -698,8 +691,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {pay && show.has('allowance') && (() => {
                   const now = payOf(p.id)
                   const k = payDraft[p.id]?.allowance ?? alKey(now?.allowance ?? null)
-                  // A salaried employee has no limit: what is stored waits, not applied.
-                  if (now && !now.isContractor && (payDraft[p.id]?.salaried ?? !!now.salaried)) return <span className="text-[13px] text-muted" title="Salaried employees are outside the hours allowance.">Exempt (salaried)</span>
+                  // Employees are salaried and have no limit (5 November 2026): what is stored waits, not applied.
+                  if (now && !now.isContractor) return <span className="text-[13px] text-muted" title="US employees are salaried and outside the hours allowance.">Exempt (salaried)</span>
                   const opts = ALLOWANCES.includes(k) ? ALLOWANCES : [...ALLOWANCES, k]
                   return editing && pay.canEdit && now
                     ? <Select value={k} ariaLabel={`${p.name}'s hours allowance`} className="text-[12.5px]"

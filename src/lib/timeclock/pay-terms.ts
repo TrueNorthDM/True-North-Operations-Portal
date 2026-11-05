@@ -32,13 +32,14 @@ export interface PayTerms {
   /** people.monthly_salary: Rates & Costs "Month / salary". Fixed invoices use it. */
   fixedAmount: number | null
   /**
-   * The allowance that applies: null for a salaried employee (leadership, 4
-   * November 2026: salaried employees are exempt), whatever is stored.
+   * The allowance that applies: null for every US employee (leadership, 4
+   * November 2026: salaried employees are exempt; owner, 5 November 2026:
+   * every employee is salaried), whatever is stored. Contractors keep theirs.
    */
   allowance: { hours: number; period: 'week' | 'month' } | null
   /** What Rates & Costs stores, applied or not: for the screens that edit it. */
   storedAllowance: { hours: number; period: 'week' | 'month' } | null
-  /** A US employee paid a salary (migration 151). Never a contractor. */
+  /** A US employee: all are salaried (owner, 5 November 2026). Never a contractor. pay_terms.salaried (migration 151) is no longer read. */
   salaried: boolean
 }
 
@@ -156,7 +157,8 @@ export async function loadPayTerms(personIds?: readonly string[]): Promise<Map<s
     // A contractor with no row yet is paid by the hour (what everyone was until part 2).
     const paysAs: PaysAs | null = isContractor ? t?.pays_as ?? 'hourly' : null
     const stored = t?.allowance_hours != null && t.allowance_period ? { hours: Number(t.allowance_hours), period: t.allowance_period } : null
-    const salaried = !isContractor && !!t?.salaried
+    // Every employee is salaried (owner, 5 November 2026); the per-person flag of migration 151 is not needed.
+    const salaried = !isContractor
     out.set(p.id, {
       personId: p.id,
       paysAs,
