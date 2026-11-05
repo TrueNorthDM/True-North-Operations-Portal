@@ -340,14 +340,9 @@ export async function loadExtraHours(v: Pick<Access, 'personId'> & { ledTeamIds:
     if (!u) return 'No allowance: hours are never flagged as over.'
     return `Allowance: ${u.hours}h a ${u.period}. ${u.period === 'month' ? monthYear(u.from).split(' ')[0] : 'This week'} so far: ${formatDuration(u.used)}, so ${formatDuration(u.left)} left before extra hours.`
   }
+  // Every allowance is a week (Weekly hours, owner 5 November 2026), so extra hours are asked for a week: this one and the next three.
   const whens: ExtraPage['whens'] = []
-  for (let i = 0; i < 2; i++) {
-    const [y, m] = today.split('-').map(Number)
-    const s = new Date(Date.UTC(y, m - 1 + i, 1)).toISOString().slice(0, 10)
-    const r = allowanceRange(s, 'month', settings.weekStart)
-    whens.push({ value: `month:${r.from}`, label: monthYear(r.from), period: 'month', start: r.from, end: r.to })
-  }
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const r = allowanceRange(addDays(range('week').from, i * 7), 'week', settings.weekStart)
     whens.push({ value: `week:${r.from}`, label: `Week of ${dateLabel(r.from).replace(/, \d{4}$/, '')}`, period: 'week', start: r.from, end: r.to })
   }

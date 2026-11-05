@@ -153,22 +153,22 @@ export function rmbDocSample(): RmbDocPage {
 
 // ── Extra hours ─────────────────────────────────────────────────────────────
 
-/** Extra hours as Sam Patel (SEO, a contractor with 120h a month) sees them. */
+/** Extra hours as Sam Patel (SEO, a contractor with Weekly hours of 30h) sees them. */
 export function extraSample(asking = false): ExtraPage {
   const rows: ExtraPage['rows'] = [
-    { id: 1, hours: '10h 00m', when: 'November 2026', client: 'Northwind Foods', why: 'Site audit and fixes before their holiday sale, asked by the client.', st: { label: 'Waiting', tone: 'warn' }, by: 'Asked Nov 9, 2026, 5:20 PM', who: null },
-    { id: 2, hours: '6h 00m', when: 'September 2026', client: 'Harbor Health', why: 'Keyword research for the new service pages.', st: { label: 'Approved', tone: 'ok' }, by: `Approved by ${APPROVER}, Sep 14, 2026`, who: null },
+    { id: 1, hours: '6h 00m', when: 'Week of Nov 15', client: 'Northwind Foods', why: 'Site audit and fixes before their holiday sale, asked by the client.', st: { label: 'Waiting', tone: 'warn' }, by: 'Asked Nov 9, 2026, 5:20 PM', who: null },
+    { id: 2, hours: '4h 00m', when: 'Week of Sep 13', client: 'Harbor Health', why: 'Keyword research for the new service pages.', st: { label: 'Approved', tone: 'ok' }, by: `Approved by ${APPROVER}, Sep 14, 2026`, who: null },
   ]
   return {
-    allowance: { period: 'November 2026', used: '41h 30m', cap: '120h', share: 0.35, note: 'October: 118h 15m of 120h, nothing over the allowance.' },
+    allowance: { period: 'Week of Nov 8', used: '12h 30m', cap: '30h', share: 0.42, note: '17h 30m left before extra hours. Going over needs approval before, not a surprise on the invoice.' },
     rows: asking ? rows.filter(r => r.id !== 1) : rows,
     forOthers: false,
-    people: [{ id: 'sp', name: 'Sam Patel', context: 'Allowance: 120h a month. November so far: 41h 30m, so 78h 30m left before extra hours.', cap: 120, period: 'month' }],
+    people: [{ id: 'sp', name: 'Sam Patel', context: 'Allowance: 30h a week. This week so far: 12h 30m, so 17h 30m left before extra hours.', cap: 30, period: 'week' }],
     whens: [
-      { value: 'month:2026-11-01', label: 'November 2026', period: 'month', start: '2026-11-01', end: '2026-11-30' },
-      { value: 'month:2026-12-01', label: 'December 2026', period: 'month', start: '2026-12-01', end: '2026-12-31' },
       { value: 'week:2026-11-08', label: 'Week of Nov 8', period: 'week', start: '2026-11-08', end: '2026-11-14' },
       { value: 'week:2026-11-15', label: 'Week of Nov 15', period: 'week', start: '2026-11-15', end: '2026-11-21' },
+      { value: 'week:2026-11-22', label: 'Week of Nov 22', period: 'week', start: '2026-11-22', end: '2026-11-28' },
+      { value: 'week:2026-11-29', label: 'Week of Nov 29', period: 'week', start: '2026-11-29', end: '2026-12-05' },
     ],
     clients: CLIENTS,
     me: 'sp',
@@ -176,7 +176,7 @@ export function extraSample(asking = false): ExtraPage {
 }
 
 /** What the extra hours form shows filled in. */
-export const EXTRA_FORM = { hours: '10', when: 'month:2026-11-01', client: 'Northwind Foods', why: 'Site audit and fixes before their holiday sale, asked by the client.' }
+export const EXTRA_FORM = { hours: '6', when: 'week:2026-11-15', client: 'Northwind Foods', why: 'Site audit and fixes before their holiday sale, asked by the client.' }
 
 // ── Approvals ───────────────────────────────────────────────────────────────
 
@@ -211,10 +211,10 @@ const RMB_CARD: RequestCard = {
 }
 
 const XH_CARD: RequestCard = {
-  kind: 'xh', id: 1, type: 'Extra hours', title: '10h 00m in November', width: 620, twoCols: false, receipt: null,
-  facts: [{ k: 'When', v: 'November 2026' }, { k: 'Client or project', v: 'Northwind Foods' }, { k: 'Why', v: '"Site audit and fixes before their holiday sale, asked by the client."' }],
-  allow: 'Allowance: 120h a month. November so far: 41h 30m.', cal: null,
-  after: "Approved, their November allowance becomes 130h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
+  kind: 'xh', id: 1, type: 'Extra hours', title: '6h 00m in the week of Nov 15', width: 620, twoCols: false, receipt: null,
+  facts: [{ k: 'When', v: 'Week of Nov 15' }, { k: 'Client or project', v: 'Northwind Foods' }, { k: 'Why', v: '"Site audit and fixes before their holiday sale, asked by the client."' }],
+  allow: 'Allowance: 30h a week. This week so far: 12h 30m.', cal: null,
+  after: "Approved, their allowance for the week of Nov 15 becomes 36h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
   canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Deny',
 }
 
@@ -234,7 +234,7 @@ export function queueSample(): QueueData {
     wait: [
       qrow('o1', 'off', 'Maria Gomez', { main: 'Vacation · 24h 00m', sub: 'Mon, Nov 23 to Wed, Nov 25', why: '"Family trip for Thanksgiving."', asked: 'Asked Mon, Nov 9, 4:40 PM', request: OFF_CARD }),
       qrow('rr1', 'rmb', 'Jordan Lee', { main: 'Northwind Foods visit, Nov 3 to 4 · $340.82', sub: '3 receipts: Flight to the client, round trip, Dinner on the trip, Home to the airport and back (42 mi at $0.76 a mile)', why: 'Contractor: each receipt goes on their next invoice.', asked: 'Asked Thu, Nov 5, 9:20 AM', request: RMB_CARD }),
-      qrow('x1', 'xh', 'Sam Patel', { main: 'Extra hours · 10h 00m', sub: 'November 2026 · Northwind Foods', why: '"Site audit and fixes before their holiday sale, asked by the client."', asked: 'Asked Mon, Nov 9, 5:20 PM', request: XH_CARD }),
+      qrow('x1', 'xh', 'Sam Patel', { main: 'Extra hours · 6h 00m', sub: 'Week of Nov 15 · Northwind Foods', why: '"Site audit and fixes before their holiday sale, asked by the client."', asked: 'Asked Mon, Nov 9, 5:20 PM', request: XH_CARD }),
     ],
     others: [
       qrow('x2', 'xh', 'Priya Nair', { main: 'Extra hours · 4h 00m', sub: 'Week of Nov 8 · Harbor Health', why: '"Urgent translation of the patient guide."', asked: 'Asked Tue, Nov 10, 8:05 AM', ownerName: 'Alex Rivera' }),

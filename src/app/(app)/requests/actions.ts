@@ -159,7 +159,8 @@ export async function askCancelTimeOff(input: { id: number; reason: string }): P
 
 /**
  * Ask for extra hours before going over the allowance: for themselves, or a
- * Team Leader for someone on the teams they lead. A week or a month, how many
+ * Team Leader for someone on the teams they lead. A week (every allowance is
+ * Weekly hours since 5 November 2026), how many
  * hours, the client and why. Whoever the routing names for that person (not
  * who asked) decides on Approvals.
  */
@@ -173,8 +174,8 @@ export async function askExtraHours(input: { personId: string; hours: number; wh
     if (!mine && !(dir.people.get(target)?.teamIds ?? []).some(t => v.ledTeamIds.has(t))) return fail('You can ask for extra hours for yourself, or for someone on a team you lead.')
     const hours = Number(String(input.hours ?? '').replace(',', '.'))
     if (!(hours > 0 && hours <= 200)) return fail('Write how many hours, like 8.')
-    const m = /^(week|month):(\d{4}-\d{2}-\d{2})$/.exec(String(input.when ?? ''))
-    if (!m) return fail('Pick the week or the month.')
+    const m = /^(week):(\d{4}-\d{2}-\d{2})$/.exec(String(input.when ?? ''))
+    if (!m) return fail('Pick the week.')
     const period = m[1] as 'week' | 'month'
     const range = allowanceRange(m[2], period, (await loadClockySettings()).weekStart)
     const client = String(input.client ?? '').trim()

@@ -74,7 +74,8 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
   if (schedule && schedule !== 'full' && schedule !== 'part') return fail('Choose Full-Time or Part-Time.')
   const hoursText = text(input.weeklyHours)
   const weeklyHours = hoursText == null ? null : Number(hoursText)
-  if (weeklyHours != null && (!Number.isFinite(weeklyHours) || weeklyHours < 0 || weeklyHours > 168)) return fail('Weekly hours must be between 0 and 168.')
+  // A contractor's Weekly hours is their hours allowance a week (owner, 5 November 2026): more than 0, or empty for none.
+  if (weeklyHours != null && (!Number.isFinite(weeklyHours) || weeklyHours <= 0 || weeklyHours > 168)) return fail('Weekly hours must be more than 0 and at most 168, or empty.')
   if (input.status !== 'active' && input.status !== 'inactive') return fail('Choose Active or Inactive.')
   const emails = { trueNorth: email(input.emails?.trueNorth), goodnews: email(input.emails?.goodnews), coe: email(input.emails?.coe) }
   if (emails.trueNorth === false || emails.goodnews === false || emails.coe === false) return fail('One of the company emails does not look right.')

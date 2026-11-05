@@ -398,7 +398,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           allow: t?.allowance ? `Allowance: ${t.allowance.hours}h a ${t.allowance.period}.${u ? ` ${u.period === 'month' ? monthYear(u.from).split(' ')[0] : 'This week'} so far: ${formatDuration(u.used)}.${u.over ? ` ${formatDuration(u.over)} over without approval.` : ''}` : ''}` : 'No allowance set: the hours are never flagged as over.',
           cal: null,
           after: cap != null && t?.allowance?.period === r.period
-            ? `Approved, their ${when} allowance becomes ${cap + Number(r.hours)}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
+            ? `Approved, their allowance for ${when} becomes ${cap + Number(r.hours)}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
             : 'Approved, these hours are added to the allowance of that period. Hours past it are flagged again.',
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: 'Approve', denyLabel: 'Deny',

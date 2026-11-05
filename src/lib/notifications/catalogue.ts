@@ -424,19 +424,19 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-allowance', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Allowance', stat: 'allowance lines', statOne: 'allowance line',
-    example: { title: 'You have used 90% of your allowance', body: '126h of 140h this month.' },
+    example: { title: 'You have used 90% of your allowance', body: '27h of 30h this week.' },
     title: 'Your hours allowance: 90%, reached, or over',
     // Since 25 October 2026 the allowance is a real limit (owner): the same row says when the clock stopped at it.
-    description: 'Once at 90% and once over, each week or month, and when your clock stops by itself at your allowance: nobody logs time past it. Ask for extra hours to log more. In the bell only.',
+    description: 'Once at 90% and once over, each week, and when your clock stops by itself at your allowance: nobody logs time past it. Ask for extra hours to log more. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Ask for extra hours', href: '/requests/extra-hours?ask=1' },
   },
   {
     key: 'clocky-allowance-over', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Allowance', stat: 'over the allowance', statOne: 'over the allowance',
-    example: { title: 'Cheyenne Wilson is over the October allowance without approval', body: '151h 15m of 140h.' },
+    example: { title: 'Cheyenne Wilson is over the allowance for the week of Oct 18 without approval', body: '33h 15m of 30h.' },
     title: 'Someone went over the allowance without approval',
-    description: 'To the Team Leader of their team and the Super Admins, once per week or month. In the bell only.',
+    description: 'To the Team Leader of their team and the Super Admins, once per week. In the bell only.',
     who: 'Their Team Leader and Super Admins', audience: { kind: 'everyone' },
     button: { label: 'Open Extra hours', href: '/requests/extra-hours' },
   },

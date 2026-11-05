@@ -54,7 +54,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       note = `No invoice: ${name(hb)} approves the hours and they go to Rippling.`
     } else if (p.paysAs === 'fixed_no_timesheet') {
       rows.push({ k: 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
-      note = `No timesheet: the invoice is made on the 1st and goes straight to ${name(ib)}.`
+      note = `No timesheet: they send their own invoice, and it goes straight to ${name(ib)}.`
     } else {
       rows.push({ k: 'Hours approved by', v: name(hb), sub: hbSub })
       rows.push({ k: lastDay ? `Invoice, until ${lastDay}` : 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
@@ -86,10 +86,11 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       typeChange,
       approvals: { rows, note },
       pay: money ? {
-        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.storedAllowance, timeOff, contractorUntil: lastDay,
+        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff, contractorUntil: lastDay,
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
-      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : p.paysAs === 'fixed_no_timesheet' ? 'Made on the 1st, no timesheet' : 'Made when they submit') : null,
+      // Since 4 November 2026 the portal makes no invoices: every contractor makes and sends their own.
+      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : 'They send their own') : null,
     }
   } catch (e) {
     // The sections are left out rather than the page failing (migration 115 not run yet).

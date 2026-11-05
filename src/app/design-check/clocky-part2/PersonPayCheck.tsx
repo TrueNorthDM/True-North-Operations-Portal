@@ -3,7 +3,7 @@
 // 10A-1: a person's Work tab with Approvals and Pay and hours (Company
 // Settings.dc.html, frame 10A1), the real PersonPage with the prototype's
 // person: Cheyenne Wilson, Writers, contractor, reports to Arnaldo Oliveira,
-// $22.00 an hour, 140h a month. Nothing saves.
+// $22.00 an hour, Weekly hours 30 (her allowance, a week). Nothing saves.
 
 import { PersonPage } from '@/components/person/PersonPage'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
@@ -22,8 +22,8 @@ const CHEYENNE: PaySample = {
     ],
     note: 'Same person: one step, Approve both.',
   },
-  pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 140, period: 'month' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
-  invoicesLine: 'Made when they submit',
+  pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 30, period: 'week' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
+  invoicesLine: 'They send their own',
 }
 
 export function PersonPayCheck({ data, editing, typeChange = null, sample = CHEYENNE }: { data: PersonPageData; editing: boolean; typeChange?: TypeChangeView | null; sample?: PaySample }) {

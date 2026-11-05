@@ -1,5 +1,22 @@
-import { describe, expect, it } from 'vitest'
-import { isFinance, paysWhat } from './pay-terms'
+import { describe, expect, it, vi } from 'vitest'
+
+// The rows loadPayTerms reads, per table.
+const tables: Record<string, Record<string, unknown>[]> = { people: [], pay_terms: [] }
+const selected: Record<string, string> = {}
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    from: (table: string) => {
+      const q = {
+        select: (cols: string) => { selected[table] = cols; return q },
+        in: () => q,
+        then: (ok: (r: { data: unknown; error: null }) => unknown) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(ok),
+      }
+      return q
+    },
+  }),
+}))
+
+import { isFinance, loadPayTerms, paysWhat } from './pay-terms'
 
 // Who is shown To pay on Home and on the rail (owner, 25 October 2026).
 describe('what Finance pays', () => {
@@ -18,5 +35,24 @@ describe('what Finance pays', () => {
     expect(paysWhat(access('tina', ['clocky-invoices', 'rq-reimbursements']), settings)).toEqual({ invoices: true, documents: true })
     expect(paysWhat(access('tina', ['rq-reimbursements']), settings)).toEqual({ invoices: false, documents: true })
     expect(paysWhat(access('tina', ['clocky-invoices']), settings)).toEqual({ invoices: true, documents: false })
+  })
+})
+
+// One field (owner, 5 November 2026): the allowance is a contractor's Weekly hours, a week.
+describe('loadPayTerms: the allowance from Weekly hours', () => {
+  const person = (id: string, employment_type: string, weekly_hours: number | null) =>
+    ({ id, manager_id: null, employment_type, internal_rate: 20, monthly_salary: null, weekly_hours })
+
+  it('a contractor with Weekly hours: that many hours a week; without: none; an employee: none', async () => {
+    tables.people = [person('con', 'contractor', 30), person('free', 'contractor', null), person('emp', 'us', 40)]
+    // An old allowance stored in pay_terms is no longer read.
+    tables.pay_terms = [{ person_id: 'con', pays_as: 'hourly', allowance_hours: 120, allowance_period: 'month' }]
+    const terms = await loadPayTerms(['con', 'free', 'emp'])
+    expect(terms.get('con')?.allowance).toEqual({ hours: 30, period: 'week' })
+    expect(terms.get('free')?.allowance).toBeNull()
+    expect(terms.get('emp')?.allowance).toBeNull()
+    expect(terms.get('emp')?.salaried).toBe(true)
+    expect(selected.pay_terms).not.toMatch(/allowance/)
+    expect(selected.people).toMatch(/weekly_hours/)
   })
 })

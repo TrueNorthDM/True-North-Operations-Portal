@@ -63,7 +63,7 @@ export async function loadWindows(personId: string, allowance: Allowance, days: 
   ])
   for (const [day, r] of ranges) {
     out.set(day, {
-      period: allowance.period, hours: allowance.hours, extraHours: extra(personId, r.from, r.to), ...r,
+      period: allowance.period, hours: allowance.hours, extraHours: extra(personId, r.from, r.to, allowance.period), ...r,
       counted: rows.filter(e => e.entry_date >= r.from && e.entry_date <= r.to).map(e => ({ id: e.id, seconds: entrySeconds(e, now) })),
     })
   }

@@ -3,10 +3,11 @@
 /**
  * Extra hours (Clocky part 2, Requests.dc.html):
  *
- *   10E   the allowance this week or month and how much is used; the requests
+ *   10E   the allowance this week and how much is used; the requests
  *         (a Team Leader's include the people of their teams)
- *   10C   Ask for extra hours: for whom (Team Leaders), how many, which week
- *         or month, the client and why; what the allowance becomes
+ *   10C   Ask for extra hours: for whom (Team Leaders), how many, which week,
+ *         the client and why; what the allowance becomes. Every allowance is
+ *         a contractor's Weekly hours (owner, 5 November 2026).
  */
 
 import { INPUT as FIELD } from '@/lib/ui/fields'
@@ -34,7 +35,7 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
   const a = data.allowance
   const sub = data.forOthers ? 'Ask before someone on your team goes over their allowance. It goes to whoever Company settings names under Who approves what.'
     : a ? `Your allowance is ${a.cap.split(' ')[0]} a ${a.period.startsWith('Week') ? 'week' : 'month'}. Going over needs approval before, not a surprise on the invoice.`
-      : 'You have no hours allowance: your hours are never flagged as over. Ask here if one is set and you need more.'
+      : 'You have no hours allowance: your hours are never flagged as over. A contractor\'s allowance is their Weekly hours.'
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-max content-start gap-4 leading-[normal]">
@@ -102,7 +103,7 @@ function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Par
   const ok = hours > 0 && !!d.why.trim() && !!d.client && !!when
   const after = person.cap != null && when && when.period === person.period
     ? `Approved, the allowance for ${when.label} becomes ${person.cap + (hours > 0 ? hours : 0)}h. Hours past that are flagged again.`
-    : 'Approved, these hours are added to the allowance for that week or month. Hours past it are flagged again.'
+    : 'Approved, these hours are added to the allowance for that week. Hours past it are flagged again.'
 
   const submit = async () => {
     if (!ok) return
@@ -128,7 +129,7 @@ function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Par
       <div className="text-[12.5px] text-[#5b6b82] bg-[var(--chip-neutral-bg)] rounded-[9px] px-3 py-[9px] leading-[1.5] tabular-nums lining-nums">{person.context}</div>
       <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-3">
         <label className="flex flex-col gap-[5px]"><FieldLabel>How many hours</FieldLabel><input value={d.hours} onChange={e => set({ hours: e.target.value })} inputMode="decimal" className={INPUT} /></label>
-        <LabeledSelect label="Which week or month" value={d.when} onChange={v => set({ when: v })} options={data.whens.map(w => ({ value: w.value, label: w.label }))} />
+        <LabeledSelect label="Which week" value={d.when} onChange={v => set({ when: v })} options={data.whens.map(w => ({ value: w.value, label: w.label }))} />
       </div>
       <LabeledSelect label="Client or project" value={d.client} search onChange={v => set({ client: v })} options={data.clients.map(c => ({ value: c, label: c }))} />
       <label className="flex flex-col gap-[5px]"><FieldLabel>Why</FieldLabel><textarea value={d.why} onChange={e => set({ why: e.target.value })} rows={3} placeholder="What the extra hours are for, and who asked" className={TEXTAREA_PLAIN} /></label>

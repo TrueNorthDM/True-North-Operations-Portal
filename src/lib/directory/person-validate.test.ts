@@ -39,10 +39,12 @@ describe('the Work fields, checked once for Add person and the person page', () 
     expect(error({ status: 'gone' as never })).toMatch(/Active or Inactive/)
   })
 
-  it('keeps weekly hours between 0 and 168', () => {
-    expect(error({ weeklyHours: '169' })).toMatch(/between 0 and 168/)
-    expect(error({ weeklyHours: '-1' })).toMatch(/between 0 and 168/)
-    expect(error({ weeklyHours: 'forty' })).toMatch(/between 0 and 168/)
+  it('keeps weekly hours more than 0 and at most 168, or empty (it is a contractor\'s allowance)', () => {
+    expect(error({ weeklyHours: '169' })).toMatch(/more than 0 and at most 168/)
+    expect(error({ weeklyHours: '-1' })).toMatch(/more than 0 and at most 168/)
+    expect(error({ weeklyHours: '0' })).toMatch(/more than 0 and at most 168/)
+    expect(error({ weeklyHours: 'forty' })).toMatch(/more than 0 and at most 168/)
+    expect(error({ weeklyHours: '168' })).toBeNull()
     expect(error({ weeklyHours: '' })).toBeNull()
   })
 

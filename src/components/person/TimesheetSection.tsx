@@ -50,7 +50,7 @@ const place = (on: boolean, href: string, text: string) => on
 
 export function TimesheetSection({ t, editing = false, draft, onDraft, startsLine, invoicesLine = null }: {
   t: PersonTimesheetView
-  /** "Made when they submit" (Clocky part 2, 10A-1), for whoever sees money; null leaves the row out. */
+  /** "They send their own" (Clocky part 2, 10A-1; 4 November 2026), for whoever sees money; null leaves the row out. */
   invoicesLine?: string | null
   /** In Edit work, with the right to change it. */
   editing?: boolean

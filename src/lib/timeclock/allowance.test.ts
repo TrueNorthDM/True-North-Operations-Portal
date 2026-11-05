@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  allowanceRange, allowanceStatus, limitAheadText, limitCheck, limitName, limitStopPoint, limitStoppedText, limitText, roomLeft, windowName,
+  allowanceFromWeeklyHours, allowanceRange, allowanceStatus, limitAheadText, limitCheck, limitName, limitStopPoint, limitStoppedText, limitText, roomLeft, windowName,
 } from './allowance'
 
 const H = (h: number) => h * 3600
@@ -101,5 +101,22 @@ describe('the limit', () => {
     expect(limitStoppedText('4:15 PM', { ...OCT, limit: H(140), extraHours: 0 }))
       .toBe('Your clock stopped at 4:15 PM: you have used your 140h 00m allowance for October. Ask for extra hours to log more.')
     expect(limitAheadText('4:15 PM')).toBe('Your clock stops by itself at 4:15 PM, at your allowance.')
+  })
+})
+
+// One field (owner, 5 November 2026): a contractor's Weekly hours is their allowance, a week.
+describe('allowanceFromWeeklyHours', () => {
+  it('a contractor with Weekly hours has that allowance a week', () => {
+    expect(allowanceFromWeeklyHours(true, 30)).toEqual({ hours: 30, period: 'week' })
+    expect(allowanceFromWeeklyHours(true, 37.5)).toEqual({ hours: 37.5, period: 'week' })
+  })
+  it('a contractor without Weekly hours has no limit', () => {
+    expect(allowanceFromWeeklyHours(true, null)).toBeNull()
+    expect(allowanceFromWeeklyHours(true, undefined)).toBeNull()
+    expect(allowanceFromWeeklyHours(true, 0)).toBeNull()
+  })
+  it('a US employee has none, whatever their Weekly hours', () => {
+    expect(allowanceFromWeeklyHours(false, 40)).toBeNull()
+    expect(allowanceFromWeeklyHours(false, null)).toBeNull()
   })
 })

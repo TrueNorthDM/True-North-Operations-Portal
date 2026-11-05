@@ -37,6 +37,17 @@ export interface AllowanceStatus {
   state: 'ok' | 'near' | 'over'
 }
 
+/**
+ * The allowance, from Weekly hours (owner, 5 November 2026): there is one
+ * field. A contractor's Weekly hours (people.weekly_hours, the Work tab) is
+ * their limit a week; a US employee has none (all are salaried), and neither
+ * does a contractor with no Weekly hours.
+ */
+export function allowanceFromWeeklyHours(isContractor: boolean, weeklyHours: number | null | undefined): { hours: number; period: 'week' } | null {
+  const h = weeklyHours == null ? NaN : Number(weeklyHours)
+  return isContractor && Number.isFinite(h) && h > 0 ? { hours: h, period: 'week' } : null
+}
+
 /** At this share of the limit the line turns warn ("12h left this month"). */
 export const NEAR_SHARE = 0.9
 

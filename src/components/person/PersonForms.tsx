@@ -12,9 +12,11 @@ import type { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/
 import { toAddressForm, type AddressForm } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
 import { MILESTONE_KINDS, MILESTONE_LABEL, toMilestoneForms, type MilestoneForm } from '@/lib/milestones'
-import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS } from '@/lib/directory/people-types'
+import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS, roleTypePill } from '@/lib/directory/people-types'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
-import { Section, TeamsList, areaFieldCls, dateFieldCls, fieldCls, selectFieldCls } from './PersonParts'
+import { PillBadge, Section, TeamsList, areaFieldCls, dateFieldCls, fieldCls, selectFieldCls } from './PersonParts'
+import { ApprovalsSection, PayHoursEdit, draftAllowanceText, payDraftInput, payDraftOf, type ApprovalsView, type PayDraft, type PayView } from './PayApprovalsSections'
+import type { PaysAs } from '@/lib/timeclock/routing'
 import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
 import type { Cadence } from '@/lib/timeclock/periods'
 import type { Result } from '@/lib/timeclock/clocky-types'
@@ -122,18 +124,37 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
   )
 }
 
-export function WorkForm({ data, pending, error, onCancel, onSave, remove, timesheet = null, cadenceActions, startCadence, onSaveWithCadence }: FormProps<Parameters<typeof saveWork>[1]> & {
+/**
+ * Edit work (owner, 5 November 2026): the same sections as the Work tab's
+ * view, in the same order and place, each row turning into its field where it
+ * is editable. Left: Job, Company emails, Dates. Right: Timesheet, Approvals
+ * (Reports to and Also reports to are its fields), Pay and hours (Pays as and
+ * the amount for whoever keeps Rates & Costs), Teams, Milestones; Employment
+ * history below. One Save saves the work details, then the cadence, then pay.
+ */
+export function WorkForm({ data, pending, error, onCancel, onSave, remove, timesheet = null, cadenceActions, startCadence, onSaveAll, approvals = null, pay = null, invoicesLine = null, rates }: FormProps<Parameters<typeof saveWork>[1]> & {
   remove: { pending: boolean; run: () => void } | null
   /** The Timesheet section (Clocky): its choice is saved with the rest. */
   timesheet?: PersonTimesheetView | null
   cadenceActions?: CadenceActions
   /** Design check only: this cadence already picked. */
   startCadence?: Cadence
-  onSaveWithCadence?: (input: Parameters<typeof saveWork>[1], cadence: Cadence | null) => void
+  /** Saves everything that changed, in order: the work details, the cadence, pay. */
+  onSaveAll?: (input: Parameters<typeof saveWork>[1], cadence: Cadence | null, pay: { paysAs: PaysAs; amount: number } | null) => void
+  /** The Approvals section as the view shows it; its derived rows stay read only. */
+  approvals?: ApprovalsView | null
+  /** Pay and hours, for whoever sees money; editable with d-rates (pay.canEdit). */
+  pay?: PayView | null
+  /** The Timesheet section's Invoices line. */
+  invoicesLine?: string | null
+  /** The rates of someone no longer active, as the view shows them (their own saves). */
+  rates?: ReactNode
 }) {
   const w = data.work!
   const [cadence, setCadenceDraft] = useState<Cadence | null>(startCadence ?? timesheet?.cadence ?? null)
   const [startsLine, setStartsLine] = useState<string | null>(null)
+  const [payDraft, setPayDraft] = useState<PayDraft | null>(() => (pay ? payDraftOf(pay) : null))
+  const [localError, setLocalError] = useState<string | null>(null)
   // When the choice differs from how they submit now: the exact dates it starts.
   const changed = !!timesheet && !!cadence && cadence !== timesheet.cadence
   useEffect(() => {
@@ -144,7 +165,13 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
       .catch(() => {})
     return () => { live = false }
   }, [changed, cadence, cadenceActions, data.id])
-  const save = (input: Parameters<typeof saveWork>[1]) => (onSaveWithCadence ? onSaveWithCadence(input, cadence) : onSave(input))
+  const save = (input: Parameters<typeof saveWork>[1]) => {
+    setLocalError(null)
+    const p = pay && payDraft && pay.canEdit ? payDraftInput(pay, payDraft) : null
+    if (p && 'error' in p) { setLocalError(p.error); return }
+    if (onSaveAll) onSaveAll(input, cadence, p)
+    else onSave(input)
+  }
   const people = data.options?.people ?? []
   const teams = data.options?.teams ?? []
   const [d, setD] = useState({
@@ -159,25 +186,53 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
   const personSelect = (value: string, onChange: (v: string) => void, label: string) => (
     <Select fullWidth searchable value={value} onChange={onChange} options={[{ value: '', label: 'None' }, ...people]} className={selectFieldCls} ariaLabel={label} />
   )
+  const reporting = (
+    <div className="flex flex-col gap-3.5 pt-2 pb-1">
+      <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
+      <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
+    </div>
+  )
 
   return (
     <form onSubmit={e => { e.preventDefault(); save(d) }}>
-      <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
-        <Section title="Job">
-          <div className="flex flex-col gap-3.5 pt-2">
-            <Field label="Full name"><input id="pw-name" value={d.fullName} onChange={e => set('fullName', e.target.value)} className={fieldCls} /></Field>
-            <Field label="Job title"><input id="pw-title" value={d.title} onChange={e => set('title', e.target.value)} className={fieldCls} /></Field>
-            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
-            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
-            <Field label="Weekly hours"><input id="pw-hours" type="number" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} /></Field>
-            <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Status</span><Seg value={d.status} options={[{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }]} onPick={v => set('status', v as 'active' | 'inactive')} /></div>
-            <Field label="True North email"><input id="pw-tn" type="email" value={d.emails.trueNorth} onChange={e => set('emails', { ...d.emails, trueNorth: e.target.value })} className={fieldCls} /></Field>
-            <Field label="GoodNews email (they sign in with it)"><input id="pw-gna" type="email" value={d.emails.goodnews} onChange={e => set('emails', { ...d.emails, goodnews: e.target.value })} className={fieldCls} /></Field>
-            <Field label="COE email"><input id="pw-coe" type="email" value={d.emails.coe} onChange={e => set('emails', { ...d.emails, coe: e.target.value })} className={fieldCls} /></Field>
-          </div>
-        </Section>
+      <div className="grid md:grid-cols-2 gap-x-12">
         <div className="min-w-0">
-          {timesheet && <TimesheetSection t={timesheet} editing draft={cadence ?? undefined} onDraft={setCadenceDraft} startsLine={changed ? startsLine : null} />}
+          <Section title="Job">
+            <div className="flex flex-col gap-3.5 pt-2">
+              <Field label="Full name"><input id="pw-name" value={d.fullName} onChange={e => set('fullName', e.target.value)} className={fieldCls} /></Field>
+              <Field label="Job title"><input id="pw-title" value={d.title} onChange={e => set('title', e.target.value)} className={fieldCls} /></Field>
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
+              <Field label="Weekly hours">
+                <input id="pw-hours" type="number" min="0" max="168" step="any" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} />
+                {d.employmentType === 'contractor' && <span className="text-[11.5px] text-muted">The clock stops at these hours each week; more needs approved extra hours.</span>}
+              </Field>
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Status</span><Seg value={d.status} options={[{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }]} onPick={v => set('status', v as 'active' | 'inactive')} /></div>
+            </div>
+            <dl className="m-0 mt-1">
+              <ReadRow label="Access level"><PillBadge pill={roleTypePill(w.accessLevel)} /></ReadRow>
+            </dl>
+          </Section>
+          <Section title="Company emails">
+            <div className="flex flex-col gap-3.5 pt-2">
+              <Field label="True North"><input id="pw-tn" type="email" value={d.emails.trueNorth} onChange={e => set('emails', { ...d.emails, trueNorth: e.target.value })} className={fieldCls} /></Field>
+              <Field label="GoodNews (they sign in with it)"><input id="pw-gna" type="email" value={d.emails.goodnews} onChange={e => set('emails', { ...d.emails, goodnews: e.target.value })} className={fieldCls} /></Field>
+              <Field label="COE"><input id="pw-coe" type="email" value={d.emails.coe} onChange={e => set('emails', { ...d.emails, coe: e.target.value })} className={fieldCls} /></Field>
+            </div>
+          </Section>
+          <Section title="Dates">
+            <div className="flex flex-col gap-3.5 pt-2">
+              <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable /></Field>
+              <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable /></Field>
+            </div>
+          </Section>
+        </div>
+        <div className="min-w-0">
+          {timesheet && <TimesheetSection t={timesheet} invoicesLine={invoicesLine} editing draft={cadence ?? undefined} onDraft={setCadenceDraft} startsLine={changed ? startsLine : null} />}
+          {approvals
+            ? <ApprovalsSection view={approvals} reporting={reporting} />
+            : <Section title="Reporting">{reporting}</Section>}
+          {pay && payDraft && <PayHoursEdit view={pay} draft={payDraft} onDraft={setPayDraft} allowance={draftAllowanceText(d.employmentType, d.weeklyHours)} />}
           <Section title="Teams">
             {!data.rights.teamsEdit ? (
               <>
@@ -204,39 +259,42 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
             </div>
             )}
           </Section>
-          <Section title="Reporting and dates">
-            <div className="flex flex-col gap-3.5 pt-2">
-              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Reports to</span>{personSelect(d.managerId, v => set('managerId', v), 'Reports to')}</div>
-              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Also reports to</span>{personSelect(d.alsoReportsToId, v => set('alsoReportsToId', v), 'Also reports to')}</div>
-              <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable /></Field>
-              <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable /></Field>
+          <Section title="Milestones">
+            <div className="flex flex-col gap-2 pt-2">
+              {d.milestones.map((row, i) => (
+                <div key={i} className="flex items-center gap-2 flex-wrap">
+                  <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={selectFieldCls} ariaLabel="Milestone type" /></div>
+                  <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={dateFieldCls} aria-label="Milestone date" /></div>
+                  <div className="flex-1 min-w-[160px]"><input value={row.note} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)))} className={fieldCls} placeholder="What changed…" aria-label="Milestone note" /></div>
+                  <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-[#fdeeef] hover:text-[#c8323d]">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={() => set('milestones', [...d.milestones, { kind: 'promoted', date: '', note: '' }])} className="self-start inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 hover:border-tn-teal">+ Add milestone</button>
             </div>
           </Section>
+          {rates}
         </div>
       </div>
-      <Section title="Milestones">
-        <div className="flex flex-col gap-2 pt-2">
-          {d.milestones.map((row, i) => (
-            <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="w-[150px] shrink-0"><Select fullWidth value={row.kind} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={selectFieldCls} ariaLabel="Milestone type" /></div>
-              <div className="w-[150px] shrink-0"><DateField value={row.date} onChange={v => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, date: v } : m)))} className={dateFieldCls} aria-label="Milestone date" /></div>
-              <div className="flex-1 min-w-[160px]"><input value={row.note} onChange={e => set('milestones', d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)))} className={fieldCls} placeholder="What changed…" aria-label="Milestone note" /></div>
-              <button type="button" onClick={() => set('milestones', d.milestones.filter((_, j) => j !== i))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted hover:bg-[#fdeeef] hover:text-[#c8323d]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
-            </div>
-          ))}
-          <button type="button" onClick={() => set('milestones', [...d.milestones, { kind: 'promoted', date: '', note: '' }])} className="self-start inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 hover:border-tn-teal">+ Add milestone</button>
-        </div>
-      </Section>
       <Section title="Employment history">
         <textarea id="pw-history" value={d.history} onChange={e => set('history', e.target.value)} className={`${areaFieldCls} min-h-[90px] leading-relaxed mt-2`} placeholder="A short summary of their time here…" />
       </Section>
       <SaveBar
-        what="Work" pending={pending} error={error} onCancel={onCancel} onSave={() => save(d)}
+        what="Work" pending={pending} error={localError ?? error} onCancel={onCancel} onSave={() => save(d)}
         left={remove ? <button type="button" disabled={remove.pending} onClick={remove.run} className="rounded-[9px] border border-[rgba(255,255,255,.35)] text-[#ffd7d3] px-3 py-2 text-[12.5px] font-bold hover:bg-[rgba(255,255,255,.08)] disabled:opacity-50">{remove.pending ? 'Removing…' : 'Remove from the Directory'}</button> : undefined}
       />
     </form>
+  )
+}
+
+/** A read-only line inside a form section, drawn as the view's rows. */
+function ReadRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3.5 items-center py-2.5 border-b border-[var(--row-rule)] last:border-b-0">
+      <dt className="text-muted text-[13.5px]">{label}</dt>
+      <dd className="m-0 text-right flex justify-end items-center gap-2 text-[13.5px] font-semibold text-foreground">{children}</dd>
+    </div>
   )
 }
 

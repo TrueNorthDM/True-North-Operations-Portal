@@ -9,7 +9,7 @@
 
 import { StatusIcon } from '@/components/ui/StatusIcon'
 import Link from 'next/link'
-import { useState, useTransition, type ReactNode } from 'react'
+import { useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Avatar } from '@/components/Avatar'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
@@ -33,6 +33,7 @@ import { TypeChangeBanner, TypeChangeButton, type TypeChangeApi, type TypeChange
 import { useToast } from '@/components/clocky/periods/ui'
 import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
 import type { Cadence } from '@/lib/timeclock/periods'
+import type { PaysAs } from '@/lib/timeclock/routing'
 import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights'
 import type { PaymentsData } from '@/lib/timeclock/payments-view'
 import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
@@ -229,14 +230,27 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActio
     })
   }
 
-  // Edit work saves the work details first, then how they submit (Super Admins):
-  // saving the details again is harmless, so a retry never records the cadence twice.
-  function saveWorkTab(input: Parameters<typeof saveWork>[1], cadence: Cadence | null) {
+  // Edit work saves the work details first, then how they submit (Super Admins),
+  // then pay (whoever keeps Rates & Costs). Saving the details again is
+  // harmless; a cadence already saved in this edit is not sent again, so a
+  // retry after pay failed never records the cadence twice.
+  const cadenceSaved = useRef<Cadence | null>(null)
+  function saveWorkTab(input: Parameters<typeof saveWork>[1], cadence: Cadence | null, payInput: { paysAs: PaysAs; amount: number } | null = null) {
     const changed = !!timesheet && !!cadence && cadence !== timesheet.cadence
     run(async () => {
       const w = await saveWork(data.id, input)
-      if (!w.ok || !changed) return w
-      return cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
+      if (!w.ok) return w
+      if (changed && cadenceSaved.current !== cadence) {
+        const c = await cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
+        if (!c.ok) return c
+        cadenceSaved.current = cadence
+      }
+      if (payInput && pay) {
+        const p = await pay.save(payInput)
+        if (!p.ok) return { ok: false as const, error: `The work details were saved, pay was not: ${p.error}` }
+      }
+      cadenceSaved.current = null
+      return { ok: true as const }
     }, changed ? `Saved. ${who} now submits ${cadence === 'biweekly' ? 'every 2 weeks' : 'monthly'}; Rates & Costs shows the same.` : undefined)
   }
 
@@ -290,8 +304,10 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActio
         : <PersonalView p={data.personal} />)}
 
       {tab === 'work' && data.work && (editing === 'work'
-        ? <WorkForm data={data} pending={pending} error={error} remove={canRemove ? { pending: removing, run: remove } : null} onCancel={() => setEditing(null)} onSave={input => saveWorkTab(input, null)}
-            timesheet={timesheet} cadenceActions={cadenceActions} startCadence={startCadence} onSaveWithCadence={saveWorkTab} />
+        ? <WorkForm data={data} pending={pending} error={error} remove={canRemove ? { pending: removing, run: remove } : null} onCancel={() => { cadenceSaved.current = null; setEditing(null) }} onSave={input => saveWorkTab(input, null)}
+            timesheet={timesheet} cadenceActions={cadenceActions} startCadence={startCadence} onSaveAll={saveWorkTab}
+            approvals={pay?.approvals ?? null} pay={pay?.pay ?? null} invoicesLine={pay?.invoicesLine ?? null}
+            rates={data.rates ? <PersonRates name={data.name} rates={data.rates} /> : undefined} />
         : <WorkView data={data} timesheet={timesheet} pay={pay} />)}
 
       {tab === 'hr' && data.hr && (editing === 'hr'
@@ -392,16 +408,20 @@ function WorkView({ data, timesheet, pay }: {
         </div>
         <div className="min-w-0">
           {timesheet && <TimesheetSection t={timesheet} invoicesLine={pay?.invoicesLine ?? null} />}
-          {pay && <ApprovalsSection view={pay.approvals} />}
-          {pay?.pay && <PayHoursSection view={pay.pay} save={pay.save} startEditing={pay.startEditing}
+          {/* Reporting sits in Approvals, where it decides who approves; Edit work keeps it there (5 November 2026). */}
+          {pay && <ApprovalsSection view={pay.approvals} alsoReportsTo={w.alsoReportsToName ?? '-'} />}
+          {/* Edit work changes pay too; the section's own Edit is only for someone with Rates & Costs who cannot edit the Work tab. */}
+          {pay?.pay && <PayHoursSection view={pay.pay} save={pay.save} startEditing={pay.startEditing} editLink={!data.rights.workEdit}
             after={pay.typeChange && pay.typeApi ? <TypeChangeButton view={pay.typeChange} api={pay.typeApi} /> : undefined} />}
           <Section title="Teams"><TeamsList teams={w.teams} /></Section>
-          <Section title="Reporting">
-            <dl className="m-0">
-              <Row label="Reports to">{val(w.managerName)}</Row>
-              <Row label="Also reports to">{val(w.alsoReportsToName)}</Row>
-            </dl>
-          </Section>
+          {!pay && (
+            <Section title="Reporting">
+              <dl className="m-0">
+                <Row label="Reports to">{val(w.managerName)}</Row>
+                <Row label="Also reports to">{val(w.alsoReportsToName)}</Row>
+              </dl>
+            </Section>
+          )}
           {w.milestones.length > 0 && (
             <Section title="Milestones">
               <div className="flex flex-col gap-3 pt-2">

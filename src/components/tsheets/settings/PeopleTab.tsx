@@ -40,7 +40,7 @@ import type { Cadence } from '@/lib/timeclock/periods'
 import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { Select } from '@/components/ui/Select'
-import { saveDeliverableRates, savePaysAndAllowance } from '@/app/(app)/directory/[id]/pay-actions'
+import { saveDeliverableRates, savePaysAs } from '@/app/(app)/directory/[id]/pay-actions'
 import type { PaysAs } from '@/lib/timeclock/routing'
 import { initialsOf, formatDate, typePill, PILL_CLASS } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -191,10 +191,8 @@ function tableColumns(withCadence: boolean, withPay: boolean) {
 }
 
 const PAYS_AS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
-const ALLOWANCES = ['none', '30w', '35w', '40w', '80m', '100m', '120m', '130m', '140m', '150m', '160m', '170m', '180m']
-const alKey = (a: { hours: number; period: 'week' | 'month' } | null) => (a ? `${a.hours}${a.period === 'week' ? 'w' : 'm'}` : 'none')
-const alOf = (k: string): { hours: number; period: 'week' | 'month' } | null => (k === 'none' ? null : { hours: Number(k.slice(0, -1)), period: k.endsWith('w') ? 'week' : 'month' })
-const alText = (k: string) => (k === 'none' ? 'None' : `${k.slice(0, -1)}h ${k.endsWith('w') ? 'a week' : 'a month'}`)
+/** The allowance is the contractor's Weekly hours (owner, 5 November 2026): shown, never chosen here. */
+const alText = (a: { hours: number; period: 'week' | 'month' } | null) => (a ? `${a.hours}h ${a.period === 'week' ? 'a week' : 'a month'}` : 'None')
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
 /** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
@@ -207,14 +205,14 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   const layout = layoutColumns(allColumns, choice.hidden, fixedOf('rates'), { gap: GAP, padX: PAD_X })
   const show = new Set(layout.visible.map(c => c.key))
   const gridStyle = { gridTemplateColumns: layout.template }
-  // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
-  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string; pageRate?: string; assetRate?: string }>>({})
+  // Pays as being changed (Clocky part 2): "hourly" etc. The allowance is Weekly hours, set in the Work tab.
+  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; pageRate?: string; assetRate?: string }>>({})
   const payOf = (id: string) => pay?.byPerson[id] ?? null
   const payChanged = (id: string) => {
     const d = payDraft[id]
     const now = payOf(id)
     if (!d || !now) return false
-    return (d.paysAs !== undefined && d.paysAs !== now.paysAs) || (d.allowance !== undefined && d.allowance !== alKey(now.allowance))
+    return d.paysAs !== undefined && d.paysAs !== now.paysAs
   }
   // The invoice form's rates as typed: empty is the company's, else dollars.
   const ownRate = (v: string | undefined): number | null | undefined => (v === undefined ? undefined : v.trim() === '' ? null : Number(v))
@@ -439,13 +437,13 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         ops.push(savePersonMonthlySalary({ personId: p.id, monthlySalary: newSalary, justification: AUTO_REASON }))
       }
     }
-    // Pays as and the allowance (Clocky part 2), only for rows that changed.
+    // Pays as (Clocky part 2), only for rows that changed.
     if (pay?.canEdit) {
       for (const p of people) {
         if (!payChanged(p.id)) continue
         const now = payOf(p.id)!
         const d = payDraft[p.id]
-        ops.push(savePaysAndAllowance(p.id, { paysAs: d.paysAs ?? now.paysAs, allowance: d.allowance !== undefined ? alOf(d.allowance) : now.allowance }))
+        ops.push(savePaysAs(p.id, { paysAs: d.paysAs ?? now.paysAs }))
       }
       for (const p of people) {
         if (!ratesChanged(p.id)) continue
@@ -687,18 +685,12 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {/* Month / salary (green focus) */}
                 {show.has('salary') && (isEmployee(p) ? <span aria-hidden="true" /> : rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d'))}
 
-                {/* Allowance and Over (Clocky part 2) */}
+                {/* Allowance and Over (Clocky part 2): the allowance is the contractor's Weekly hours (5 November 2026), read only */}
                 {pay && show.has('allowance') && (() => {
                   const now = payOf(p.id)
-                  const k = payDraft[p.id]?.allowance ?? alKey(now?.allowance ?? null)
-                  // Employees are salaried and have no limit (5 November 2026): what is stored waits, not applied.
+                  // Employees are salaried and have no limit (5 November 2026).
                   if (now && !now.isContractor) return <span className="text-[13px] text-muted" title="US employees are salaried and outside the hours allowance.">Exempt (salaried)</span>
-                  const opts = ALLOWANCES.includes(k) ? ALLOWANCES : [...ALLOWANCES, k]
-                  return editing && pay.canEdit && now
-                    ? <Select value={k} ariaLabel={`${p.name}'s hours allowance`} className="text-[12.5px]"
-                        options={opts.map(o => ({ value: o, label: alText(o) }))}
-                        onChange={o => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], allowance: o } }))} />
-                    : <span className="text-[13px] text-foreground">{alText(k)}</span>
+                  return <span className="text-[13px] text-foreground" title="A contractor's allowance is their Weekly hours, set in their Work tab.">{now?.allowance ? `${alText(now.allowance)} (Weekly hours)` : alText(null)}</span>
                 })()}
                 {pay && show.has('over') && (() => {
                   const over = payOf(p.id)?.overSeconds ?? null

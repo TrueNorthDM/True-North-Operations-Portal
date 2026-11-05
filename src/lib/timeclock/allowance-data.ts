@@ -21,8 +21,14 @@ export interface AllowanceUse extends AllowanceStatus {
   to: string
 }
 
-/** Extra hours approved for a person in a period (extra hours requests, Clocky part 2 step 4). */
-export type ExtraHours = (personId: string, from: string, to: string) => number
+/**
+ * Extra hours approved for a person in a period (extra hours requests, Clocky
+ * part 2 step 4). With `period`, only requests asked for that kind of period
+ * count: the allowance window passes 'week', so a request approved for a
+ * whole month (before 5 November 2026, when allowances could be monthly)
+ * never raises every week of that month by its full hours.
+ */
+export type ExtraHours = (personId: string, from: string, to: string, period?: 'week' | 'month') => number
 
 export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms, 'personId' | 'allowance'>>, now = new Date(), extra: ExtraHours = () => 0): Promise<Map<string, AllowanceUse>> {
   const withAllowance = [...terms.values()].filter(t => t.allowance)
@@ -38,7 +44,7 @@ export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms,
   for (const t of withAllowance) {
     const r = ranges.get(t.personId)!
     const used = rows.filter(e => e.person_id === t.personId && e.entry_date >= r.from && e.entry_date <= r.to).reduce((s, e) => s + entrySeconds(e, now), 0)
-    out.set(t.personId, { ...allowanceStatus(used, t.allowance!.hours, extra(t.personId, r.from, r.to)), hours: t.allowance!.hours, period: t.allowance!.period, ...r })
+    out.set(t.personId, { ...allowanceStatus(used, t.allowance!.hours, extra(t.personId, r.from, r.to, t.allowance!.period)), hours: t.allowance!.hours, period: t.allowance!.period, ...r })
   }
   return out
 }
@@ -46,9 +52,9 @@ export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms,
 /** Extra hours approved per person for periods that overlap from..to (extra_hours_requests). */
 export async function loadApprovedExtra(personIds: readonly string[], from: string, to: string): Promise<ExtraHours> {
   if (!personIds.length) return () => 0
-  const { data, error } = await db().from('extra_hours_requests').select('person_id, hours, period_start, period_end')
+  const { data, error } = await db().from('extra_hours_requests').select('person_id, hours, period, period_start, period_end')
     .in('person_id', [...personIds]).eq('state', 'approved').lte('period_start', to).gte('period_end', from)
   if (error) throw new Error(`Extra hours could not be read: ${error.message}`)
   const rows = data ?? []
-  return (personId, a, b) => rows.filter(r => r.person_id === personId && r.period_start <= b && r.period_end >= a).reduce((s, r) => s + Number(r.hours), 0)
+  return (personId, a, b, period) => rows.filter(r => r.person_id === personId && r.period_start <= b && r.period_end >= a && (!period || r.period === period)).reduce((s, r) => s + Number(r.hours), 0)
 }
