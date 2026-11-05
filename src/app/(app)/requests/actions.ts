@@ -101,6 +101,8 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     const clash = (mine ?? []).find(r => r.start_date <= end && r.end_date >= start)
     if (clash) return fail(`You already have time off asked for ${daysText(clash.start_date, clash.end_date)}.`)
     const note = String(input.note ?? '').trim().slice(0, 1000) || null
+    // "Other" says what it is for (owner, 5 November 2026).
+    if (/^other$/i.test((code.short || code.path).trim()) && !note) return fail('Say what this time off is for.')
     const { data, error } = await c.from('tc_absence_requests').insert({
       person_id: v.personId, jobcode_id: code.id, start_date: start, end_date: end, hours_per_day: hours, state: 'pending', reason: note,
     }).select('id').single()

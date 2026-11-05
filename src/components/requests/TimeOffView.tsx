@@ -349,7 +349,9 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   const teamOffOn = (d: string) => data.offs.find(o => o.team && o.team === team && d >= o.start && d <= o.end)
   const pick = (d: string) => setF(x => (!x.a || x.b ? { ...x, a: d, b: null } : d < x.a ? { ...x, a: d, b: x.a } : { ...x, b: d }))
   const moveMonth = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); set({ month: d.toISOString().slice(0, 7) }) }
-  const ok = !!f.type && !!f.a && days.length > 0 && !busy
+  // "Other" says what it is: its note is required (owner, 5 November 2026).
+  const needsNote = /^other$/i.test(typeLabel.trim())
+  const ok = !!f.type && !!f.a && days.length > 0 && !busy && (!needsNote || !!f.note.trim())
   const phone = usePhone()
   const send = () => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })
 
@@ -434,8 +436,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         </div>
         {hoursSelect}
         <label className="flex flex-col gap-[5px]">
-          <FieldLabel>Note (optional)</FieldLabel>
-          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder="Anything your Team Leader should know" className={`${TEXTAREA_PLAIN} !text-[14px]`} />
+          <FieldLabel>{needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
+          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={`${TEXTAREA_PLAIN} !text-[14px]`} />
         </label>
       </PhoneSheet>
     )
@@ -467,8 +469,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             {hoursSelect}
           </div>
           <label className="flex flex-col gap-[5px]">
-            <FieldLabel>Note (optional)</FieldLabel>
-            <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder="Anything your Team Leader should know" className={TEXTAREA_PLAIN} />
+            <FieldLabel>{needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
+            <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={TEXTAREA_PLAIN} />
           </label>
         </div>
         <div className="flex flex-col gap-3 min-w-0">
