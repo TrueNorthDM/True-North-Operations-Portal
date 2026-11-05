@@ -32,7 +32,7 @@
 // their net is billed minus costs. Kept off the People tab for now, as asked.
 
 import type { Db } from '@/lib/supabase/types'
-import { PROJECT_CF, i7Invoice } from '@/lib/tsheets/i7report'
+import { PROJECT_CF, buildI7Report, i7Invoice } from '@/lib/tsheets/i7report'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
 import { OLD_JOBS, translateProject, type Place } from '@/lib/timeclock/structure-2026'
@@ -378,8 +378,12 @@ function billedIn(
     const who = firstNameById.get(e.personId) ?? 'Unknown'
     out.byPerson.set(who, (out.byPerson.get(who) ?? 0) + hours)
     out.byId.set(e.personId, (out.byId.get(e.personId) ?? 0) + hours)
-    out.billed += hours * rateFor(src.assignments, e.personId, e.date.slice(0, 7))
   }
+  // What they billed, worked out by the i7 report itself (hours as shown,
+  // to the hundredth, times the rate), so the two read the same to the cent
+  // and match QuickBooks (owner, 5 November 2026).
+  const mine = src.entries.filter(e => e.date >= start && e.date <= end && i7Invoice(e.i7Code) === invoice)
+  out.billed = mine.length ? buildI7Report(mine, (id, ym) => rateFor(src.assignments, id, ym), {}, start).totalCost : 0
   return out
 }
 
@@ -442,8 +446,9 @@ export async function loadProjectTracking(
         if (hours > 0) unrated.push(firstNameById.get(id) ?? 'Unknown')
         continue
       }
-      if (kindById.get(id) === 'contractor') contractor += hours * rate
-      else employee += hours * rate
+      // Their hours as shown, to the hundredth, times the rate (owner, 5 November 2026).
+      if (kindById.get(id) === 'contractor') contractor += round2(hours) * rate
+      else employee += round2(hours) * rate
     }
     return { employee: round2(employee), contractor: round2(contractor), unrated }
   }
@@ -691,7 +696,7 @@ export async function loadProjectHistory(
       let hours = 0, employeeCost = 0, contractorCost = 0
       for (const [id, h] of byId) {
         hours += h
-        const cost = h * (pay.get(id)?.beRate ?? 0)
+        const cost = round2(h) * (pay.get(id)?.beRate ?? 0)
         if (kindById.get(id) === 'contractor') contractorCost += cost
         else employeeCost += cost
       }
@@ -723,7 +728,7 @@ export async function loadProjectHistory(
       const here = billedIn(i7, p.label, `${ym}-01`, monthEnd(ym), new Map())
       let employeeCost = 0, contractorCost = 0
       for (const [id, h] of here.byId) {
-        const cost = h * (pay.get(id)?.beRate ?? 0)
+        const cost = round2(h) * (pay.get(id)?.beRate ?? 0)
         if (kindById.get(id) === 'contractor') contractorCost += cost
         else employeeCost += cost
       }
