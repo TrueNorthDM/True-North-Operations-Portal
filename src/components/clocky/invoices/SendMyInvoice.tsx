@@ -44,10 +44,14 @@ const toLine = (r: Row, pay: PayOnFile): BuilderLine => {
 let seq = 0
 const next = () => ++seq
 const payOf = (p: InvoiceToSend | null, data: SendInvoiceData): PayOnFile => payOnFile(p?.kind ?? 'hourly', data.rate, data.fixedAmount)
-/** The lines the builder opens with: the sent timesheet at the rate on file, or the fixed amount's one line. */
+/** The lines the builder opens with (owner, 5 November 2026): one empty line, or the fixed amount's one line. */
 function startRows(p: InvoiceToSend | null, data: SendInvoiceData): Row[] {
-  if (!p) return [blank(next())]
-  if (p.kind !== 'hourly') return [{ ...blank(next()), description: fixedLine(p.label, data.fixedAmount).description }]
+  if (p && p.kind !== 'hourly') return [{ ...blank(next()), description: fixedLine(p.label, data.fixedAmount).description }]
+  return [blank(next())]
+}
+/** "Use my timesheet hours": the sent timesheet, one line a client; the rate on file shows beside each. */
+function timesheetRows(p: InvoiceToSend | null, data: SendInvoiceData): Row[] {
+  if (!p || p.kind !== 'hourly') return startRows(p, data)
   const made = linesFromTimesheet(p.timesheet, p.label, data.rate)
   return made.length ? made.map(l => ({ key: next(), description: l.description, client: l.client, hours: String(l.hours ?? '') })) : [blank(next())]
 }
@@ -93,7 +97,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
     setPdf(f)
   }
   const setRow = (key: number, p: Partial<Row>) => setRows(xs => xs.map(r => (r.key === key ? { ...r, ...p } : r)))
-  const resetToTimesheet = () => setRows(startRows(period, data))
+  const fillFromTimesheet = () => setRows(timesheetRows(period, data))
 
   const problem = mode === 'builder' ? (missing ?? builderProblem(lines))
     : mode === 'own_file' ? (!pdf ? 'Choose the PDF of your invoice.' : !(n(total) ?? 0) ? 'Write the total on your invoice.' : !fixed && !(n(hours) ?? 0) ? 'Write the hours on your invoice.' : null)
@@ -186,7 +190,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <h3 className={CARD_TITLE}>Your lines</h3>
                   {!fixed && period.timesheet.length > 0 && (
-                    <button type="button" onClick={resetToTimesheet} className={BTN.smallWhite}>Reset to my timesheet</button>
+                    <button type="button" onClick={fillFromTimesheet} className={BTN.smallWhite}><Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={2.6} />Use my timesheet hours</button>
                   )}
                 </div>
                 {missing && <div role="alert" className="rounded-[12px] bg-[#fdf8e7] px-4 py-3 text-[13.5px] text-[#6b5414]">{missing}</div>}
