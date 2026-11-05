@@ -57,7 +57,8 @@ export function InvoicesList({ data, api, initial, extra }: {
   const mine = data.mode === 'mine'
   const [st, setSt] = useState<StFilter>(initial?.st ?? 'all')
   const [person, setPerson] = useState(EVERYONE)
-  const [period, setPeriod] = useState(data.defaultPeriod)
+  // Opened on a state (Home's "Invoices to pay" opens on Approved): every period, as the cards count them all.
+  const [period, setPeriod] = useState(initial?.st && initial.st !== 'all' ? ALL_PERIODS : data.defaultPeriod)
   const [pdf, setPdf] = useState<InvoiceDocView | null>(initial?.pdf ?? null)
   const [pay, setPay] = useState<PayTarget | null>(() => {
     const r = initial?.pay ? data.rows.find(x => x.id === initial.pay) : null
@@ -79,8 +80,8 @@ export function InvoicesList({ data, api, initial, extra }: {
   const appr = data.rows.filter(r => r.st === 'appr')
   const paidIn = data.rows.filter(r => r.st === 'paid' && r.paidOn?.startsWith(data.paidMonth.ym))
   const strip: { k: StFilter; label: string; val: string; sub: string; fg: string; period: string }[] = [
-    { k: 'wait', label: 'Waiting for approval', val: String(wait.length), sub: money(sum(wait)), fg: '#8a6d1a', period: data.defaultPeriod },
-    { k: 'appr', label: 'Approved, not paid', val: String(appr.length), sub: money(sum(appr)), fg: '#1E7D7F', period: data.defaultPeriod },
+    { k: 'wait', label: 'Waiting for approval', val: String(wait.length), sub: money(sum(wait)), fg: '#8a6d1a', period: ALL_PERIODS },
+    { k: 'appr', label: 'Approved, not paid', val: String(appr.length), sub: money(sum(appr)), fg: '#1E7D7F', period: ALL_PERIODS },
     { k: 'paid', label: `Paid in ${data.paidMonth.label}`, val: money(sum(paidIn)), sub: `${paidIn.length} invoice${paidIn.length === 1 ? '' : 's'}`, fg: '#0d7a4f', period: data.paidPeriod },
   ]
 
