@@ -6,9 +6,12 @@
  *
  *   own_file   their own PDF, with the number, hours and total they type so
  *              it can be checked against the timesheet
- *   builder    the invoice builder: they write the lines (the hours of their
- *              timesheet can be copied in with one button they press); the
- *              portal adds them up and makes the PDF in their name
+ *   builder    the invoice builder: it opens with the lines of their sent
+ *              timesheet, one a client, at the rate in their contract (the
+ *              rate on file, Rates & Costs; owner, 5 November 2026), or one
+ *              line with their fixed amount on file. They may change the hours,
+ *              the descriptions and the lines, never the rate or the amount;
+ *              the portal adds them up and makes the PDF in their name
  *
  * Every send is kept (invoice_sends): who sent it, when, how, the sentence
  * they confirmed, what they typed, their file and their lines. The invoice row
@@ -46,7 +49,7 @@ export interface BuilderLine {
   client: string | null
   /** Hours on the line; null for an amount with no hours (a fixed amount). */
   hours: number | null
-  /** Their rate an hour; null with no hours. */
+  /** The rate an hour on file (never typed: linesAtFileRate puts it back); null with no hours. */
   rate: number | null
   /** An amount with no hours (a fixed monthly amount, say); ignored when hours and rate are given. */
   amount: number | null
@@ -70,18 +73,65 @@ export function builderProblem(lines: readonly BuilderLine[]): string | null {
   for (const [i, l] of lines.entries()) {
     if (l.description.trim().length < 2) return `Line ${i + 1}: say what it covers.`
     if (l.hours != null && l.hours > 744) return `Line ${i + 1}: the hours look too many for one month.`
+    if (l.rate != null && !(l.hours != null && l.hours > 0)) return `Line ${i + 1}: write the hours.`
     if (lineAmount(l) == null) return `Line ${i + 1}: write the hours and your rate, or an amount.`
   }
   return null
 }
 
-/** "Use my timesheet hours": one line a client, hours as on the timesheet, the rate left for them to write. */
-export function linesFromTimesheet(byClient: readonly { client: string; seconds: number }[], periodName: string): BuilderLine[] {
+// ── The rate and the amount on file (owner, 5 November 2026) ───────────────
+
+/**
+ * What the builder bills at: the rate in their contract (people.internal_rate,
+ * Rates & Costs "Rate / cost") for hourly, the amount on file
+ * (people.monthly_salary) for fixed monthly and fixed with no timesheet. Never
+ * what they type: the builder shows it read only and the server puts it back.
+ * Zero or nothing on file is no rate.
+ */
+export type PayOnFile = { kind: 'hourly'; rate: number | null } | { kind: 'fixed'; amount: number | null }
+
+const onFile = (n: number | null | undefined): number | null => (n != null && Number.isFinite(n) && n > 0 ? n : null)
+
+export function payOnFile(kind: 'hourly' | 'fixed_monthly' | 'fixed_no_timesheet', rate: number | null, fixedAmount: number | null): PayOnFile {
+  return kind === 'hourly' ? { kind: 'hourly', rate: onFile(rate) } : { kind: 'fixed', amount: onFile(fixedAmount) }
+}
+
+/** Said on the form and by the server when there is nothing on file to bill at. */
+export function missingOnFile(pay: PayOnFile): string | null {
+  if (pay.kind === 'hourly') return pay.rate == null ? 'There is no hourly rate on file for you yet, so the invoice cannot be built here. Ask whoever approves your invoice to add it, or upload your own invoice.' : null
+  return pay.amount == null ? 'There is no fixed amount on file for you yet, so the invoice cannot be built here. Ask whoever approves your invoice to add it, or upload your own invoice.' : null
+}
+
+/** The note under the builder's lines. */
+export const RATE_NOTE = 'The rate is the one in your contract (Rates & Costs). To change it, talk to whoever approves your invoice.'
+export const AMOUNT_NOTE = 'The amount is the one in your contract (Rates & Costs). To change it, talk to whoever approves your invoice.'
+
+/** A fixed amount's one line: the period and the amount on file. */
+export function fixedLine(periodName: string, amount: number | null, description?: string): BuilderLine {
+  return { description: description ?? `Fixed monthly amount, ${periodName}`, client: null, hours: null, rate: null, amount: onFile(amount) }
+}
+
+/**
+ * The builder's lines as they are billed: any rate or amount they carry is
+ * dropped for the one on file. Hourly: every line is hours at the rate on
+ * file (no free amounts). Fixed: one line, the amount on file. An error when
+ * there is nothing on file, or a fixed invoice has more than one line.
+ */
+export function linesAtFileRate(lines: readonly BuilderLine[], pay: PayOnFile): { lines: BuilderLine[] } | { error: string } {
+  const missing = missingOnFile(pay)
+  if (missing) return { error: missing }
+  if (pay.kind === 'hourly') return { lines: lines.map(l => ({ description: l.description, client: l.client, hours: l.hours, rate: pay.rate, amount: null })) }
+  if (lines.length !== 1) return { error: 'A fixed amount invoice has one line: the amount on file.' }
+  return { lines: [{ description: lines[0].description, client: null, hours: null, rate: null, amount: pay.amount }] }
+}
+
+/** The lines the builder opens with: one a client from the sent timesheet at the rate on file. */
+export function linesFromTimesheet(byClient: readonly { client: string; seconds: number }[], periodName: string, rate: number | null): BuilderLine[] {
   return byClient.filter(c => c.seconds > 0).map(c => ({
     description: `${c.client}, ${periodName}`,
     client: c.client,
     hours: Math.round(c.seconds / 36) / 100,
-    rate: null,
+    rate: onFile(rate),
     amount: null,
   }))
 }

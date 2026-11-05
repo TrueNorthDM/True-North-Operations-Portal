@@ -10,7 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dueOn } from './invoice-lines'
 import { loadInvoiceSettings } from './pay-terms'
-import { lineAmount, type BuilderLine, type MadeBy, type SentFrom } from './contractor-invoice-rules'
+import { builderProblem, lineAmount, linesAtFileRate, payOnFile, type BuilderLine, type MadeBy, type SentFrom } from './contractor-invoice-rules'
 
 export * from './contractor-invoice-rules'
 
@@ -58,6 +58,9 @@ export async function recordSend(invoiceId: number, r: SendRecord, now: Date): P
  * fixed monthly) or a month with no timesheet. A new invoice, or the same one
  * again after it was sent back (same number, new lines). Returns its id and
  * number. The caller has checked who may send it and the confirmation.
+ * Built lines are billed at the rate or amount on file, read here again
+ * (owner, 5 November 2026): whatever rate or amount the record carries is
+ * replaced, and the total made again from the lines and reimbursements.
  */
 export async function writeSentInvoice(x: {
   personId: string
@@ -69,12 +72,12 @@ export async function writeSentInvoice(x: {
   /** Approved reimbursements they put on it. */
   reimbursementIds: readonly number[]
   now?: Date
-}): Promise<{ id: number; number: string }> {
+}): Promise<{ id: number; number: string; total: number }> {
   const c = createAdminClient()
   const now = x.now ?? new Date()
   const [settings, personRes, rmbRes] = await Promise.all([
     loadInvoiceSettings(),
-    c.from('people').select('full_name, location, email_personal, email_true_north').eq('id', x.personId).maybeSingle(),
+    c.from('people').select('full_name, location, email_personal, email_true_north, internal_rate, monthly_salary').eq('id', x.personId).maybeSingle(),
     x.reimbursementIds.length
       ? c.from('reimbursements').select('id, category, purpose, amount, state, invoice_id, person_id').in('id', [...x.reimbursementIds])
       : Promise.resolve({ data: [], error: null }),
@@ -87,8 +90,19 @@ export async function writeSentInvoice(x: {
   // Only their own, approved, not on another invoice.
   if (rmb.some(r => r.person_id !== x.personId || r.state !== 'approved')) throw new Error('A reimbursement on it is not yours to add, or is not approved.')
 
+  let record = x.record
+  if (record.madeBy === 'builder') {
+    const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
+    const billed = linesAtFileRate(record.lines, payOnFile(x.kind, num(person?.internal_rate), num(person?.monthly_salary)))
+    if ('error' in billed) throw new Error(billed.error)
+    const problem = builderProblem(billed.lines)
+    if (problem) throw new Error(problem)
+    const total = Math.round((billed.lines.reduce((n, l) => n + (lineAmount(l) ?? 0), 0) + rmb.reduce((n, r) => n + Number(r.amount), 0)) * 100) / 100
+    record = { ...record, lines: billed.lines, total }
+  }
+
   const issued = now.toISOString().slice(0, 10)
-  const builderRows = x.record.lines.map((l, i) => ({
+  const builderRows = record.lines.map((l, i) => ({
     kind: l.hours != null ? 'hours' : 'fixed', client: l.client ?? l.description, description: l.description,
     hours_seconds: l.hours != null ? Math.round(l.hours * 3600) : null, rate: l.rate, amount: lineAmount(l) ?? 0, reimbursement_id: null as number | null, sort: i,
   }))
@@ -98,11 +112,11 @@ export async function writeSentInvoice(x: {
   }))
   const fields = {
     person_id: x.personId, submission_id: x.submissionId, period_start: x.start, period_end: x.end, kind: x.kind,
-    state: 'waiting', issued_on: issued, due_on: dueOn(issued, settings.paymentDays), total: x.record.total,
+    state: 'waiting', issued_on: issued, due_on: dueOn(issued, settings.paymentDays), total: record.total,
     from_snapshot: { name: person?.full_name ?? '', location: person?.location ?? '', email: person?.email_personal ?? person?.email_true_north ?? '' },
     to_snapshot: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '', email: settings.billingEmail ?? '' },
     approved_by: null, approved_at: null, paid_note: null, updated_at: now.toISOString(),
-    ...sendFields(x.record, now),
+    ...sendFields(record, now),
   }
 
   // The one already there for this timesheet or month (sent back to them): sent again, same number.
@@ -142,6 +156,6 @@ export async function writeSentInvoice(x: {
     const { error: rErr } = await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id }).in('id', rmb.map(r => r.id))
     if (rErr) console.error('[invoice send] reimbursements not marked:', rErr.message)
   }
-  await recordSend(id, x.record, now)
-  return { id, number }
+  await recordSend(id, record, now)
+  return { id, number, total: record.total }
 }

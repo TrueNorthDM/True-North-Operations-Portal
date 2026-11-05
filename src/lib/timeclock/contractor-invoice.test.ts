@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { builderProblem, compareInvoice, confirmText, lineAmount, linesFromTimesheet, madeByLine } from './contractor-invoice'
+import { builderProblem, compareInvoice, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, madeByLine, missingOnFile, payOnFile } from './contractor-invoice-rules'
 
 // The contractor makes and sends their own invoice (leadership, 4 November 2026).
 
@@ -28,13 +28,44 @@ describe('the builder', () => {
     expect(builderProblem([])).toBe('Add at least one line.')
     expect(builderProblem([{ description: '', client: null, hours: 1, rate: 1, amount: null }])).toBe('Line 1: say what it covers.')
     expect(builderProblem([{ description: 'i7', client: null, hours: 2, rate: null, amount: null }])).toBe('Line 1: write the hours and your rate, or an amount.')
+    expect(builderProblem([{ description: 'i7', client: null, hours: null, rate: 25, amount: null }])).toBe('Line 1: write the hours.')
     expect(builderProblem([{ description: 'i7', client: null, hours: 2, rate: 25, amount: null }])).toBeNull()
   })
-  it('"Use my timesheet hours" copies the hours by client and leaves the rate to them', () => {
-    const l = linesFromTimesheet(timesheet, 'October 2026')
-    expect(l.map(x => [x.description, x.hours, x.rate])).toEqual([
-      ['i7 Marketing, October 2026', 96, null], ['COE Group, October 2026', 52.5, null], ['True North Internal, October 2026', 12, null],
+  it('opens from the sent timesheet: one line a client, with the rate on file', () => {
+    const l = linesFromTimesheet(timesheet, 'October 2026', 25)
+    expect(l.map(x => [x.description, x.hours, x.rate, lineAmount(x)])).toEqual([
+      ['i7 Marketing, October 2026', 96, 25, 2400], ['COE Group, October 2026', 52.5, 25, 1312.5], ['True North Internal, October 2026', 12, 25, 300],
     ])
+    expect(linesFromTimesheet(timesheet, 'October 2026', null).every(x => x.rate === null)).toBe(true)
+  })
+})
+
+describe('the rate and the amount on file (owner, 5 November 2026)', () => {
+  it('hourly bills at the rate on file, whatever rate or amount is sent', () => {
+    const sent = [
+      { description: 'i7 Marketing, October 2026', client: 'i7 Marketing', hours: 96, rate: 90, amount: null },
+      { description: 'Extra', client: null, hours: null, rate: null, amount: 5000 },
+    ]
+    const r = linesAtFileRate(sent, payOnFile('hourly', 25, 1800))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.lines.map(l => [l.rate, l.amount])).toEqual([[25, null], [25, null]])
+    expect(lineAmount(r.lines[0])).toBe(2400)
+    // A free amount on an hourly invoice is not allowed: it has to be hours.
+    expect(builderProblem(r.lines)).toBe('Line 2: write the hours.')
+  })
+  it('fixed bills one line at the amount on file', () => {
+    const r = linesAtFileRate([{ description: 'Fixed monthly amount, October 2026', client: null, hours: 10, rate: 99, amount: 9999 }], payOnFile('fixed_monthly', 25, 1800))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.lines).toEqual([{ description: 'Fixed monthly amount, October 2026', client: null, hours: null, rate: null, amount: 1800 }])
+    expect(fixedLine('October 2026', 1800)).toEqual(r.lines[0])
+    expect(linesAtFileRate([fixedLine('October 2026', 1800), fixedLine('October 2026', 1800)], payOnFile('fixed_no_timesheet', null, 1800))).toEqual({ error: expect.stringMatching(/one line/) })
+  })
+  it('nothing on file (or zero) cannot be built, and says who to ask', () => {
+    expect(payOnFile('hourly', 0, null)).toEqual({ kind: 'hourly', rate: null })
+    expect(missingOnFile(payOnFile('hourly', null, 1800))).toMatch(/no hourly rate on file.*whoever approves your invoice/)
+    expect(missingOnFile(payOnFile('fixed_no_timesheet', 25, null))).toMatch(/no fixed amount on file/)
+    expect(missingOnFile(payOnFile('hourly', 25, null))).toBeNull()
+    expect(linesAtFileRate(linesFromTimesheet(timesheet, 'October 2026', null), payOnFile('hourly', null, null))).toEqual({ error: expect.stringMatching(/no hourly rate/) })
   })
 })
 

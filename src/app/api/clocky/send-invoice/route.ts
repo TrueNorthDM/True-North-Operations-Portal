@@ -6,7 +6,9 @@
  * Multipart: `data` (JSON) and, for an own file, `own_pdf`. Only the person
  * themselves, for a period still waiting for their invoice
  * (send-invoice-data.ts). The confirmation sentence is made here from the way
- * and the period, never taken from the browser.
+ * and the period, never taken from the browser. So is a built invoice's rate
+ * or fixed amount: the one on file (owner, 5 November 2026), whatever the
+ * browser sends.
  */
 
 import { randomUUID } from 'node:crypto'
@@ -17,7 +19,7 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { getSessionUser } from '@/lib/auth/session'
 import { createUploadClient } from '@/lib/supabase/admin'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
-import { builderProblem, confirmText, lineAmount, writeSentInvoice, type BuilderLine, type MadeBy, type SendRecord } from '@/lib/timeclock/contractor-invoice'
+import { builderProblem, confirmText, lineAmount, linesAtFileRate, payOnFile, writeSentInvoice, type BuilderLine, type MadeBy, type SendRecord } from '@/lib/timeclock/contractor-invoice'
 import { loadInvoicesToSend } from '@/lib/timeclock/send-invoice-data'
 import { announceInvoiceReceived, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { loadDirectory, db } from '@/lib/timeclock/clocky-context'
@@ -74,9 +76,13 @@ export async function POST(req: Request) {
   const pdf = form.get('own_pdf')
   let file: File | null = null
   if (b.madeBy === 'builder') {
-    lines = (b.lines ?? []).slice(0, 61).map(l => ({
-      description: text(l.description, 200) ?? '', client: text(l.client, 120), hours: num(l.hours), rate: num(l.rate), amount: num(l.amount),
+    // Only the descriptions, clients and hours are theirs: the rate or amount is the one on file.
+    const typed: BuilderLine[] = (b.lines ?? []).slice(0, 61).map(l => ({
+      description: text(l.description, 200) ?? '', client: text(l.client, 120), hours: num(l.hours), rate: null, amount: null,
     }))
+    const billed = linesAtFileRate(typed, payOnFile(period.kind, data.rate, data.fixedAmount))
+    if ('error' in billed) return no(billed.error)
+    lines = billed.lines
     const problem = builderProblem(lines)
     if (problem) return no(problem)
     total = Math.round((lines.reduce((n, l) => n + (lineAmount(l) ?? 0), 0) + rTotal) * 100) / 100
@@ -110,7 +116,7 @@ export async function POST(req: Request) {
     statedHours, statedTotal, covers: text(b.covers, 500), ownPdf, lines, total,
   }
   const now = new Date()
-  let sent: { id: number; number: string }
+  let sent: { id: number; number: string; total: number }
   try {
     sent = await writeSentInvoice({ personId: me, submissionId: period.submissionId, start: period.start, end: period.end, kind: period.kind, record, reimbursementIds: rIds, now })
   } catch (e) {
@@ -122,7 +128,7 @@ export async function POST(req: Request) {
   const at = now.toISOString()
   const c = db()
   await c.from('tc_approval_events').insert({ submission_id: period.submissionId, invoice_id: sent.id, step: 'invoice', action: 'sent', by_person: me, at, note: b.madeBy === 'own_file' ? `Own file: ${ownPdf?.name ?? ''}` : 'Invoice builder' })
-  await announceInvoiceReceived({ invoiceId: sent.id, at, personId: me, number: sent.number, month: period.label, total: usd(total) })
+  await announceInvoiceReceived({ invoiceId: sent.id, at, personId: me, number: sent.number, month: period.label, total: usd(sent.total) })
   // Whoever decides the invoice now hears it arrived (the hours approver first, on two steps).
   try {
     const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([me])])
@@ -133,7 +139,7 @@ export async function POST(req: Request) {
       const step = sub ? currentStep(route, settings, sub.state as TimesheetState, true) : null
       to = step && step.step !== 'hours' ? step.owner : null
     } else if (route) to = invoiceApprover(route, settings)
-    if (to) await announceTimesheetSubmitted({ submissionId: period.submissionId ?? -sent.id, sentAt: at, personId: me, to: [to], period: period.label, seconds: 0, text: `${dir.nameOf(me)} sent their invoice for ${period.label} (${sent.number}, ${usd(total)}).` })
+    if (to) await announceTimesheetSubmitted({ submissionId: period.submissionId ?? -sent.id, sentAt: at, personId: me, to: [to], period: period.label, seconds: 0, text: `${dir.nameOf(me)} sent their invoice for ${period.label} (${sent.number}, ${usd(sent.total)}).` })
   } catch (e) {
     console.error('[send invoice] tell approver:', e instanceof Error ? e.message : e)
   }

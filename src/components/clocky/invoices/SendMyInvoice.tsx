@@ -4,13 +4,17 @@
  * A contractor sends their own invoice (leadership, 4 November 2026; mockup
  * "Contractor invoices", screens 1, 2a and 2b, approved the same day): pick the
  * period, then "Upload my own invoice" (their PDF, with the number, hours and
- * total they type) or "Build it here" (they write the lines; "Use my timesheet
- * hours" copies the hours of their timesheet by client, the rate is theirs to
- * write). Either way they tick "This is my invoice" before sending. The
- * sentence is made again on the server; this one is what they read.
+ * total they type) or "Build it here". The builder opens filled from their
+ * sent timesheet, one line a client at the rate in their contract, or one line
+ * with their fixed amount (owner, 5 November 2026): the rate and the amount
+ * are read only, the hours, descriptions and lines are theirs ("Reset to my
+ * timesheet" puts the timesheet's lines back). With nothing on file the
+ * builder says so and cannot send. Either way they tick "This is my invoice"
+ * before sending. The sentence, the rate and the amount are made again on the
+ * server; these are what they read.
  */
 
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Icon, ICON } from '@/components/clocky/entries/ui'
@@ -19,24 +23,41 @@ import { CHECKBOX, INPUT } from '@/lib/ui/fields'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 import { CARD, CARD_TITLE, FIELD_LABEL, SECTION_TITLE } from '@/lib/ui/type'
 import { usd } from '@/lib/timeclock/invoice-doc'
-import { builderProblem, confirmText, lineAmount, linesFromTimesheet, type BuilderLine, type MadeBy } from '@/lib/timeclock/contractor-invoice-rules'
+import { AMOUNT_NOTE, RATE_NOTE, builderProblem, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, missingOnFile, payOnFile, type BuilderLine, type MadeBy, type PayOnFile } from '@/lib/timeclock/contractor-invoice-rules'
+import type { InvoiceToSend } from '@/lib/timeclock/send-invoice-data'
 import type { SendInvoiceData } from '@/lib/timeclock/send-invoice-data'
 
 const MAX_PDF = 10 * 1024 * 1024
 const TRY = 'Something went wrong. Check the connection and try again.'
-type Row = { key: number; description: string; client: string | null; hours: string; rate: string; amount: string }
-const blank = (key: number): Row => ({ key, description: '', client: null, hours: '', rate: '', amount: '' })
+/** A builder line as they edit it: only the description and the hours are theirs. */
+type Row = { key: number; description: string; client: string | null; hours: string }
+const blank = (key: number): Row => ({ key, description: '', client: null, hours: '' })
 const n = (s: string): number | null => (s.trim() === '' || !Number.isFinite(Number(s.replace(/,/g, ''))) ? null : Number(s.replace(/,/g, '')))
 const hm = (seconds: number) => `${Math.floor(seconds / 3600)}h ${String(Math.round(seconds / 60) % 60).padStart(2, '0')}m`
-const toLine = (r: Row): BuilderLine => ({ description: r.description, client: r.client, hours: n(r.hours), rate: n(r.rate), amount: n(r.amount) })
+/** The line as billed: the rate or amount on file, never typed. */
+const toLine = (r: Row, pay: PayOnFile): BuilderLine => {
+  const typed: BuilderLine = { description: r.description, client: r.client, hours: n(r.hours), rate: null, amount: null }
+  const billed = linesAtFileRate([typed], pay)
+  return 'error' in billed ? typed : billed.lines[0]
+}
+/** Row keys: only need to be unique on the page. */
+let seq = 0
+const next = () => ++seq
+const payOf = (p: InvoiceToSend | null, data: SendInvoiceData): PayOnFile => payOnFile(p?.kind ?? 'hourly', data.rate, data.fixedAmount)
+/** The lines the builder opens with: the sent timesheet at the rate on file, or the fixed amount's one line. */
+function startRows(p: InvoiceToSend | null, data: SendInvoiceData): Row[] {
+  if (!p) return [blank(next())]
+  if (p.kind !== 'hourly') return [{ ...blank(next()), description: fixedLine(p.label, data.fixedAmount).description }]
+  const made = linesFromTimesheet(p.timesheet, p.label, data.rate)
+  return made.length ? made.map(l => ({ key: next(), description: l.description, client: l.client, hours: String(l.hours ?? '') })) : [blank(next())]
+}
 
 export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData; start: string | null }) {
   const router = useRouter()
   const [start, setStart] = useState(data.toSend.find(p => p.start === initial)?.start ?? data.toSend[0]?.start ?? '')
   const period = data.toSend.find(p => p.start === start) ?? null
   const [mode, setMode] = useState<MadeBy | null>(null)
-  const [rows, setRows] = useState<Row[]>([blank(1)])
-  const nextKey = useRef(2)
+  const [rows, setRows] = useState<Row[]>(() => startRows(period, data))
   const [theirNumber, setTheirNumber] = useState('')
   const [hours, setHours] = useState('')
   const [total, setTotal] = useState('')
@@ -49,9 +70,11 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
   const pdfInput = useRef<HTMLInputElement>(null)
 
   const fixed = period?.kind !== 'hourly'
-  const lines = rows.map(toLine)
+  const pay = payOf(period, data)
+  const missing = missingOnFile(pay)
+  const lines = rows.map(r => toLine(r, pay))
   const rTotal = data.reimbursements.filter(r => rmb.includes(r.id)).reduce((s, r) => s + r.amount, 0)
-  const builtTotal = useMemo(() => Math.round((lines.reduce((s, l) => s + (lineAmount(l) ?? 0), 0) + rTotal) * 100) / 100, [lines, rTotal])
+  const builtTotal = Math.round((lines.reduce((s, l) => s + (lineAmount(l) ?? 0), 0) + rTotal) * 100) / 100
   const builtHours = lines.reduce((s, l) => s + (l.hours ?? 0), 0)
 
   if (!period) {
@@ -70,13 +93,9 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
     setPdf(f)
   }
   const setRow = (key: number, p: Partial<Row>) => setRows(xs => xs.map(r => (r.key === key ? { ...r, ...p } : r)))
-  const useTimesheet = () => {
-    const made = linesFromTimesheet(period.timesheet, period.label)
-    if (!made.length) return
-    setRows(made.map(l => ({ key: nextKey.current++, description: l.description, client: l.client, hours: String(l.hours ?? ''), rate: '', amount: '' })))
-  }
+  const resetToTimesheet = () => setRows(startRows(period, data))
 
-  const problem = mode === 'builder' ? builderProblem(lines)
+  const problem = mode === 'builder' ? (missing ?? builderProblem(lines))
     : mode === 'own_file' ? (!pdf ? 'Choose the PDF of your invoice.' : !(n(total) ?? 0) ? 'Write the total on your invoice.' : !fixed && !(n(hours) ?? 0) ? 'Write the hours on your invoice.' : null)
       : 'Choose how you send your invoice.'
   const ready = !problem && confirmed && !busy
@@ -88,7 +107,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
       const fd = new FormData()
       fd.set('data', JSON.stringify({
         start, madeBy: mode, confirmed, reimbursementIds: rmb,
-        ...(mode === 'own_file' ? { theirNumber, statedHours: n(hours), statedTotal: n(total), covers } : { lines: lines.map(l => ({ ...l })) }),
+        ...(mode === 'own_file' ? { theirNumber, statedHours: n(hours), statedTotal: n(total), covers } : { lines: lines.map(l => ({ description: l.description, client: l.client, hours: l.hours })) }),
       }))
       if (mode === 'own_file' && pdf) fd.set('own_pdf', pdf)
       const res = await fetch('/api/clocky/send-invoice', { method: 'POST', body: fd })
@@ -115,7 +134,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
       {data.toSend.length > 1 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Which period">
           {data.toSend.map(p => (
-            <button key={p.start} type="button" aria-pressed={p.start === start} onClick={() => { setStart(p.start); setRows([blank(nextKey.current++)]); setRmb([]); setConfirmed(false) }}
+            <button key={p.start} type="button" aria-pressed={p.start === start} onClick={() => { setStart(p.start); setRows(startRows(p, data)); setRmb([]); setConfirmed(false) }}
               className={p.start === start ? BTN.smallNavy : BTN.smallWhite}>{p.label}</button>
           ))}
         </div>
@@ -134,7 +153,7 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {choice('own_file', 'Upload my own invoice', 'The invoice you made in your own tool, as a PDF. You type its total and hours so it can be checked.', 'M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3')}
-          {choice('builder', 'Build it here', 'Write your lines, hours and rate, and any reimbursement. The portal makes the PDF from what you write.', 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6M9 16h3')}
+          {choice('builder', 'Build it here', fixed ? 'One line with your amount on file, and any reimbursement. The portal makes the PDF.' : 'Your lines come from your sent timesheet, at the rate in your contract. Check the hours, add any reimbursement, and the portal makes the PDF.', 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6M9 16h3')}
         </div>
       </div>
 
@@ -166,33 +185,50 @@ export function SendMyInvoice({ data, start: initial }: { data: SendInvoiceData;
               <>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <h3 className={CARD_TITLE}>Your lines</h3>
-                  {period.timesheet.length > 0 && (
-                    <button type="button" onClick={useTimesheet} className={BTN.smallWhite}><Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={2.6} />Use my timesheet hours</button>
+                  {!fixed && period.timesheet.length > 0 && (
+                    <button type="button" onClick={resetToTimesheet} className={BTN.smallWhite}>Reset to my timesheet</button>
                   )}
                 </div>
-                <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_90px_100px_110px_28px] gap-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">
-                  <span>What it covers</span><span className="text-right">Hours</span><span className="text-right">Rate</span><span className="text-right">Amount</span><span />
-                </div>
-                {rows.map((r, i) => {
-                  const amt = lineAmount(toLine(r))
-                  const hasHours = r.hours.trim() !== '' || r.rate.trim() !== ''
-                  return (
-                    <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,2fr)_90px_100px_110px_28px] gap-2.5 items-center">
-                      <input aria-label={`Line ${i + 1}, what it covers`} value={r.description} onChange={e => setRow(r.key, { description: e.target.value })} maxLength={200}
-                        placeholder={fixed ? `Fixed monthly amount, ${period.label}` : `Client, ${period.label}`} className={`${INPUT} col-span-1`} />
-                      <button type="button" aria-label={`Remove line ${i + 1}`} onClick={() => setRows(xs => (xs.length > 1 ? xs.filter(x => x.key !== r.key) : [blank(nextKey.current++)]))}
-                        className="sm:order-last border-0 bg-transparent text-muted text-[18px] cursor-pointer hover:text-[#c8323d]">×</button>
-                      <input aria-label={`Line ${i + 1}, hours`} value={r.hours} onChange={e => setRow(r.key, { hours: e.target.value })} inputMode="decimal" placeholder="Hours" className={`${INPUT} text-right tabular-nums`} />
-                      <input aria-label={`Line ${i + 1}, rate`} value={r.rate} onChange={e => setRow(r.key, { rate: e.target.value })} inputMode="decimal" placeholder="Rate" className={`${INPUT} text-right tabular-nums`} />
-                      {hasHours
-                        ? <span className="text-right font-bold text-tn-ink tabular-nums">{amt == null ? '-' : usd(amt)}</span>
-                        : <input aria-label={`Line ${i + 1}, amount`} value={r.amount} onChange={e => setRow(r.key, { amount: e.target.value })} inputMode="decimal" placeholder="Amount" className={`${INPUT} text-right tabular-nums`} />}
+                {missing && <div role="alert" className="rounded-[12px] bg-[#fdf8e7] px-4 py-3 text-[13.5px] text-[#6b5414]">{missing}</div>}
+                {fixed ? (
+                  <>
+                    <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_130px] gap-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">
+                      <span>What it covers</span><span className="text-right">Amount</span>
                     </div>
-                  )
-                })}
-                <button type="button" onClick={() => setRows(xs => [...xs, blank(nextKey.current++)])} className={`${BTN.smallWhite} self-start`}>
-                  <Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={2.6} />Add a line
-                </button>
+                    {rows.slice(0, 1).map(r => (
+                      <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,2fr)_130px] gap-2.5 items-center">
+                        <input aria-label="What it covers" value={r.description} onChange={e => setRow(r.key, { description: e.target.value })} maxLength={200}
+                          placeholder={`Fixed monthly amount, ${period.label}`} className={INPUT} />
+                        <span className="text-right font-bold text-tn-ink tabular-nums">{pay.kind === 'fixed' && pay.amount != null ? usd(pay.amount) : '-'}</span>
+                      </div>
+                    ))}
+                    <p className="m-0 text-[12.5px] text-muted">{AMOUNT_NOTE}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_90px_90px_110px_28px] gap-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">
+                      <span>What it covers</span><span className="text-right">Hours</span><span className="text-right">Rate</span><span className="text-right">Amount</span><span />
+                    </div>
+                    {rows.map((r, i) => {
+                      const amt = lineAmount(toLine(r, pay))
+                      return (
+                        <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,2fr)_90px_90px_110px_28px] gap-2.5 items-center">
+                          <input aria-label={`Line ${i + 1}, what it covers`} value={r.description} onChange={e => setRow(r.key, { description: e.target.value })} maxLength={200}
+                            placeholder={`Client, ${period.label}`} className={`${INPUT} col-span-1`} />
+                          <button type="button" aria-label={`Remove line ${i + 1}`} onClick={() => setRows(xs => (xs.length > 1 ? xs.filter(x => x.key !== r.key) : [blank(next())]))}
+                            className="sm:order-last border-0 bg-transparent text-muted text-[18px] cursor-pointer hover:text-[#c8323d]">×</button>
+                          <input aria-label={`Line ${i + 1}, hours`} value={r.hours} onChange={e => setRow(r.key, { hours: e.target.value })} inputMode="decimal" placeholder="Hours" className={`${INPUT} text-right tabular-nums`} />
+                          <span aria-label={`Line ${i + 1}, rate`} className="text-right text-tn-ink tabular-nums">{pay.kind === 'hourly' && pay.rate != null ? usd(pay.rate) : '-'}</span>
+                          <span className="text-right font-bold text-tn-ink tabular-nums">{amt == null ? '-' : usd(amt)}</span>
+                        </div>
+                      )
+                    })}
+                    <button type="button" onClick={() => setRows(xs => [...xs, blank(next())])} className={`${BTN.smallWhite} self-start`}>
+                      <Icon d={ICON.plus} size={13} color={BTN_ICON.white} width={2.6} />Add a line
+                    </button>
+                    <p className="m-0 text-[12.5px] text-muted">{RATE_NOTE}</p>
+                  </>
+                )}
               </>
             )}
 

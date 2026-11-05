@@ -3,7 +3,7 @@
  * 2026: they make and send their own invoice; migration 152): each sent
  * timesheet with no invoice yet (or one sent back to them), and for "fixed, no
  * timesheet" the last month and this one. With it, their timesheet's hours by
- * client (the builder's "Use my timesheet hours") and their approved
+ * client (the lines the builder opens with, at the rate on file) and their approved
  * reimbursements waiting for an invoice.
  *
  * Their own money only: call it for the person themselves.

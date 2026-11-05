@@ -89,7 +89,7 @@ describe('SystemManual, North Time rules of 4 November 2026', () => {
   it('has contractors send their own invoice, step by step', () => {
     const { container } = render(<SystemManual superOnly={SUPER} />)
     const qs = container.querySelector('#qs-contractors')!
-    for (const t of ['Sending your invoice (contractors)', 'Upload my own invoice', 'Build it here', 'Use my timesheet hours', 'This is my invoice']) expect(qs).toHaveTextContent(t)
+    for (const t of ['Sending your invoice (contractors)', 'Upload my own invoice', 'Build it here', 'Reset to my timesheet', 'the rate in your contract', 'This is my invoice']) expect(qs).toHaveTextContent(t)
     expect(container).not.toHaveTextContent('invoice is made')
     expect(container).not.toHaveTextContent('made by itself on the 1st')
   })
