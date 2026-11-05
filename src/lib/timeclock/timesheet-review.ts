@@ -26,6 +26,8 @@ import { formatDuration } from './rounding'
 import { INV_COLS, LINE_COLS, invoiceDocOf, usd, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
 import type { EntryView } from './clocky-types'
 import { loadInvoiceCheck, type InvoiceCheck } from './invoice-check-data'
+import { loadInvoiceRecord, RECORD_ZONE, type InvoiceRecordView } from './invoice-record'
+import { recordPages } from '@/lib/pdf/invoice-pages'
 
 export type ReviewTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
 export type StepState = 'done' | 'now' | 'bad' | 'later'
@@ -153,6 +155,8 @@ export interface ReviewSource {
   check?: InvoiceCheck | null
   /** Who sent the invoice and how. */
   sendInfo?: SendInfo | null
+  /** The invoice's record page, for "Preview invoice" (owner, 5 November 2026): the window shows what the PDF holds. */
+  record?: InvoiceRecordView | null
 }
 
 export type SubRow = {
@@ -198,12 +202,16 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     inv ? c.from('invoices').select('id, total, state, period_start, period_end, paid_on').eq('person_id', personId).lt('period_start', inv.period_start).order('period_start', { ascending: false }).limit(2).then(r => rowsOf(r, 'The last invoices could not be read')) : Promise.resolve([]),
   ])
   // The contractor's own invoice: who sent it, how, and the check against the timesheet (4 November 2026).
-  const [sendInfo, check] = inv
+  const [sendInfo, check, record] = inv
     ? await Promise.all([
       c.from('invoices').select('made_by, sent_at, sent_by, sent_from, their_number, own_pdf_name, own_pdf_path').eq('id', inv.id).maybeSingle().then(r => (r.error ? null : r.data as SendInfo | null)),
       t.route.isContractor && isSentInvoice(inv.state) ? loadInvoiceCheck(inv.id, now) : Promise.resolve(null),
+      // A record that cannot be read leaves the preview at page 1, as on the invoice's own page.
+      t.route.isContractor && isSentInvoice(inv.state)
+        ? loadInvoiceRecord(inv.id, { zone: RECORD_ZONE, nameOf: dir.nameOf, now }).catch(e => { console.error('[review] record:', e instanceof Error ? e.message : e); return null })
+        : Promise.resolve(null),
     ])
-    : [null, null]
+    : [null, null, null]
   const prevIds = prevData.map(x => x.id)
   const prevLines = prevIds.length ? rowsOf(await c.from('invoice_lines').select('invoice_id, kind, hours_seconds, amount').in('invoice_id', prevIds), 'The last invoices could not be read') : []
   const ids = [personId, t.route.reportsTo, settings.defaultApprover, ...settings.invoiceApprovers, sub?.approved_by, sub?.hours_approved_by, inv?.approved_by].filter((x): x is string => !!x)
@@ -219,8 +227,22 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     settings, terms: t,
     person: { name: dir.nameOf(personId), teamId: p?.teamId ?? null, team: team ? { name: team.name, color: team.color } : null, zone: dir.zoneOf(personId) },
     names: Object.fromEntries([...new Set(ids)].map(x => [x, dir.nameOf(x)])),
-    views, extraHours: extra(personId, start, end), job, now, check, sendInfo,
+    views, extraHours: extra(personId, start, end), job, now, check, sendInfo, record,
   }
+}
+
+/**
+ * The invoice as "Preview invoice" shows it (owner, 5 November 2026): their
+ * own PDF first when they sent one (made_by own_file), else the portal's
+ * sheet; then the record page when it could be read (as loadInvoiceDetail's
+ * addRecord). Their file shows even when the record could not be read.
+ */
+export function withRecord(view: InvoiceDocView | null, rec: InvoiceRecordView | null | undefined, info?: SendInfo | null): InvoiceDocView | null {
+  if (!view) return view
+  const own = (rec ? rec.madeBy === 'own_file' : info?.made_by === 'own_file') && (!info || !!info.own_pdf_path)
+  const ownFile = own ? { href: `/clocky-hours/invoices/${view.id}/own-pdf`, name: rec?.ownFileName ?? info?.own_pdf_name ?? 'Their invoice' } : null
+  if (ownFile) return { ...view, record: rec ?? null, ownFile }
+  return rec ? { ...view, record: rec, foot: { line: rec.footLine, page: recordPages(null).first } } : view
 }
 
 /** "Invoice 0142, sent by Jordan Lee on Nov 2 at 9:14 AM · their own file (PDF)". */
@@ -265,7 +287,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const st: TimesheetState | 'approved' | 'returned' = i.state === 'waiting' ? 'submitted' : i.state === 'draft' ? 'returned' : 'approved'
     const done = st !== 'submitted'
     const canBoth = !done && me === ib && me !== personId
-    const invoiceView = money ? invoiceDocOf(i, src.invLines, period.full) : null
+    const invoiceView = money ? withRecord(invoiceDocOf(i, src.invLines, period.full), src.record, src.sendInfo) : null
     const form = !!i.source
     const result = st === 'approved'
       ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const, retry: false }
@@ -418,7 +440,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     : `Read only. ${one ? `${route.isContractor ? 'Hours and invoice' : 'Hours'}: ${route.isContractor ? nameOf(ib) : nameOf(hb)}.` : `Hours: ${nameOf(hb)}. Invoice: ${nameOf(ib)}.`}`
   const readOnly = !act && !done && !(hoursDone && (me === hb || isLead)) && s.state !== 'recorded' ? roText : null
 
-  const invoiceView = money && inv && sent ? invoiceDocOf(inv, src.invLines, period.full) : null
+  const invoiceView = money && inv && sent ? withRecord(invoiceDocOf(inv, src.invLines, period.full), src.record, src.sendInfo) : null
   const history: TimesheetReview['history'] = []
   if (s.state === 'approved') history.push({ text: `Approved by ${youOr(s.approved_by)}`, when: noYear(stampLabel(s.approved_at!, v.zone)), dot: '#1E9E6A' })
   else if (ret) history.push({ text: 'Returned, back to Draft', when: noYear(stampLabel(s.approved_at ?? now.toISOString(), v.zone)), dot: '#c8323d' })
@@ -489,14 +511,14 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     act: {
       kind: canHours ? 'hours' : canInv ? 'invoice' : canBoth ? (route.isContractor ? 'both' : 'payroll') : null,
       label: canHours ? 'Approve hours' : canInv ? 'Approve invoice' : route.isContractor ? 'Approve both' : 'Approve and send to Rippling',
-      barNote: canHours && sendsOwn && !sent ? `You approve the hours now. ${first} has not sent the invoice yet; its step starts when it arrives. Return sends the timesheet back to ${first}, with your reason.`
-        : canHours ? `You approve the hours only. Then ${nameOf(ib)} finishes it; invoices are not shown to Team Leaders. Return sends it back to ${first}, with your reason.`
-        : canInv ? `${nameOf(s.hours_approved_by)} approved the hours. Approve the invoice to lock both. Return sends both back to ${first}, with your reason.`
-          : route.isContractor ? (src.check && !src.check.matches ? 'The invoice does not match the timesheet: send the invoice back, approve the hours only, or approve both with a reason.' : 'One decision for both: they match. Approve locks the timesheet and approves the invoice. Return sends both back, with your reason.')
-            : 'Approve locks the pay period and sends the hours and the PTO to Rippling. Return reopens it, with your reason.',
+      barNote: canHours && sendsOwn && !sent ? `You approve the hours now. ${first} has not sent the invoice yet; its step starts when it arrives. Send the hours back reopens the timesheet for ${first}, with your reason.`
+        : canHours ? `You approve the hours only. Then ${nameOf(ib)} finishes it; invoices are not shown to Team Leaders. Send the hours back reopens the timesheet for ${first}, with your reason.`
+        : canInv ? `${nameOf(s.hours_approved_by)} approved the hours. Approve the invoice to lock both. Send the hours back sends both back to ${first}, with your reason.`
+          : route.isContractor ? (src.check && !src.check.matches ? 'The invoice does not match the timesheet: send the invoice back, approve the hours only, or approve both with a reason.' : 'One decision for both: they match. Approve locks the timesheet and approves the invoice. Send the hours back sends both back, with your reason.')
+            : 'Approve locks the pay period and sends the hours and the PTO to Rippling. Send the hours back reopens it, with your reason.',
       overWarn: over > 0 && (canBoth || canInv) ? `${hm(over)} over the allowance were not approved in advance. Approve still works, with a note.` : null,
       overInfo: over > 0 && canHours ? `${hm(over)} over the allowance, not approved in advance. ${nameOf(ib)} decides these hours with the invoice.` : null,
-      returnTitle: route.isContractor ? `Return ${period.label} to ${first}?` : `Return the pay period to ${first}?`,
+      returnTitle: route.isContractor ? `Send the ${period.label} hours back to ${first}?` : `Send the pay period's hours back to ${first}?`,
       returnText: route.isContractor
         ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to ${first}. ${first} sees your reason, fixes the hours, submits again and sends the invoice again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
         : `The pay period unlocks and nothing goes to Rippling. ${first} sees your reason, fixes the hours and submits again.`,

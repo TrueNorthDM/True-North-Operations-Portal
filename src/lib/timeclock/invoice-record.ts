@@ -58,7 +58,7 @@ export interface InvoiceRecordView {
   who: RecordWho
   /** "Who made it" as the PDF's two columns. */
   facts: RecordFact[]
-  check: { rows: RecordCheckRow[]; total: RecordCheckRow; matches: boolean; summary: string | null } | null
+  check: { rows: RecordCheckRow[]; total: RecordCheckRow; matches: boolean; summary: string | null; note?: string | null } | null
   /** Oldest first, as a record reads. */
   history: { when: string; text: string }[]
   /** "Nov 10, 2026, 2:30 PM": the last thing that happened to it. */
@@ -237,7 +237,7 @@ export function buildInvoiceRecord(src: RecordSource): InvoiceRecordView {
     ownFileName: inv.own_pdf_name ?? latest?.ownPdfName ?? null,
     who: w,
     facts: recordFacts(w, madeBy, src.name, sentOnLabel(inv.created_at, zone)),
-    check: src.check ? { rows: src.check.rows.map(row), total: row(src.check.total), matches: src.check.matches, summary: src.check.summary } : null,
+    check: src.check ? { rows: src.check.rows.map(row), total: row(src.check.total), matches: src.check.matches, summary: src.check.summary, note: src.check.note ?? null } : null,
     history: hist.map(h => ({ when: shortStamp(h.t, zone), text: h.text })),
     asOf: stampLabel(last, zone),
     footLine: madeBy === 'builder' ? `Invoice by ${src.name}, made with the True North portal's invoice builder.` : 'Made by the True North Operations Portal',

@@ -18,7 +18,6 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ReviewTone, TimesheetReview } from '@/lib/timeclock/timesheet-review'
-import { InvoiceDoc } from '../invoices/InvoiceDoc'
 import { InvoicePdfModal } from '../invoices/InvoicePdfModal'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
@@ -108,8 +107,9 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
   const si = r.sentInvoice ?? null
   const hasTabs = r.kind === 'timesheet'
   const first = r.who.split(' ')[0]
-  const cols = r.noTimesheet ? (r.invoice ? 'grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]' : 'grid-cols-[minmax(0,1fr)]')
-    : r.invoice || r.payroll ? 'grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)]' : 'grid-cols-[minmax(0,1fr)]'
+  // On a phone one column, in the same order (owner, 5 November 2026).
+  const cols = r.noTimesheet ? (r.invoice ? 'grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]' : 'grid-cols-[minmax(0,1fr)]')
+    : r.invoice || r.payroll ? 'grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)]' : 'grid-cols-[minmax(0,1fr)]'
 
   // Combined: the chosen day (or the first with time), its neighbours and its entries.
   const dates = r.days.map(d => d.iso)
@@ -271,55 +271,53 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           )}
 
           {r.invoice && (
-            <div className="sticky top-[86px] flex flex-col gap-3.5 min-w-0">
-              {si && (
-                <div className={`${CARD} px-[18px] py-4 flex flex-col gap-3`}>
-                  <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">The invoice beside the timesheet</span>
-                  {si.sentLine && (
-                    <p className="m-0 text-[13px] text-foreground leading-[1.5]">
-                      {si.sentLine}{si.ownPdfHref && <> · <a href={si.ownPdfHref} target="_blank" rel="noopener" className="text-tn-teal font-bold">Open their PDF</a></>}
-                    </p>
-                  )}
-                  {si.check && (
-                    <>
-                      {si.check.summary && (
-                        <div role="alert" className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45]" style={{ background: si.check.matches ? '#e6f6ee' : '#fdeeef', color: si.check.matches ? '#0d7a4f' : '#8a1f27' }}>
-                          <Svg d={ICONS.alert} size={16} stroke="currentColor" sw={2} /><span><b>{si.check.matches ? 'They match.' : 'The invoice does not match the timesheet.'}</b> {si.check.summary}</span>
-                        </div>
-                      )}
-                      {!si.check.summary && si.check.matches && (
-                        <div className="flex gap-2.5 items-center rounded-[11px] px-3.5 py-2.5 text-[13px] font-bold bg-[#e6f6ee] text-[#0d7a4f]"><Svg d={ICONS.check} size={15} stroke="currentColor" sw={3} />The invoice matches the timesheet.</div>
-                      )}
-                      <div className="flex flex-col text-[12.5px] tabular-nums lining-nums">
-                        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 pb-1.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">
-                          <span>Client</span><span className="text-right">Timesheet</span><span className="text-right">Invoice</span><span>Check</span>
-                        </div>
-                        {[...si.check.rows, si.check.total].map((x, i, all) => {
-                          const tone = x.check === 'match' ? '#0d7a4f' : x.check === 'on-file' ? '#5b6b82' : '#c8323d'
-                          const word = x.check === 'match' ? 'Matches' : x.check === 'on-file' ? '-' : x.check === 'differs' ? `Differs${x.difference ? ` ${x.difference}` : ''}` : x.check === 'only-timesheet' ? 'Missing' : 'Not on timesheet'
-                          return (
-                            <div key={x.label} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 py-[7px] ${i === all.length - 1 ? 'border-t-2 border-[var(--panel-border)] font-bold text-tn-ink' : 'border-b border-[var(--row-rule)]'}`}>
-                              <span className="text-tn-ink font-semibold min-w-0">{x.label}</span><span className="text-right">{x.timesheet}</span><span className="text-right">{x.invoice}</span>
-                              <span className="font-bold" style={{ color: tone }}>{word}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              <div className={`${CARD} overflow-hidden`}>
-                <div className="flex items-center justify-between gap-2.5 flex-wrap px-[18px] py-3.5">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Invoice</span>
-                  <div className="flex gap-2 items-center">
-                    <span className={pillClass(r.invoice.state.tone)}>{r.invoice.state.label}</span>
-                    <button type="button" onClick={() => setModal('pdf')} className={BTN.smallWhite}>
-                      <Svg d={ICONS.eye} size={14} stroke={BTN_ICON.white} />Preview PDF
-                    </button>
+            <div className="md:sticky md:top-[86px] flex flex-col gap-3.5 min-w-0">
+              {/* One card (owner, 5 November 2026): the check, and the invoice itself in a window by Preview invoice. */}
+              <div className={`${CARD} px-[18px] py-4 flex flex-col gap-3`}>
+                <div className="flex items-start justify-between gap-2.5 flex-wrap">
+                  <div className="flex flex-col gap-1.5 min-w-0">
+                    <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">The invoice beside the timesheet</span>
+                    <span className="flex items-center gap-2 flex-wrap text-[12.5px] text-muted tabular-nums lining-nums">
+                      <span className="font-bold text-tn-ink whitespace-nowrap">{r.invoice.number}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className={pillClass(r.invoice.state.tone)}>{r.invoice.state.label}</span>
+                    </span>
                   </div>
+                  <button type="button" onClick={() => setModal('pdf')} className={BTN.smallWhite}>
+                    <Svg d={ICONS.eye} size={14} stroke={BTN_ICON.white} />Preview invoice
+                  </button>
                 </div>
-                <InvoiceDoc inv={r.invoice} variant="card" />
+                {si?.sentLine && <p className="m-0 text-[13px] text-foreground leading-[1.5]">{si.sentLine}</p>}
+                {si?.check && (
+                  <>
+                    {si.check.note && (
+                      <div className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45] bg-[#f1f3f6] text-[#5b6b82] tabular-nums lining-nums">{si.check.note}</div>
+                    )}
+                    {si.check.summary && (
+                      <div role="alert" className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45]" style={{ background: si.check.matches ? '#e6f6ee' : '#fdeeef', color: si.check.matches ? '#0d7a4f' : '#8a1f27' }}>
+                        <Svg d={ICONS.alert} size={16} stroke="currentColor" sw={2} /><span><b>{si.check.matches ? 'They match.' : 'The invoice does not match the timesheet.'}</b> {si.check.summary}</span>
+                      </div>
+                    )}
+                    {!si.check.summary && !si.check.note && si.check.matches && (
+                      <div className="flex gap-2.5 items-center rounded-[11px] px-3.5 py-2.5 text-[13px] font-bold bg-[#e6f6ee] text-[#0d7a4f]"><Svg d={ICONS.check} size={15} stroke="currentColor" sw={3} />The invoice matches the timesheet.</div>
+                    )}
+                    <div className="flex flex-col text-[12.5px] tabular-nums lining-nums">
+                      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 pb-1.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">
+                        <span>{si.check.rows.length ? 'Client' : ''}</span><span className="text-right">Timesheet</span><span className="text-right">Invoice</span><span>Check</span>
+                      </div>
+                      {[...si.check.rows, si.check.total].map((x, i, all) => {
+                        const tone = x.check === 'match' ? '#0d7a4f' : x.check === 'on-file' ? '#5b6b82' : '#c8323d'
+                        const word = x.check === 'match' ? 'Matches' : x.check === 'on-file' ? '-' : x.check === 'differs' ? `Differs${x.difference ? ` ${x.difference}` : ''}` : x.check === 'only-timesheet' ? 'Missing' : 'Not on timesheet'
+                        return (
+                          <div key={x.label} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 py-[7px] ${i === all.length - 1 ? `${all.length > 1 ? 'border-t-2 border-[var(--panel-border)] ' : ''}font-bold text-tn-ink` : 'border-b border-[var(--row-rule)]'}`}>
+                            <span className="text-tn-ink font-semibold min-w-0">{x.label}</span><span className="text-right">{x.timesheet}</span><span className="text-right">{x.invoice}</span>
+                            <span className="font-bold" style={{ color: tone }}>{word}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
               {r.previous && (
                 <div className={`${CARD} px-[18px] py-4 flex flex-col gap-[9px]`}>
@@ -496,7 +494,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
             <span className="flex-1 min-w-[240px] text-[12.5px] text-muted leading-[1.45] [text-wrap:pretty]">{a.barNote}</span>
             <button type="button" disabled={busy} onClick={() => { setReason(''); setModal('return') }}
               className={`${BTN.white} disabled:opacity-60`}>
-              <Svg d={ICONS.undo} size={15} stroke={BTN_ICON.white} />Return
+              <Svg d={ICONS.undo} size={15} stroke={BTN_ICON.white} />{r.kind === 'timesheet' ? 'Send the hours back' : 'Return'}
             </button>
             {a.hoursOnly && api.approveHours && (
               <button type="button" disabled={busy} onClick={() => void run(() => api.approveHours!())} className={`${BTN.white} disabled:opacity-60`}>
@@ -521,7 +519,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
         <ReasonDialog
           title={modal === 'return' ? a.returnTitle : `Reopen ${r.title.split(', ').slice(1).join(', ')}?`}
           text={modal === 'return' ? a.returnText : `The timesheet unlocks${r.invoice ? ` and ${r.invoice.number} goes back to Draft` : ''}. ${first} sees your reason, fixes the hours and submits again.`}
-          action={modal === 'return' ? (r.kind === 'invoice' || !r.isContractor || a.kind === 'hours' ? 'Return' : 'Return both') : 'Reopen'}
+          action={modal === 'return' ? (r.kind === 'invoice' ? 'Return' : 'Send the hours back') : 'Reopen'}
           warn={modal === 'reopen' ? a.reopenWarn : null}
           reason={reason} setReason={setReason} busy={busy} onClose={() => setModal(null)}
           onConfirm={() => void run(() => (modal === 'return' ? api.return(reason.trim()) : api.reopen(reason.trim())), () => setModal(null))} />

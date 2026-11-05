@@ -670,7 +670,7 @@ export async function returnTimesheet(input: { id: number; reason: string }): Pr
     if (t.hoursBy && t.hoursBy !== v.personId) await announceTimesheetDecided({ submissionId: t.id, at: `${at}:h`, personId: t.hoursBy, deciderId: v.personId, period: label, how: 'return', note: reason })
     refresh()
     const dir = await loadDirectory()
-    return { ok: true, toast: `Returned to ${dir.nameOf(t.personId)}. They see your reason.` }
+    return { ok: true, toast: `Sent the hours back to ${dir.nameOf(t.personId)}. They see your reason.` }
   } catch (e) {
     return notSaved(e)
   }

@@ -32,12 +32,13 @@ export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
   onClose: () => void
   onDownloaded?: (name: string) => void
 }) {
-  // The record page after the invoice (owner, 4 November 2026); their own PDF is page 1 when they sent one.
+  // The record page after the invoice (owner, 4 November 2026); their own PDF is page 1 when they sent one
+  // (ownFile is only set for made_by own_file), shown even when the record could not be read.
   const r = invoice.record
-  const own = r?.madeBy === 'own_file' ? invoice.ownFile : null
+  const own = invoice.ownFile ?? null
   return (
     <PdfWindow named name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}
-      pages={!r ? undefined : own ? 'Preview: their own PDF as they sent it, then the invoice record.' : 'Preview, 2 pages (the invoice and its record).'}>
+      pages={own ? (r ? 'Preview: their own PDF as they sent it, then the invoice record.' : 'Preview: their own PDF as they sent it.') : !r ? undefined : 'Preview, 2 pages (the invoice and its record).'}>
       {own
         ? <iframe src={withViewAs(own.href)} title={own.name} className="w-[620px] h-[877px] bg-white border-0" />
         : <InvoiceDoc inv={invoice} variant="page" />}

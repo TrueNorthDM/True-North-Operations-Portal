@@ -5,6 +5,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('./clocky-context', () => ({ db: vi.fn(), loadDirectory: vi.fn() }))
 vi.mock('./clocky-entries', () => ({ loadPeriodViews: vi.fn() }))
 vi.mock('./allowance-data', () => ({ loadApprovedExtra: vi.fn() }))
+vi.mock('./invoice-record', () => ({ loadInvoiceRecord: vi.fn(), RECORD_ZONE: 'America/New_York' }))
 vi.mock('./invoices-data', () => ({ clientFolder: (p: string) => (p ? p.split(' › ')[0] : 'Other') }))
 vi.mock('./pay-terms', () => ({
   loadInvoiceSettings: vi.fn(), loadPayTerms: vi.fn(),
@@ -95,6 +96,29 @@ describe('the 6C page (buildReview)', () => {
     expect(r.act.kind).toBeNull()
     expect(r.result?.tone).toBe('bad')
     expect(r.result?.text).toMatch(/"Oct 12 is wrong."/)
+  })
+
+  it('Preview invoice: their own PDF for made_by own_file, the portal sheet for the builder and the old portal invoices', () => {
+    const rec = (madeBy: 'own_file' | 'builder' | null) => ({ madeBy, ownFileName: madeBy === 'own_file' ? 'inv-0142.pdf' : null, footLine: 'Invoice by Pat Doe' }) as unknown as Src['record']
+    const info = (made_by: string | null, own_pdf_path: string | null = null) => ({ made_by, sent_at: '2026-11-01T15:00:00Z', sent_by: 'p', sent_from: 'portal', their_number: null, own_pdf_name: own_pdf_path ? 'inv-0142.pdf' : null, own_pdf_path })
+    // Their own file: it comes first, the record after it.
+    const own = buildReview(src({ record: rec('own_file'), sendInfo: info('own_file', 'p/inv.pdf') }))!.invoice!
+    expect(own.ownFile).toEqual({ href: '/clocky-hours/invoices/9/own-pdf', name: 'inv-0142.pdf' })
+    expect(own.record).toBeTruthy()
+    // Still their file when the record could not be read.
+    expect(buildReview(src({ record: null, sendInfo: info('own_file', 'p/inv.pdf') }))!.invoice!.ownFile?.href).toBe('/clocky-hours/invoices/9/own-pdf')
+    // The builder and the portal's own (made_by null): the portal's sheet with its footer.
+    const built = buildReview(src({ record: rec('builder'), sendInfo: info('builder') }))!.invoice!
+    expect(built.ownFile).toBeUndefined()
+    expect(built.foot).toEqual({ line: 'Invoice by Pat Doe', page: 'Page 1 of 2' })
+    expect(buildReview(src({ record: rec(null), sendInfo: info(null) }))!.invoice!.ownFile).toBeUndefined()
+    expect(buildReview(src({ me: 'wendy', level: 'team_leader', reportsTo: 'wendy', record: rec('builder') }))!.invoice).toBeNull()
+  })
+
+  it('the button sends the hours back: its window says so', () => {
+    const r = buildReview(src({}))!
+    expect(r.act.returnTitle).toBe('Send the October hours back to Pat?')
+    expect(r.act.barNote).toMatch(/Send the hours back sends both back/)
   })
 
   it('an employee: payroll summary, Rippling refused shows Try again', () => {

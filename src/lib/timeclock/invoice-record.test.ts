@@ -130,3 +130,12 @@ describe('an invoice\'s record', () => {
     expect(r.history.some(x => x.text.endsWith(', through the invoice form.'))).toBe(true)
   })
 })
+
+describe('the reimbursements an invoice is checked for', () => {
+  it('only the ones approved by the time it was sent', async () => {
+    const { availableWhenSent } = await import('./invoice-check-data')
+    expect(availableWhenSent('2026-10-01T10:00:00Z', '2026-10-02T09:00:00Z')).toBe(true)
+    expect(availableWhenSent('2026-10-20T10:00:00Z', '2026-10-02T09:00:00Z')).toBe(false)
+    expect(availableWhenSent(null, '2026-10-02T09:00:00Z')).toBe(false)
+  })
+})

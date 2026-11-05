@@ -16,6 +16,17 @@ import { loadPayTerms } from './pay-terms'
 export const reimbursementLabel = (r: { receipt_number: string | null; id: number; purpose: string }): string =>
   r.receipt_number ?? `#${r.id} ${r.purpose}`
 
+/**
+ * Whether an approved reimbursement not on any invoice was there to include
+ * when the invoice was sent (sent_at, else created_at): approved at or before
+ * it. With no decision time it is not counted.
+ */
+export function availableWhenSent(decidedAt: string | null, sentAt: string | null): boolean {
+  if (!decidedAt) return false
+  if (!sentAt) return true
+  return Date.parse(decidedAt) <= Date.parse(sentAt)
+}
+
 export interface InvoiceCheck extends Comparison {
   madeBy: MadeBy | null
 }
@@ -24,23 +35,26 @@ export interface InvoiceCheck extends Comparison {
 export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Promise<InvoiceCheck | null> {
   const c = createAdminClient()
   const { data: inv, error } = await c.from('invoices')
-    .select('id, person_id, submission_id, period_start, period_end, kind, made_by, stated_hours, total')
+    .select('id, person_id, submission_id, period_start, period_end, kind, made_by, stated_hours, total, sent_at, created_at')
     .eq('id', invoiceId).maybeSingle()
   if (error || !inv) return null
   const [terms, timesheet, linesRes, rmbRes] = await Promise.all([
     loadPayTerms([inv.person_id]),
     inv.submission_id && inv.kind !== 'fixed_no_timesheet' ? hoursByClient(inv.person_id, inv.period_start, inv.period_end, now) : Promise.resolve([]),
     c.from('invoice_lines').select('kind, client, hours_seconds, amount, reimbursement_id').eq('invoice_id', invoiceId),
-    // What should be on it: their approved reimbursements waiting for an invoice, and the ones on this one.
-    c.from('reimbursements').select('id, receipt_number, purpose, amount, state, invoice_id').eq('person_id', inv.person_id)
-      .or(`invoice_id.eq.${invoiceId},and(state.eq.approved,invoice_id.is.null)`),
+    // What should be on it: the ones on this one, and their approved reimbursements still waiting for an
+    // invoice (not on a reimbursement document). Which of those were there when it was sent is decided below.
+    c.from('reimbursements').select('id, receipt_number, purpose, amount, state, invoice_id, decided_at').eq('person_id', inv.person_id)
+      .or(`invoice_id.eq.${invoiceId},and(state.eq.approved,invoice_id.is.null,document_id.is.null)`),
   ])
   if (linesRes.error || rmbRes.error) return null
   const t = terms.get(inv.person_id)
   const lines = linesRes.data ?? []
   const byClient = new Map<string, number>()
   for (const l of lines) if (l.kind === 'hours' && l.client && l.hours_seconds) byClient.set(l.client, (byClient.get(l.client) ?? 0) + l.hours_seconds)
-  const rmb = rmbRes.data ?? []
+  // A reimbursement approved after the invoice was sent waits for the next one: it was never missing here.
+  const sentAt = inv.sent_at ?? inv.created_at
+  const rmb = (rmbRes.data ?? []).filter(r => r.invoice_id === invoiceId || availableWhenSent(r.decided_at, sentAt))
   const onIt = new Set(lines.filter(l => l.reimbursement_id).map(l => l.reimbursement_id))
   const builderHours = lines.filter(l => l.kind === 'hours').reduce((n, l) => n + (l.hours_seconds ?? 0), 0) / 3600
   const madeBy = (inv.made_by ?? null) as MadeBy | null

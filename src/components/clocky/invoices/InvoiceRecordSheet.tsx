@@ -61,6 +61,7 @@ export function InvoiceRecordSheet({ r, page, className = '' }: {
         <span className={SECTION}>Checked against the timesheet</span>
         {r.check ? (
           <>
+            {r.check.note && <span className="text-[#5b6b82]">{r.check.note}</span>}
             <div className="flex flex-col border border-[#e4e7ec] rounded-[6px] overflow-hidden">
               <div className={`${COLS} py-1.5 bg-[#f4f2ec] font-bold text-[#012358]`}>
                 <span>Client</span><span className="text-right">Timesheet</span><span className="text-right">Invoice</span><span>Check</span>

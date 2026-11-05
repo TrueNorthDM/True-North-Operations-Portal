@@ -177,6 +177,13 @@ export interface Comparison {
   matches: boolean
   /** One line for the banner when it does not: "It bills 2h more on COE Group and comes to $50.00 more...". */
   summary: string | null
+  /**
+   * A neutral line in place of the client rows: an invoice the portal made from
+   * the timesheet itself (made_by null, before 4 November 2026). Those lines
+   * carry the old TSheets client names ("1 - True North"), so a client by
+   * client check would mark every row; only the total is checked.
+   */
+  note?: string | null
 }
 
 const hm = (seconds: number) => {
@@ -194,8 +201,10 @@ export function compareInvoice(x: CompareInput): Comparison {
   const rows: CompareRow[] = []
   const diffs: string[] = []
   const own = x.invoice.madeBy === 'own_file'
+  // Made by the portal from this timesheet (before 4 November 2026): the hours are the timesheet's.
+  const portal = x.invoice.madeBy == null
 
-  if (x.pay.kind === 'hourly') {
+  if (x.pay.kind === 'hourly' && !portal) {
     const clients = [...new Set([...x.timesheet.map(c => c.client), ...x.invoice.byClient.map(c => c.client)])]
     for (const client of clients) {
       const t = x.timesheet.find(c => c.client === client)?.seconds ?? 0
@@ -216,7 +225,7 @@ export function compareInvoice(x: CompareInput): Comparison {
     }
   }
 
-  for (const r of x.reimbursements) {
+  for (const r of portal ? [] : x.reimbursements) {
     const on = x.invoice.reimbursements.includes(r.label)
     rows.push({ label: `Reimbursement ${r.label}`, timesheet: usd(r.amount), invoice: on ? usd(r.amount) : '-', difference: on ? '' : signed(-r.amount, usd), check: on ? 'match' : 'only-timesheet' })
     if (!on) diffs.push(`leaves out reimbursement ${r.label}`)
@@ -238,6 +247,7 @@ export function compareInvoice(x: CompareInput): Comparison {
   if (expected != null && !sameTotal) diffs.push(`comes to ${usd(x.invoice.total - expected)} ${x.invoice.total > expected ? 'more' : 'less'} than ${x.pay.kind === 'hourly' ? 'the approved hours at the rate on file' : 'the amount on file'}`)
   const matches = !diffs.length && expected != null
   const summary = diffs.length ? `It ${diffs.join(', and ')}.` : expected == null ? 'There is no rate or amount on file to check the total against.' : null
-  return { rows, total, matches, summary }
+  const note = portal ? `Made by the portal from this timesheet before November 4, 2026: the hours are the timesheet's. Total ${usd(x.invoice.total)}.` : null
+  return { rows, total, matches, summary, note }
 }
 

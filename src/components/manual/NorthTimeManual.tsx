@@ -217,7 +217,7 @@ const QUICK: Audience[] = [
       { t: 'Approve hours', steps: [
         'Open North Time, **Approvals**. **Waiting for you** lists the timesheets of the people who report to you.',
         'Press **Review** to open the timesheet: the summary by client and by day, and every entry.',
-        'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve and send to Rippling** for an employee. Or press **Return**, with a reason.',
+        'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve and send to Rippling** for an employee. Or press **Send the hours back**, with a reason.',
       ] },
       { t: 'Change your team’s hours', steps: [
         'On Time entries, set **Whose hours** to **My team** and pick the person.',
@@ -248,7 +248,8 @@ const QUICK: Audience[] = [
       ] },
       { t: 'Approving a contractor’s invoice', steps: [
         'The hours can be approved before the invoice arrives; the page says when the invoice is still to come.',
-        'Open the timesheet with **Review**: the invoice sits beside it, client by client, **Matches** or **Differs**, with the difference in hours and dollars against the rate on file or the fixed amount. An uploaded PDF shows the hours and total the contractor typed.',
+        'Open the timesheet with **Review**: **The invoice beside the timesheet** checks it client by client, **Matches** or **Differs**, with the difference in hours and dollars against the rate on file or the fixed amount. An uploaded PDF shows the hours and total the contractor typed. An invoice the portal made from the timesheet before November 4, 2026 is checked on its total only.',
+        '**Preview invoice** opens the invoice in a window (their own PDF, when they sent one); download it from there.',
         'When they match: **Approve both**.',
         'When they do not: **Send the invoice back** (the invoice alone, with your reason; the hours stay), **Approve the hours only**, or approve anyway with a reason under **To approve anyway, write why (required)**.',
         'The invoice PDF (preview, download and the Google Drive copy) ends with an **Invoice record** page: who made it, the check against the timesheet and the history.',

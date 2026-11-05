@@ -98,6 +98,21 @@ describe('the invoice beside the timesheet', () => {
     expect(none.matches).toBe(false)
     expect(none.summary).toMatch(/no rate or amount on file/)
   })
+  it('an invoice the portal made from the timesheet (made_by null) is checked on its total only', () => {
+    // Before 4 November 2026 the lines carried the TSheets names; the timesheet now groups by the 2026 clients.
+    const c = compareInvoice({ timesheet, pay: { kind: 'hourly', rate: 25 }, reimbursements: [],
+      invoice: { madeBy: null, byClient: [{ client: '1 - True North', seconds: h(80) }, { client: '2 - i7 Marketing', seconds: h(80.5) }], hours: 160.5, total: 4012.5, reimbursements: [] } })
+    expect(c.rows).toEqual([])
+    expect(c.matches).toBe(true)
+    expect(c.summary).toBeNull()
+    expect(c.total.check).toBe('match')
+    expect(c.note).toBe("Made by the portal from this timesheet before November 4, 2026: the hours are the timesheet's. Total $4,012.50.")
+    const off = compareInvoice({ timesheet, pay: { kind: 'hourly', rate: 25 }, reimbursements: rmb,
+      invoice: { madeBy: null, byClient: [], hours: 160.5, total: 4112.5, reimbursements: [] } })
+    expect(off.rows).toEqual([])
+    expect(off.total).toMatchObject({ check: 'differs', difference: '+$100.00' })
+    expect(off.matches).toBe(false)
+  })
   it('a reimbursement left out shows as missing', () => {
     const c = compareInvoice({ timesheet, pay: { kind: 'hourly', rate: 25 }, reimbursements: rmb,
       invoice: { madeBy: 'builder', byClient: timesheet, hours: 160.5, total: 4012.5, reimbursements: [] } })
