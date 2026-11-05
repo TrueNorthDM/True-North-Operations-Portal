@@ -12,6 +12,7 @@ import { db, loadCatalog, loadDirectory } from './clocky-context'
 import { initials, localDate, stampLabel } from './format'
 import { loadRequestDeciders, loadRoutes } from './pay-terms'
 import { orList } from './routing'
+import { IS_STAGING } from '@/lib/environment'
 import { addDays } from './periods'
 import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pillOf, stepsOf, type OffCheck, type OffRequest, type OffStep, type OffTone } from './time-off'
 
@@ -114,7 +115,8 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
     }
   })
   return {
-    employee: !!route && !route.isContractor,
+    // On the staging copy contractors may ask too, so time off can be shown in training (owner, 5 November 2026). Never on the live portal.
+    employee: !!route && (!route.isContractor || IS_STAGING),
     canAll,
     me: { personId: v.personId, name: me?.name ?? 'You', team: teamOf(v.personId).name },
     today,

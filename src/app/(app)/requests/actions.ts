@@ -29,6 +29,7 @@ import { announceTimeOffCancelAsked, announceTimeOffRequested } from '@/lib/time
 import { localDate } from '@/lib/timeclock/format'
 import { loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { orList } from '@/lib/timeclock/routing'
+import { IS_STAGING } from '@/lib/environment'
 import { daysText, holidaysBetween, offDays } from '@/lib/timeclock/time-off'
 import { allowanceRange } from '@/lib/timeclock/allowance'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
@@ -82,7 +83,8 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
   try {
     const c = db()
     const route = (await loadRoutes([v.personId])).get(v.personId)
-    if (!route || route.isContractor) return fail('Time off is for employees. Contractors are not paid for days off, so there is nothing to ask.')
+    // The staging copy lets contractors ask, for training (owner, 5 November 2026); the live portal never does.
+    if (!route || (route.isContractor && !IS_STAGING)) return fail('Time off is for employees. Contractors are not paid for days off, so there is nothing to ask.')
     const code = (await loadCatalog()).jobs.get(Number(input.jobcodeId))
     if (!code || !code.active || (code.kind !== 'pto' && code.kind !== 'unpaid')) return fail('Pick a kind of time off.')
     const start = String(input.start ?? ''), end = String(input.end || input.start || '')
