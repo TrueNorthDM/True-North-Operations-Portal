@@ -173,7 +173,7 @@ const QUICK: Audience[] = [
       { t: 'Reimbursements', steps: [
         'Open Requests, **Reimbursements**, and press **New request**.',
         'Add a line for each receipt: you can drop several photos and PDFs at once, so one request can hold a whole trip.',
-        'For each line: the date, the category, the amount, what it was for, and its photo or PDF.',
+        'For each line: the date, the category, the amount, the description of the expense, and its photo or PDF.',
         'Press **Send request** (**Send 3 receipts** when there are three). Someone on the **Reimbursements** list decides each receipt; the message names them.',
         'Anyone can ask for a reimbursement. Each receipt gets its own number when it is sent, like **RCT-2026-005**.',
         'Contractors: tick your approved receipts on the next invoice you send; each goes on it as its own line. Employees: approved receipts go on a reimbursement document that Finance pays, outside Rippling payroll.',

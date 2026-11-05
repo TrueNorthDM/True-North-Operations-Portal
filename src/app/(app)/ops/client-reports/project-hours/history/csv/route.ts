@@ -50,7 +50,8 @@ export async function GET(request: Request) {
 
   let rows: string[][]
   try {
-    const generatedOn = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'long', day: 'numeric' })
+    // The day as numbers in the file, 11/5/2026 (owner, 5 November 2026); the PDF keeps it in words.
+    const generatedOn = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'numeric', day: 'numeric' })
     rows = historyCsvRows(await loadProjectHistory(createAdminClient(), from, range.to), { period: spanWording(from, range.to), generatedOn })
   } catch {
     return new Response('Could not load the report.', { status: 500, headers: { 'Content-Type': 'text/plain' } })

@@ -10,7 +10,7 @@
  */
 
 import { dateLabel } from '@/lib/timeclock/format'
-import { CATEGORIES, MEAL_HINT, MILEAGE, mileageAmount, mileageNote, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+import { CATEGORIES, MEAL_REASON_ERROR, MILEAGE, mealReasonMissing, mileageAmount, mileageNote, milesOf, needsReceipt } from '@/lib/timeclock/reimbursement-rules'
 // Types only: the page imports this file, and contractor-invoice.ts reaches the database.
 import type { BuilderLine, MadeBy, SendRecord } from '@/lib/timeclock/contractor-invoice'
 
@@ -366,7 +366,7 @@ export function checkSubmission(raw: RawSubmission, ctx: CheckContext): { ok: tr
     if (!isDay(spentOn)) return no(`${n}write the date of the expense.`)
     if (spentOn > ctx.today) return no(`${n}the expense date cannot be after today.`)
     let purpose = str(r.purpose, category === MILEAGE ? 440 : 500)
-    if (!purpose) return no(`${n}say what it was for.`)
+    if (!purpose) return no(`${n}write the description of the expense.`)
     let amount: number, miles: number | null = null, mileageRate: number | null = null
     if (category === MILEAGE) {
       miles = milesOf(String(r.miles ?? ''))
@@ -378,7 +378,8 @@ export function checkSubmission(raw: RawSubmission, ctx: CheckContext): { ok: tr
       amount = amountOf(r.amount)
       if (!(amount > 0 && amount < 100_000)) return no(`${n}write the amount, like 35.00.`)
       if (String(r.currency ?? 'USD').toUpperCase() !== 'USD') return no(`${n}write the amount in US dollars: the invoice is in USD.`)
-      if (overMealCap(category, amount, 'USD')) return no(`${n}${MEAL_HINT}`)
+      // Over the $25 a meal: it goes, for review, when the description says why (owner, 5 November 2026).
+      if (mealReasonMissing(category, amount, 'USD', purpose)) return no(`${n}${MEAL_REASON_ERROR}`)
     }
     const clientRaw = str(r.client, 200)
     const client = clientRaw && clientRaw !== 'None' ? clientRaw : null

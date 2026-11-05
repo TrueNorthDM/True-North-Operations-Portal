@@ -9,6 +9,7 @@
 import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear } from './format'
 import { moneyTotal, paidText } from './invoice-doc'
 import type { DriveShow } from '@/lib/drive/copy-plan'
+import { csvDate } from '@/lib/format/csv'
 
 export type RmbDocState = 'appr' | 'paid'
 
@@ -27,8 +28,12 @@ export interface RmbDocListRow {
   period: string
   /** Each currency on its own, as the document adds them: "$57.99", "$120.00 + KES 4,500.00". */
   total: string
-  /** The CSV's Total and Currency: a number for one currency, the text for several. */
-  csv: { total: string; currency: string }
+  /**
+   * The CSV's Total and Currency (a number for one currency, the text for
+   * several), and its Date and Paid with the days as numbers, "10/21/2026"
+   * (owner, 5 November 2026).
+   */
+  csv: { total: string; currency: string; date?: string; paid?: string }
   st: RmbDocState
   /** The Paid column: the day and the reference, or where it is. */
   where: string
@@ -96,7 +101,8 @@ export function buildRmbDocList(src: RmbDocListSource): RmbDocList {
     return {
       id: d.id, number: d.number, who: p.name, initials: initialsOf(p.name), team: p.team, teamColor: p.color,
       items: items.length, date: dateLabel(day), period: monthYear(day),
-      total: moneyTotal(amounts), csv: csvTotal(amounts), st,
+      total: moneyTotal(amounts), st,
+      csv: { ...csvTotal(amounts), date: csvDate(day), paid: st === 'paid' && d.paid_on ? `${csvDate(d.paid_on)}${d.paid_ref ? ` · ${d.paid_ref}` : ''}` : undefined },
       where: st === 'paid' && d.paid_on ? paidText(d.paid_on, d.paid_ref) : st === 'paid' ? 'Paid' : 'Waiting for Finance',
       paidOn: st === 'paid' ? d.paid_on : null,
       canPay: src.finance && st === 'appr',

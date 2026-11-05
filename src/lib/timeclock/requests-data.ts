@@ -23,7 +23,8 @@ import { addDays } from './periods'
 import { orList, reimbursementApprovers } from './routing'
 import { formatDuration } from './rounding'
 import { clientFolder } from './invoices-data'
-import { reportTitle, totalsText } from './reimbursement-reports'
+import { allWaiting, reportTitle, totalsText } from './reimbursement-reports'
+import { MILEAGE, overMealCap, withoutMileageNote } from './reimbursement-rules'
 import { buildRmbDocList, type RmbDocItem, type RmbDocList, type RmbDocSource } from './rmb-docs-list'
 import { teamColour } from '@/lib/directory/team-colour'
 import { wantRmb } from '@/lib/drive/copy-plan'
@@ -46,6 +47,34 @@ export interface RmbRow {
   report?: { id: number; first: boolean; title: string; total: string }
   /** Everyone's view: who sent it. */
   who?: { name: string; initials: string; team: string | null; color: string }
+  /** The viewer's own request while all of it waits (owner, 5 November 2026): its key in `waiting`, for Edit and Withdraw. */
+  edit?: string
+  /** A meal while travelling over the $25 (owner, 5 November 2026). */
+  over?: boolean
+}
+
+/** One receipt of a waiting request, as the New reimbursement form is filled in with it to edit it. */
+export interface WaitingItem {
+  id: number
+  /** "Oct 2, 2026", as the form shows a day. */
+  date: string
+  category: string
+  amount: string
+  miles: string
+  currency: string
+  /** The description of the expense, without the mileage note the portal added. */
+  what: string
+  client: string | null
+  billable: boolean
+  /** The stored file: its name and its small line ("PDF, 96 KB"); null for a Mileage line with none. */
+  receipt: { name: string; label: string } | null
+}
+
+/** The viewer's own request still entirely waiting: "report:<id>" or "item:<id>". */
+export interface WaitingRequest {
+  key: string
+  name: string
+  items: WaitingItem[]
 }
 
 export interface ReimbursementsPage {
@@ -61,9 +90,16 @@ export interface ReimbursementsPage {
   today: string
   /** Dollars a mile for a Mileage line (Company settings > Invoices). */
   mileageRate: number
+  /** The viewer's requests they may still edit or withdraw, by key (RmbRow.edit). */
+  waiting?: Record<string, WaitingRequest>
 }
 
-type RRow = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; state: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string; report_id: number | null }
+type RRow = {
+  id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; state: string
+  decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null
+  receipt_path: string | null; report_id: number | null; withdrawn_at: string | null; withdrawn_reason: string | null
+  client: string | null; billable: boolean; miles: number | null; mileage_rate: number | null; receipt_name: string | null; receipt_size: number | null
+}
 
 /** A request's receipts stay together, where its latest one falls, oldest first inside it; the rest newest first. */
 export function arrangeReimbursements<T extends Pick<RRow, 'id' | 'spent_on' | 'report_id'>>(list: readonly T[]): T[] {
@@ -89,7 +125,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
   // Every row, a page at a time: PostgREST stops at 1,000, and everyone's list (with the
   // viewer's own rows taken from it) would lose the oldest without a word (audit, 27 October 2026).
   const loaded = await allRows<RRow>((a, b) => {
-    const q = c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id')
+    const q = c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id, withdrawn_at, withdrawn_reason, client, billable, miles, mileage_rate, receipt_name, receipt_size')
     return (seesAll ? q : q.eq('person_id', me)).order('spent_on', { ascending: false }).order('id', { ascending: false }).range(a, b)
   }, 'Reimbursements could not be read')
   const people = [...new Set([me, ...loaded.map(r => r.person_id)])]
@@ -115,6 +151,26 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     const name = dir.nameOf(id)
     return { name, initials: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), team: t?.name ?? null, color: teamColour(t?.color, t?.name) }
   }
+  // The viewer's own requests still entirely waiting: what they may edit or withdraw (owner, 5 November 2026).
+  const own = loaded.filter(r => r.person_id === me)
+  const keyOf = (r: RRow) => (r.report_id != null ? `report:${r.report_id}` : `item:${r.id}`)
+  const groups = new Map<string, RRow[]>()
+  for (const r of own) groups.set(keyOf(r), [...(groups.get(keyOf(r)) ?? []), r])
+  const waiting: Record<string, WaitingRequest> = {}
+  for (const [key, list] of groups) {
+    if (!allWaiting(list)) continue
+    const rid = list[0].report_id
+    waiting[key] = {
+      key, name: rid != null ? reports.find(x => x.id === rid)?.name ?? '' : '',
+      items: [...list].sort((a, b) => a.id - b.id).map(r => ({
+        id: r.id, date: dateLabel(r.spent_on), category: r.category,
+        amount: r.category === MILEAGE ? '' : Number(r.amount).toFixed(2), miles: r.miles != null ? String(Number(r.miles)) : '', currency: r.currency,
+        what: withoutMileageNote(r.purpose, r.miles, r.mileage_rate), client: r.client, billable: r.billable,
+        receipt: r.receipt_path ? { name: r.receipt_name ?? 'receipt', label: receiptLabel(r.receipt_name, r.receipt_size) } : null,
+      })),
+    }
+  }
+  const editKey = (r: RRow) => (waiting[keyOf(r)] ? keyOf(r) : undefined)
   const build = (list: RRow[], withWho: boolean): RmbRow[] => list.map(r => {
     const i = r.invoice_id != null ? inv.get(r.invoice_id) : undefined
     const d = r.document_id != null ? doc.get(r.document_id) : undefined
@@ -125,6 +181,8 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
       const who = orList(reimbursementApprovers(r.person_id, settings).map(id => dir.nameOf(id)))
       st = { label: 'Waiting', tone: 'warn' }; info = who ? `Waiting for ${who}.` : 'Waiting for a decision.'
     }
+    // Taken back by its person before a decision (owner, 5 November 2026).
+    else if (r.state === 'withdrawn') { st = { label: 'Withdrawn', tone: 'neu' }; info = `Withdrawn ${mine ? 'by you' : `by ${dir.nameOf(r.person_id)}`}${r.withdrawn_at ? ` ${day(r.withdrawn_at)}` : ''}${r.withdrawn_reason ? `: "${r.withdrawn_reason}"` : '.'}` }
     else if (r.state === 'denied') { st = { label: 'Denied', tone: 'bad' }; info = `Denied by ${dir.nameOf(r.decided_by)}${r.decision_note ? `: "${r.decision_note}"` : '.'}` }
     else if (r.state === 'paid') {
       st = { label: 'Paid', tone: 'ok' }
@@ -143,7 +201,11 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
       title: reportTitle(reports.find(x => x.id === r.report_id)?.name, mates.length),
       total: totalsText(mates.map(x => ({ amount: Number(x.amount), currency: x.currency }))),
     } : undefined
-    return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info, report, ...(withWho ? { who: whoOf(r.person_id) } : {}) }
+    const edit = !withWho && mine ? editKey(r) : undefined
+    return {
+      id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info, report,
+      ...(withWho ? { who: whoOf(r.person_id) } : {}), ...(edit ? { edit } : {}), ...(overMealCap(r.category, Number(r.amount), r.currency) ? { over: true } : {}),
+    }
   })
   const route = routes.get(me)
   const documents = seesAll ? await loadRmbDocList(isFinance(v, settings), settings.finance.map(dir.nameOf).join(' and '), dir, zone, localDate(now, zone)) : null
@@ -155,7 +217,15 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     documents,
     doc: !route?.isContractor && open ? { id: open.id, number: open.number } : null, clients, today: localDate(now, zone),
     mileageRate: settings.mileageRate,
+    waiting,
   }
+}
+
+/** "PDF, 96 KB" or "Photo, 1.2 MB": a stored receipt's small line in the form. */
+function receiptLabel(name: string | null, size: number | null): string {
+  const kind = (name ?? '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'Photo'
+  if (!size) return kind
+  return `${kind}, ${size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`}`
 }
 
 /** Every reimbursement document and its items' amounts. Only after the caller's check that the viewer sees everyone's money. */

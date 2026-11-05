@@ -59,40 +59,46 @@ export function ReimbursementsGuide() {
       </GuideHeader>
 
       <Step n={1} title="Open Reimbursements" picture={<Picture caption="A contractor's reimbursements: a trip waiting, one on an invoice, one paid, one denied." height={560}><ReimbursementsPicture show="page" /></Picture>}>
-        <p className="m-0">On the left rail, click the Requests icon, then <strong>Reimbursements</strong>. Each line shows the date, the category, what it was for, the amount, its state and <strong>Where it is</strong>: waiting for whom, on which invoice or document, paid when, or why it was denied.</p>
+        <p className="m-0">On the left rail, click the Requests icon, then <strong>Reimbursements</strong>. Each line shows the date, the category, the description, the amount, its state and <strong>Where it is</strong>: waiting for whom, on which invoice or document, paid when, or why it was denied.</p>
         <p className="m-0">Receipts sent together in one request sit under its name and total. A receipt icon next to a line opens the receipt.</p>
       </Step>
 
       <Step n={2} title="Ask for one, with the receipt" picture={<Picture caption="New reimbursement, with the receipt added."><ReimbursementsPicture show="receipt" /></Picture>}>
         <p className="m-0">Click <strong>New request</strong>. Drop a photo or PDF of the receipt on the box, or click it to choose a file; on a phone you can also <strong>Take a photo</strong>. Each receipt can be up to 10 MB.</p>
-        <p className="m-0">Fill in the <strong>Date of the expense</strong>, the <strong>Category</strong>, the <strong>Amount</strong> and <strong>What it was for</strong>. If it was for a client, pick it under <strong>Client or project (optional)</strong> and say whether it is <strong>Billable to the client</strong>. Click <strong>Send request</strong>.</p>
-        <p className="m-0">Contractors ask in US dollars, because their invoice is in USD: paid in another currency, convert it and write the amount you paid in What it was for. Employees can pick the <strong>Currency</strong>, and Finance converts at the rate of the expense date.</p>
+        <p className="m-0">Fill in the <strong>Date of the expense</strong> (like 10/31/2026 or Oct 31, 2026), the <strong>Category</strong>, the <strong>Amount</strong> and the <strong>Description of expense</strong>. If it was for a client, pick it under <strong>Client or project (optional)</strong> and say whether it is <strong>Billable to the client</strong>. Click <strong>Send request</strong>.</p>
+        <p className="m-0">Contractors ask in US dollars, because their invoice is in USD: paid in another currency, convert it and write the amount you paid in the description. Employees can pick the <strong>Currency</strong>, and Finance converts at the rate of the expense date.</p>
       </Step>
 
       <Step n={3} title="Pick the right category">
         <p className="m-0">The categories are Internet, Software, Equipment, Travel, Mileage, Meals while travelling, Meals with a client and Other. Every one needs its receipt except Mileage.</p>
-        <p className="m-0"><strong>Meals while travelling</strong> are paid up to $25 a meal; meals at a conference or event are already paid for.</p>
+        <p className="m-0"><strong>Meals while travelling</strong> are $25 a meal. A meal over that still goes, for review: the form says it is over the limit, and the description must say why in a few words. The approver sees it flagged <strong>Over the $25 meal limit</strong>.</p>
       </Step>
 
       <Step n={4} title="Mileage" picture={<Picture caption="A mileage line: the miles, and the amount worked out."><ReimbursementsPicture show="mileage" /></Picture>}>
-        <p className="m-0">Pick <strong>Mileage</strong> as the category and write the <strong>Miles</strong> instead of an amount. The portal works it out at the company&apos;s rate a mile, in US dollars, and shows it as you type. No receipt is needed: write where you drove in What it was for.</p>
+        <p className="m-0">Pick <strong>Mileage</strong> as the category and write the <strong>Miles</strong> instead of an amount. The portal works it out at the company&apos;s rate a mile, in US dollars, and shows it as you type. No receipt is needed: write where you drove in the description.</p>
       </Step>
 
       <Step n={5} title="Several receipts in one request" picture={<Picture caption="A trip sent as one request with three receipts." height={760}><ReimbursementsPicture show="several" /></Picture>}>
         <p className="m-0">For a trip or an event, click <strong>Add another receipt</strong>, or drop several photos and PDFs at once. Name it under <strong>Event or trip (optional)</strong> and pick the client once at the top; <strong>Other client for this receipt</strong> changes it for one line. The button says how many you are sending, for example <strong>Send 3 receipts</strong>.</p>
         <p className="m-0">Each receipt is decided on its own, so one can be denied while the others are approved.</p>
+        <p className="m-0">Sending more for the same event later? Use the same name: while every receipt of that request is still waiting, the new ones join it (case and spaces do not matter), so the whole event is approved at once. Once part of it is decided, a new request is made.</p>
       </Step>
 
-      <Step n={6} title="Who decides">
+      <Step n={6} title="Change or withdraw it while it waits">
+        <p className="m-0">While nothing in a request is decided, your own shows <strong>Edit</strong> and <strong>Withdraw</strong>. Edit opens the same form, filled in: change the date, category, amount or miles, description, client or billable, replace a receipt, add one or remove one, then click <strong>Save changes</strong>. Withdraw takes the whole request back, with a reason if you like; it shows <strong>Withdrawn</strong> in your list and leaves Approvals.</p>
+        <p className="m-0">Whoever decides is told in the bell, and every change is kept with who made it and when. Once any receipt is decided, the request can no longer be changed.</p>
+      </Step>
+
+      <Step n={7} title="Who decides">
         <p className="m-0">Reimbursements go to the reimbursement approvers set in Company settings, who decide them in <Link href="/manual/guides/approvals" className={LINK}>Approvals</Link>. You hear back in the bell. A denied one shows the reason under Where it is: fix what it says and send a new request.</p>
       </Step>
 
-      <Step n={7} title="After it is approved" picture={<Picture caption="An employee's reimbursements, with the document waiting for Finance." height={460}><ReimbursementsPicture show="employee" /></Picture>}>
+      <Step n={8} title="After it is approved" picture={<Picture caption="An employee's reimbursements, with the document waiting for Finance." height={460}><ReimbursementsPicture show="employee" /></Picture>}>
         <p className="m-0"><strong>Contractors:</strong> you make and send your own invoice, so it waits for it. When you send your next invoice (North Time, <strong>Invoices</strong>, <strong>Send your invoice</strong>), tick it: it goes on as its own line and shows <strong>On invoice</strong>.</p>
         <p className="m-0"><strong>Employees:</strong> the portal puts it on a reimbursement document for Finance. The card at the top of the page opens it.</p>
       </Step>
 
-      <Step n={8} title="The reimbursement document (employees)" picture={<Picture caption="A reimbursement document, as its employee sees it." height={640}><RmbDocPicture /></Picture>}>
+      <Step n={9} title="The reimbursement document (employees)" picture={<Picture caption="A reimbursement document, as its employee sees it." height={640}><RmbDocPicture /></Picture>}>
         <p className="m-0">It lists your approved items, each with its receipt, and the total. New approved items are added to it by themselves until it is paid. <strong>Preview PDF</strong> shows it as a PDF.</p>
         <p className="m-0">Finance pays it outside Rippling payroll and marks it paid; you see it in the bell, and its items show <strong>Paid</strong>.</p>
       </Step>

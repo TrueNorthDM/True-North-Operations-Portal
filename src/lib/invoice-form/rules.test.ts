@@ -192,10 +192,13 @@ describe('everything a sender types', () => {
     expect(checkSubmission({ ...base, reimbursements: [rmb, rmb] }, ctx).ok).toBe(false)
   })
 
-  it('works out mileage from the company rate, with no receipt, and caps a meal while travelling', () => {
+  it('works out mileage from the company rate, with no receipt, and sends a meal over $25 for review with its reason', () => {
     const r = checkSubmission({ ...base, reimbursements: [{ category: 'Mileage', date: '2026-10-03', miles: '120', purpose: 'Client visit' }] }, ctx)
     expect(r.ok && r.value.reimbursements[0]).toMatchObject({ amount: 91.2, miles: 120, mileageRate: 0.76, file: null, purpose: 'Client visit (120 mi at $0.76 a mile)' })
+    // Owner, 5 November 2026: over the $25 it goes through when the description says why; one word is not enough.
     expect(checkSubmission({ ...base, reimbursements: [{ category: 'Meals while travelling', date: '2026-10-03', amount: '30', purpose: 'Dinner', file: 0 }] }, ctx).ok).toBe(false)
+    const meal = checkSubmission({ ...base, reimbursements: [{ category: 'Meals while travelling', date: '2026-10-03', amount: '30', purpose: 'Dinner at the hotel, the only place open', file: 0 }] }, ctx)
+    expect(meal.ok && meal.value.reimbursements[0]).toMatchObject({ amount: 30, category: 'Meals while travelling' })
   })
 
   it('keeps billable only with a client', () => {

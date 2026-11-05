@@ -16,6 +16,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-cards'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { MEAL_OVER_FLAG } from '@/lib/timeclock/reimbursement-rules'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
 import { SEG_BOX, SEG_OFF, SEG_ON, SEG_OPT } from '@/lib/ui/segmented'
 import { PILL } from '@/components/ui/Pill'
@@ -181,6 +182,7 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
         <div className="flex-1 min-w-[150px] flex flex-col gap-0.5">
           <span className="text-[13px] font-semibold text-tn-ink leading-[1.35]">{it.purpose}</span>
           <span className="text-[12px] text-muted leading-[1.35]">{it.date} · {it.category}{it.client ? ` · ${it.client}` : ''}</span>
+          {it.over && <span className="self-start text-[11px] font-bold rounded-full px-2 py-0.5 bg-[var(--warn-bg)] text-[#8a6d1a]">{MEAL_OVER_FLAG}</span>}
         </div>
         <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{it.amount}</span>
         {waiting && canDecide ? (

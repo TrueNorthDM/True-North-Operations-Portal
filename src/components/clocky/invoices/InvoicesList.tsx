@@ -99,7 +99,7 @@ export function InvoicesList({ data, api, initial, extra }: {
 
   const exportCsv = () => {
     const head = ['Number', 'Person', 'Team', 'Period', 'Pays as', 'Total', 'State', 'Paid']
-    const lines = [head, ...shown.map(r => [r.number, r.who, r.team, r.period, r.pays, r.amount.toFixed(2), STATE_PILL[r.st].label, r.where])]
+    const lines = [head, ...shown.map(r => [r.number, r.who, r.team, r.period, r.pays, r.amount.toFixed(2), STATE_PILL[r.st].label, r.csvWhere ?? r.where])]
     const name = `invoices-${period.toLowerCase().replace(/\s+/g, '-')}.csv`
     downloadCsv(name, lines)
     say({ text: `Exported ${shown.length} invoice${shown.length === 1 ? '' : 's'} to ${name}` })

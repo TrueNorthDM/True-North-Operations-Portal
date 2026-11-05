@@ -36,3 +36,16 @@ export interface CsvFileOptions {
 export function csvFile(lines: readonly string[], { bom = true }: CsvFileOptions = {}): string {
   return (bom ? '\uFEFF' : '') + lines.join('\r\n') + '\r\n'
 }
+
+/**
+ * A day in an export, as numbers the US way: 2026-10-01 to "10/1/2026" (owner,
+ * 5 November 2026, from Finance: spreadsheets read it as a date). Only CSV
+ * files; the screens and PDFs keep "Oct 1, 2026". Anything that is not a
+ * YYYY-MM-DD day (or an ISO time starting with one) comes back as it was;
+ * nothing is an empty cell.
+ */
+export function csvDate(day: string | null | undefined): string {
+  if (!day) return ''
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(day)
+  return m ? `${+m[2]}/${+m[3]}/${m[1]}` : day
+}

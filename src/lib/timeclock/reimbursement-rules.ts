@@ -11,9 +11,21 @@ export const MEALS_TRAVEL = 'Meals while travelling'
 
 export const CATEGORIES = ['Internet', 'Software', 'Equipment', 'Travel', MILEAGE, MEALS_TRAVEL, 'Meals with a client', 'Other']
 
-/** The most a meal while travelling is paid, in US dollars. */
+/**
+ * A meal while travelling is $25 (owner, 5 November 2026, from Tina's feedback):
+ * over that, the request still goes, for its decider to review, and the
+ * description must say why.
+ */
 export const MEAL_CAP = 25
-export const MEAL_HINT = 'Meals while travelling are $25 a meal at most. Meals at a conference or event are already paid for.'
+export const MEAL_HINT = 'Meals while travelling are $25 a meal; over that, explain why in the description.'
+/** Under a meal over the $25, in the form (portal and /send). */
+export const MEAL_OVER_WARNING = 'This meal is over the $25 limit. Explain why in the description so it can be reviewed.'
+/** What the decider sees on that receipt in Approvals. */
+export const MEAL_OVER_FLAG = 'Over the $25 meal limit'
+/** The form's field for what the expense was (owner, 5 November 2026); the column is still `purpose`. */
+export const DESCRIPTION_LABEL = 'Description of expense'
+/** Words a description of a meal over the $25 needs, so it explains why. */
+export const MEAL_REASON_WORDS = 3
 
 /** The company's rate when none is set (Company settings > Invoices). */
 export const DEFAULT_MILEAGE_RATE = 0.76
@@ -41,6 +53,22 @@ export function milesOf(raw: string): number | null {
   return n > 0 && n < 10_000 ? Math.round(n * 10) / 10 : null
 }
 
-/** A meal while travelling over the cap (US dollars only; another currency has no cap). */
+/** A meal while travelling over the cap (US dollars only; another currency has no cap): allowed, flagged for review. */
 export const overMealCap = (category: string, amount: number, currency: string): boolean =>
   category === MEALS_TRAVEL && currency === 'USD' && amount > MEAL_CAP
+
+const words = (text: string) => text.trim().split(/\s+/).filter(w => /[A-Za-z0-9]/.test(w)).length
+
+/** A meal over the cap whose description is too short to say why (form and server alike). */
+export const mealReasonMissing = (category: string, amount: number, currency: string, description: string): boolean =>
+  overMealCap(category, amount, currency) && words(description) < MEAL_REASON_WORDS
+
+/** The refusal when it is missing. */
+export const MEAL_REASON_ERROR = 'this meal is over the $25 limit: explain why in the description, in a few words.'
+
+/** What a Mileage line's person wrote, without the " (120 mi at $0.76 a mile)" the portal added: what an edit starts from. */
+export function withoutMileageNote(purpose: string, miles: number | null, rate: number | null): string {
+  if (miles == null || rate == null) return purpose
+  const note = mileageNote(Number(miles), Number(rate))
+  return purpose.endsWith(note) ? purpose.slice(0, -note.length) : purpose
+}

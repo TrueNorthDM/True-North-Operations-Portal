@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildSubmitBlock } from './submit-block'
-import { parsePaidOn } from './paid-on'
+import { DAY_HINT, parsePaidOn } from './paid-on'
 
 const H = 3600
 
@@ -48,5 +48,14 @@ describe('the Paid on day (6G)', () => {
     expect(parsePaidOn('2026-11-03')).toBe('2026-11-03')
     expect(parsePaidOn('Feb 30, 2026')).toBeNull()
     expect(parsePaidOn('tomorrow')).toBeNull()
+    // Numbers the US way, month first (owner, 5 November 2026: "10/1/2026" was refused).
+    expect(parsePaidOn('10/1/2026')).toBe('2026-10-01')
+    expect(parsePaidOn(' 12/31/2026 ')).toBe('2026-12-31')
+    expect(parsePaidOn('10/1/26')).toBe('2026-10-01')
+    expect(parsePaidOn('02/09/2026')).toBe('2026-02-09')
+    expect(parsePaidOn('2/30/2026')).toBeNull()
+    expect(parsePaidOn('13/1/2026')).toBeNull()
+    expect(parsePaidOn('10/1/202')).toBeNull()
+    expect(DAY_HINT).toBe('Write the date of the expense, like 10/31/2026 or Oct 31, 2026.')
   })
 })

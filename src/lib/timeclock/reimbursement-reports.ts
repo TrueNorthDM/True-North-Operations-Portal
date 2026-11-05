@@ -30,3 +30,34 @@ export function decisionText(approved: number, denied: number): string {
   if (!approved) return denied === 1 ? 'Denied.' : `Denied all ${denied}.`
   return `Approved ${approved}, denied ${denied}.`
 }
+
+// ── One request for the same event (owner, 5 November 2026) ────────────────
+
+/** An event or trip's name as compared: case and spaces ignored ("ASI  Convention" is "asi convention"). */
+export const eventKey = (name: string | null | undefined): string => (name ?? '').toLowerCase().replace(/\s+/g, '')
+
+/**
+ * The person's request a new one with this event name joins: one with the same
+ * name whose every receipt is still waiting (the newest, if several). Null when
+ * there is none, or when the one with that name is already partly decided:
+ * then a new request is made, as before.
+ */
+export function joinableReport(
+  reports: readonly { id: number; name: string | null }[],
+  items: readonly { report_id: number | null; state: string }[],
+  name: string | null | undefined,
+): number | null {
+  const key = eventKey(name)
+  if (!key) return null
+  const ok = reports.filter(r => eventKey(r.name) === key).filter(r => {
+    const mine = items.filter(i => i.report_id === r.id)
+    return mine.length > 0 && mine.every(i => i.state === 'pending')
+  })
+  return ok.length ? Math.max(...ok.map(r => r.id)) : null
+}
+
+/** The toast when the receipts joined it: "Added to your waiting request "ASI convention": now 5 receipts." */
+export const joinedToast = (name: string, n: number): string => `Added to your waiting request "${name.trim()}": now ${receiptsText(n)}.`
+
+/** A request still waiting is entirely pending: what may be edited or withdrawn. */
+export const allWaiting = (items: readonly { state: string }[]): boolean => items.length > 0 && items.every(i => i.state === 'pending')

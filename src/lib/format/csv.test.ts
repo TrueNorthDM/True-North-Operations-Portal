@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { csvCell, csvFile, csvRow } from './csv'
+import { csvCell, csvDate, csvFile, csvRow } from './csv'
 
 // The copies this module replaced (audit, 15 October 2026), frozen here so the
 // test can show the files they wrote come out byte for byte the same.
@@ -81,5 +81,18 @@ describe('csvFile', () => {
     const lines = rows.map(csvRow)
     expect(csvFile(lines)).toBe(oldFile(rows.map(r => r.map(oldRouteCell).join(','))))
     expect(csvFile([])).toBe(oldFile([]))
+  })
+})
+
+describe('csvDate (owner, 5 November 2026)', () => {
+  it('writes a day as numbers, month first, no leading zeros', () => {
+    expect(csvDate('2026-10-01')).toBe('10/1/2026')
+    expect(csvDate('2026-12-31')).toBe('12/31/2026')
+    expect(csvDate('2026-01-05T14:00:00Z')).toBe('1/5/2026')
+  })
+  it('leaves nothing empty and anything else as it was', () => {
+    expect(csvDate(null)).toBe('')
+    expect(csvDate(undefined)).toBe('')
+    expect(csvDate('Waiting for Finance')).toBe('Waiting for Finance')
   })
 })

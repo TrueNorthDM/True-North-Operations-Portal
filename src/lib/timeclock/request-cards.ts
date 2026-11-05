@@ -28,6 +28,7 @@ import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays } from './time-off'
 import { usd } from './invoice-doc'
 import { receiptsText, reportTitle, totalsText, type Amount } from './reimbursement-reports'
+import { DESCRIPTION_LABEL, MEAL_OVER_FLAG, overMealCap } from './reimbursement-rules'
 
 /** One receipt of a request with several (migration 122), decided on its own. */
 export interface ReportItem {
@@ -45,6 +46,8 @@ export interface ReportItem {
   receipt: { id: number; file: string; sub: string } | null
   state: string
   note: string | null
+  /** A meal while travelling over the $25 (owner, 5 November 2026): allowed, flagged for the decider to review. */
+  over?: boolean
 }
 
 export interface RequestCard {
@@ -291,9 +294,12 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const decided = list.filter(r => r.decided_at).sort((a, b) => b.decided_at!.localeCompare(a.decided_at!))[0]
       const clients = [...new Set(list.map(r => r.client).filter((x): x is string => !!x))]
       const purposes = list.map(r => r.purpose)
+      // Meals over the $25 go through for review (owner, 5 November 2026): the row and the card say so.
+      const overs = list.filter(r => overMealCap(r.category, Number(r.amount), r.currency)).length
       out.push({
         key: `rr${reportId}`, type: 'rmb', id: reportId, personId: r0.person_id, ...who,
-        main: `${name ?? 'Several receipts'} · ${total}`, sub: `${receiptsText(list.length)}: ${purposes.slice(0, 3).join(', ')}${purposes.length > 3 ? ', …' : ''}`, flag: null,
+        main: `${name ?? 'Several receipts'} · ${total}`, sub: `${receiptsText(list.length)}: ${purposes.slice(0, 3).join(', ')}${purposes.length > 3 ? ', …' : ''}`,
+        flag: overs ? { text: MEAL_OVER_FLAG, tone: 'warn' } : null,
         why: contractor ? 'Contractor: each receipt goes on their next invoice.' : 'Employee: they go on a reimbursement document for Finance.',
         asked: asked(r0.asked_at, v.zone), askedAt: r0.asked_at,
         ownerName, owner, decides, own,
@@ -308,9 +314,10 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           items: list.map(r => ({
             id: r.id, date: dayLabel(r.spent_on).replace(/^[A-Z][a-z]{2}, /, ''), category: r.category, purpose: r.purpose, amount: amountOf(r), value: { amount: Number(r.amount), currency: r.currency },
             client: r.client ? `${r.client}, ${r.billable ? 'billable' : 'not billable'}` : null, receipt: receiptOf(r), state: r.state, note: r.decision_note,
+            ...(overMealCap(r.category, Number(r.amount), r.currency) ? { over: true } : {}),
           })),
           facts: [{ k: 'Client or project', v: clients.length ? clients.join(', ') : 'None, not billable to a client' }],
-          allow: null, cal: null,
+          allow: overs ? `${overs === 1 ? 'A meal is' : `${overs} meals are`} over the $25 meal limit. The description says why; review it before you approve.` : null, cal: null,
           after: contractor
             ? `${who.name} is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.`
             : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
@@ -329,10 +336,11 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const { canDecide, decides, owner, ownerName } = routed('rmb', r.person_id, pending)
       const doc = openDocs.find(d => d.person_id === r.person_id)
       const isPdf = (r.receipt_name ?? '').toLowerCase().endsWith('.pdf')
+      const over = overMealCap(r.category, Number(r.amount), r.currency)
       const size = r.receipt_size ? (r.receipt_size >= 1048576 ? `${(r.receipt_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.receipt_size / 1024))} KB`) : ''
       out.push({
         key: `r${r.id}`, type: 'rmb', id: r.id, personId: r.person_id, ...who,
-        main: `${r.category} · ${amt}`, sub: r.purpose, flag: null,
+        main: `${r.category} · ${amt}`, sub: r.purpose, flag: over ? { text: MEAL_OVER_FLAG, tone: 'warn' } : null,
         why: contractor ? 'Contractor: goes on their next invoice.' : 'Employee: goes on a reimbursement document for Finance.',
         asked: asked(r.asked_at, v.zone), askedAt: r.asked_at,
         ownerName, owner, decides, own,
@@ -346,10 +354,10 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           facts: [
             { k: 'Date of the expense', v: `${dayLabel(r.spent_on)}, ${r.spent_on.slice(0, 4)}` },
             { k: 'Amount', v: `${amt} (${r.currency})` },
-            { k: 'What it was for', v: r.purpose },
+            { k: DESCRIPTION_LABEL, v: r.purpose },
             { k: 'Client or project', v: r.client ? `${r.client}, ${r.billable ? 'billable' : 'not billable'} to the client` : 'None, not billable to a client' },
           ],
-          allow: null, cal: null,
+          allow: over ? `${MEAL_OVER_FLAG}. The description says why; review it before you approve.` : null, cal: null,
           after: contractor
             ? `${who.name} is a contractor. Approving puts it on their next invoice by itself.`
             : `${who.name} is an employee. Approving puts it on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,

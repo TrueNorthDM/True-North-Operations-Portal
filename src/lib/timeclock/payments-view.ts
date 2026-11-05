@@ -74,12 +74,15 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
   const rmbRows = x.reimbursements.map(r => {
     const inv = r.invoice_id ? byId.get(r.invoice_id) : undefined
     const st: PaymentsRow['st'] = r.state === 'on_invoice' ? { label: 'On invoice', tone: 'navy' } : r.state === 'paid' ? { label: 'Paid', tone: 'ok' }
-      : r.state === 'approved' ? { label: 'Approved', tone: 'teal' } : r.state === 'denied' ? { label: 'Denied', tone: 'bad' } : { label: 'Waiting', tone: 'warn' }
+      : r.state === 'approved' ? { label: 'Approved', tone: 'teal' } : r.state === 'denied' ? { label: 'Denied', tone: 'bad' }
+        : r.state === 'withdrawn' ? { label: 'Withdrawn', tone: 'neu' } : { label: 'Waiting', tone: 'warn' }
     // "INV-2026-143, waiting for approval": the invoice and its state.
     const c5 = r.state === 'on_invoice' && inv ? `${inv.number}, ${INVOICE_STATE[where(inv).st].label.toLowerCase()}`
       : r.state === 'paid' && inv ? `Paid with ${inv.number}`
         : r.state === 'approved' ? 'Goes on your next invoice'
-          : r.state === 'denied' ? `Denied${r.decision_note ? `: ${r.decision_note}` : ''}` : 'Waiting for a decision'
+          : r.state === 'denied' ? `Denied${r.decision_note ? `: ${r.decision_note}` : ''}`
+            // Taken back by them before a decision (owner, 5 November 2026).
+            : r.state === 'withdrawn' ? 'Withdrawn by you' : 'Waiting for a decision'
     return { key: `r${r.id}`, c1: r.purpose, c2: dateLabel(r.spent_on), c3: r.category, c4: usd(Number(r.amount)), st, c5, doc: inv ? { kind: 'invoice' as const, id: inv.id } : null }
   })
   return {

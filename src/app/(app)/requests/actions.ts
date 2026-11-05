@@ -10,7 +10,10 @@
  *                            a Team Leader, for someone on their teams
  *   Reimbursement documents  Finance marks one paid (9D); the reimbursement
  *   (9D)                     itself is sent with its receipt by a route
- *                            (reimbursements/new/route.ts)
+ *                            (reimbursements/new/route.ts), and changed by
+ *                            another while it waits (edit/route.ts)
+ *   Withdraw a reimbursement its person takes back a request still entirely
+ *                            waiting (owner, 5 November 2026)
  *
  * Whoever the routing names decides on Approvals (approvals/actions.ts;
  * Company settings, Who approves what), and each toast names them. Writes are for the
@@ -36,6 +39,10 @@ import { formatDuration } from '@/lib/timeclock/rounding'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import type { Fail, Result } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
+import { announceReimbursementChanged } from '@/lib/timeclock/clocky-notify'
+import { allWaiting, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { snapshotOf } from '@/lib/timeclock/reimbursement-form'
+import { logRmbChanges } from '@/lib/timeclock/reimbursement-store'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const fail = (error: string): Fail => ({ ok: false, error })
@@ -225,3 +232,52 @@ export async function markRmbPaid(input: { id: number; paidOn: string; ref?: str
   }
 }
 
+
+// ── Withdraw a reimbursement request (owner, 5 November 2026) ───────────────
+
+/**
+ * The person takes back their own request while every receipt of it is still
+ * waiting: "report:<id>" (a request with a name or several receipts) or
+ * "item:<id>" (one receipt with no name), with a reason if they like. It
+ * leaves Approvals, shows "Withdrawn" in their list, and whoever decides hears
+ * of it in the bell. Kept in its history (migration 153).
+ */
+export async function withdrawReimbursement(input: { target: string; reason?: string }): Promise<Result<{ toast: string }>> {
+  const v = await actor('rq-reimbursements')
+  if (isFail(v)) return v
+  try {
+    const m = /^(report|item):(\d+)$/.exec(String(input.target ?? ''))
+    if (!m) return fail('Pick the request to withdraw.')
+    const c = db()
+    const cols = 'id, person_id, report_id, state, spent_on, category, amount, currency, purpose, client, billable, miles, receipt_name, receipt_number'
+    const read = m[1] === 'report'
+      ? await c.from('reimbursements').select(cols).eq('report_id', Number(m[2])).order('id')
+      : await c.from('reimbursements').select(cols).eq('id', Number(m[2])).is('report_id', null)
+    if (read.error) return notSaved(read.error)
+    const rows = read.data ?? []
+    if (!rows.length || rows.some(r => r.person_id !== v.personId)) return fail('That request is not yours to withdraw.')
+    if (!allWaiting(rows)) return fail('This request is no longer waiting: part of it has been decided, so it cannot be withdrawn.')
+    const reason = String(input.reason ?? '').trim().slice(0, 1000) || null
+    const at = new Date().toISOString()
+    const { data, error } = await c.from('reimbursements').update({ state: 'withdrawn', withdrawn_at: at, withdrawn_reason: reason })
+      .in('id', rows.map(r => r.id)).eq('person_id', v.personId).eq('state', 'pending').select('id')
+    if (error) return notSaved(error)
+    // A decision made meanwhile wins: what was withdrawn waits again, so the request is never half withdrawn.
+    if ((data ?? []).length !== rows.length) {
+      const back = (data ?? []).map(r => r.id)
+      if (back.length) await c.from('reimbursements').update({ state: 'pending', withdrawn_at: null, withdrawn_reason: null }).in('id', back).eq('state', 'withdrawn')
+      return fail('This request was decided while you withdrew it. Reload the page to see where it is.')
+    }
+    await logRmbChanges(v.personId, at, rows.map(r => ({ action: 'withdrawn' as const, reimbursementId: r.id, reportId: r.report_id, before: snapshotOf(r), reason })))
+    const name = m[1] === 'report' ? (await c.from('reimbursement_reports').select('name').eq('id', Number(m[2])).maybeSingle()).data?.name ?? null : null
+    await announceReimbursementChanged({
+      firstId: rows[0].id, personId: v.personId, what: 'withdrawn', at, reason,
+      title: m[1] === 'report' ? reportTitle(name, rows.length) : rows[0].category,
+      total: totalsText(rows.map(r => ({ amount: Number(r.amount), currency: r.currency }))),
+    })
+    refresh()
+    return { ok: true, toast: rows.length === 1 ? 'Withdrawn. It no longer waits for a decision.' : `Withdrawn, all ${rows.length} receipts. They no longer wait for a decision.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}

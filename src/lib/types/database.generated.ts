@@ -3182,6 +3182,64 @@ export type Database = {
         }
         Relationships: []
       }
+      reimbursement_changes: {
+        Row: {
+          action: string
+          after: Json | null
+          before: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: number
+          person_id: string
+          reason: string | null
+          reimbursement_id: number | null
+          report_id: number | null
+        }
+        Insert: {
+          action: string
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          person_id: string
+          reason?: string | null
+          reimbursement_id?: number | null
+          report_id?: number | null
+        }
+        Update: {
+          action?: string
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          person_id?: string
+          reason?: string | null
+          reimbursement_id?: number | null
+          report_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursement_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursement_changes_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursement_changes_report_id_fkey"
+            columns: ["report_id"]
+            referencedRelation: "reimbursement_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reimbursement_documents: {
         Row: {
           created_at: string
@@ -3290,6 +3348,8 @@ export type Database = {
           report_id: number | null
           spent_on: string
           state: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           receipt_number?: string | null
@@ -3315,6 +3375,8 @@ export type Database = {
           report_id?: number | null
           spent_on: string
           state?: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           receipt_number?: string | null
@@ -3340,6 +3402,8 @@ export type Database = {
           report_id?: number | null
           spent_on?: string
           state?: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {

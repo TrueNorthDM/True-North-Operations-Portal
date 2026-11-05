@@ -2,7 +2,7 @@
 
 /** Requests on the live pages: the screens over requests/actions.ts and approvals/actions.ts. */
 
-import { askCancelTimeOff, askExtraHours, askTimeOff, cancelTimeOff, markRmbPaid } from '@/app/(app)/requests/actions'
+import { askCancelTimeOff, askExtraHours, askTimeOff, cancelTimeOff, markRmbPaid, withdrawReimbursement } from '@/app/(app)/requests/actions'
 import { retryTimeOffRippling } from '@/app/(app)/clocky-hours/approvals/actions'
 import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
 import type { TimeOffPage } from '@/lib/timeclock/time-off-data'
@@ -18,7 +18,7 @@ export function TimeOffLive({ data }: { data: TimeOffPage }) {
 }
 
 export function ReimbursementsLive({ data, documents }: { data: ReimbursementsPage; documents?: { st?: DocFilter } }) {
-  return <ReimbursementsView data={data} send={sendReimbursement} markRmbPaid={markRmbPaid} initial={documents ? { tab: 'docs', st: documents.st } : undefined} />
+  return <ReimbursementsView data={data} send={sendReimbursement} markRmbPaid={markRmbPaid} withdraw={withdrawReimbursement} initial={documents ? { tab: 'docs', st: documents.st } : undefined} />
 }
 
 export function RmbDocLive({ d }: { d: RmbDocPage }) {

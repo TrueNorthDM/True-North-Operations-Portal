@@ -43,7 +43,7 @@ import { allCountries, countryName } from '@/lib/countries'
 import { dateLabel } from '@/lib/timeclock/format'
 import { dueOn } from '@/lib/timeclock/invoice-lines'
 import { usd } from '@/lib/timeclock/invoice-doc'
-import { CATEGORIES, MEAL_HINT, MEALS_TRAVEL, MILEAGE, mileageAmount, mileageNote, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+import { CATEGORIES, DESCRIPTION_LABEL, MEAL_HINT, MEAL_OVER_WARNING, MEALS_TRAVEL, MILEAGE, mealReasonMissing, mileageAmount, mileageNote, mileageText, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
 import {
   DELIVERABLE_LABEL, DELIVERABLE_TAG, MAX_FILE, MAX_STATED, RECEIPT_TYPES, buildFormLines, codeOf, emailOf, itemName, keptText, withMonth,
   type Deliverable, type FormKind, type Rates,
@@ -216,9 +216,13 @@ const addressLine = (d: Details) => formatAddressLines({ line1: d.line1, line2: 
 const amountOf = (s: string) => Number(s.replace(/[$,\s]/g, ''))
 const fileOk = (f: File) => f.size <= MAX_FILE && !!RECEIPT_TYPES[f.type]
 const shortDay = (iso: string) => dateLabel(iso).replace(/, \d{4}$/, '')
-/** A receipt ready to add: its file (but Mileage), its miles or amount (a meal while travelling under the cap), what it was for. */
+/**
+ * A receipt ready to add: its file (but Mileage), its miles or amount, its
+ * description; a meal while travelling over the $25 goes for review with a
+ * description that says why (owner, 5 November 2026).
+ */
 const receiptOk = (r: Receipt) => (!!r.file || !needsReceipt(r.category)) && !!r.date
-  && (r.category === MILEAGE ? milesOf(r.miles) != null : amountOf(r.amount) > 0 && amountOf(r.amount) < 100_000 && !overMealCap(r.category, amountOf(r.amount), 'USD'))
+  && (r.category === MILEAGE ? milesOf(r.miles) != null : amountOf(r.amount) > 0 && amountOf(r.amount) < 100_000 && !mealReasonMissing(r.category, amountOf(r.amount), 'USD', r.what))
   && !!r.what.trim()
 
 function DetailsEditor({ d, set, email, found, onCancel, onUse }: { d: Details; set: (p: Partial<Details>) => void; email: string; found: boolean; onCancel?: () => void; onUse?: () => void }) {
@@ -306,9 +310,11 @@ function ReceiptEditor({ r, n, ctx, onCancel, onSave }: { r: Receipt; n: number;
           <div className="flex flex-col gap-[5px]"><FieldLabel>Currency</FieldLabel><Select fullWidth value="USD" onChange={() => {}} options={[{ value: 'USD', label: 'USD' }]} ariaLabel="Currency" className={SELECT_FIELD} /></div>
         </div>
       )}
-      {d.category === MEALS_TRAVEL && <p className={`m-0 text-[12px] leading-[1.45] ${overMealCap(d.category, amountOf(d.amount), 'USD') ? 'text-[#c8323d] font-semibold' : 'text-muted'}`}>{MEAL_HINT}</p>}
-      {!mileage && <p className="m-0 -mt-1.5 text-[12px] text-muted leading-[1.45]">In US dollars: the invoice is in USD. Paid in another currency? Convert it, and write the amount you paid in What it was for.</p>}
-      <Field label="What it was for"><textarea value={d.what} onChange={e => set({ what: e.target.value })} rows={2} maxLength={440} placeholder="e.g. Adobe Premiere, November" className={`w-full ${TEXTAREA}`} /></Field>
+      {d.category === MEALS_TRAVEL && (overMealCap(d.category, amountOf(d.amount), 'USD')
+        ? <p role="status" className="m-0 text-[12px] leading-[1.45] text-[#8a6d1a] font-semibold bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">{MEAL_OVER_WARNING}</p>
+        : <p className="m-0 text-[12px] leading-[1.45] text-muted">{MEAL_HINT}</p>)}
+      {!mileage && <p className="m-0 -mt-1.5 text-[12px] text-muted leading-[1.45]">In US dollars: the invoice is in USD. Paid in another currency? Convert it, and write the amount you paid in the description.</p>}
+      <Field label={DESCRIPTION_LABEL}><textarea value={d.what} onChange={e => set({ what: e.target.value })} rows={2} maxLength={440} placeholder="e.g. Adobe Premiere, November" className={`w-full ${TEXTAREA}`} /></Field>
       <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
         <div className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Client or project (optional)</FieldLabel><Select fullWidth searchable value={d.client} onChange={v => set({ client: v, billable: v === 'None' ? 'no' : d.billable })} options={clientOptions} ariaLabel="Client or project" className={SELECT_FIELD} /></div>
         <div className="flex flex-col gap-[5px]">

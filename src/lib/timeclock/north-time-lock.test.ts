@@ -63,6 +63,7 @@ const WRITE_FILES = [
   'clocky-hours/whos-working/actions.ts',
   'requests/actions.ts',
   'requests/reimbursements/new/route.ts',
+  'requests/reimbursements/edit/route.ts',
   'admin/settings/skipped-actions.ts',
 ]
 /** Reads: they record nothing, so they need no lock. */

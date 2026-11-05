@@ -20,6 +20,7 @@ import { isFinance, loadRouteSettings, loadRoutes, seesMoney, type InvoiceSettin
 import { periodLabel } from './periods'
 import { hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson } from './routing'
 import { cameFrom } from '@/lib/invoice-form/rules'
+import { csvDate } from '@/lib/format/csv'
 import { driveShow, folderText, historyLines, wantInvoice, type DriveBoxData, type DriveShow } from '@/lib/drive/copy-plan'
 import { copyFrom, copyRow, driveShows } from '@/lib/drive/copies'
 import { docFileName } from '@/lib/drive/file-names'
@@ -58,6 +59,8 @@ export interface InvoiceListRow {
   where: string
   /** "Oct 12, 2026": when it was paid, for the strip. */
   paidOn: string | null
+  /** The Paid column in the CSV: its day as numbers, "10/12/2026 · ref" (owner, 5 November 2026). */
+  csvWhere?: string
   canPay: boolean
   /** Its copy in Google Drive (owner, 31 October 2026), on the everyone list only. */
   drive?: DriveShow
@@ -121,11 +124,13 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
         : st === 'hrs' ? `Hours with ${src.nameOf(hb)}`
           : st === 'wait' ? (!sub || (route && oneStep(route, src.settings)) ? `With ${src.nameOf(ib)}` : `Hours approved · with ${src.nameOf(ib)}`)
             : '-'
+    const csvWhere = st === 'paid' ? `${csvDate(i.paid_on)}${i.paid_ref ? ` · ${i.paid_ref}` : ''}`
+      : st === 'appr' ? `Approved ${csvDate(i.approved_at?.slice(0, 10))}`.trim() : where
     const p = src.person(i.person_id)
     return {
       id: i.id, number: i.number, personId: i.person_id, who: p.name, initials: initialsOf(p.name), team: p.team, teamColor: p.color,
       period: periodLabel({ start: i.period_start, end: i.period_end }).full, pays: paysOf(i.kind, src.rates.get(i.id), i.source),
-      total: usd(Number(i.total)), amount: Number(i.total), st, where, paidOn: i.paid_on,
+      total: usd(Number(i.total)), amount: Number(i.total), st, where, paidOn: i.paid_on, csvWhere,
       canPay: src.finance && st === 'appr',
     }
   })

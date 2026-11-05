@@ -560,9 +560,10 @@ export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; person
 }
 
 /** A reimbursement asked for: to who decides it (the Reimbursements list, owner, 1 November 2026), never the person. */
-export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string }): Draft[] {
+export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string; key?: string }): Draft[] {
+  // `key`: a waiting request edited, joined or withdrawn (owner, 5 November 2026) is a bell of its own, not the first one again.
   return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
-    title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
+    title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: x.key ?? String(x.id),
   }))
 }
 

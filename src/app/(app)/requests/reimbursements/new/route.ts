@@ -13,8 +13,13 @@
  *
  * Tina's review (29 October 2026): a Mileage line has miles instead of an
  * amount (miles times the company's rate, worked out here, never taken from
- * the form) and needs no receipt; a meal while travelling is $25 at most; the
- * request's name is its event or trip.
+ * the form) and needs no receipt; the request's name is its event or trip.
+ * Each receipt is checked by readItem (reimbursement-form.ts), as an edit is.
+ *
+ * One approval for the same event (owner, 5 November 2026): a request whose
+ * event or trip has the name of one the person still has entirely waiting
+ * (case and spaces ignored) joins it, so its decider approves the whole event
+ * at once. One already partly decided gets a new request, as before.
  *
  * Each receipt gets its number (RCT-2026-005, migration 145), the name of its
  * file in downloads and in Google Drive; the name it was sent with is kept.
@@ -25,144 +30,112 @@
  * The person really signed in, never a View Stage preview.
  */
 
-import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
-import { loadDirectory, viewerFor } from '@/lib/timeclock/clocky-context'
-import { announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
-import { localDate } from '@/lib/timeclock/format'
-import { loadClients } from '@/lib/timeclock/requests-data'
-import { loadInvoiceSettings, loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
-import { orList } from '@/lib/timeclock/routing'
-import { CATEGORIES, MEAL_HINT, MILEAGE, mileageAmount, mileageNote, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+import { allRows, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { announceReimbursementChanged, announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
+import { joinableReport, joinedToast, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { snapshotOf } from '@/lib/timeclock/reimbursement-form'
+import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt } from '@/lib/timeclock/reimbursement-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/heif': 'heif', 'image/webp': 'webp', 'application/pdf': 'pdf' }
-const MAX = 10 * 1024 * 1024
-/** The server takes bodies up to 50 MB; a request stays under it. */
-const MAX_TOTAL = 45 * 1024 * 1024
-const MAX_RECEIPTS = 20
-const no = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status })
-
-interface Item { file: File | null; ext: string; spentOn: string; category: string; amount: number; currency: string; purpose: string; client: string | null; billable: boolean; miles: number | null; rate: number | null }
-
-export async function POST(request: Request) {
+/** The person really signed in, never a View Stage preview, while North Time is open; or the refusal. */
+async function writer(): Promise<Viewer | NextResponse> {
   if (await getViewAs()) return no('View Stage is only a preview. Close it to send a request.', 403)
   const closed = await closedRefusal(e => no(e, 409))
   if (closed) return closed
   const access = await writerAccess()
   if (!access) return no('Sign in again to save.', 401)
   if (!access.can('rq-reimbursements')) return no('Requests is not open to your access.', 403)
-  const v = await viewerFor(access)
-  if (!v) return no('Your login is not linked to anyone in the Directory.', 403)
+  return (await viewerFor(access)) ?? no('Your login is not linked to anyone in the Directory.', 403)
+}
+
+export async function POST(request: Request) {
+  const v = await writer()
+  if (v instanceof NextResponse) return v
   let form: FormData
   try { form = await request.formData() } catch { return no('The request could not be read. Try again.') }
 
-  // One receipt with plain field names (as before), or `count` numbered ones.
-  const numbered = form.has('count')
-  const count = numbered ? Number(form.get('count')) : 1
-  if (!Number.isInteger(count) || count < 1) return no('Add at least one receipt.')
-  if (count > MAX_RECEIPTS) return no(`Send up to ${MAX_RECEIPTS} receipts at a time.`)
-  const field = (k: string, i: number) => form.get(numbered ? `${k}_${i}` : k)
-  const today = localDate(new Date(), v.zone)
-  // A contractor's receipts go on a USD invoice, so they come in dollars (owner, 24 October 2026).
-  const [clients, routes, settings] = await Promise.all([loadClients(), loadRoutes([v.personId]), loadInvoiceSettings()])
-  const contractor = routes.get(v.personId)?.isContractor ?? false
-  const items: Item[] = []
-  let total = 0
-  for (let i = 0; i < count; i++) {
-    const n = count > 1 ? `Receipt ${i + 1}: ` : ''
-    const category = String(field('category', i) ?? '')
-    if (!CATEGORIES.includes(category)) return no(`${n}pick a category.`)
-    // Every category needs its receipt but Mileage, where a receipt is optional.
-    const sent = field('receipt', i)
-    const file = sent instanceof File && sent.size ? sent : null
-    if (!file && needsReceipt(category)) return no(`${n}add the receipt: a photo or a PDF.`)
-    let ext = ''
-    if (file) {
-      if (file.size > MAX) return no(`${n}the receipt is over 10 MB. Send a smaller photo or PDF.`)
-      ext = TYPES[file.type] ?? ''
-      if (!ext) return no(`${n}the receipt must be a photo (JPG, PNG, HEIC) or a PDF.`)
-      total += file.size
-    }
-    const spentOn = String(field('date', i) ?? '')
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(spentOn) || Number.isNaN(Date.parse(`${spentOn}T00:00:00Z`))) return no(`${n}write the date of the expense, like Oct 31, 2026.`)
-    if (spentOn > today) return no(`${n}the expense date cannot be after today.`)
-    // A Mileage line keeps room for the miles and rate added to it.
-    let purpose = String(field('purpose', i) ?? '').trim().slice(0, category === MILEAGE ? 440 : 500)
-    if (!purpose) return no(`${n}say what it was for.`)
-    let amount: number, currency: string, miles: number | null = null, rate: number | null = null
-    if (category === MILEAGE) {
-      // The amount is worked out here from the miles and the company's rate, in dollars.
-      miles = milesOf(String(field('miles', i) ?? ''))
-      if (miles == null) return no(`${n}write the miles, like 120.`)
-      rate = settings.mileageRate
-      amount = mileageAmount(miles, rate)
-      currency = 'USD'
-      purpose += mileageNote(miles, rate)
-    } else {
-      amount = Number(String(field('amount', i) ?? '').replace(/,/g, ''))
-      if (!(amount > 0 && amount < 100_000)) return no(`${n}write the amount, like 35.00.`)
-      currency = String(field('currency', i) ?? 'USD').toUpperCase()
-      if (!/^[A-Z]{3}$/.test(currency)) return no(`${n}pick the currency.`)
-      if (contractor && currency !== 'USD') return no(`${n}write the amount in US dollars: your invoice is in USD.`)
-      if (overMealCap(category, amount, currency)) return no(`${n}${MEAL_HINT}`)
-    }
-    const clientRaw = String(field('client', i) ?? '').trim()
-    const client = clientRaw && clientRaw !== 'None' ? clientRaw : null
-    if (client && !clients.includes(client)) return no(`${n}pick a client or project from the list.`)
-    items.push({ file, ext, spentOn, category, amount: Math.round(amount * 100) / 100, currency, purpose, client, billable: !!client && field('billable', i) === 'yes', miles, rate })
-  }
-  if (total > MAX_TOTAL) return no('The receipts are over 45 MB together. Send smaller photos, or split the request.')
+  const read = readItems(form, await itemRules(v))
+  if (typeof read === 'string') return no(read)
+  const { items } = read
   const name = String(form.get('name') ?? '').trim().slice(0, 120) || null
 
   const c = createAdminClient()
-  const files = createUploadClient()
+  // The same event still entirely waiting: the receipts join that request.
+  let joinId: number | null = null
+  if (name) {
+    try {
+      const reports = await allRows<{ id: number; name: string | null }>((a, b) => c.from('reimbursement_reports').select('id, name').eq('person_id', v.personId).not('name', 'is', null).order('id').range(a, b), 'Reimbursement requests could not be read')
+      const ids = reports.map(r => r.id)
+      const rows = ids.length ? await allRows<{ report_id: number | null; state: string }>((a, b) => c.from('reimbursements').select('report_id, state').eq('person_id', v.personId).in('report_id', ids).order('id').range(a, b), 'Reimbursements could not be read') : []
+      joinId = joinableReport(reports, rows, name)
+    } catch (e) {
+      // Not read: a new request, as before, rather than none.
+      console.error('[reimbursement] same event:', (e as Error).message)
+    }
+  }
+
   const paths: string[] = []
   // Each item's stored receipt, or null (a Mileage line sent without one).
   const pathOf: (string | null)[] = []
   const undo = async (reportId: number | null) => {
-    if (paths.length) await files.storage.from('receipts').remove(paths)
+    await dropReceipts(paths)
     if (reportId) await c.from('reimbursement_reports').delete().eq('id', reportId)
   }
   for (const it of items) {
     if (!it.file) { pathOf.push(null); continue }
-    const path = `${v.personId}/${randomUUID()}.${it.ext}`
-    const { error } = await files.storage.from('receipts').upload(path, Buffer.from(await it.file.arrayBuffer()), { contentType: it.file.type, upsert: false })
-    if (error) { console.error('[reimbursement] upload:', error.message); await undo(null); return no('The receipts were not saved. Try again in a moment.', 500) }
+    const path = await storeReceipt(v.personId, it.file, it.ext)
+    if (!path) { await undo(null); return no('The receipts were not saved. Try again in a moment.', 500) }
     paths.push(path)
     pathOf.push(path)
   }
-  // Each receipt's own number (owner, 31 October 2026): RCT-2026-005, given in the order sent, under the
-  // settings row's lock (next_document_number), as invoices and RMB documents get theirs. Its file is named by it.
+  // Each receipt's own number, in the order sent; its file is named by it.
   const numberOf: (string | null)[] = []
   for (const p of pathOf) {
     if (!p) { numberOf.push(null); continue }
-    const { data: n, error } = await c.rpc('next_document_number', { p_kind: 'receipt' })
-    if (error || !n) { console.error('[reimbursement] receipt number:', error?.message); await undo(null); return no('Not saved. Try again in a moment.', 500) }
+    const n = await nextReceiptNumber()
+    if (!n) { await undo(null); return no('Not saved. Try again in a moment.', 500) }
     numberOf.push(n)
   }
-  let reportId: number | null = null
-  if (items.length > 1 || name) {
+  let reportId: number | null = joinId
+  let made: number | null = null
+  if (!reportId && (items.length > 1 || name)) {
     const { data: rep, error } = await c.from('reimbursement_reports').insert({ person_id: v.personId, name }).select('id').single()
     if (error) { console.error('[reimbursement] report:', error.message); await undo(null); return no('Not saved. Try again in a moment.', 500) }
-    reportId = rep.id
+    reportId = made = rep.id
   }
-  const { data, error } = await c.from('reimbursements').insert(items.map((it, i) => ({
+  const rows = items.map((it, i) => ({
     person_id: v.personId, spent_on: it.spentOn, category: it.category, amount: it.amount, currency: it.currency, purpose: it.purpose,
     client: it.client, billable: it.billable, receipt_path: pathOf[i], receipt_number: numberOf[i],
     receipt_name: it.file ? it.file.name.slice(0, 200) || `receipt.${it.ext}` : null, receipt_size: it.file?.size ?? null,
     miles: it.miles, mileage_rate: it.rate, state: 'pending', report_id: reportId,
-  }))).select('id').order('id')
+  }))
+  const { data, error } = await c.from('reimbursements').insert(rows).select('id').order('id')
   if (error || !data?.length) {
     console.error('[reimbursement] insert:', error?.message)
-    await undo(reportId)
+    await undo(made)
     return no('Not saved. Try again in a moment.', 500)
+  }
+
+  if (joinId) {
+    // The whole request now, for the bell and the toast; what joined is kept in its history.
+    const at = new Date().toISOString()
+    const { data: all } = await c.from('reimbursements').select('id, amount, currency').eq('report_id', joinId).eq('state', 'pending').order('id')
+    const list = all ?? []
+    await logRmbChanges(v.personId, at, data.map((d, i) => ({ action: 'joined' as const, reimbursementId: d.id, reportId: joinId, after: snapshotOf(rows[i]) })))
+    const { data: rep } = await c.from('reimbursement_reports').select('name').eq('id', joinId).maybeSingle()
+    const shown = rep?.name ?? name ?? ''
+    await announceReimbursementChanged({
+      firstId: list[0]?.id ?? data[0].id, personId: v.personId, what: 'joined', added: data.length, at,
+      title: reportTitle(shown, list.length), total: totalsText(list.map(x => ({ amount: Number(x.amount), currency: x.currency }))),
+    })
+    return NextResponse.json({ ok: true, toast: joinedToast(shown, list.length) })
   }
   if (reportId) {
     await announceReimbursementReportRequested({ firstId: data[0].id, personId: v.personId, name, items: items.map(it => ({ amount: it.amount, currency: it.currency })) })
@@ -171,8 +144,6 @@ export async function POST(request: Request) {
     await announceReimbursementRequested({ id: data[0].id, personId: v.personId, category: it.category, amount: it.amount, currency: it.currency, purpose: it.purpose })
   }
   // "Sent. David Sharpe decides; you hear back in the bell." Saved either way: a name not read is no failure.
-  const names = await Promise.all([loadDirectory(), loadRequestDeciders([v.personId])])
-    .then(([dir, deciders]) => orList(deciders('rmb', v.personId).map(id => dir.nameOf(id))))
-    .catch(e => { console.error('[reimbursement] who decides:', (e as Error).message); return '' })
+  const names = await rmbDeciderNames(v.personId)
   return NextResponse.json({ ok: true, toast: names ? `Sent. ${names} decides; you hear back in the bell.` : 'Sent. You hear back in the bell.' })
 }

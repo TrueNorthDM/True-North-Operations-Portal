@@ -60,7 +60,7 @@ export function RmbDocsList({ data, markRmbPaid, initial, say }: {
 
   const exportCsv = () => {
     const head = ['Number', 'Person', 'Team', 'Items', 'Date', 'Total', 'Currency', 'State', 'Paid']
-    const lines = [head, ...shown.map(r => [r.number, r.who, r.team, String(r.items), r.date, r.csv.total, r.csv.currency, STATE_PILL[r.st].label, r.where])]
+    const lines = [head, ...shown.map(r => [r.number, r.who, r.team, String(r.items), r.csv.date ?? r.date, r.csv.total, r.csv.currency, STATE_PILL[r.st].label, r.csv.paid ?? r.where])]
     const name = `reimbursement-documents-${period.toLowerCase().replace(/\s+/g, '-')}.csv`
     downloadCsv(name, lines)
     say({ text: `Exported ${plural(shown.length)} to ${name}` })

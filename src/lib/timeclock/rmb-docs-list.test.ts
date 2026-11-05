@@ -33,6 +33,9 @@ describe('the reimbursement documents list', () => {
     expect(l.rows.map(r => r.number)).toEqual(['RMB-2026-0031', 'RMB-2026-0030', 'RMB-2026-0029'])
     expect(l.rows[0]).toMatchObject({ who: 'Wendy Cacka', initials: 'WC', team: 'Web', items: 2, date: 'Oct 21, 2026', period: 'October 2026', total: '$57.99', st: 'appr', where: 'Waiting for Finance', canPay: true, payLine: '2 items · approved Nov 3, 2026' })
     expect(l.rows[2]).toMatchObject({ st: 'paid', where: 'Oct 8, 2026 · ACH-20261008', paidOn: '2026-10-08', canPay: false })
+    // The CSV writes its days as numbers (owner, 5 November 2026); the screen keeps "Oct 21, 2026".
+    expect(l.rows[0].csv).toMatchObject({ date: '10/21/2026', paid: undefined })
+    expect(l.rows[2].csv).toMatchObject({ date: '9/28/2026', paid: '10/8/2026 · ACH-20261008' })
   })
 
   it('dates a document in the viewer\'s zone, for the date and the period', () => {

@@ -241,6 +241,26 @@ export async function announceReimbursementReportRequested(x: { firstId: number;
   })
 }
 
+/**
+ * A waiting request changed by its person (owner, 5 November 2026): edited,
+ * receipts joined from a new request with the same event name, or withdrawn.
+ * Told to whoever decides it, with the same kind of bell as the request; each
+ * change is a bell of its own (`at`).
+ *   "Wendy Cacka changed their waiting reimbursement request: ASI convention, 3 receipts, $412.00."
+ *   "Wendy Cacka added 2 receipts to their waiting request: ASI convention, 5 receipts, $530.00."
+ *   "Wendy Cacka withdrew their reimbursement request: Internet, $35.00. "No longer needed.""
+ */
+export async function announceReimbursementChanged(x: { firstId: number; personId: string; what: 'edited' | 'joined' | 'withdrawn'; title: string; total: string; added?: number; reason?: string | null; at: string }): Promise<void> {
+  await quiet(`reimbursement ${x.what}`, async () => {
+    const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
+    const who = dir.nameOf(x.personId)
+    const text = x.what === 'edited' ? `${who} changed their waiting reimbursement request: ${x.title}, ${x.total}.`
+      : x.what === 'joined' ? `${who} added ${x.added === 1 ? '1 receipt' : `${x.added ?? 0} receipts`} to their waiting request: ${x.title}, ${x.total}.`
+        : `${who} withdrew their reimbursement request: ${x.title}, ${x.total}.${x.reason?.trim() ? ` "${x.reason.trim()}"` : ''}`
+    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), text, key: `${x.firstId}:${x.what}:${x.at}` })
+  })
+}
+
 /** One bell for a request with several receipts: "Arnaldo Oliveira decided São Paulo trip, 4 receipts: approved 3 ($809.00), denied 1. Lunch: "Meals are paid by i7." They go on your next invoice." */
 export async function announceReimbursementReportDecided(x: { firstId: number; personId: string; deciderId: string; name: string | null; approved: readonly Amount[]; denied: readonly { purpose: string; note: string }[]; where: string }): Promise<void> {
   await quiet('reimbursement decided', async () => {

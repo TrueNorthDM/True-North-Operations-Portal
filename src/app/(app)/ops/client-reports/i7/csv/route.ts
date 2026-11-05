@@ -23,7 +23,7 @@ import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
-import { csvFile, csvRow } from '@/lib/format/csv'
+import { csvDate, csvFile, csvRow } from '@/lib/format/csv'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,6 +69,8 @@ export async function GET(request: Request) {
   // Written as 2026-01 rather than "Jan 2026", which is what the Full history
   // export says. A spreadsheet sorts the first correctly and the second into
   // Apr, Aug, Dec, and this file exists to be sorted by month.
+  // The internal file's Date is written as numbers, 1/5/2026 (owner, 5 November
+  // 2026, from Finance), which a spreadsheet reads as a day; Month stays 2026-01.
   const HEAD = type === 'internal'
     ? ['Date', 'Invoice', 'Project', 'Job code', 'Activity', 'Person', 'Hours', 'Cost (USD)']
     : ['Month', 'Invoice', 'Project', 'Job code', 'Hours', 'Investment (USD)', 'Share of month (%)']
@@ -77,7 +79,7 @@ export async function GET(request: Request) {
   if (type === 'internal') {
     if (days.length === 0) lines.push(`No i7 hours for ${label}.`)
     for (const d of days) {
-      lines.push(csvRow([d.date, d.invoice, d.project, d.code, d.activity, d.person, d.hours, d.cost]))
+      lines.push(csvRow([csvDate(d.date), d.invoice, d.project, d.code, d.activity, d.person, d.hours, d.cost]))
     }
   } else if (months.length === 0) {
     lines.push(`No i7 hours for ${label}.`)

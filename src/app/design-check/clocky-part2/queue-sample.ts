@@ -67,14 +67,14 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
   },
   r7: {
     kind: 'rmb', id: 7, type: 'Reimbursement', title: 'Software, $45.00', width: 760, twoCols: true, receipt: { id: 7, file: 'figma-receipt-oct.pdf', sub: 'PDF, 1 page, 84 KB' },
-    facts: [{ k: 'Date of the expense', v: 'Fri, Oct 30, 2026' }, { k: 'Amount', v: '$45.00 (USD)' }, { k: 'What it was for', v: 'Figma Professional for Oct to Dec, for the web team mockups.' }, { k: 'Client or project', v: 'None, not billable to a client' }],
+    facts: [{ k: 'Date of the expense', v: 'Fri, Oct 30, 2026' }, { k: 'Amount', v: '$45.00 (USD)' }, { k: 'Description of expense', v: 'Figma Professional for Oct to Dec, for the web team mockups.' }, { k: 'Client or project', v: 'None, not billable to a client' }],
     allow: null, cal: null,
     after: 'Wendy Cacka is an employee. Approving puts it on reimbursement document RMB-2026-0031 for Finance to pay, with her approved USB-C hub ($12.99).',
     approveLabel: 'Approve', denyLabel: 'Deny',
   },
   r8: {
     kind: 'rmb', id: 8, type: 'Reimbursement', title: 'Equipment, $48.00', width: 760, twoCols: true, receipt: { id: 8, file: 'headset-receipt.jpg', sub: 'Photo from the phone camera, 1.2 MB' },
-    facts: [{ k: 'Date of the expense', v: 'Thu, Oct 29, 2026' }, { k: 'Amount', v: '$48.00 (USD)' }, { k: 'What it was for', v: 'USB headset for client calls (the old one broke).' }, { k: 'Client or project', v: 'Adventist Messengers/HFA, billable to the client' }],
+    facts: [{ k: 'Date of the expense', v: 'Thu, Oct 29, 2026' }, { k: 'Amount', v: '$48.00 (USD)' }, { k: 'Description of expense', v: 'USB headset for client calls (the old one broke).' }, { k: 'Client or project', v: 'Adventist Messengers/HFA, billable to the client' }],
     allow: null, cal: null,
     after: 'Joy Inyele is a contractor. Her October invoice is already approved, so approving puts it on her November invoice by itself.',
     approveLabel: 'Approve', denyLabel: 'Deny',
