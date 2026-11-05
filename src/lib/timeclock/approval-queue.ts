@@ -33,7 +33,7 @@ import { loadApprovedExtra } from './allowance-data'
 import { hoursByClient } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
-import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type TimesheetState } from './routing'
+import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, oneStep, type TimesheetState } from './routing'
 import type { ApprovalRow } from './clocky-types'
 import { loadRequestRows, moneyViewer, type RequestCard } from './request-cards'
 
@@ -167,12 +167,17 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     const over = t.allowance && t.allowance.period === 'month'
       ? allowanceStatus(worked, t.allowance.hours, extra(s.person_id, p.start_date, p.end_date)).over
       : 0
-    const step = currentStep(route, settings, s.state)
+    // The contractor's own invoice (4 November 2026): until it is sent, only the hours wait.
+    const sent = isSentInvoice(inv?.state)
+    const step = currentStep(route, settings, s.state, sent)
     const hb = hoursApprover(route, settings)
     const ib = invoiceApprover(route, settings)
     let flag: QueueRow['flag'] = null
     if (route.isContractor && !oneStep(route, settings)) {
       flag = s.state === 'hours_approved' ? { text: `Hours approved by ${nameOf(s.hours_approved_by)}`, tone: 'ok' } : s.state === 'submitted' ? { text: `Hours with ${nameOf(hb)}`, tone: 'neu' } : null
+    }
+    if (route.isContractor && route.paysAs !== 'fixed_no_timesheet' && !sent && (s.state === 'submitted' || s.state === 'hours_approved')) {
+      flag = { text: inv ? 'Invoice sent back, waiting for it again' : 'Invoice not sent yet', tone: 'neu' }
     }
     if (over > 0 && !isLead && (s.state === 'submitted' || s.state === 'hours_approved')) flag = { text: `${formatDuration(over)} over the allowance, not approved`, tone: 'warn' }
     const nR = inv ? rmbCount.get(inv.id) ?? 0 : 0
@@ -188,7 +193,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     push({
       key: `t${s.id}`, type: 'ts', id: s.id, personId: s.person_id, name: who.name, initials: who.initials, team: who.team,
       main: route.isContractor ? `${label.full} · ${formatDuration(worked)}` : `${rangeLabel(p.start_date, p.end_date)} · ${formatDuration(worked)}`,
-      sub: !route.isContractor ? 'Payroll summary, goes to Rippling' : money && inv ? `Invoice ${inv.number} · ${usd(Number(inv.total))}${t.paysAs === 'fixed_monthly' ? ', fixed monthly' : ''}` : 'Hours only',
+      sub: !route.isContractor ? 'Payroll summary, goes to Rippling' : money && inv && sent ? `Invoice ${inv.number} · ${usd(Number(inv.total))}${t.paysAs === 'fixed_monthly' ? ', fixed monthly' : ''}` : 'Hours only',
       flag,
       why: nR ? `Submitted with ${nR} reimbursement${nR > 1 ? 's' : ''}.` : null,
       asked: s.submitted_at ? `Submitted ${shortStamp(s.submitted_at, v.zone)}` : '',

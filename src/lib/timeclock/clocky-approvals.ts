@@ -15,7 +15,7 @@ import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
 import { recordedSeconds } from './rounding'
 import { canApproveCorrection, seesEveryone } from './scope'
 import { loadRouteSettings, loadRoutes } from './pay-terms'
-import { currentStep, loneInvoiceApprover, type TimesheetState } from './routing'
+import { currentStep, isSentInvoice, loneInvoiceApprover, type TimesheetState } from './routing'
 import type { ApprovalRow, ApprovalsData } from './clocky-types'
 import { goesToLabel, teamLeadNames, waitingOrder } from './clocky-requests'
 import { waitingRequests } from './request-cards'
@@ -106,12 +106,19 @@ export async function countWaiting(v: Viewer): Promise<number> {
   const [dir, settings] = await Promise.all([loadDirectory(), loadRouteSettings()])
   const [corr, subs, fixed, requests] = await Promise.all([
     allRows<{ person_id: string }>((a, b) => c.from('tc_correction_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Requests to add time could not be read'),
-    allRows<{ person_id: string; state: TimesheetState; tc_periods: { start_date: string } | null }>((a, b) => c.from('tc_submissions').select('person_id, state, tc_periods(start_date)').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
+    allRows<{ id: number; person_id: string; state: TimesheetState; tc_periods: { start_date: string } | null }>((a, b) => c.from('tc_submissions').select('id, person_id, state, tc_periods(start_date)').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
     allRows<{ person_id: string; source: string | null }>((a, b) => c.from('invoices').select('person_id, source').eq('kind', 'fixed_no_timesheet').eq('state', 'waiting').order('id').range(a, b), 'Invoices could not be read'),
     waitingRequests(v, dir, settings),
   ])
   const routes = await loadRoutes([...new Set([...subs, ...fixed].map(x => x.person_id))])
-  const sheets = subs.filter(x => x.tc_periods && x.person_id !== v.personId && routes.get(x.person_id) && currentStep(routes.get(x.person_id)!, settings, x.state)?.owner === v.personId).length
+  // Whether each timesheet's invoice has been sent (4 November 2026: until then only the hours wait).
+  const sentIds = new Set<number>()
+  for (let i = 0; i < subs.length; i += 200) {
+    const { data, error } = await c.from('invoices').select('submission_id, state').in('submission_id', subs.slice(i, i + 200).map(s => s.id))
+    if (error) throw new Error(`Invoices could not be read: ${error.message}`)
+    for (const r of data ?? []) if (r.submission_id && isSentInvoice(r.state)) sentIds.add(r.submission_id)
+  }
+  const sheets = subs.filter(x => x.tc_periods && x.person_id !== v.personId && routes.get(x.person_id) && currentStep(routes.get(x.person_id)!, settings, x.state, sentIds.has(x.id))?.owner === v.personId).length
     + fixed.filter(x => x.person_id !== v.personId && routes.get(x.person_id) && loneInvoiceApprover(routes.get(x.person_id)!, settings, x.source) === v.personId).length
   return corr.filter(r => canApproveCorrection(v, dir.target(r.person_id))).length + sheets + requests
 }

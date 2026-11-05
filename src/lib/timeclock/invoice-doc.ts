@@ -6,6 +6,7 @@
 
 import { dateLabel } from './format'
 import { formatDuration } from './rounding'
+import type { InvoiceRecordView } from './invoice-record'
 
 export type InvRow = {
   id: number; number: string; submission_id: number | null; person_id: string; total: number; kind: string; state: string
@@ -30,6 +31,15 @@ export interface InvoiceDocView {
   from: { name: string; line: string; email: string }
   to: { name: string; line1: string; line2: string }
   paid: string | null
+  /**
+   * The PDF's second page and page 1's footer (owner, 4 November 2026): who
+   * made it, the check, the history. Set where the invoice is read whole
+   * (loadInvoiceDetail); a doc without it previews page 1 alone.
+   */
+  record?: InvoiceRecordView | null
+  foot?: { line: string; page: string }
+  /** Their own PDF is page 1 (made_by own_file): the preview shows it instead of the builder's sheet. */
+  ownFile?: { href: string; name: string } | null
 }
 
 export const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

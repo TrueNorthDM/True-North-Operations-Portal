@@ -13,6 +13,9 @@ import { loadWaitingSenders } from '@/lib/invoice-form/data'
 import { newSenderRights } from '@/lib/invoice-form/rules'
 import { NewSenders } from '@/components/clocky/invoices/NewSenders'
 import { linkFormSender } from './actions'
+import Link from 'next/link'
+import { loadInvoicesToSend } from '@/lib/timeclock/send-invoice-data'
+import { BTN } from '@/lib/ui/buttons'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Invoices' }
@@ -43,6 +46,23 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       console.error('[invoices] new senders:', e instanceof Error ? e.message : e)
     }
   }
-  const extra = senders ? <NewSenders senders={senders} people={people} link={rights.link ? linkFormSender : null} /> : null
+  // A contractor's own invoices still to send (4 November 2026: they make and send their own).
+  const owed = access.personId ? await loadInvoicesToSend(access.personId, new Date(), { hours: false }).then(d => d?.toSend ?? []).catch(() => []) : []
+  const today = new Date().toISOString().slice(0, 10)
+  const toSend = owed.filter(x => x.kind !== 'fixed_no_timesheet' || x.end < today)
+  const extra = (
+    <>
+      {toSend.length > 0 && (
+        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Send your invoice for {toSend.map(x => x.label).join(', ')}</div>
+            <p className="m-0 mt-0.5 text-[13px] text-muted">You make it and send it: your own file, or the invoice builder.</p>
+          </div>
+          <Link href={`/clocky-hours/invoices/new?start=${toSend[0].start}`} className={BTN.navy}>Send your invoice</Link>
+        </div>
+      )}
+      {senders && <NewSenders senders={senders} people={people} link={rights.link ? linkFormSender : null} />}
+    </>
+  )
   return <InvoicesListLive data={data} st={STATES.find(x => x === state)} extra={extra} />
 }

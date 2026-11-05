@@ -23,6 +23,9 @@ import { cameFrom } from '@/lib/invoice-form/rules'
 import { driveShow, folderText, historyLines, wantInvoice, type DriveBoxData, type DriveShow } from '@/lib/drive/copy-plan'
 import { copyFrom, copyRow, driveShows } from '@/lib/drive/copies'
 import { docFileName } from '@/lib/drive/file-names'
+import { loadInvoiceSends, type InvoiceSendRow } from './invoice-check-data'
+import { loadInvoiceRecord, RECORD_ZONE } from './invoice-record'
+import { recordPages } from '@/lib/pdf/invoice-pages'
 
 export type InvoiceMode = 'mine' | 'all' | 'none'
 export type InvoiceStateKey = 'draft' | 'hrs' | 'wait' | 'appr' | 'paid'
@@ -207,7 +210,7 @@ export interface InvoiceDetail {
   drive?: DriveBoxData
   /** "The invoice form, deliverables, 3 lines" when it came from the invoice form (migration 147); null otherwise. */
   cameFrom: string | null
-  /** Their own invoice PDF, sent with the form. */
+  /** Their own invoice PDF, sent with the form or as their invoice (made_by own_file, migration 152). */
   ownPdf: { href: string; name: string } | null
 }
 
@@ -223,6 +226,19 @@ export interface DetailSource {
   finance: boolean
   nameOf: (id: string | null | undefined) => string
   zone: string
+  /**
+   * Every version the contractor sent (invoice_sends, migration 152): each is
+   * a line of the history, in place of "Created when the timesheet was
+   * submitted" (owner, 4 November 2026: the contractor makes the invoice).
+   */
+  sends?: readonly InvoiceSendRow[]
+}
+
+/** "Sent by Jordan Lee: their own file "x.pdf", their number 0142, $4,096.70" */
+export function sendLine(s: InvoiceSendRow, again: boolean, who: string): string {
+  const how = s.madeBy === 'own_file' ? `their own file${s.ownPdfName ? ` "${s.ownPdfName}"` : ''}` : 'made with the invoice builder'
+  const total = s.madeBy === 'own_file' ? s.statedTotal ?? s.total : s.total
+  return `${again ? 'Sent again' : 'Sent'} by ${who}${s.sentFrom === 'form' ? ' through the invoice form' : ''}: ${how}${s.theirNumber ? `, their number ${s.theirNumber}` : ''}${total != null ? `, ${usd(total)}` : ''}`
 }
 
 export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
@@ -234,16 +250,24 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
   const at = (t: string) => stampLabel(t, src.zone)
   const one = route ? oneStep(route, settings) : true
   const hist: { text: string; when: string; dot: string; t: string }[] = []
-  hist.push({
+  const sends = src.sends ?? []
+  // Sent by the contractor (migration 152): each version they sent, the first and each after a return.
+  sends.forEach((s, i) => hist.push({ text: sendLine(s, i > 0, s.sentBy ? src.nameOf(s.sentBy) : doc.from.name || src.nameOf(inv.person_id)), when: at(s.at), dot: '#1E7D7F', t: s.at }))
+  if (!sends.length) hist.push({
     text: inv.source ? `Sent through the invoice form for ${period.full}` : inv.kind === 'fixed_no_timesheet' ? `Created by itself for ${period.full} (fixed monthly)` : `Created when the ${period.label} timesheet was submitted`,
     when: at(inv.created_at), dot: '#1E7D7F', t: inv.created_at,
   })
   for (const l of src.lines.filter(x => x.kind === 'reimbursement')) {
-    if (inv.source) continue
+    if (inv.source || sends.length) continue
     hist.push({ text: `Reimbursement added by itself: ${l.description} (${usd(Number(l.amount))})`, when: dateLabel(inv.issued_on ?? localDate(inv.created_at, src.zone)), dot: '#a3aebb', t: inv.created_at })
   }
   for (const e of src.events) {
     const by = src.nameOf(e.by_person)
+    if (sends.length && (e.action === 'submit' || e.action === 'sent' || e.action === 'record')) {
+      // The invoice's own sends are the lines above; the timesheet's are its own lines.
+      if (e.step !== 'invoice' && e.action !== 'sent' && inv.submission_id) hist.push({ text: `${period.label} timesheet sent by ${by}`, when: at(e.at), dot: '#a3aebb', t: e.at })
+      continue
+    }
     if (e.action === 'return') hist.push({ text: `Returned by ${by}${inv.submission_id ? ' with the timesheet' : ''}${e.note ? `: "${e.note}"` : '.'} Back to Draft.`, when: at(e.at), dot: '#c8323d', t: e.at })
     else if (e.action === 'reopen') hist.push({ text: `Reopened by ${by}${e.note ? `: "${e.note}"` : '.'} Back to Draft.`, when: at(e.at), dot: '#c8323d', t: e.at })
     // Submitted again after a return: the same invoice, made again with the new hours.
@@ -276,15 +300,19 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
   if (!inv) return null
   const settings = await loadRouteSettings()
   if (!seesMoney({ isAdmin: v.isAdmin, personId: v.personId }, inv.person_id, settings)) return null
-  const [lines, events, sub, routes, dir] = await Promise.all([
+  const [lines, events, sub, routes, dir, sends] = await Promise.all([
     // A failed read throws: no lines would show a $0.00 invoice, no timesheet the wrong state.
     c.from('invoice_lines').select(LINE_COLS).eq('invoice_id', inv.id).order('sort').then(r => rowsOf(r, 'The invoice lines could not be read') as unknown as LineRow[]),
     eventsOf(inv),
     inv.submission_id != null ? c.from('tc_submissions').select('id, state').eq('id', inv.submission_id).maybeSingle().then(r => (oneOf(r, 'The timesheet could not be read') ?? undefined) as SubState | undefined) : Promise.resolve(undefined),
     loadRoutes([inv.person_id]),
     loadDirectory(),
+    loadInvoiceSends(inv.id),
   ])
-  const detail = buildInvoiceDetail({ inv, lines, events, sub, route: routes.get(inv.person_id), settings, finance: isFinance({ personId: v.personId }, settings), nameOf: dir.nameOf, zone: v.zone })
+  // A contractor's invoice (migration 152): the hours may be approved before it is sent, so every decision on its timesheet counts.
+  const evs = sends.length ? events.all : events.sinceMade
+  const detail = buildInvoiceDetail({ inv, lines, events: evs, sub, route: routes.get(inv.person_id), settings, finance: isFinance({ personId: v.personId }, settings), nameOf: dir.nameOf, zone: v.zone, sends })
+  await addRecord(detail, inv.id, dir.nameOf)
   // The Google Drive box: Finance's copy, so for those who see everyone's invoices, not the contractor's own page.
   if (!v.isAdmin && !isFinance({ personId: v.personId }, settings)) return detail
   try {
@@ -301,17 +329,43 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
   return detail
 }
 
-/** The decisions that touched this invoice: its own, and its timesheet's after it was made. */
-async function eventsOf(inv: InvRow): Promise<EventRow[]> {
+/**
+ * The decisions that touched this invoice: its own, and its timesheet's.
+ * `sinceMade` is a portal-made invoice's (its timesheet's after it was made,
+ * the submit that made it being the "Created" line); `all` a contractor's.
+ */
+async function eventsOf(inv: InvRow): Promise<{ all: EventRow[]; sinceMade: EventRow[] }> {
   const c = db()
   const cols = 'step, action, by_person, at, note'
   const { data, error } = inv.submission_id != null
-    ? await c.from('tc_approval_events').select(cols).eq('submission_id', inv.submission_id).gte('at', inv.created_at)
+    ? await c.from('tc_approval_events').select(cols).eq('submission_id', inv.submission_id)
     : await c.from('tc_approval_events').select(cols).eq('invoice_id', inv.id)
   if (error) throw new Error(`The invoice history could not be read: ${error.message}`)
-  // The submit that made it is the "Created" line already.
+  const all = (data ?? []) as EventRow[]
   const made = Date.parse(inv.created_at) + 60_000
-  return ((data ?? []) as EventRow[]).filter(e => e.action !== 'submit' || Date.parse(e.at) > made)
+  return { all, sinceMade: all.filter(e => Date.parse(e.at) >= Date.parse(inv.created_at)).filter(e => e.action !== 'submit' || Date.parse(e.at) > made) }
+}
+
+/**
+ * The record (owner, 4 November 2026): the invoice's "Who made it" card, and
+ * the PDF's second page with page 1's footer. In New York's time, as Finance's
+ * copy in Drive reads it. A record that cannot be read leaves the page and
+ * page 1 as they were; the Drive copy will not go without it.
+ */
+async function addRecord(detail: InvoiceDetail, id: number, nameOf: (id: string | null | undefined) => string): Promise<void> {
+  try {
+    const record = await loadInvoiceRecord(id, { zone: RECORD_ZONE, nameOf })
+    if (!record) return
+    detail.doc.record = record
+    if (record.madeBy === 'own_file') {
+      detail.ownPdf = { href: `/clocky-hours/invoices/${id}/own-pdf`, name: record.ownFileName ?? detail.ownPdf?.name ?? 'Their invoice' }
+      detail.doc.ownFile = detail.ownPdf
+    } else {
+      detail.doc.foot = { line: record.footLine, page: recordPages(null).first }
+    }
+  } catch (e) {
+    console.error('[invoice] record:', e instanceof Error ? e.message : e)
+  }
 }
 
 /** The access a page already has, as the viewer these loaders take. */

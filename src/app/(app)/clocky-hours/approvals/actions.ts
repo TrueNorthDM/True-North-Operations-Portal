@@ -23,13 +23,14 @@ import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/ti
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { loadApprovals } from '@/lib/timeclock/clocky-approvals'
 import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
-import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceInvoiceReturned, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
 import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
-import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
+import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
 import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
+import { loadInvoiceCheck } from '@/lib/timeclock/invoice-check-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
@@ -522,20 +523,36 @@ async function overFor(personId: string, start: string, end: string): Promise<nu
   return allowanceStatus(byClient.reduce((n, x) => n + x.seconds, 0), t.allowance.hours, extra(personId, start, end)).over
 }
 
-/** Approve the step that is yours: the hours, the invoice, both, or (employees) send to Rippling. */
-export async function approveTimesheet(input: { id: number; note?: string }): Promise<Result<{ toast: string }>> {
+/**
+ * Approve the step that is yours: the hours, the invoice, both, or (employees)
+ * send to Rippling. The contractor's own invoice (4 November 2026): the hours
+ * can be approved before it arrives; approving the invoice checks it against
+ * the timesheet first, and an invoice that does not match is approved only
+ * with a reason (`note`). `hoursOnly` approves the hours of a "both" step and
+ * leaves the invoice waiting.
+ */
+export async function approveTimesheet(input: { id: number; note?: string; hoursOnly?: boolean }): Promise<Result<{ toast: string }>> {
   const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
     const t = await loadSent(input.id)
     if (!t) return fail(NOT_WAITING)
-    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
+    const [settings, routes, invRes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId]), c.from('invoices').select('id, number, total, state').eq('submission_id', t.id).maybeSingle()])
     const route = routes.get(t.personId)
-    const step = route ? currentStep(route, settings, t.state) : null
-    if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
-    const next = stateAfterApprove(route, settings, t.state)!
+    if (invRes.error) return notSaved(invRes.error)
+    const sent = isSentInvoice(invRes.data?.state)
+    const found = route ? currentStep(route, settings, t.state, sent) : null
+    if (!route || !found || found.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
+    // "Approve the hours only" on a both step: the hours now, the invoice later.
+    const step = found.step === 'both' && input.hoursOnly ? { ...found, step: 'hours' as const } : found
+    const next = step.step === 'hours' ? 'hours_approved' : stateAfterApprove(route, settings, t.state, sent)!
     const note = reasonOf(input.note)
+    // The invoice beside the timesheet: one that does not match is approved only with a reason.
+    if ((step.step === 'both' || step.step === 'invoice') && invRes.data) {
+      const check = await loadInvoiceCheck(invRes.data.id)
+      if (check && !check.matches && !note) return fail(`The invoice does not match the timesheet. ${check.summary ?? ''} Write why you approve it anyway, or send the invoice back.`.replace(/\s+/g, ' ').trim())
+    }
     // Over the allowance: the invoice approver decides, and says why. Rare since the allowance became a real
     // limit (owner, 25 October 2026): kept for time that was over before it, imported or old entries.
     if (step.step === 'both' || step.step === 'invoice') {
@@ -549,7 +566,7 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     const { data: moved, error } = await c.from('tc_submissions').update(patch).eq('id', t.id).eq('state', t.state).select('id')
     if (error) return notSaved(error)
     if (!moved?.length) return fail(NOT_WAITING)
-    const { data: inv } = await c.from('invoices').select('id, number, total').eq('submission_id', t.id).maybeSingle()
+    const inv = sent ? invRes.data : null
     if (next === 'approved') {
       if (inv) await c.from('invoices').update({ state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at }).eq('id', inv.id).eq('state', 'waiting')
       await c.from('tc_entries').update({ state: 'approved', updated_at: at })
@@ -561,7 +578,7 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     const dir = await loadDirectory()
     const label = periodLabel(t).full
     const ib = invoiceApprover(route, settings)
-    if (next === 'hours_approved' && ib && inv) {
+    if (next === 'hours_approved' && ib && inv && ib !== v.personId) {
       await announceHoursApproved({ submissionId: t.id, at, personId: t.personId, hoursBy: v.personId, invoiceBy: ib, month: periodLabel(t).label, number: inv.number, total: usd(Number(inv.total)) })
     } else {
       await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'approve', note: null })
@@ -571,12 +588,50 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     refresh()
     const who = dir.nameOf(t.personId)
     const toast = next === 'hours_approved'
-      ? `Hours approved. ${ib ? dir.nameOf(ib) : 'The invoice approver'} finishes the approval.`
+      ? (!inv ? `Hours approved. The invoice step starts when ${first(who)} sends their invoice.`
+        : ib === v.personId ? 'Hours approved. The invoice waits for you.'
+          : `Hours approved. ${ib ? dir.nameOf(ib) : 'The invoice approver'} finishes the approval.`)
       : !route.isContractor ? 'Approved and sent to Rippling.'
         : step.step === 'invoice' ? `Invoice approved. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
           : `Approved both. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
-    void who
     return { ok: true, toast }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/**
+ * "Send the invoice back" (4 November 2026): the invoice alone goes back to the
+ * contractor with the reason; their hours stay where they are (approved, or
+ * waiting). They fix the invoice and send it again, with the same number.
+ */
+export async function returnInvoice(input: { invoiceId: number; reason: string }): Promise<Result<{ toast: string }>> {
+  const v = await decider()
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, source, submission_id').eq('id', Number(input.invoiceId)).maybeSingle()
+    if (e1) return notSaved(e1)
+    if (!inv || inv.state !== 'waiting') return fail(NOT_WAITING)
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([inv.person_id])])
+    const route = routes.get(inv.person_id)
+    const owner = !route ? null : inv.submission_id ? invoiceApprover(route, settings) : loneInvoiceApprover(route, settings, inv.source)
+    if (!route || owner !== v.personId || inv.person_id === v.personId) return fail(NOT_WAITING)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    const at = new Date().toISOString()
+    const { data: moved, error } = await c.from('invoices').update({ state: 'draft', approved_by: null, approved_at: null, paid_note: reason, updated_at: at })
+      .eq('id', inv.id).eq('state', 'waiting').select('id')
+    if (error) return notSaved(error)
+    if (!moved?.length) return fail(NOT_WAITING)
+    // Its reimbursements wait for the invoice sent again.
+    await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', inv.id).eq('state', 'on_invoice')
+    await c.from('tc_approval_events').insert({ submission_id: inv.submission_id, invoice_id: inv.id, step: 'invoice', action: 'return', by_person: v.personId, at, note: reason })
+    if (inv.source) await tellFormSender(inv.id, 'returned')
+    else await announceInvoiceReturned({ invoiceId: inv.id, at, personId: inv.person_id, deciderId: v.personId, number: inv.number, note: reason })
+    refresh()
+    const dir = await loadDirectory()
+    return { ok: true, toast: `Invoice sent back to ${first(dir.nameOf(inv.person_id))}. They see your reason.` }
   } catch (e) {
     return notSaved(e)
   }
@@ -680,6 +735,12 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     if (input.decision === 'return' && !note) return fail(REASON_REQUIRED)
     const at = new Date().toISOString()
     const approve = input.decision === 'approve'
+    // A fixed amount sent from the portal is checked against the amount on file (4 November 2026); one that
+    // does not match is approved only with a reason. The form's invoices have no amount on file to check.
+    if (approve && !inv.source) {
+      const check = await loadInvoiceCheck(inv.id)
+      if (check && !check.matches && !note) return fail(`The invoice does not match the amount on file. ${check.summary ?? ''} Write why you approve it anyway, or send it back.`.replace(/\s+/g, ' ').trim())
+    }
     const { data: moved, error } = await c.from('invoices')
       .update(approve ? { state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at } : { state: 'draft', approved_by: v.personId, approved_at: at, updated_at: at, paid_note: note })
       .eq('id', inv.id).eq('state', 'waiting').select('id')

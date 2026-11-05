@@ -3,6 +3,12 @@
  * the contractors paid a fixed amount who track no time, for the month that
  * just ended, made by themselves and sent straight to their approver.
  *
+ * Switched off on 4 November 2026 (leadership: contractors make and send their
+ * own invoice). The job still runs on the 1st and makes nothing: it reports
+ * who owes last month's invoice, and the 9:00 AM reminder (reminders-run.ts,
+ * invoice_due) asks each of them to send it. The code that made them is kept
+ * below in `makeFixedInvoices`, unused, in case the rule changes again.
+ *
  * Once per person and month (the invoices_fixed_once index): a second run the
  * same month makes nothing. Someone without an amount a month in Rates &
  * Costs is reported, not invoiced at $0.
@@ -31,6 +37,19 @@ export function previousMonth(now: Date): { start: string; end: string } {
 }
 
 export async function runFixedInvoices(now = new Date()): Promise<FixedInvoicesReport> {
+  const { start, end } = previousMonth(now)
+  const report: FixedInvoicesReport = { month: periodLabel({ start, end }).full, made: [], skipped: [], errors: [] }
+  const c = createAdminClient()
+  const { data: people, error } = await c.from('people').select('id, full_name, status').eq('employment_type', 'contractor')
+  if (error) throw new Error(`People could not be read: ${error.message}`)
+  const active = (people ?? []).filter(p => !p.status || p.status === 'active')
+  const terms = await loadPayTerms(active.map(p => p.id))
+  for (const p of active.filter(x => terms.get(x.id)?.paysAs === 'fixed_no_timesheet')) report.skipped.push(`${p.full_name}: sends their own invoice`)
+  return report
+}
+
+/** How day 1 made the invoices until 4 November 2026 (see above). Unused. */
+export async function makeFixedInvoices(now = new Date()): Promise<FixedInvoicesReport> {
   const { start, end } = previousMonth(now)
   const month = periodLabel({ start, end }).full
   const report: FixedInvoicesReport = { month, made: [], skipped: [], errors: [] }

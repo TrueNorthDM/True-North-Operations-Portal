@@ -28,7 +28,7 @@ export function SettingsCheck({ frame, integrations, invoices }: { frame: string
           content: <div>{head('Integrations', 'Rippling for payroll and PTO, Google Calendar for the team calendar. The portal fills them; nobody copies by hand.')}
             <IntegrationsSettings data={integrations} canEdit api={{ saveRipplingToken: ok, removeRipplingToken: ok, saveGoogle: ok, removeGoogle: ok, testGoogle: async () => ({ ok: true, toast: 'Google Calendar answered: the team calendar can be read; the Good News Calendar can be read.' }), retryIntegrationJob: async () => ({ ok: true, toast: 'Queued again.' }), saveGoogleApp: ok, removeGoogleApp: ok }} /></div> },
         { id: 'reminders', label: 'Reminders', icon: icon('M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0'), isNew: true, editable: false,
-          content: <div>{head('Reminders', 'When the bell reminds people to submit, and the new lines it shows.')}<RemindersSettings on={{ contractor_due: true, pay_period_ends: true, late: true, allowance: true, birthday: true }} canEdit set={ok} /></div> },
+          content: <div>{head('Reminders', 'When the bell reminds people to submit, and the new lines it shows.')}<RemindersSettings on={{ contractor_due: true, pay_period_ends: true, late: true, invoice_due: true, allowance: true, birthday: true }} canEdit set={ok} /></div> },
       ]} />
     </div>
   )

@@ -34,8 +34,7 @@ import {
 } from '@/lib/timeclock/clocky-store'
 import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
 import { correctionGoesTo, loadChoicesFor } from '@/lib/timeclock/clocky-panel'
-import { announceCorrectionRequested, announceInvoiceMade, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
-import { usd } from '@/lib/timeclock/invoice-doc'
+import { announceCorrectionRequested, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
 import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds, runningSeconds } from '@/lib/timeclock/rounding'
 import {
@@ -46,7 +45,6 @@ import { changesBetween } from '@/lib/timeclock/history'
 import { addDays, isSent, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
 import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
-import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoices-data'
 import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/lib/timeclock/scope'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
@@ -638,7 +636,7 @@ export async function requestCorrection(input: { date: string; start: string; en
  * when there is nothing in it, or when nobody could approve it. Its entries
  * lock with it.
  */
-export async function submitPeriod(input: { start: string; end: string }): Promise<Result<{ toast: string; locked: number; invoiceId: number | null }>> {
+export async function submitPeriod(input: { start: string; end: string }): Promise<Result<{ toast: string; locked: number; invoiceId: number | null; sendInvoice: boolean }>> {
   const v = await actor()
   if (isFail(v)) return v
   try {
@@ -659,13 +657,9 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     const route = routes.get(v.personId)
     if (!route) return fail('Your login is not linked to anyone in the Directory.')
     const nextState = stateOnSubmit(route, settings)
-    if (nextState === 'submitted' && !currentStep(route, settings, 'submitted')?.owner) {
+    if (nextState === 'submitted' && !currentStep(route, settings, 'submitted', false)?.owner) {
       return fail('Nobody is set up to approve your hours yet, so this would go nowhere. Ask a Super Admin.')
     }
-    // A contractor's invoice is made with it: say now if it cannot be.
-    const blocked = await invoiceBlocker(v.personId)
-    if (blocked) return fail(blocked)
-
     const kind = s.kind
     const { data: found, error: findErr } = await c.from('tc_periods').select('id').eq('start_date', s.start).eq('end_date', s.end).maybeSingle()
     if (findErr) return notSaved(findErr)
@@ -693,47 +687,25 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
       sentId = (made as { id: number }).id
     }
 
-    // The invoice is made with it (contractors); if that fails, nothing was sent.
-    const { data: had, error: hadErr } = await c.from('invoices').select('id').eq('submission_id', sentId).maybeSingle()
-    if (hadErr) {
-      await c.from('tc_submissions').update({ state: row ? row.state : 'draft', submitted_at: null }).eq('id', sentId)
-      return notSaved(hadErr)
-    }
-    let invoiceId: number | null = null
-    try {
-      invoiceId = await makeInvoiceForSubmission(sentId, now)
-    } catch (e) {
-      await c.from('tc_submissions').update({ state: row ? row.state : 'draft', submitted_at: null }).eq('id', sentId)
-      // writeInvoice undoes its own half-made invoice; should that undo fail, none is left waiting with the timesheet back in draft.
-      const { data: left } = await c.from('invoices').select('id').eq('submission_id', sentId).eq('state', 'waiting').maybeSingle()
-      if (left && had) await c.from('invoices').update({ state: 'draft', updated_at: now.toISOString() }).eq('id', left.id)
-      else if (left) {
-        await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', left.id).eq('state', 'on_invoice')
-        await c.from('invoices').delete().eq('id', left.id)
-      }
-      console.error('[clocky submit] invoice:', e instanceof Error ? e.message : e)
-      return fail('Your invoice could not be made, so nothing was sent. Try again in a moment.')
-    }
+    // The contractor sends their own invoice for it (leadership, 4 November 2026): the
+    // portal no longer makes one. One sent back before stays with them to send again.
+    const invoiceId: number | null = null
+    const sendsInvoice = route.isContractor && route.paysAs !== 'fixed_no_timesheet' && nextState === 'submitted'
 
     // The portal's own rows freeze with it (imported ones keep QuickBooks Time's state).
     await c.from('tc_entries').update({ state: nextState === 'recorded' ? 'approved' : 'submitted', updated_at: at })
       .eq('person_id', v.personId).eq('state', 'open').eq('source', 'portal').gte('entry_date', s.start).lte('entry_date', s.end)
     await c.from('tc_approval_events').insert({ submission_id: sentId, invoice_id: invoiceId, step: 'submit', action: nextState === 'recorded' ? 'record' : 'submit', by_person: v.personId, at })
     // Whoever decides first hears of it.
-    const owner = currentStep(route, settings, nextState)?.owner
+    const owner = currentStep(route, settings, nextState, false)?.owner
     if (owner) await announceTimesheetSubmitted({ submissionId: sentId, sentAt: at, personId: v.personId, to: [owner], period: periodLabel(s).full, seconds: s.totalSeconds })
-    // The contractor hears the invoice was made, with its number and total.
-    if (invoiceId) {
-      const { data: inv } = await c.from('invoices').select('number, total').eq('id', invoiceId).maybeSingle()
-      if (inv) await announceInvoiceMade({ invoiceId, at, personId: v.personId, number: inv.number, month: periodLabel(s).label, total: usd(Number(inv.total)), withHours: true })
-    }
     refresh()
     const what = nextState === 'recorded' ? 'recorded' : 'submitted'
-    // Invoices.dc.html: a contractor goes to the invoice it made; an employee hears where the hours go.
-    const toast = invoiceId ? `${s.label} ${what}. Your invoice is waiting for approval with it.`
+    // A contractor is sent on to their invoice; an employee hears where the hours go.
+    const toast = sendsInvoice ? `${s.label} ${what}. Now send your invoice for it.`
       : s.block?.kind === 'payroll' && nextState !== 'recorded' ? `${s.label} submitted. Your payroll summary goes to Rippling when it is approved.`
         : `${s.label} ${what}. ${count} entries are now locked.`
-    return { ok: true, locked: count, invoiceId, toast }
+    return { ok: true, locked: count, invoiceId, sendInvoice: sendsInvoice, toast }
   } catch (e) {
     return notSaved(e)
   }

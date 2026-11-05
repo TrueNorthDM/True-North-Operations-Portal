@@ -97,7 +97,7 @@ const queryOf = (ui: Pick<EntriesUi, 'period' | 'anchor' | 'who' | 'member'>, an
 const keyOf = (q: ReturnType<typeof queryOf>) => `${q.from}|${q.to}|${q.who}|${q.personId ?? ''}`
 const daySeconds = (iso: string, zone: string) => localMinutes(iso, zone) * 60
 
-export function TimeEntries({ initialData, catalog, api, initial, clock, clockHref = '/clocky-hours?clock=open', onChanged, onInvoiceMade }: {
+export function TimeEntries({ initialData, catalog, api, initial, clock, clockHref = '/clocky-hours?clock=open', onChanged, onInvoiceMade, onSendInvoice }: {
   initialData: EntriesData
   catalog: Catalog
   api: EntriesApi
@@ -110,6 +110,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   onChanged?: () => void
   /** A contractor's submit made an invoice: the live page opens it. */
   onInvoiceMade?: (invoiceId: number) => void
+  /** A contractor's timesheet is sent: on to Send your invoice for that period (4 November 2026). */
+  onSendInvoice?: (start: string) => void
 }) {
   const [data, setData] = useState<EntriesData>(initialData)
   const [nowMs, setNowMs] = useState(() => Date.parse(clock.now))
@@ -332,6 +334,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     setModal(null)
     // A contractor's invoice opens (Invoices.dc.html 6A), with the toast on it.
     if (r.invoiceId && onInvoiceMade) return onInvoiceMade(r.invoiceId)
+    // Since 4 November 2026 the contractor sends their own: straight on to it.
+    if (r.sendInvoice && onSendInvoice) return onSendInvoice(s.start)
     say(r.toast)
     reload()
   }

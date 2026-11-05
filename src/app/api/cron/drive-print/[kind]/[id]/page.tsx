@@ -20,7 +20,8 @@ import { receiptBytes } from '@/lib/timeclock/receipt-files'
 import { receiptShow } from '@/lib/timeclock/receipt-pages'
 import { db } from '@/lib/timeclock/clocky-context'
 import { mimeOfExt, extOf } from '@/lib/drive/file-names'
-import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
+import { InvoicePrint } from '@/components/clocky/invoices/InvoicePrint'
+import { printQuery } from '@/lib/pdf/invoice-pages'
 import { DocSheet } from '@/components/clocky/invoices/DocSheet'
 import { ReceiptPages } from '@/components/clocky/invoices/ReceiptPages'
 import { ReviewDoc } from '@/components/review/ReviewDoc'
@@ -33,7 +34,7 @@ export const metadata = { title: 'Document', robots: { index: false, follow: fal
 /** The copy reads as Finance's records do: every document, in New York's days. */
 const SERVER = { personId: null, isAdmin: true, zone: 'America/New_York' }
 
-export default async function DrivePrintPage({ params }: { params: Promise<{ kind: string; id: string }> }) {
+export default async function DrivePrintPage({ params, searchParams }: { params: Promise<{ kind: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { kind, id } = await params
   if ((kind !== 'invoice' && kind !== 'rmb' && kind !== 'review') || !/^\d+$/.test(id)) notFound()
   if (!checkPass((await headers()).get(PRINT_HEADER), kind, Number(id))) notFound()
@@ -46,13 +47,11 @@ export default async function DrivePrintPage({ params }: { params: Promise<{ kin
   }
 
   if (kind === 'invoice') {
+    // The record page always goes with Finance's copy (owner, 4 November 2026): without it the copy waits and tries again.
     const d = await loadInvoiceDetail(SERVER, Number(id))
-    if (!d) notFound()
-    return (
-      <div className="print-doc bg-white w-[620px] [&>div]:min-h-[877px]">
-        <InvoiceDoc inv={d.doc} variant="page" />
-      </div>
-    )
+    if (!d?.doc.record) notFound()
+    const q = printQuery(await searchParams)
+    return <InvoicePrint doc={d.doc} only={q.only} ownPages={q.ownPages} paper={q.paper} />
   }
 
   const doc = await loadRmbDoc(SERVER, Number(id), SERVER.zone)

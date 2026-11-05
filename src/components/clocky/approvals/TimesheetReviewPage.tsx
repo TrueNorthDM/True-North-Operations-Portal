@@ -31,6 +31,10 @@ export interface ReviewApi {
   return(reason: string): Promise<Res>
   reopen(reason: string): Promise<Res>
   retry(): Promise<Res>
+  /** The contractor's own invoice (4 November 2026): the hours alone, the invoice waits. */
+  approveHours?(): Promise<Res>
+  /** The invoice alone goes back to the contractor, with the reason. */
+  sendBack?(invoiceId: number, reason: string): Promise<Res>
 }
 
 type Tab = 'sum' | 'entries' | 'both'
@@ -72,7 +76,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
   const [tab, setTab] = useState<Tab>(initial?.tab ?? 'sum')
   const [day, setDay] = useState<string | null>(initial?.day ?? null)
   const [client, setClient] = useState<string>('all')
-  const [modal, setModal] = useState<'return' | 'reopen' | 'pdf' | null>(initial?.modal ?? null)
+  const [modal, setModal] = useState<'return' | 'reopen' | 'pdf' | 'sendBack' | null>(initial?.modal ?? null)
   const [note, setNote] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -100,7 +104,8 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
   }
 
   const a = r.act
-  const noteNeeded = !!a.overWarn && !note.trim()
+  const noteNeeded = (!!a.overWarn || !!a.needsReason) && !note.trim()
+  const si = r.sentInvoice ?? null
   const hasTabs = r.kind === 'timesheet'
   const first = r.who.split(' ')[0]
   const cols = r.noTimesheet ? (r.invoice ? 'grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]' : 'grid-cols-[minmax(0,1fr)]')
@@ -267,6 +272,43 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
 
           {r.invoice && (
             <div className="sticky top-[86px] flex flex-col gap-3.5 min-w-0">
+              {si && (
+                <div className={`${CARD} px-[18px] py-4 flex flex-col gap-3`}>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">The invoice beside the timesheet</span>
+                  {si.sentLine && (
+                    <p className="m-0 text-[13px] text-foreground leading-[1.5]">
+                      {si.sentLine}{si.ownPdfHref && <> · <a href={si.ownPdfHref} target="_blank" rel="noopener" className="text-tn-teal font-bold">Open their PDF</a></>}
+                    </p>
+                  )}
+                  {si.check && (
+                    <>
+                      {si.check.summary && (
+                        <div role="alert" className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45]" style={{ background: si.check.matches ? '#e6f6ee' : '#fdeeef', color: si.check.matches ? '#0d7a4f' : '#8a1f27' }}>
+                          <Svg d={ICONS.alert} size={16} stroke="currentColor" sw={2} /><span><b>{si.check.matches ? 'They match.' : 'The invoice does not match the timesheet.'}</b> {si.check.summary}</span>
+                        </div>
+                      )}
+                      {!si.check.summary && si.check.matches && (
+                        <div className="flex gap-2.5 items-center rounded-[11px] px-3.5 py-2.5 text-[13px] font-bold bg-[#e6f6ee] text-[#0d7a4f]"><Svg d={ICONS.check} size={15} stroke="currentColor" sw={3} />The invoice matches the timesheet.</div>
+                      )}
+                      <div className="flex flex-col text-[12.5px] tabular-nums lining-nums">
+                        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 pb-1.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">
+                          <span>Client</span><span className="text-right">Timesheet</span><span className="text-right">Invoice</span><span>Check</span>
+                        </div>
+                        {[...si.check.rows, si.check.total].map((x, i, all) => {
+                          const tone = x.check === 'match' ? '#0d7a4f' : x.check === 'on-file' ? '#5b6b82' : '#c8323d'
+                          const word = x.check === 'match' ? 'Matches' : x.check === 'on-file' ? '-' : x.check === 'differs' ? `Differs${x.difference ? ` ${x.difference}` : ''}` : x.check === 'only-timesheet' ? 'Missing' : 'Not on timesheet'
+                          return (
+                            <div key={x.label} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 py-[7px] ${i === all.length - 1 ? 'border-t-2 border-[var(--panel-border)] font-bold text-tn-ink' : 'border-b border-[var(--row-rule)]'}`}>
+                              <span className="text-tn-ink font-semibold min-w-0">{x.label}</span><span className="text-right">{x.timesheet}</span><span className="text-right">{x.invoice}</span>
+                              <span className="font-bold" style={{ color: tone }}>{word}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <div className={`${CARD} overflow-hidden`}>
                 <div className="flex items-center justify-between gap-2.5 flex-wrap px-[18px] py-3.5">
                   <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Invoice</span>
@@ -430,6 +472,16 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           {a.overInfo && (
             <div className="flex gap-2.5 items-center rounded-[11px] bg-white border border-[var(--panel-border)] px-3.5 py-2.5 text-[13px] text-[#5b6b82] tabular-nums lining-nums"><Svg d={ICONS.alert} size={16} stroke="#8a6d1a" sw={2} />{a.overInfo}</div>
           )}
+          {r.awaitingInvoice && (
+            <div className="flex gap-2.5 items-center rounded-[11px] bg-white border border-[var(--panel-border)] px-3.5 py-2.5 text-[13px] text-[#5b6b82]"><Svg d={ICONS.alert} size={16} stroke="#1E7D7F" sw={2} />{r.awaitingInvoice}</div>
+          )}
+          {a.needsReason && !a.overWarn && (
+            <label className="flex flex-col gap-[5px]">
+              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d1a]">To approve anyway, write why (required)</span>
+              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Why the invoice is fine to pay as it is"
+                className={`w-full ${TEXTAREA_SHAPE} border-[#e9d48a] bg-[#fffdf6]`} />
+            </label>
+          )}
           {a.overWarn && (
             <>
               <div role="alert" className="flex gap-2.5 items-center rounded-[11px] bg-[#fdf8e7] border border-[#f0e2a8] px-3.5 py-[11px] text-[13.5px] text-[#8a6d1a] font-bold tabular-nums lining-nums"><Svg d={ICONS.alert} size={17} stroke="currentColor" sw={2} />{a.overWarn}</div>
@@ -446,9 +498,20 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
               className={`${BTN.white} disabled:opacity-60`}>
               <Svg d={ICONS.undo} size={15} stroke={BTN_ICON.white} />Return
             </button>
+            {a.hoursOnly && api.approveHours && (
+              <button type="button" disabled={busy} onClick={() => void run(() => api.approveHours!())} className={`${BTN.white} disabled:opacity-60`}>
+                <Svg d={ICONS.check} size={14} stroke={BTN_ICON.white} sw={3} />Approve the hours only
+              </button>
+            )}
+            {a.sendBack && api.sendBack && (
+              <button type="button" disabled={busy} onClick={() => { setReason(''); setModal('sendBack') }}
+                className={`${a.needsReason ? BTN.navy : BTN.white} disabled:opacity-60`}>
+                <Svg d={ICONS.undo} size={15} stroke={a.needsReason ? BTN_ICON.navy : BTN_ICON.white} />Send the invoice back
+              </button>
+            )}
             <button type="button" disabled={busy || noteNeeded} onClick={() => void run(() => api.approve(note.trim() || undefined))}
-              className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
-              <Svg d={ICONS.check} size={14} stroke={BTN_ICON.navy} sw={3} />{a.label}
+              className={`${a.needsReason ? BTN.white : BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
+              <Svg d={ICONS.check} size={14} stroke={a.needsReason ? BTN_ICON.white : BTN_ICON.navy} sw={3} />{a.needsReason ? `${a.label} anyway` : a.label}
             </button>
           </div>
         </div>
@@ -462,6 +525,14 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           warn={modal === 'reopen' ? a.reopenWarn : null}
           reason={reason} setReason={setReason} busy={busy} onClose={() => setModal(null)}
           onConfirm={() => void run(() => (modal === 'return' ? api.return(reason.trim()) : api.reopen(reason.trim())), () => setModal(null))} />
+      )}
+      {modal === 'sendBack' && a.sendBack && api.sendBack && (
+        <ReasonDialog
+          title={`Send the invoice back to ${first}?`}
+          text={`The invoice goes back to ${first} with your reason; the hours stay as they are. ${first} fixes it and sends it again, with the same number.`}
+          action="Send it back"
+          reason={reason} setReason={setReason} busy={busy} onClose={() => setModal(null)}
+          onConfirm={() => void run(() => api.sendBack!(a.sendBack!, reason.trim()), () => setModal(null))} />
       )}
       {modal === 'pdf' && r.invoice && <InvoicePdfModal invoice={r.invoice} onClose={() => setModal(null)} onDownloaded={name => say(`Downloaded ${name}`)} />}
       <Toast toast={toast} />

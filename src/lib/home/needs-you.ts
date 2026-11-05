@@ -62,6 +62,7 @@ import { currentStep, invoiceApprover, orList, type TimesheetState } from '@/lib
 import { periodLabel } from '@/lib/timeclock/periods'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, ownTimeOffShown, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
+import { loadInvoicesToSend } from '@/lib/timeclock/send-invoice-data'
 
 const APPROVALS = '/clocky-hours/approvals'
 const AUTOMATIONS = '/admin/automations'
@@ -145,6 +146,8 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     read('own timesheets', { text: 'Your timesheets could not be read just now.' }, needsViewer(access.can('clocky-hours')), withViewer(x => myTimesheets(x, now))),
     // The Invoices page's own gate, not Time entries' (audit, 25 October 2026).
     read('own invoices', { text: 'Your invoices could not be read just now.' }, needsViewer(access.can('clocky-invoices')), withViewer(x => myInvoices(x, now))),
+    // The invoice a contractor still has to send (4 November 2026: they make and send their own).
+    read('invoices to send', { text: 'Your invoices to send could not be read just now.', href: '/clocky-hours/invoices/new' }, needsViewer(access.can('clocky-invoices')), withViewer(x => invoicesToSend(x, now))),
   ])
 
   const tab = (parts: Part[], sort?: (a: HomeRow, b: HomeRow) => number, extra: TabError[] = []): HomeTab => {
@@ -562,6 +565,19 @@ async function myTimesheets(v: Viewer, now: Date): Promise<HomeRow[]> {
     if (r.state === 'returned') return mineRow(`t${r.id}`, title, 'Sent back to you. Fix it in Time entries and send it again.', 'wait', 'clock', r.submitted_at ?? '')
     return mineRow(`t${r.id}`, title, `${r.state === 'recorded' ? 'Recorded' : 'Approved'}, ${monthDay(localDate(r.approved_at!, v.zone))}`, 'done', 'clock', r.approved_at!)
   }))
+}
+
+/** "Send your invoice for October": each sent timesheet (or month, with no timesheet) still waiting for the contractor's own invoice. */
+async function invoicesToSend(v: Viewer, now: Date): Promise<HomeRow[]> {
+  const data = await loadInvoicesToSend(v.personId, now, { hours: false })
+  if (!data) return []
+  const today = localDate(now, v.zone)
+  // A month with no timesheet is owed once it has ended.
+  return newestFirst(data.toSend.filter(x => x.kind !== 'fixed_no_timesheet' || x.end < today).map((x): Mine => ({
+    key: `send${x.start}`, kind: 'mine', title: `Send your invoice for ${x.label}`,
+    sub: x.returned ? `${x.returned.number} was sent back to you${x.returned.reason ? `: "${x.returned.reason}"` : ''}. Fix it and send it again.` : 'You make it and send it: your own file, or the invoice builder.',
+    due: null, button: 'Send', panel: null, href: `/clocky-hours/invoices/new?start=${x.start}`, mine: { state: 'wait', icon: 'client-reports' }, at: `${x.end}T23:59:59Z`,
+  })))
 }
 
 /** "September invoice, $2,180.00", "Paid on Oct 6": a contractor's own invoices, waiting or paid in the last 30 days. */

@@ -9,9 +9,10 @@ import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import { toAddressForm } from '@/lib/address'
+import { confirmText } from '@/lib/timeclock/contractor-invoice'
 import { provedEmail } from '@/lib/invoice-form/device'
 import { companyRates, findSender, formToday, ownRates } from '@/lib/invoice-form/data'
-import { lastMonth, ratesFor } from '@/lib/invoice-form/rules'
+import { MONTH_SLOT, lastMonth, ratesFor } from '@/lib/invoice-form/rules'
 import { SendClosed, SendInvoice, type SendContext } from '@/components/invoice-form/SendInvoice'
 import { checkCode, checkLine, checkMonth, forgetDevice, requestCode } from './actions'
 
@@ -38,6 +39,8 @@ export default async function SendPage() {
       paymentDays: settings.paymentDays,
       today,
       defaultMonth: lastMonth(today),
+      // The sentence they tick (leadership, 4 November 2026), from its one source; the page puts the month in.
+      confirm: { own_file: confirmText('own_file', MONTH_SLOT), builder: confirmText('builder', MONTH_SLOT) },
     }
   }
   return <SendInvoice ctx={ctx} api={{ requestCode, checkCode, forgetDevice, checkLine, checkMonth }} />

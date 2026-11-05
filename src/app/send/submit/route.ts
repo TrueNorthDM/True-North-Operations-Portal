@@ -5,6 +5,11 @@
  * multipart form: `data` (the fields, as JSON), receipt_<n> for each receipt,
  * own_pdf for their own invoice.
  *
+ * Every invoice is the contractor's own (leadership, 4 November 2026): their
+ * own PDF (required then, with the total on it) or the lines they fill in
+ * here, and the box "This is my invoice..." ticked. The sentence kept on the
+ * invoice is built here from the way and the month, never taken from the page.
+ *
  * No session on purpose: North Time is open (the form follows its lock), and
  * the email was proved with a code (the signed cookie). Every field is checked again here (lib/invoice-form/rules.ts), the
  * rates and the amounts are worked out here, never taken from the page.
@@ -28,13 +33,14 @@ import { loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import { periodLabel } from '@/lib/timeclock/periods'
 import { usd } from '@/lib/timeclock/invoice-doc'
+import { confirmText } from '@/lib/timeclock/contractor-invoice'
 import { provedEmail } from '@/lib/invoice-form/device'
 import {
   companyRates, findSender, formToday, mailSender, monthFor, ownRates, sentBefore, storeSubmission, tellApprover, writeBackAddress, writeFormInvoice,
   type StoredFile,
 } from '@/lib/invoice-form/data'
 import {
-  MAX_FILE, MAX_RECEIPTS, MAX_TOTAL_FILES, RECEIPT_TYPES, buildFormLines, checkSubmission, firstDuplicate, itemKey, monthBounds, monthTakenText, ratesFor,
+  MAX_FILE, MAX_RECEIPTS, MAX_TOTAL_FILES, RECEIPT_TYPES, checkSubmission, firstDuplicate, formInvoice, formRecord, itemKey, monthBounds, monthTakenText, ratesFor,
   type RawSubmission,
 } from '@/lib/invoice-form/rules'
 
@@ -86,7 +92,7 @@ export async function POST(request: Request) {
     const [s, clients, who] = await Promise.all([loadInvoiceSettings(), loadClients(), findSender(email)])
     settings = s
     sender = who
-    checked = checkSubmission(raw, { today: formToday(), clients, mileageRate: s.mileageRate, files: new Set(receiptFiles.keys()), countryOk: code => COUNTRIES.has(code) })
+    checked = checkSubmission(raw, { today: formToday(), clients, mileageRate: s.mileageRate, files: new Set(receiptFiles.keys()), countryOk: code => COUNTRIES.has(code), ownPdf: !!pdf })
   } catch (e) {
     console.error('[invoice form] read:', e instanceof Error ? e.message : e)
     return no(TRY_AGAIN, 500)
@@ -94,6 +100,9 @@ export async function POST(request: Request) {
   if (!checked.ok) return no(checked.error)
   const sub = checked.value
   const monthName = periodLabel(monthBounds(sub.month)).full
+  // The sentence they ticked, word for word as the page showed it, built here.
+  const confirmed = confirmText(sub.madeBy, monthName)
+  const now = new Date()
 
   const files = createUploadClient()
   const stored: string[] = []
@@ -119,8 +128,9 @@ export async function POST(request: Request) {
       stored.push(path)
       receipts.set(i, { path, name: file.name.slice(0, 200) || `receipt.${ext}`, size: file.size })
     }
+    // Their PDF only goes with their own file; filled in here, the portal makes the PDF.
     let ownPdf: StoredFile | null = null
-    if (pdf) {
+    if (pdf && sub.madeBy === 'own_file') {
       const path = `${folder}/${randomUUID()}.pdf`
       const { error } = await files.storage.from('receipts').upload(path, Buffer.from(await pdf.arrayBuffer()), { contentType: 'application/pdf', upsert: false })
       if (error) throw new Error(`upload: ${error.message}`)
@@ -128,19 +138,20 @@ export async function POST(request: Request) {
       ownPdf = { path, name: pdf.name.slice(0, 200) || 'invoice.pdf', size: pdf.size }
     }
 
-    const { lines, total } = buildFormLines(sub.work, rates, sub.reimbursements)
+    const { lines, total } = formInvoice(sub, rates)
     const mailLines = lines.map(l => ({ text: l.kind === 'reimbursement' ? `Reimbursement: ${l.client}, ${l.description}` : l.description, amount: usd(l.amount) }))
     if (sender) {
-      const made = await writeFormInvoice({ personId: sender.personId, email, sub, rates, receipts, ownPdf, againId: month.kind === 'again' ? month.invoiceId : null })
+      const record = formRecord(sub, { rates, sentBy: sender.personId, email, confirmed, ownPdf })
+      const made = await writeFormInvoice({ personId: sender.personId, email, sub, rates, receipts, ownPdf, againId: month.kind === 'again' ? month.invoiceId : null, record, sentAt: now, now })
       if (sub.saveToRecord) await writeBackAddress(sender.personId, sub.sender)
       await tellApprover({ invoiceId: made.id, submissionId: null, personId: sender.personId, text: `${made.number} (${sub.sender.name}, ${usd(total)}) came from the invoice form for ${monthName}. It waits for your approval.` })
       await mailSender(email, { kind: 'received', number: made.number, month: monthName, total: usd(total), lines: mailLines }, `received:${made.id}:${Date.now()}`)
-      return NextResponse.json({ ok: true, number: made.number, email }, { headers: { 'Cache-Control': 'no-store' } })
+      return NextResponse.json({ ok: true, number: made.number, email, madeBy: sub.madeBy, sentAt: now.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
     }
-    const id = await storeSubmission({ email, sub, rates, receipts, ownPdf })
+    const id = await storeSubmission({ email, sub, rates, receipts, ownPdf, confirmed })
     await tellApprover({ invoiceId: null, submissionId: id, personId: null, text: `${sub.sender.name} (${email}) sent an invoice for ${monthName} through the invoice form and is not in the Directory. Link it to a person in Invoices.` })
     await mailSender(email, { kind: 'received', number: null, month: monthName, total: usd(total), lines: mailLines }, `received:s${id}`)
-    return NextResponse.json({ ok: true, number: null, email }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json({ ok: true, number: null, email, madeBy: sub.madeBy, sentAt: now.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
     console.error('[invoice form] send:', e instanceof Error ? e.message : e)
     await removeStored()

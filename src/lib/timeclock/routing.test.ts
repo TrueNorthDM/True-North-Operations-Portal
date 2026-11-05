@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currentStep, formApprover, hoursApprover, invoiceApprover, isRecordedOnly, loneInvoiceApprover, oneStep, orList, reimbursementApprovers, requestApprover, requestDeciders, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
+import { currentStep, formApprover, hoursApprover, invoiceApprover, isRecordedOnly, isSentInvoice, loneInvoiceApprover, oneStep, orList, reimbursementApprovers, requestApprover, requestDeciders, stateAfterApprove, stateOnSubmit, type RoutePerson, type RouteSettings } from './routing'
 
 // The README's people: Arnaldo approves invoices by default, Dave Sharpe is the
 // Deputy Director and approves the invoices of those who report to him.
@@ -159,5 +159,35 @@ describe('an invoice from the invoice form (migration 147)', () => {
     expect(loneInvoiceApprover(wendy, S, 'form_fixed')).toBe('arnaldo')
     expect(loneInvoiceApprover(wendy, S, null)).toBeNull()
     expect(loneInvoiceApprover(john, S, null)).toBe('dave')
+  })
+})
+
+describe('the contractor sends their own invoice (leadership, 4 November 2026)', () => {
+  it('until it is sent, only the hours wait, even when one person approves both', () => {
+    expect(currentStep(cheyenne, S, 'submitted', false)).toEqual({ step: 'hours', owner: 'arnaldo' })
+    expect(currentStep(samuel, S, 'submitted', false)).toEqual({ step: 'hours', owner: 'wendy' })
+    expect(stateAfterApprove(cheyenne, S, 'submitted', false)).toBe('hours_approved')
+  })
+
+  it('hours approved: nothing waits on the approver until the invoice arrives', () => {
+    expect(currentStep(samuel, S, 'hours_approved', false)).toBeNull()
+    expect(currentStep(samuel, S, 'hours_approved', true)).toEqual({ step: 'invoice', owner: 'arnaldo' })
+  })
+
+  it('once sent, as before: both for one approver, hours then invoice for two', () => {
+    expect(currentStep(cheyenne, S, 'submitted', true)).toEqual({ step: 'both', owner: 'arnaldo' })
+    expect(currentStep(samuel, S, 'submitted', true)).toEqual({ step: 'hours', owner: 'wendy' })
+  })
+
+  it('employees are not touched by it', () => {
+    expect(currentStep(wendy, S, 'submitted', false)).toEqual({ step: 'payroll', owner: 'arnaldo' })
+  })
+
+  it('an invoice sent back is not sent', () => {
+    expect(isSentInvoice('waiting')).toBe(true)
+    expect(isSentInvoice('approved')).toBe(true)
+    expect(isSentInvoice('paid')).toBe(true)
+    expect(isSentInvoice('draft')).toBe(false)
+    expect(isSentInvoice(null)).toBe(false)
   })
 })

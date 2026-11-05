@@ -12,6 +12,13 @@
  * submissions) until the default approver links it to a person; only then
  * is it numbered.
  *
+ * Every invoice is the contractor's own (leadership, 4 November 2026): each
+ * one the form writes carries the record of who sent it, when, how (their own
+ * PDF or filled in here) and the sentence they ticked, and each send is kept
+ * in invoice_sends (lib/timeclock/contractor-invoice.ts). A new sender's record
+ * waits in the submission and goes on the invoice when it is linked, with the
+ * time they sent it.
+ *
  * Not a "use server" file: the public actions and route, and the portal's
  * actions, decide who may cause each of these.
  */
@@ -28,9 +35,10 @@ import { loadInvoiceSettings, loadRouteSettings, loadRoutes, type InvoiceSetting
 import { formApprover } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
 import { announceTimesheetSubmitted, portalOrigin } from '@/lib/timeclock/clocky-notify'
+import { madeByLine, recordSend, sendFields, type MadeBy, type SendRecord } from '@/lib/timeclock/contractor-invoice'
 import { renderFormMail, type FormMail } from './emails'
 import {
-  buildFormLines, itemKey, monthBounds, monthState, sourceOf, type CheckedSubmission, type Deliverable, type FormReimbursement,
+  formInvoice, formRecord, itemKey, monthBounds, monthState, sourceOf, type CheckedSubmission, type Deliverable, type FormReimbursement,
   type FormWork, type MonthState, type Rates, type SenderInput, type SentItem,
 } from './rules'
 
@@ -84,7 +92,17 @@ export const senderLine = (s: SenderInput): string => formatAddressLines(senderA
 
 // ── Items sent before, the month ───────────────────────────────────────────
 
-interface StoredWork { work: FormWork; rates: Rates }
+/**
+ * What a submission keeps in its `lines`: the work, the rates it was priced
+ * at, and (since 4 November 2026) the send's record: how it was made, what
+ * they typed beside their file, and the sentence they ticked. Older ones have
+ * no record.
+ */
+interface StoredWork {
+  work: FormWork
+  rates: Rates
+  record?: { madeBy: MadeBy; own: CheckedSubmission['own']; confirmed: string }
+}
 
 /** Every item with one of these keys already sent, by anyone: on an invoice (but `exceptInvoiceId`), or waiting for the Directory. */
 export async function sentBefore(keys: readonly string[], exceptInvoiceId: number | null): Promise<SentItem[]> {
@@ -137,13 +155,17 @@ export interface StoredFile { path: string; name: string; size: number }
 export interface FormInvoiceInput {
   personId: string
   email: string
-  sub: Pick<CheckedSubmission, 'month' | 'kind' | 'sender' | 'work' | 'reimbursements'>
+  sub: Pick<CheckedSubmission, 'month' | 'kind' | 'sender' | 'work' | 'reimbursements' | 'own'>
   rates: Rates
   /** Each reimbursement's receipt, by its `file` number. */
   receipts: ReadonlyMap<number, StoredFile>
   ownPdf: StoredFile | null
   /** The returned invoice of the same month, sent again: same number, new lines. */
   againId: number | null
+  /** Who sent it, when, how, and the sentence ticked (formRecord). Null only for a submission kept before 4 November 2026. */
+  record: SendRecord | null
+  /** When they sent it: now, or when a new sender sent it (a submission linked later). Defaults to `now`. */
+  sentAt?: Date
   now?: Date
 }
 
@@ -158,7 +180,8 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
   const at = now.toISOString()
   const settings = await loadInvoiceSettings()
   const { start, end } = monthBounds(x.sub.month)
-  const { lines, total } = buildFormLines(x.sub.work, x.rates, x.sub.reimbursements)
+  const sentAt = x.sentAt ?? now
+  const { lines, total } = formInvoice(x.sub, x.rates)
   const issued = formToday(now)
   const fields = {
     person_id: x.personId, submission_id: null, period_start: start, period_end: end, kind: 'fixed_no_timesheet', source: sourceOf(x.sub.kind),
@@ -166,16 +189,25 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
     from_snapshot: { name: x.sub.sender.name, location: senderLine(x.sub.sender), email: x.email },
     to_snapshot: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '', email: settings.billingEmail ?? '' },
     approved_by: null, approved_at: null, paid_note: null, updated_at: at,
+    // The record of this send (who, when, how, the sentence ticked) and their PDF.
+    ...(x.record ? sendFields(x.record, sentAt) : { own_pdf_path: x.ownPdf?.path ?? null, own_pdf_name: x.ownPdf?.name ?? null }),
   }
 
   let id: number, number: string
   let oldLines: number[] = [], oldRmb: { id: number; receipt_path: string | null }[] = []
-  let before: { state: string; total: number; own_pdf_path: string | null; own_pdf_name: string | null } | null = null
+  let before: Omit<Before, 'id' | 'number' | 'person_id' | 'source'> | null = null
   if (x.againId) {
-    const { data: ex, error } = await db.from('invoices').select('id, number, state, total, person_id, source, own_pdf_path, own_pdf_name').eq('id', x.againId).maybeSingle()
+    const { data: ex, error } = await db.from('invoices')
+      .select('id, number, person_id, source, state, total, own_pdf_path, own_pdf_name, made_by, sent_from, sent_by, sent_at, confirmed_text, their_number, stated_hours, stated_total, covers')
+      .eq('id', x.againId).maybeSingle()
     if (error) throw new Error(`The invoice could not be read: ${error.message}`)
     if (!ex || ex.state !== 'draft' || ex.person_id !== x.personId || !ex.source) throw new Error('That invoice is not waiting to be sent again.')
-    before = { state: ex.state, total: Number(ex.total), own_pdf_path: ex.own_pdf_path, own_pdf_name: ex.own_pdf_name }
+    // All of what this send changes (the record of the send before too), to put back if it fails half way.
+    const e = ex as Before
+    before = {
+      state: e.state, total: e.total, own_pdf_path: e.own_pdf_path, own_pdf_name: e.own_pdf_name, made_by: e.made_by, sent_from: e.sent_from, sent_by: e.sent_by,
+      sent_at: e.sent_at, confirmed_text: e.confirmed_text, their_number: e.their_number, stated_hours: e.stated_hours, stated_total: e.stated_total, covers: e.covers,
+    }
     const [ol, orr] = await Promise.all([
       db.from('invoice_lines').select('id').eq('invoice_id', ex.id),
       db.from('reimbursements').select('id, receipt_path').eq('invoice_id', ex.id),
@@ -185,14 +217,14 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
     oldRmb = (orr.data ?? []) as { id: number; receipt_path: string | null }[]
     id = ex.id
     number = ex.number
-    // Their PDF: a new one replaces it, none sent keeps the one they sent before.
-    const { data: moved, error: uErr } = await db.from('invoices').update({ ...fields, own_pdf_path: x.ownPdf?.path ?? ex.own_pdf_path, own_pdf_name: x.ownPdf?.name ?? ex.own_pdf_name }).eq('id', ex.id).eq('state', 'draft').select('id')
+    // The new send's record replaces the one before on the invoice; the one before stays in invoice_sends.
+    const { data: moved, error: uErr } = await db.from('invoices').update(fields).eq('id', ex.id).eq('state', 'draft').select('id')
     if (uErr) throw new Error(`The invoice was not saved: ${uErr.message}`)
     if (!moved?.length) throw new Error('That invoice is not waiting to be sent again.')
   } else {
     const { data: n, error: nErr } = await db.rpc('next_document_number', { p_kind: 'invoice' })
     if (nErr || !n) throw new Error(`No invoice number: ${nErr?.message ?? 'none'}`)
-    const { data: made, error } = await db.from('invoices').insert({ ...fields, number: n as string, own_pdf_path: x.ownPdf?.path ?? null, own_pdf_name: x.ownPdf?.name ?? null }).select('id').single()
+    const { data: made, error } = await db.from('invoices').insert({ ...fields, number: n as string }).select('id').single()
     if (error) throw new Error(`The invoice was not saved: ${error.message}`)
     id = made.id
     number = n as string
@@ -205,7 +237,7 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
     if (addedLines.length) await db.from('invoice_lines').delete().in('id', addedLines)
     if (addedRmb.length) await db.from('reimbursements').delete().in('id', addedRmb)
     if (addedReports.length) await db.from('reimbursement_reports').delete().in('id', addedReports)
-    if (x.againId && before) await db.from('invoices').update({ state: before.state, total: before.total, own_pdf_path: before.own_pdf_path, own_pdf_name: before.own_pdf_name, updated_at: at }).eq('id', id)
+    if (x.againId && before) await db.from('invoices').update({ ...before, updated_at: at }).eq('id', id)
     else await db.from('invoices').delete().eq('id', id)
   }
   try {
@@ -250,10 +282,18 @@ export async function writeFormInvoice(x: FormInvoiceInput): Promise<{ id: numbe
       const files = oldRmb.map(r => r.receipt_path).filter((p): p is string => !!p)
       if (files.length) await createUploadClient().storage.from('receipts').remove(files).catch(() => null)
     }
-    if (x.ownPdf && before?.own_pdf_path) await createUploadClient().storage.from('receipts').remove([before.own_pdf_path]).catch(() => null)
+    // Their PDF of the send before is kept: its version in invoice_sends still points to it (4 November 2026).
     await db.from('tc_approval_events').insert({ submission_id: null, invoice_id: id, step: 'invoice', action: 'submit', by_person: null, at, note: null })
   }
+  if (x.record) await recordSend(id, x.record, sentAt)
   return { id, number }
+}
+
+/** A returned invoice as read before it is sent again: what the send changes, kept to put back when it fails half way. */
+type Before = {
+  id: number; number: string; person_id: string; source: string | null; state: string; total: number
+  own_pdf_path: string | null; own_pdf_name: string | null; made_by: string | null; sent_from: string | null; sent_by: string | null
+  sent_at: string | null; confirmed_text: string | null; their_number: string | null; stated_hours: number | null; stated_total: number | null; covers: string | null
 }
 
 /** A reimbursement riding on a form invoice: no decision of its own, approved with the invoice. */
@@ -281,13 +321,15 @@ export async function writeBackAddress(personId: string, s: SenderInput): Promis
 export interface StoredReimbursement extends FormReimbursement { receipt: StoredFile | null }
 
 /** Keeps what a sender not in the Directory sent, to be linked to a person later. */
-export async function storeSubmission(x: { email: string; sub: CheckedSubmission; rates: Rates; receipts: ReadonlyMap<number, StoredFile>; ownPdf: StoredFile | null }): Promise<number> {
+export async function storeSubmission(x: { email: string; sub: CheckedSubmission; rates: Rates; receipts: ReadonlyMap<number, StoredFile>; ownPdf: StoredFile | null; confirmed: string }): Promise<number> {
   const { start, end } = monthBounds(x.sub.month)
-  const { total } = buildFormLines(x.sub.work, x.rates, x.sub.reimbursements)
+  const { total } = formInvoice(x.sub, x.rates)
+  // The record waits here with the send; created_at is when they sent it.
+  const stored: StoredWork = { work: x.sub.work, rates: x.rates, record: { madeBy: x.sub.madeBy, own: x.sub.own, confirmed: x.confirmed } }
   const reimbursements: StoredReimbursement[] = x.sub.reimbursements.map(r => ({ ...r, receipt: r.file != null ? x.receipts.get(r.file) ?? null : null }))
   const { data, error } = await c().from('invoice_form_submissions').insert({
     email: x.email, sender: x.sub.sender as unknown as Json, source: sourceOf(x.sub.kind), period_start: start, period_end: end,
-    lines: { work: x.sub.work, rates: x.rates } as unknown as Json, reimbursements: reimbursements as unknown as Json, total,
+    lines: stored as unknown as Json, reimbursements: reimbursements as unknown as Json, total,
     own_pdf_path: x.ownPdf?.path ?? null, own_pdf_name: x.ownPdf?.name ?? null,
   }).select('id').single()
   if (error) throw new Error(`The invoice was not saved: ${error.message}`)
@@ -319,11 +361,12 @@ export async function loadWaitingSenders(): Promise<WaitingSender[]> {
     const sender = s.sender as unknown as SenderInput
     const stored = s.lines as unknown as StoredWork
     const rmb = s.reimbursements as unknown as StoredReimbursement[]
-    const { lines } = buildFormLines(stored.work, stored.rates, rmb)
+    const { lines } = formInvoice({ work: stored.work, reimbursements: rmb, own: stored.record?.own ?? null }, stored.rates)
     const n = stored.work.kind === 'deliverables' ? stored.work.items.length : 0
+    const made = stored.record ? `, ${madeByLine(stored.record.madeBy, sender.name, s.own_pdf_name).replace(/^./, ch => ch.toLowerCase())}` : ''
     return {
       id: s.id, email: s.email, name: sender.name, line: senderLine(sender), month: periodLabel({ start: s.period_start, end: s.period_end }).full,
-      how: stored.work.kind === 'fixed' ? 'The invoice form, fixed amount' : `The invoice form, deliverables, ${n} line${n === 1 ? '' : 's'}`,
+      how: `${stored.work.kind === 'fixed' ? 'The invoice form, fixed amount' : `The invoice form, deliverables, ${n} line${n === 1 ? '' : 's'}`}${made}`,
       total: usd(Number(s.total)),
       lines: lines.map(l => ({ text: l.kind === 'reimbursement' ? `Reimbursement: ${l.client}, ${l.description}` : l.description, amount: usd(l.amount) })),
       files: [
@@ -367,11 +410,13 @@ export async function linkSubmission(id: number, personId: string, linkedBy: str
     if (r.receipt) receipts.set(i, r.receipt)
     return { ...r, file: r.receipt ? i : null }
   })
-  const made = await writeFormInvoice({
-    personId, email: s.email, againId: null, rates: stored.rates, receipts,
-    ownPdf: s.own_pdf_path ? { path: s.own_pdf_path, name: s.own_pdf_name ?? 'invoice.pdf', size: 0 } : null,
-    sub: { month: ym, kind: stored.work.kind, sender: s.sender as unknown as SenderInput, work: stored.work, reimbursements },
-  })
+  const ownPdf = s.own_pdf_path ? { path: s.own_pdf_path, name: s.own_pdf_name ?? 'invoice.pdf', size: 0 } : null
+  const sub = { month: ym, kind: stored.work.kind, sender: s.sender as unknown as SenderInput, work: stored.work, reimbursements, own: stored.record?.own ?? null }
+  // The record they made when they sent it, now with the person: sent by them, at the time they sent it.
+  const record = stored.record
+    ? formRecord({ ...sub, madeBy: stored.record.madeBy }, { rates: stored.rates, sentBy: personId, email: s.email, confirmed: stored.record.confirmed, ownPdf })
+    : null
+  const made = await writeFormInvoice({ personId, email: s.email, againId: null, rates: stored.rates, receipts, ownPdf, sub, record, sentAt: new Date(s.created_at) })
   const { data: moved, error: mErr } = await db.from('invoice_form_submissions')
     .update({ state: 'linked', person_id: personId, invoice_id: made.id, linked_by: linkedBy, linked_at: new Date().toISOString() })
     .eq('id', id).eq('state', 'waiting').select('id')

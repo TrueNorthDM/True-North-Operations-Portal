@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CODE_LIFE_MS, MAX_TRIES, alreadySentText, buildFormLines, cameFrom, checkSubmission, codeOf, codeVerdict, emailOf, firstDuplicate,
-  itemKey, itemName, lastMonth, monthBounds, monthOk, monthState, monthTakenText, newSenderRights, overCodeCap, rateFor, ratesFor, resendWait,
+  CODE_LIFE_MS, MAX_TRIES, MONTH_SLOT, alreadySentText, buildFormLines, cameFrom, checkSubmission, codeOf, codeVerdict, emailOf, firstDuplicate,
+  formInvoice, formRecord, itemKey, itemName, keptText, lastMonth, monthBounds, monthOk, monthState, monthTakenText, newSenderRights, overCodeCap,
+  rateFor, ratesFor, resendWait, withMonth,
   type CheckContext, type RawSubmission,
 } from './rules'
+import { confirmText } from '@/lib/timeclock/contractor-invoice'
 
 describe('the code', () => {
   const now = Date.parse('2026-11-01T12:00:00Z')
@@ -142,10 +144,11 @@ describe('the lines and the total', () => {
 })
 
 describe('everything a sender types', () => {
-  const ctx: CheckContext = { today: '2026-11-01', clients: ['2 - i7 Marketing'], mileageRate: 0.76, files: new Set([0]), countryOk: c => c === 'US' }
+  const ctx: CheckContext = { today: '2026-11-01', clients: ['2 - i7 Marketing'], mileageRate: 0.76, files: new Set([0]), countryOk: c => c === 'US', ownPdf: false }
   const base: RawSubmission = {
     month: '2026-10', kind: 'fixed', covers: 'Video editing', amount: '1,200.00',
     sender: { name: 'John Huyn', line1: '123 Example St', city: 'Springfield', state: 'IL', zip: '62701', country: 'us' },
+    madeBy: 'builder', confirmed: true,
   }
 
   it('takes a good fixed invoice, the amount read as typed', () => {
@@ -200,6 +203,93 @@ describe('everything a sender types', () => {
     expect(r.ok && r.value.reimbursements[0].billable).toBe(true)
     const n = checkSubmission({ ...base, reimbursements: [{ category: 'Software', date: '2026-10-03', amount: '5', purpose: 'x', file: 0, client: 'None', billable: 'yes' }] }, ctx)
     expect(n.ok && n.value.reimbursements[0].billable).toBe(false)
+  })
+})
+
+describe('their own invoice (leadership, 4 November 2026)', () => {
+  const ctx: CheckContext = { today: '2026-11-04', clients: [], mileageRate: 0.76, files: new Set([0]), countryOk: c => c === 'US', ownPdf: true }
+  const sender = { name: 'John Huyn', line1: '123 Example St', city: 'Springfield', state: 'IL', zip: '62701', country: 'US' }
+  const own: RawSubmission = { month: '2026-10', kind: 'fixed', covers: 'Video editing', madeBy: 'own_file', theirNumber: ' JH-0042 ', statedTotal: '$1,250.00', confirmed: true, sender }
+  const rates = { page: 30, asset: 5 }
+  const rmb = { category: 'Software', date: '2026-10-03', amount: '50', purpose: 'Adobe Premiere', file: 0, client: 'None' }
+
+  it('needs a way chosen and the box ticked, for both ways', () => {
+    expect(checkSubmission({ ...own, madeBy: undefined }, ctx)).toMatchObject({ ok: false })
+    expect(checkSubmission({ ...own, madeBy: 'portal' }, ctx)).toMatchObject({ ok: false })
+    expect(checkSubmission({ ...own, confirmed: false }, ctx)).toEqual({ ok: false, error: 'Tick the box to confirm this is your invoice.' })
+    // Only true counts: never a sentence or "yes" from the page.
+    expect(checkSubmission({ ...own, confirmed: 'This is my invoice.' }, ctx).ok).toBe(false)
+    expect(checkSubmission({ ...own, madeBy: 'builder', amount: '100', confirmed: undefined }, ctx).ok).toBe(false)
+    expect(checkSubmission({ ...own, madeBy: 'builder', amount: '100' }, ctx).ok).toBe(true)
+  })
+
+  it('needs their PDF and the total on it', () => {
+    expect(checkSubmission(own, { ...ctx, ownPdf: false })).toEqual({ ok: false, error: 'Add your invoice: a PDF of up to 10 MB.' })
+    expect(checkSubmission({ ...own, statedTotal: '' }, ctx).ok).toBe(false)
+    expect(checkSubmission({ ...own, statedTotal: '0' }, ctx).ok).toBe(false)
+    expect(checkSubmission({ ...own, statedTotal: '200001' }, ctx).ok).toBe(false)
+    expect(checkSubmission({ ...own, covers: '' }, ctx)).toEqual({ ok: false, error: 'Say what your invoice covers.' })
+  })
+
+  it('keeps their number (optional) and total, and needs no amount of its own', () => {
+    const r = checkSubmission({ ...own, amount: undefined }, ctx)
+    expect(r.ok && r.value.madeBy).toBe('own_file')
+    expect(r.ok && r.value.own).toEqual({ theirNumber: 'JH-0042', statedTotal: 1250 })
+    const n = checkSubmission({ ...own, theirNumber: '  ' }, ctx)
+    expect(n.ok && n.value.own?.theirNumber).toBeNull()
+  })
+
+  it('makes the total the one on their invoice, reimbursements included', () => {
+    const r = checkSubmission({ ...own, reimbursements: [rmb] }, ctx)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.work).toEqual({ kind: 'fixed', covers: 'Video editing', amount: 1200 })
+    expect(formInvoice(r.value, rates).total).toBe(1250)
+    // Never less than the reimbursements on it.
+    expect(checkSubmission({ ...own, statedTotal: '50', reimbursements: [rmb] }, ctx).ok).toBe(false)
+  })
+
+  it('keeps the Monday items at the rates for deliverables, the total theirs', () => {
+    const r = checkSubmission({ ...own, kind: 'deliverables', items: [{ name: 'About us', kind: 'page' }, { name: 'Flyer', kind: 'asset' }], statedTotal: '40' }, ctx)
+    if (!r.ok) throw new Error(r.error)
+    const inv = formInvoice(r.value, rates)
+    expect(inv.lines.map(l => l.amount)).toEqual([30, 5])
+    expect(inv.total).toBe(40)
+  })
+
+  it('fills in here as before: the total adds the lines up', () => {
+    const r = checkSubmission({ ...own, madeBy: 'builder', amount: '1,200', statedTotal: '9999', reimbursements: [rmb] }, ctx)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.own).toBeNull()
+    expect(formInvoice(r.value, rates).total).toBe(1250)
+  })
+
+  it('records the send: own file with their file and no lines; built here with its lines', () => {
+    const o = checkSubmission(own, ctx)
+    if (!o.ok) throw new Error(o.error)
+    const pdf = { path: 'p/1.pdf', name: 'JH-0042.pdf' }
+    const confirmed = confirmText('own_file', 'October 2026')
+    expect(formRecord(o.value, { rates, sentBy: 'p1', email: 'jh@example.com', confirmed, ownPdf: pdf })).toEqual({
+      madeBy: 'own_file', sentFrom: 'form', sentBy: 'p1', sentEmail: 'jh@example.com', confirmed, theirNumber: 'JH-0042', statedHours: null,
+      statedTotal: 1250, covers: 'Video editing', ownPdf: pdf, lines: [], total: 1250,
+    })
+    const b = checkSubmission({ ...own, madeBy: 'builder', amount: '1,200', reimbursements: [rmb] }, ctx)
+    if (!b.ok) throw new Error(b.error)
+    const rec = formRecord(b.value, { rates, sentBy: null, email: 'jh@example.com', confirmed: confirmText('builder', 'October 2026'), ownPdf: pdf })
+    expect(rec).toMatchObject({ madeBy: 'builder', sentBy: null, theirNumber: null, statedTotal: null, ownPdf: null, total: 1250 })
+    expect(rec.lines).toEqual([
+      { description: 'Video editing', client: null, hours: null, rate: null, amount: 1200 },
+      { description: 'Reimbursement: Software, Adobe Premiere', client: null, hours: null, rate: null, amount: 50 },
+    ])
+  })
+
+  it('shows the page the same sentence the server keeps', () => {
+    for (const m of ['own_file', 'builder'] as const) expect(withMonth(confirmText(m, MONTH_SLOT), 'October 2026')).toBe(confirmText(m, 'October 2026'))
+    expect(confirmText('own_file', 'October 2026')).toBe('This is my invoice. I made it and I am sending it to True North for October 2026.')
+  })
+
+  it('tells them it is kept as they sent it, with the day and time', () => {
+    expect(keptText('own_file', '2026-11-04T20:12:00Z', 'America/New_York')).toBe('We keep your file as you sent it, with a note that you sent it on Nov 4, 2026 at 3:12 PM.')
+    expect(keptText('builder', '2026-11-04T20:12:00Z', 'UTC')).toBe('We keep it as you sent it, with a note that you wrote it here and sent it on Nov 4, 2026 at 8:12 PM.')
   })
 })
 

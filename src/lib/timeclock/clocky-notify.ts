@@ -185,6 +185,19 @@ export async function announceInvoiceMade(x: { invoiceId: number; at: string; pe
   await quiet('invoice made', () => notifyClockyInvoiceMade({ invoiceId: x.invoiceId, at: x.at, personId: x.personId, text: invoiceMadeText(x.number, x.month, x.total, x.withHours) }))
 }
 
+/** The contractor sent their own invoice (4 November 2026): they hear it arrived. */
+export async function announceInvoiceReceived(x: { invoiceId: number; at: string; personId: string; number: string; month: string; total: string }): Promise<void> {
+  await quiet('invoice received', () => notifyClockyInvoiceMade({ invoiceId: x.invoiceId, at: x.at, personId: x.personId, text: `We received your invoice for ${x.month} (${x.number}, ${x.total}). It waits for approval.` }))
+}
+
+/** The invoice alone went back to the contractor, with the reason: they fix it and send it again. */
+export async function announceInvoiceReturned(x: { invoiceId: number; at: string; personId: string; deciderId: string; number: string; note: string }): Promise<void> {
+  await quiet('invoice returned', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyInvoiceMade({ invoiceId: x.invoiceId, at: x.at, personId: x.personId, text: `${dir.nameOf(x.deciderId)} sent your invoice ${x.number} back: "${x.note}". Fix it and send it again.` })
+  })
+}
+
 /** An invoice was approved: Finance hears it is ready to pay. */
 export async function announceInvoiceApproved(x: { invoiceId: number; personId: string; number: string; total: string; finance: readonly string[] }): Promise<void> {
   await quiet('invoice approved', async () => {

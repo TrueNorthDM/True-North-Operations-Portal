@@ -292,9 +292,9 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-invoice-made', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices made', statOne: 'invoice made',
-    example: { title: 'We created invoice INV-2026-142 for October', body: '$2,310.00. It waits for approval with your hours.' },
-    title: 'Your invoice was made',
-    description: 'A contractor submits a timesheet and the invoice is made from it, with the rate from Rates & Costs. In the bell only.',
+    example: { title: 'We received your invoice for October (INV-2026-142, $2,310.00)', body: 'It waits for approval. If it is sent back, you see the reason here.' },
+    title: 'Your invoice was received, or sent back',
+    description: 'You sent your own invoice and it arrived, or an approver sent it back to you with the reason, to fix and send again (since 4 November 2026 contractors make their own invoice). In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Open invoice' },
   },

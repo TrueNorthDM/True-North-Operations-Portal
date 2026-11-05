@@ -20,11 +20,12 @@ import { loadApprovedExtra } from './allowance-data'
 import { clientFolder } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type PayTerms } from './pay-terms'
 import { periodLabel } from './periods'
-import { currentStep, hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
+import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import { INV_COLS, LINE_COLS, invoiceDocOf, usd, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
 import type { EntryView } from './clocky-types'
+import { loadInvoiceCheck, type InvoiceCheck } from './invoice-check-data'
 
 export type ReviewTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
 export type StepState = 'done' | 'now' | 'bad' | 'later'
@@ -104,8 +105,25 @@ export interface TimesheetReview {
     canReopen: boolean
     /** Reopening after Rippling got the hours: the portal cannot take them back there. */
     reopenWarn: string | null
+    /** "Approve the hours only" beside Approve both (the invoice waits). */
+    hoursOnly?: boolean
+    /** "Send the invoice back": the invoice alone goes back, with the reason. Its id. */
+    sendBack?: number | null
+    /** The invoice does not match the timesheet: approving it needs a reason. */
+    needsReason?: boolean
   }
+  /**
+   * The contractor's own invoice (4 November 2026): who sent it and how, and
+   * the invoice beside the timesheet. Null with no invoice sent, or for
+   * someone who does not see money.
+   */
+  sentInvoice?: { sentLine: string; ownPdfHref: string | null; check: InvoiceCheck | null } | null
+  /** No invoice sent yet (or sent back): what the approver is told. */
+  awaitingInvoice?: string | null
 }
+
+/** Who sent the invoice and how (migration 152), for the line above it. */
+export interface SendInfo { made_by: string | null; sent_at: string | null; sent_by: string | null; sent_from: string | null; their_number: string | null; own_pdf_name: string | null; own_pdf_path: string | null }
 
 /** The entry fields the page reads (a subset of Time entries' EntryView). */
 export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable' | 'path' | 'client2026' | 'short' | 'start' | 'end' | 'activity' | 'activityShown' | 'company' | 'project' | 'code' | 'notes' | 'autoOut'>
@@ -131,6 +149,10 @@ export interface ReviewSource {
   /** The Rippling job of an employee's approved pay period. */
   job: { state: string; last_error: string | null; done_at: string | null } | null
   now: Date
+  /** The invoice beside the timesheet (4 November 2026). */
+  check?: InvoiceCheck | null
+  /** Who sent the invoice and how. */
+  sendInfo?: SendInfo | null
 }
 
 export type SubRow = {
@@ -175,6 +197,13 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     inv ? linesOf(inv.id) : Promise.resolve([] as LineRow[]),
     inv ? c.from('invoices').select('id, total, state, period_start, period_end, paid_on').eq('person_id', personId).lt('period_start', inv.period_start).order('period_start', { ascending: false }).limit(2).then(r => rowsOf(r, 'The last invoices could not be read')) : Promise.resolve([]),
   ])
+  // The contractor's own invoice: who sent it, how, and the check against the timesheet (4 November 2026).
+  const [sendInfo, check] = inv
+    ? await Promise.all([
+      c.from('invoices').select('made_by, sent_at, sent_by, sent_from, their_number, own_pdf_name, own_pdf_path').eq('id', inv.id).maybeSingle().then(r => (r.error ? null : r.data as SendInfo | null)),
+      t.route.isContractor && isSentInvoice(inv.state) ? loadInvoiceCheck(inv.id, now) : Promise.resolve(null),
+    ])
+    : [null, null]
   const prevIds = prevData.map(x => x.id)
   const prevLines = prevIds.length ? rowsOf(await c.from('invoice_lines').select('invoice_id, kind, hours_seconds, amount').in('invoice_id', prevIds), 'The last invoices could not be read') : []
   const ids = [personId, t.route.reportsTo, settings.defaultApprover, ...settings.invoiceApprovers, sub?.approved_by, sub?.hours_approved_by, inv?.approved_by].filter((x): x is string => !!x)
@@ -190,8 +219,17 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     settings, terms: t,
     person: { name: dir.nameOf(personId), teamId: p?.teamId ?? null, team: team ? { name: team.name, color: team.color } : null, zone: dir.zoneOf(personId) },
     names: Object.fromEntries([...new Set(ids)].map(x => [x, dir.nameOf(x)])),
-    views, extraHours: extra(personId, start, end), job, now,
+    views, extraHours: extra(personId, start, end), job, now, check, sendInfo,
   }
+}
+
+/** "Invoice 0142, sent by Jordan Lee on Nov 2 at 9:14 AM · their own file (PDF)". */
+function sentLineOf(i: { number: string; id: number }, info: SendInfo | null | undefined, nameOf: (pid: string | null) => string, zone: string): { sentLine: string; ownPdfHref: string | null } | null {
+  if (!info?.made_by || !info.sent_at) return null
+  const theirs = info.their_number ? `Invoice ${info.their_number} (${i.number})` : i.number
+  const how = info.made_by === 'own_file' ? `their own file${info.own_pdf_name ? `, ${info.own_pdf_name}` : ''}` : "made with the portal's invoice builder"
+  const from = info.sent_from === 'form' ? ' through the invoice form' : ''
+  return { sentLine: `${theirs}, sent by ${nameOf(info.sent_by)}${from} on ${noYear(stampLabel(info.sent_at, zone))} · ${how}`, ownPdfHref: info.own_pdf_path ? `/clocky-hours/invoices/${i.id}/own-pdf` : null }
 }
 
 /** Builds the page from its source: pure. */
@@ -257,7 +295,10 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
         { text: form ? `Sent through the invoice form for ${period.label}` : `Created by itself for ${period.label} (fixed monthly)`, when: noYear(dateLabel(localDate(i.created_at, v.zone))), dot: '#1E7D7F' },
       ],
       payroll: null,
-      act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false, reopenWarn: null },
+      act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false, reopenWarn: null,
+        needsReason: canBoth && !form && !!src.check && !src.check.matches },
+      sentInvoice: money ? (() => { const l = sentLineOf(i, src.sendInfo, nameOf, v.zone); return l || src.check ? { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: form ? null : src.check ?? null } : null })() : null,
+      awaitingInvoice: null,
     }
   }
 
@@ -333,7 +374,10 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
 
   // The step, the state and what this viewer may do.
   const one = oneStep(route, settings)
-  const step = currentStep(route, settings, s.state)
+  // The contractor's own invoice (4 November 2026): until it is sent, only the hours wait.
+  const sendsOwn = route.isContractor && t.paysAs !== 'fixed_no_timesheet'
+  const sent = !sendsOwn || isSentInvoice(inv?.state)
+  const step = currentStep(route, settings, s.state, sent)
   const done = s.state === 'approved' || s.state === 'returned' || s.state === 'recorded'
   const hoursDone = s.state === 'hours_approved'
   const mine = !!step && step.owner === me && me !== personId
@@ -374,7 +418,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     : `Read only. ${one ? `${route.isContractor ? 'Hours and invoice' : 'Hours'}: ${route.isContractor ? nameOf(ib) : nameOf(hb)}.` : `Hours: ${nameOf(hb)}. Invoice: ${nameOf(ib)}.`}`
   const readOnly = !act && !done && !(hoursDone && (me === hb || isLead)) && s.state !== 'recorded' ? roText : null
 
-  const invoiceView = money && inv ? invoiceDocOf(inv, src.invLines, period.full) : null
+  const invoiceView = money && inv && sent ? invoiceDocOf(inv, src.invLines, period.full) : null
   const history: TimesheetReview['history'] = []
   if (s.state === 'approved') history.push({ text: `Approved by ${youOr(s.approved_by)}`, when: noYear(stampLabel(s.approved_at!, v.zone)), dot: '#1E9E6A' })
   else if (ret) history.push({ text: 'Returned, back to Draft', when: noYear(stampLabel(s.approved_at ?? now.toISOString(), v.zone)), dot: '#c8323d' })
@@ -436,23 +480,31 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     noTimesheet: null,
     invoice: invoiceView,
     previous: invoiceView && inv ? previousOf(src, invoiceView, first, tot, t.paysAs !== 'hourly') : null,
+    sentInvoice: money && inv && sent && sendsOwn ? (() => { const l = sentLineOf(inv, src.sendInfo, nameOf, v.zone); return { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: src.check ?? null } })() : null,
+    awaitingInvoice: sendsOwn && !sent && (s.state === 'submitted' || s.state === 'hours_approved')
+      ? `${first} has not sent ${inv ? 'the invoice again since it was sent back' : 'their invoice yet'}. ${s.state === 'submitted' ? 'You can approve the hours now; the invoice step starts when it arrives.' : 'The invoice step starts when it arrives.'}`
+      : null,
     history,
     payroll,
     act: {
       kind: canHours ? 'hours' : canInv ? 'invoice' : canBoth ? (route.isContractor ? 'both' : 'payroll') : null,
       label: canHours ? 'Approve hours' : canInv ? 'Approve invoice' : route.isContractor ? 'Approve both' : 'Approve and send to Rippling',
-      barNote: canHours ? `You approve the hours only. Then ${nameOf(ib)} finishes it; invoices are not shown to Team Leaders. Return sends it back to ${first}, with your reason.`
+      barNote: canHours && sendsOwn && !sent ? `You approve the hours now. ${first} has not sent the invoice yet; its step starts when it arrives. Return sends the timesheet back to ${first}, with your reason.`
+        : canHours ? `You approve the hours only. Then ${nameOf(ib)} finishes it; invoices are not shown to Team Leaders. Return sends it back to ${first}, with your reason.`
         : canInv ? `${nameOf(s.hours_approved_by)} approved the hours. Approve the invoice to lock both. Return sends both back to ${first}, with your reason.`
-          : route.isContractor ? 'One decision for both. Approve locks the timesheet and approves the invoice. Return sends both back, with your reason.'
+          : route.isContractor ? (src.check && !src.check.matches ? 'The invoice does not match the timesheet: send the invoice back, approve the hours only, or approve both with a reason.' : 'One decision for both: they match. Approve locks the timesheet and approves the invoice. Return sends both back, with your reason.')
             : 'Approve locks the pay period and sends the hours and the PTO to Rippling. Return reopens it, with your reason.',
       overWarn: over > 0 && (canBoth || canInv) ? `${hm(over)} over the allowance were not approved in advance. Approve still works, with a note.` : null,
       overInfo: over > 0 && canHours ? `${hm(over)} over the allowance, not approved in advance. ${nameOf(ib)} decides these hours with the invoice.` : null,
       returnTitle: route.isContractor ? `Return ${period.label} to ${first}?` : `Return the pay period to ${first}?`,
       returnText: route.isContractor
-        ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to Draft. ${first} sees your reason, fixes the hours and submits again; the invoice is made again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
+        ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to ${first}. ${first} sees your reason, fixes the hours, submits again and sends the invoice again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
         : `The pay period unlocks and nothing goes to Rippling. ${first} sees your reason, fixes the hours and submits again.`,
       canReopen: v.isSuperAdmin && (s.state === 'approved' || s.state === 'recorded') && inv?.state !== 'paid',
       reopenWarn: payroll?.st.label === 'Sent to Rippling' ? 'These hours were already sent to Rippling. Reopening here does not change Rippling; fix it there too.' : null,
+      hoursOnly: canBoth && route.isContractor,
+      sendBack: (canBoth || canInv) && sendsOwn && sent && inv?.state === 'waiting' ? inv.id : null,
+      needsReason: (canBoth || canInv) && !!src.check && !src.check.matches,
     },
   }
 }

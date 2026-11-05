@@ -24,6 +24,14 @@
  *                      submitted -> (one step) approved | returned
  *   Deputy Director:   submitted -> recorded (no approver)
  *
+ *   The contractor's own invoice (leadership, 4 November 2026): the portal no
+ *   longer makes it from the timesheet; the contractor sends it. Until it is
+ *   sent, a contractor's timesheet waits for its hours only ('hours', even
+ *   when one person approves both), and once the hours are approved nothing
+ *   waits on the approver: the invoice step starts when the invoice arrives.
+ *   `invoiceSent` says whether it has (an invoice waiting, approved or paid;
+ *   one sent back is not); left out, it is taken as sent.
+ *
  * The people come from invoice_settings (invoice approvers, the default one,
  * the Deputy Director), never from names in code. Pure: the Approvals list,
  * the 6C page and the actions decide with it, and the tests hold it to the
@@ -96,22 +104,27 @@ export function oneStep(p: RoutePerson, s: RouteSettings): boolean {
 }
 
 /** The step a waiting timesheet is at, and whose decision it is. Null once nothing waits. */
-export function currentStep(p: RoutePerson, s: RouteSettings, state: TimesheetState): { step: 'hours' | 'invoice' | 'both' | 'payroll'; owner: string | null } | null {
+export function currentStep(p: RoutePerson, s: RouteSettings, state: TimesheetState, invoiceSent = true): { step: 'hours' | 'invoice' | 'both' | 'payroll'; owner: string | null } | null {
   if (state === 'submitted') {
     if (!p.isContractor) return { step: 'payroll', owner: hoursApprover(p, s) }
     if (p.paysAs === 'fixed_no_timesheet') return { step: 'invoice', owner: invoiceApprover(p, s) }
+    if (!invoiceSent) return { step: 'hours', owner: hoursApprover(p, s) }
     return oneStep(p, s) ? { step: 'both', owner: invoiceApprover(p, s) } : { step: 'hours', owner: hoursApprover(p, s) }
   }
-  if (state === 'hours_approved') return { step: 'invoice', owner: invoiceApprover(p, s) }
+  // Hours approved: the invoice step, once the contractor has sent it.
+  if (state === 'hours_approved') return invoiceSent ? { step: 'invoice', owner: invoiceApprover(p, s) } : null
   return null
 }
+
+/** An invoice state that counts as sent by the contractor: waiting, approved or paid (not one sent back, 'draft'). */
+export const isSentInvoice = (state: string | null | undefined): boolean => state === 'waiting' || state === 'approved' || state === 'paid'
 
 /** What submitting does: wait for approval, or (the Deputy Director) be recorded at once. */
 export const stateOnSubmit = (p: RoutePerson, s: RouteSettings): TimesheetState => (isRecordedOnly(p, s) ? 'recorded' : 'submitted')
 
 /** The state an approval moves the timesheet to. */
-export function stateAfterApprove(p: RoutePerson, s: RouteSettings, state: TimesheetState): TimesheetState | null {
-  const step = currentStep(p, s, state)
+export function stateAfterApprove(p: RoutePerson, s: RouteSettings, state: TimesheetState, invoiceSent = true): TimesheetState | null {
+  const step = currentStep(p, s, state, invoiceSent)
   if (!step) return null
   return step.step === 'hours' ? 'hours_approved' : 'approved'
 }

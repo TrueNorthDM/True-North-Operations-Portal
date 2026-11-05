@@ -36,6 +36,7 @@ export function TimeEntriesLive({ initialData, catalog, openEntry = null, member
   const initial = { ...(openEntry ? { drawer: `e${openEntry}` } : {}), ...(member ? { who: 'all' as const, member } : {}), ...(openSubmit ? { modal: { kind: 'submit' as const } } : {}) }
   return (
     <TimeEntries initialData={initialData} catalog={catalog} api={API} clock={{ now: catalog.now }} onChanged={() => router.refresh()} initial={initial}
-      onInvoiceMade={id => router.push(withViewAs(`/clocky-hours/invoices/${id}?submitted=1`))} />
+      onInvoiceMade={id => router.push(withViewAs(`/clocky-hours/invoices/${id}?submitted=1`))}
+      onSendInvoice={start => router.push(withViewAs(`/clocky-hours/invoices/new?start=${start}`))} />
   )
 }

@@ -7,6 +7,7 @@ export const REMINDERS = [
   { key: 'contractor_due', text: 'Your October timesheet is due tomorrow', who: 'Contractors (monthly)', when: 'The day before the month ends, 9:00 AM in their time zone' },
   { key: 'pay_period_ends', text: 'Your pay period ends Saturday', who: 'Employees (every 2 weeks)', when: 'The Thursday before the pay period ends' },
   { key: 'late', text: 'Submit October: it is 3 days late', who: 'The person, and the Super Admins', when: 'Every morning from the first day late, for the person and the Super Admins' },
+  { key: 'invoice_due', text: 'Send your invoice for October', who: 'Contractors', when: 'Every morning, 9:00 AM in their time zone, from the day their timesheet is sent (fixed, no timesheet: from the 1st) until the invoice is sent' },
   { key: 'allowance', text: 'You have used 90% of your allowance', who: 'The person at 90% and at 100%; Team Leader and Super Admins when someone goes over without approval', when: 'When it happens' },
   { key: 'birthday', text: "Today: Joy Inyele's birthday", who: 'Everyone, unless they turn it off in their settings', when: "7:00 AM in each person's time zone" },
 ] as const

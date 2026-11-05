@@ -123,3 +123,32 @@ describe('one invoice (6F)', () => {
     expect(d.pay).toEqual({ who: 'Justus Tsofa', line: 'October 2026 · approved Nov 2, 2026', total: '$2,000.00' })
   })
 })
+
+describe('one invoice the contractor sent (owner, 4 November 2026)', () => {
+  const send = (at: string, theirNumber: string, total: number) => ({
+    at, madeBy: 'own_file' as const, sentFrom: 'portal' as const, sentBy: 'jt', sentEmail: 'jt@example.com', confirmed: 'c',
+    theirNumber, statedHours: 160.5, statedTotal: total, covers: null, ownPdfName: `Invoice ${theirNumber}.pdf`, total,
+  })
+
+  it('tells each version sent in place of "Created", and the timesheet sent as its own line', () => {
+    const d = buildInvoiceDetail({
+      lines: [{ kind: 'reimbursement', client: 'Internet', description: 'Internet, October', hours_seconds: null, rate: null, amount: 35 }],
+      sub: { id: 142, state: 'approved' }, route: route('jt', 'ao'), settings: SETTINGS, finance: false,
+      nameOf: (id: string | null | undefined) => (id ? NAMES[id] ?? 'Someone' : 'North Time'), zone: 'America/New_York',
+      inv: inv({ id: 142, person_id: 'jt', state: 'approved', approved_at: '2026-11-03T15:12:00Z', created_at: '2026-11-02T14:14:00Z' }),
+      events: [
+        { step: 'submit', action: 'submit', by_person: 'jt', at: '2026-11-01T22:02:00Z', note: null },
+        { step: 'invoice', action: 'return', by_person: 'ao', at: '2026-11-02T20:40:00Z', note: 'COE Group shows 54.5h.' },
+        { step: 'invoice', action: 'approve', by_person: 'ao', at: '2026-11-03T15:12:00Z', note: null },
+      ],
+      sends: [send('2026-11-02T14:14:00Z', '0142', 4146.7), send('2026-11-03T13:05:00Z', '0142-B', 4096.7)],
+    })
+    expect(d.history.map(h => h.text)).toEqual([
+      'Approved by Arnaldo Oliveira, together with the hours',
+      'Sent again by Justus Tsofa: their own file "Invoice 0142-B.pdf", their number 0142-B, $4,096.70',
+      'Returned by Arnaldo Oliveira with the timesheet: "COE Group shows 54.5h." Back to Draft.',
+      'Sent by Justus Tsofa: their own file "Invoice 0142.pdf", their number 0142, $4,146.70',
+      'October timesheet sent by Justus Tsofa',
+    ])
+  })
+})

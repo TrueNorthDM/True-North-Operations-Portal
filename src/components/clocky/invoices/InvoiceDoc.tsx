@@ -25,6 +25,8 @@ export interface InvoiceDocData {
   from: { name: string; line: string; email: string }
   to: { name: string; line1: string; line2: string }
   paid: string | null
+  /** Page 1's footer when the record follows it (owner, 4 November 2026): "Invoice by Jordan Lee, made with...", "Page 1 of 2". */
+  foot?: { line: string; page: string }
 }
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold uppercase'
@@ -97,8 +99,8 @@ export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'ca
         )}
         {page && (
           <div className="mt-auto flex justify-between items-center pt-3 border-t border-[var(--row-rule)] text-[9.5px] text-muted">
-            <span className="flex items-center gap-2"><Image src="/logos/true-north.png" alt="True North" width={1352} height={705} className="h-[18px] w-auto" />Made by the True North Operations Portal</span>
-            <span>Page 1 of 1</span>
+            <span className="flex items-center gap-2"><Image src="/logos/true-north.png" alt="True North" width={1352} height={705} className="h-[18px] w-auto" />{inv.foot?.line ?? 'Made by the True North Operations Portal'}</span>
+            <span className="whitespace-nowrap">{inv.foot?.page ?? 'Page 1 of 1'}</span>
           </div>
         )}
       </div>

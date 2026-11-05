@@ -75,7 +75,7 @@ describe('locked periods (Rules 9)', () => {
     const a = read('approvals/actions.ts')
     // Approve and Return: the routing's owner of the current step, never the person themselves.
     for (const name of ['approveTimesheet', 'returnTimesheet']) {
-      expect(body(a, name), name).toMatch(/step\.owner !== v\.personId \|\| t\.personId === v\.personId/)
+      expect(body(a, name), name).toMatch(/(step|found)\.owner !== v\.personId \|\| t\.personId === v\.personId/)
     }
     expect(body(a, 'reopenTimesheet')).toMatch(/actor\('ck-reopen'\)/)
     expect(body(a, 'reopenTimesheet')).toMatch(/canReopen\(v\)/)

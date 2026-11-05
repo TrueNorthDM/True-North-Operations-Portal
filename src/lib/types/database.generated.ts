@@ -1456,12 +1456,86 @@ export type Database = {
           },
         ]
       }
+      invoice_sends: {
+        Row: {
+          id: number
+          invoice_id: number
+          made_by: string
+          sent_from: string
+          sent_by: string | null
+          sent_email: string | null
+          sent_at: string
+          confirmed_text: string
+          their_number: string | null
+          stated_hours: number | null
+          stated_total: number | null
+          covers: string | null
+          own_pdf_path: string | null
+          own_pdf_name: string | null
+          lines: Json
+          total: number | null
+        }
+        Insert: {
+          id?: number
+          invoice_id: number
+          made_by: string
+          sent_from: string
+          sent_by?: string | null
+          sent_email?: string | null
+          sent_at?: string
+          confirmed_text: string
+          their_number?: string | null
+          stated_hours?: number | null
+          stated_total?: number | null
+          covers?: string | null
+          own_pdf_path?: string | null
+          own_pdf_name?: string | null
+          lines?: Json
+          total?: number | null
+        }
+        Update: {
+          id?: number
+          invoice_id?: number
+          made_by?: string
+          sent_from?: string
+          sent_by?: string | null
+          sent_email?: string | null
+          sent_at?: string
+          confirmed_text?: string
+          their_number?: string | null
+          stated_hours?: number | null
+          stated_total?: number | null
+          covers?: string | null
+          own_pdf_path?: string | null
+          own_pdf_name?: string | null
+          lines?: Json
+          total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_sends_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           source: string | null
           sender_email: string | null
           own_pdf_path: string | null
           own_pdf_name: string | null
+          made_by: string | null
+          sent_by: string | null
+          sent_at: string | null
+          sent_from: string | null
+          confirmed_text: string | null
+          their_number: string | null
+          stated_hours: number | null
+          stated_total: number | null
+          covers: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
@@ -1490,6 +1564,15 @@ export type Database = {
           sender_email?: string | null
           own_pdf_path?: string | null
           own_pdf_name?: string | null
+          made_by?: string | null
+          sent_by?: string | null
+          sent_at?: string | null
+          sent_from?: string | null
+          confirmed_text?: string | null
+          their_number?: string | null
+          stated_hours?: number | null
+          stated_total?: number | null
+          covers?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -1518,6 +1601,15 @@ export type Database = {
           sender_email?: string | null
           own_pdf_path?: string | null
           own_pdf_name?: string | null
+          made_by?: string | null
+          sent_by?: string | null
+          sent_at?: string | null
+          sent_from?: string | null
+          confirmed_text?: string | null
+          their_number?: string | null
+          stated_hours?: number | null
+          stated_total?: number | null
+          covers?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string

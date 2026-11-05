@@ -10,6 +10,10 @@
  *   late              "Submit October: it is 3 days late", the person and the
  *                     Super Admins every morning from the first day late (owner,
  *                     25 October 2026)
+ *   invoice_due       contractors make and send their own invoice (leadership,
+ *                     4 November 2026): "Send your invoice for October" every
+ *                     morning from the day their timesheet is sent (fixed, no
+ *                     timesheet: from the 1st, for the month before) until it is
  *   allowance         90% and over to the person; over without approval also to
  *                     the Team Leader and the Super Admins
  *   birthday          "Today: Joy Inyele's birthday." to everyone else, 7:00 AM
@@ -31,6 +35,7 @@ import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { loadReminders } from './company-settings'
 import { localDate, localMinutes, monthLong } from './format'
 import { loadPayTerms } from './pay-terms'
+import { loadInvoicesToSend } from './send-invoice-data'
 import { addDays, daysBetween, isSent, periodContaining, periodLabel, rangeText } from './periods'
 import { formatDuration } from './rounding'
 import { notifyClockyReminders } from '@/lib/notifications/run'
@@ -88,6 +93,24 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
         const pl = periodLabel(prev)
         if (n >= 1) reminders.push({ personId: p.id, key: `late:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} day${n === 1 ? '' : 's'} late.` })
         if (n >= 1) late.push({ personId: p.id, key: `late:${p.id}:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} day${n === 1 ? '' : 's'} late. ${p.name} has not submitted.` })
+      }
+    }
+  }
+
+  // ── 9:00 AM: contractors with an invoice still to send ───────────────────
+  if (on.invoice_due && atNine.length) {
+    for (const p of atNine) {
+      const t = terms.get(p.id)
+      if (!t?.route.isContractor) continue
+      const today = localDate(now, p.zone)
+      try {
+        const owed = (await loadInvoicesToSend(p.id, now, { hours: false }))?.toSend ?? []
+        // A month with no timesheet is owed once it has ended.
+        for (const x of owed.filter(o => o.kind !== 'fixed_no_timesheet' || o.end < today)) {
+          reminders.push({ personId: p.id, key: `invoice:${x.start}:${today}`, text: `Send your invoice for ${x.label}${x.returned ? ': it was sent back to you' : ''}.` })
+        }
+      } catch (e) {
+        console.error('[reminders] invoices to send:', e instanceof Error ? e.message : e)
       }
     }
   }

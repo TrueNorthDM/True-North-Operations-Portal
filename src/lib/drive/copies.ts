@@ -16,13 +16,16 @@
  *
  * Invoices and RMB documents are printed with the same print as their PDF
  * downloads, through the Drive print page and its one-document pass
- * (lib/drive/print-token.ts): the pass has no user. Server only.
+ * (lib/drive/print-token.ts): the pass has no user. An invoice carries its
+ * record page after it (owner, 4 November 2026; lib/pdf/invoice-pdf.ts), and
+ * its own file when the contractor sent their own PDF. Server only.
  */
 
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { driveReady, ensurePath, writeFile } from '@/lib/agenda/google-drive'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { printSheet } from '@/lib/pdf/sheet-pdf'
+import { printInvoicePdf } from '@/lib/pdf/invoice-pdf'
 import { allRows, loadDirectory } from '@/lib/timeclock/clocky-context'
 import { dateLabel } from '@/lib/timeclock/format'
 import { loadRmbDoc } from '@/lib/timeclock/pay-docs'
@@ -180,9 +183,10 @@ async function fileFor(w: Want, origin: string): Promise<{ name: string; mime: s
   if (kind === 'invoice') {
     const name = await invoiceFileName(w.refId)
     if (!name) throw new Error('The invoice is not there any more.')
-    const done = await printSheet(target, headers)
-    if (!done) throw new Error('The invoice could not be printed: its print page answered "not found".')
-    return { name, mime: 'application/pdf', bytes: done.pdf }
+    // The invoice and its record page, or their own PDF with the record after it (owner, 4 November 2026).
+    const pdf = await printInvoicePdf(w.refId, target, headers)
+    if (!pdf) throw new Error('The invoice could not be printed: its print page answered "not found".')
+    return { name, mime: 'application/pdf', bytes: pdf }
   }
   const name = await rmbFileName(w.refId)
   if (!name) throw new Error('The reimbursement document is not there any more.')

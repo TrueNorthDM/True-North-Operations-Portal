@@ -6,7 +6,8 @@
  * rule: every PDF opens in a preview first). The page shown is the same sheet
  * the PDF prints; Download asks the server for the file and saves it.
  *
- *   InvoicePdfModal   an invoice (/clocky-hours/invoices/<id>/pdf)
+ *   InvoicePdfModal   an invoice (/clocky-hours/invoices/<id>/pdf) and its
+ *                     record page (owner, 4 November 2026)
  *   DocPdfModal       a payroll summary or reimbursement document
  *                     (/clocky-hours/documents/<kind>/<id>/pdf)
  */
@@ -22,15 +23,25 @@ import { nameFromDisposition } from '@/lib/drive/file-names'
 import { DocSheet } from './DocSheet'
 import { ReceiptPages } from './ReceiptPages'
 import { InvoiceDoc, type InvoiceDocData } from './InvoiceDoc'
+import { InvoiceRecordSheet } from './InvoiceRecordSheet'
+import type { InvoiceDocView } from '@/lib/timeclock/invoice-doc'
+import { recordPages } from '@/lib/pdf/invoice-pages'
 
 export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
-  invoice: InvoiceDocData & { id: number }
+  invoice: InvoiceDocData & Pick<InvoiceDocView, 'id' | 'record' | 'ownFile'>
   onClose: () => void
   onDownloaded?: (name: string) => void
 }) {
+  // The record page after the invoice (owner, 4 November 2026); their own PDF is page 1 when they sent one.
+  const r = invoice.record
+  const own = r?.madeBy === 'own_file' ? invoice.ownFile : null
   return (
-    <PdfWindow named name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}>
-      <InvoiceDoc inv={invoice} variant="page" />
+    <PdfWindow named name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}
+      pages={!r ? undefined : own ? 'Preview: their own PDF as they sent it, then the invoice record.' : 'Preview, 2 pages (the invoice and its record).'}>
+      {own
+        ? <iframe src={withViewAs(own.href)} title={own.name} className="w-[620px] h-[877px] bg-white border-0" />
+        : <InvoiceDoc inv={invoice} variant="page" />}
+      {r && <InvoiceRecordSheet r={r} page={own ? 'Last page' : recordPages(null).record} className="min-h-[876px]" />}
     </PdfWindow>
   )
 }

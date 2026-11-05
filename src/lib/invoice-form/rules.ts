@@ -11,6 +11,8 @@
 
 import { dateLabel } from '@/lib/timeclock/format'
 import { CATEGORIES, MEAL_HINT, MILEAGE, mileageAmount, mileageNote, milesOf, needsReceipt, overMealCap } from '@/lib/timeclock/reimbursement-rules'
+// Types only: the page imports this file, and contractor-invoice.ts reaches the database.
+import type { BuilderLine, MadeBy, SendRecord } from '@/lib/timeclock/contractor-invoice'
 
 // ── The code (decision A) ──────────────────────────────────────────────────
 
@@ -228,6 +230,8 @@ export function buildFormLines(work: FormWork, rates: Rates, reimbursements: rea
 
 /** The most a form invoice can carry, so a typo never sends a fortune. */
 export const MAX_FIXED = 100_000
+/** The most the total on their own invoice can say (reimbursements included). */
+export const MAX_STATED = 200_000
 export const MAX_ITEMS = 200
 export const MAX_RECEIPTS = 20
 export const MAX_FILE = 10 * 1024 * 1024
@@ -250,6 +254,13 @@ export interface RawSubmission {
   amount?: unknown
   items?: unknown
   reimbursements?: unknown
+  /** How they send it (leadership, 4 November 2026): 'own_file' or 'builder'. */
+  madeBy?: unknown
+  /** Own file: their invoice number (optional) and the total on it. */
+  theirNumber?: unknown
+  statedTotal?: unknown
+  /** The box "This is my invoice..." ticked. Only true counts; the sentence is never taken from the page. */
+  confirmed?: unknown
 }
 
 export interface CheckedSubmission {
@@ -259,6 +270,9 @@ export interface CheckedSubmission {
   saveToRecord: boolean
   work: FormWork
   reimbursements: FormReimbursement[]
+  madeBy: MadeBy
+  /** Own file: what they typed beside their PDF. Null when it was filled in here. */
+  own: { theirNumber: string | null; statedTotal: number } | null
 }
 
 export interface CheckContext {
@@ -271,6 +285,8 @@ export interface CheckContext {
   files: ReadonlySet<number>
   /** Whether the country is one the address picker knows. */
   countryOk: (code: string) => boolean
+  /** Their own PDF came with the send and passed the file checks (type, size, %PDF- header). */
+  ownPdf: boolean
 }
 
 const str = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max)
@@ -294,13 +310,30 @@ export function checkSubmission(raw: RawSubmission, ctx: CheckContext): { ok: tr
   if (!sender.line1 || !sender.city) return no('Write your address: the street and the city.')
   if (!/^[A-Z]{2}$/.test(sender.country) || !ctx.countryOk(sender.country)) return no('Choose your country.')
 
+  // Every contractor makes and sends their own invoice (leadership, 4 November
+  // 2026): their own PDF, or the lines they write here. Either way it is theirs.
+  const madeBy: MadeBy | null = raw?.madeBy === 'own_file' || raw?.madeBy === 'builder' ? raw.madeBy : null
+  if (!madeBy) return no('Choose how you send your invoice: My own file or Fill it in here.')
+  let own: CheckedSubmission['own'] = null
+  if (madeBy === 'own_file') {
+    if (!ctx.ownPdf) return no('Add your invoice: a PDF of up to 10 MB.')
+    const statedTotal = amountOf(raw?.statedTotal)
+    if (!(statedTotal > 0) || statedTotal > MAX_STATED) return no(`Write the total on your invoice in US dollars, more than 0 and up to $${MAX_STATED.toLocaleString('en-US')}.`)
+    own = { theirNumber: str(raw?.theirNumber, 60) || null, statedTotal: money(cents(statedTotal)) }
+  }
+
   let work: FormWork
   if (kind === 'fixed') {
     const covers = str(raw?.covers, 500)
-    if (covers.length < 3) return no('Say what the amount covers.')
-    const amount = amountOf(raw?.amount)
-    if (!(amount > 0) || amount > MAX_FIXED) return no(`Write the amount in US dollars, more than 0 and up to $${MAX_FIXED.toLocaleString('en-US')}.`)
-    work = { kind, covers, amount: money(cents(amount)) }
+    if (covers.length < 3) return no(own ? 'Say what your invoice covers.' : 'Say what the amount covers.')
+    if (own) {
+      // Their total holds everything on their invoice: the work is what is left after the reimbursements (read below).
+      work = { kind, covers, amount: own.statedTotal }
+    } else {
+      const amount = amountOf(raw?.amount)
+      if (!(amount > 0) || amount > MAX_FIXED) return no(`Write the amount in US dollars, more than 0 and up to $${MAX_FIXED.toLocaleString('en-US')}.`)
+      work = { kind, covers, amount: money(cents(amount)) }
+    }
   } else {
     const list = Array.isArray(raw?.items) ? raw.items : []
     if (!list.length) return no('Add at least one line: the Monday item and what it is.')
@@ -356,7 +389,72 @@ export function checkSubmission(raw: RawSubmission, ctx: CheckContext): { ok: tr
     })
   }
 
-  return { ok: true, value: { month, kind, sender, saveToRecord: raw?.saveToRecord === true, work, reimbursements } }
+  if (own && work.kind === 'fixed') {
+    const rest = cents(own.statedTotal) - reimbursements.reduce((n, r) => n + cents(r.amount), 0)
+    if (rest <= 0) return no('The total on your invoice must be more than the reimbursements on it.')
+    work = { ...work, amount: money(rest) }
+  }
+
+  // Never sent without the box ticked (the page asks the same; the route builds the sentence itself).
+  if (raw?.confirmed !== true) return no('Tick the box to confirm this is your invoice.')
+
+  return { ok: true, value: { month, kind, sender, saveToRecord: raw?.saveToRecord === true, work, reimbursements, madeBy, own } }
+}
+
+/**
+ * Where the month goes in the sentence they tick: the page gets the sentence
+ * from confirmText (contractor-invoice.ts, which the browser cannot load) with
+ * this in place of the month, and puts the month in.
+ */
+export const MONTH_SLOT = '{month}'
+
+/** The sentence with the month in: "...to True North for October 2026." */
+export const withMonth = (template: string, monthName: string): string => template.split(MONTH_SLOT).join(monthName)
+
+/**
+ * The invoice a send makes: its lines and its total. Filled in here, the
+ * total adds the lines up (the rates for deliverables). Their own file, the
+ * total is the one on it (stated_total, leadership 4 November 2026); the
+ * Monday items stay as lines at the rates so the approver can compare the two.
+ */
+export function formInvoice(sub: Pick<CheckedSubmission, 'work' | 'reimbursements' | 'own'>, rates: Rates): { lines: FormLine[]; total: number } {
+  const built = buildFormLines(sub.work, rates, sub.reimbursements)
+  return sub.own ? { lines: built.lines, total: sub.own.statedTotal } : built
+}
+
+/**
+ * The record of one send from the form (contractor-invoice.ts keeps it on the
+ * invoice and in invoice_sends). `confirmed` is the sentence the server built
+ * from the way and the month, never text from the browser. The lines are the
+ * ones they wrote here; an own file has none of its own (its items stay on
+ * the invoice's lines).
+ */
+export function formRecord(
+  sub: Pick<CheckedSubmission, 'madeBy' | 'own' | 'work' | 'reimbursements'>,
+  x: { rates: Rates; sentBy: string | null; email: string; confirmed: string; ownPdf: { path: string; name: string } | null },
+): SendRecord {
+  const { lines, total } = formInvoice(sub, x.rates)
+  const builderLines: BuilderLine[] = sub.madeBy === 'own_file' ? [] : lines.map(l => ({
+    description: l.kind === 'reimbursement' ? `Reimbursement: ${l.client}, ${l.description}` : l.description,
+    client: null, hours: null, rate: null, amount: l.amount,
+  }))
+  return {
+    madeBy: sub.madeBy, sentFrom: 'form', sentBy: x.sentBy, sentEmail: x.email, confirmed: x.confirmed,
+    theirNumber: sub.own?.theirNumber ?? null, statedHours: null, statedTotal: sub.own?.statedTotal ?? null,
+    covers: sub.work.kind === 'fixed' ? sub.work.covers : null,
+    ownPdf: sub.madeBy === 'own_file' ? x.ownPdf : null,
+    lines: builderLines, total,
+  }
+}
+
+/** "We keep it as you sent it, with a note that you sent it on Nov 4, 2026 at 3:12 PM." The thank-you page's line. */
+export function keptText(madeBy: MadeBy, sentAt: string, zone: string): string {
+  const d = new Date(sentAt)
+  const day = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: zone })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: zone })
+  return madeBy === 'own_file'
+    ? `We keep your file as you sent it, with a note that you sent it on ${day} at ${time}.`
+    : `We keep it as you sent it, with a note that you wrote it here and sent it on ${day} at ${time}.`
 }
 
 /** "The invoice form, fixed amount", "The invoice form, deliverables, 3 lines": the invoice view's "Came from". Null for any other invoice. */

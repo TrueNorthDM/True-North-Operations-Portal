@@ -3,7 +3,8 @@
 /**
  * One invoice, Clocky part 2 (Invoices.dc.html 6F): the document on the left,
  * Preview PDF, Mark paid (Finance, approved ones) and the lock on the right,
- * with its History under them.
+ * then who made it (owner, 4 November 2026: the contractor makes and sends
+ * their own invoice), with its History under them, every version sent included.
  */
 
 import { STATUS_ICON } from '@/lib/ui/status-icons'
@@ -21,6 +22,7 @@ import { PAGE_TITLE, CARD, FIELD_LABEL } from '@/lib/ui/type'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Pill } from '@/components/ui/Pill'
 import { DriveBox } from './DriveParts'
+import { WhoMadeIt } from './WhoMadeIt'
 
 const EYE = STATUS_ICON.info
 
@@ -92,6 +94,7 @@ export function InvoiceDetailView({ d, api, initial }: {
               {d.ownPdf && <a href={withViewAs(d.ownPdf.href)} target="_blank" rel="noreferrer" className={`${BTN.link} break-all`}>Their own invoice: {d.ownPdf.name}</a>}
             </div>
           )}
+          {d.doc.record && <WhoMadeIt who={d.doc.record.who} ownPdf={d.doc.record.madeBy === 'own_file' && !d.cameFrom ? d.ownPdf : null} />}
           {d.drive && <DriveBox data={d.drive} retry={api.retryDriveCopy} say={t => { say(t); if (!t.error) router.refresh() }} />}
           <InvoiceHistory items={d.history} />
         </div>
