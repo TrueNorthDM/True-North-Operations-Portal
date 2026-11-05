@@ -194,7 +194,17 @@ describe('the lines of an invoice add up to its total (audit, 9 October 2026)', 
       for (const j of p.jobcodes) expect(cents(j.cost)).toBe(j.activities.reduce((s, a) => s + cents(a.cost), 0))
     }
     expect(cents(r.totalCost)).toBe(r.projects.reduce((s, p) => s + cents(p.cost), 0))
-    expect(r.totalCost).toBe(22.16)
+    // Each line is its shown hours times the rate: 0.12 h x $95 = $11.40 (5 November 2026).
+    expect(r.totalCost).toBe(22.8)
+  })
+
+  it('costs a line on the hours it shows, as QuickBooks does (owner, 5 November 2026)', () => {
+    // 153h 43m reads 153.72 h; the invoice is 153.72 x $95 = $14,603.40, not 153.7167 x $95 = $14,603.08.
+    const wm = buildI7Report([{ personId: 'p1', duration: 153 * 3600 + 43 * 60, date: '2026-10-01', i7Code: 'WM-MKTG', activity: 'Social Media' }], () => 95, { p1: 'Alice' }, '2026-10-01')
+    const line = wm.projects[0].jobcodes[0]
+    expect(line.hours).toBe(153.72)
+    expect(line.cost).toBe(14603.4)
+    expect(cents(line.cost)).toBe(Math.round(line.hours * 95 * 100))
   })
 
   it('hours add up the same way', () => {

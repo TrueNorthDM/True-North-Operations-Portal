@@ -239,8 +239,14 @@ export function buildI7Report(
           aByPerson.set(personId, (aByPerson.get(personId) ?? 0) + leaf.hours)
           cByPerson.set(personId, (cByPerson.get(personId) ?? 0) + leaf.hours)
           pByPerson.set(personId, (pByPerson.get(personId) ?? 0) + leaf.hours)
-          aHours += hundredths(leaf.hours)
-          aCost += hundredths(leaf.cost)
+          // The money is the hours as shown (to the hundredth) times the rate,
+          // as QuickBooks and the invoice work it out (owner, 5 November 2026:
+          // 153h 43m read 153.72 h but cost 153.7167 h, $0.32 under the invoice).
+          // leaf.cost / leaf.hours is the rate, or the average one when a range
+          // crosses a rate change.
+          const shown = hundredths(leaf.hours)
+          aHours += shown
+          aCost += leaf.hours > 0 ? Math.round(shown * (leaf.cost / leaf.hours)) : 0
         }
         activities.push({ activity, hours: aHours / 100, cost: aCost / 100, byPerson: roundMap(aByPerson) })
         cHours += aHours
@@ -339,7 +345,8 @@ export function buildI7Days(
   }
 
   return [...acc.values()]
-    .map(r => ({ ...r, hours: round2(r.hours), cost: round2(r.cost) }))
+    // Costed on the hours as shown, as the report is (owner, 5 November 2026).
+    .map(r => ({ ...r, hours: round2(r.hours), cost: r.hours > 0 ? round2(round2(r.hours) * (r.cost / r.hours)) : 0 }))
     .filter(r => r.hours > 0)
     // Date first: the file is read forwards through the month, and everything
     // under a day is ordered the way the report's own table is.
