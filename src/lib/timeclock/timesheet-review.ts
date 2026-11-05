@@ -116,7 +116,7 @@ export interface TimesheetReview {
   }
   /**
    * The contractor's own invoice (4 November 2026): who sent it and how, and
-   * the invoice beside the timesheet. Null with no invoice sent, or for
+   * "Invoice details submitted": what they sent, with the check beside it. Null with no invoice sent, or for
    * someone who does not see money.
    */
   sentInvoice?: { sentLine: string; ownPdfHref: string | null; check: InvoiceCheck | null } | null
@@ -151,7 +151,7 @@ export interface ReviewSource {
   /** The Rippling job of an employee's approved pay period. */
   job: { state: string; last_error: string | null; done_at: string | null } | null
   now: Date
-  /** The invoice beside the timesheet (4 November 2026). */
+  /** The check of the invoice against the timesheet (4 November 2026), with the details sent. */
   check?: InvoiceCheck | null
   /** Who sent the invoice and how. */
   sendInfo?: SendInfo | null
@@ -245,13 +245,16 @@ export function withRecord(view: InvoiceDocView | null, rec: InvoiceRecordView |
   return rec ? { ...view, record: rec, foot: { line: rec.footLine, page: recordPages(null).first } } : view
 }
 
-/** "Invoice 0142, sent by Jordan Lee on Nov 2 at 9:14 AM · their own file (PDF)". */
-function sentLineOf(i: { number: string; id: number }, info: SendInfo | null | undefined, nameOf: (pid: string | null) => string, zone: string): { sentLine: string; ownPdfHref: string | null } | null {
+/**
+ * "Sent by Jordan Lee on Nov 2, 9:14 AM · Their own file "inv-0142.pdf"" (owner, 5 November 2026):
+ * who sent it, when and how. Null for an invoice the portal made (no send on record).
+ */
+export function sentLineOf(i: { id: number }, info: SendInfo | null | undefined, nameOf: (pid: string | null) => string, zone: string, who: string): { sentLine: string; ownPdfHref: string | null } | null {
   if (!info?.made_by || !info.sent_at) return null
-  const theirs = info.their_number ? `Invoice ${info.their_number} (${i.number})` : i.number
-  const how = info.made_by === 'own_file' ? `their own file${info.own_pdf_name ? `, ${info.own_pdf_name}` : ''}` : "made with the portal's invoice builder"
-  const from = info.sent_from === 'form' ? ' through the invoice form' : ''
-  return { sentLine: `${theirs}, sent by ${nameOf(info.sent_by)}${from} on ${noYear(stampLabel(info.sent_at, zone))} · ${how}`, ownPdfHref: info.own_pdf_path ? `/clocky-hours/invoices/${i.id}/own-pdf` : null }
+  const how = info.made_by === 'own_file' ? `Their own file${info.own_pdf_name ? ` "${info.own_pdf_name}"` : ''}` : 'Built in the portal'
+  const from = info.sent_from === 'form' ? ' · Sent with the public form' : ''
+  const by = info.sent_by ? nameOf(info.sent_by) : who
+  return { sentLine: `Sent by ${by} on ${noYear(stampLabel(info.sent_at, zone))} · ${how}${from}`, ownPdfHref: info.own_pdf_path ? `/clocky-hours/invoices/${i.id}/own-pdf` : null }
 }
 
 /** Builds the page from its source: pure. */
@@ -319,7 +322,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       payroll: null,
       act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false, reopenWarn: null,
         needsReason: canBoth && !form && !!src.check && !src.check.matches },
-      sentInvoice: money ? (() => { const l = sentLineOf(i, src.sendInfo, nameOf, v.zone); return l || src.check ? { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: form ? null : src.check ?? null } : null })() : null,
+      sentInvoice: money ? (() => { const l = sentLineOf(i, src.sendInfo, nameOf, v.zone, who); return l || src.check ? { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: form ? null : src.check ?? null } : null })() : null,
       awaitingInvoice: null,
     }
   }
@@ -502,7 +505,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     noTimesheet: null,
     invoice: invoiceView,
     previous: invoiceView && inv ? previousOf(src, invoiceView, first, tot, t.paysAs !== 'hourly') : null,
-    sentInvoice: money && inv && sent && sendsOwn ? (() => { const l = sentLineOf(inv, src.sendInfo, nameOf, v.zone); return { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: src.check ?? null } })() : null,
+    sentInvoice: money && inv && sent && sendsOwn ? (() => { const l = sentLineOf(inv, src.sendInfo, nameOf, v.zone, who); return { sentLine: l?.sentLine ?? '', ownPdfHref: l?.ownPdfHref ?? null, check: src.check ?? null } })() : null,
     awaitingInvoice: sendsOwn && !sent && (s.state === 'submitted' || s.state === 'hours_approved')
       ? `${first} has not sent ${inv ? 'the invoice again since it was sent back' : 'their invoice yet'}. ${s.state === 'submitted' ? 'You can approve the hours now; the invoice step starts when it arrives.' : 'The invoice step starts when it arrives.'}`
       : null,

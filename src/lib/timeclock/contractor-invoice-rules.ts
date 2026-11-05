@@ -251,3 +251,129 @@ export function compareInvoice(x: CompareInput): Comparison {
   return { rows, total, matches, summary, note }
 }
 
+// ── Invoice details submitted (owner, 5 November 2026) ──────────────────────
+// What the contractor entered when sending, and the check beside it, row by
+// row: the approver reads what was sent, not only whether it matches.
+
+export interface DetailsInput extends CompareInput {
+  /** The invoice's lines as sent (invoice_lines): the builder's, or the portal's own before November 2026. */
+  lines: readonly { kind: string; client: string | null; description: string; hoursSeconds: number | null; rate: number | null; amount: number }[]
+  /** What they typed with their own file (the latest version sent). */
+  stated: { theirNumber: string | null; hours: number | null; total: number | null; covers: string | null }
+  /** The sentence they confirmed when sending. */
+  confirmed: string | null
+}
+
+export interface DetailRow {
+  description: string
+  /** A second, quieter line under the description ("Not on the invoice"). */
+  sub: string | null
+  hours: string
+  rate: string
+  amount: string
+  /** Null: no check on this row (an invoice the portal made). */
+  check: Check | null
+  /** "Matches", "Differs +2h 00m", "Missing", "Not on timesheet", or "". */
+  checkText: string
+  /** "Timesheet 35h 00m": what it was checked against. */
+  checkSub: string | null
+}
+
+export interface InvoiceDetails {
+  kind: 'builder' | 'own_file' | 'portal'
+  /** What they typed (own file) or wrote (what it covers), label and value. */
+  facts: { label: string; value: string }[]
+  /** Builder and portal: their lines, then reimbursements, then timesheet clients left out. */
+  lines: DetailRow[]
+  /** Own file: the check rows (hours in all, reimbursements left out, the total), as compareInvoice reads them. */
+  checks: CompareRow[]
+  /** Builder and portal: the total row under the lines. */
+  total: { amount: string; expected: string | null; check: Check; checkText: string }
+  note: string | null
+  confirmed: string | null
+}
+
+/** The word a check row reads. */
+export function checkWord(c: Check, difference = ''): string {
+  return c === 'match' ? 'Matches' : c === 'on-file' ? '-' : c === 'differs' ? `Differs${difference ? ` ${difference}` : ''}` : c === 'only-timesheet' ? 'Missing' : 'Not on timesheet'
+}
+
+/** Everything the contractor sent, with the check beside each part. */
+export function invoiceDetails(x: DetailsInput, cmp: Comparison = compareInvoice(x)): InvoiceDetails {
+  const madeBy = x.invoice.madeBy
+  const kind: InvoiceDetails['kind'] = madeBy === 'own_file' ? 'own_file' : madeBy === 'builder' ? 'builder' : 'portal'
+  const hourly = x.pay.kind === 'hourly'
+  const onIt = (label: string) => x.invoice.reimbursements.includes(label)
+  const ticked = x.reimbursements.filter(r => onIt(r.label))
+  const reimb = ticked.reduce((n, r) => n + r.amount, 0)
+  const tSeconds = x.timesheet.reduce((n, c) => n + c.seconds, 0)
+  const facts: InvoiceDetails['facts'] = []
+  const lines: DetailRow[] = []
+  const plus = reimb ? ` + ${usd(reimb)} in reimbursements` : ''
+  const expected = cmp.total.check === 'on-file'
+    ? 'No rate or amount on file to check it against.'
+    : hourly
+      ? `Expected ${cmp.total.timesheet}: ${hm(tSeconds)} on the timesheet at ${usd((x.pay as { rate: number }).rate)}${plus}`
+      : `Expected ${cmp.total.timesheet}: the amount on file${plus}`
+  const total = { amount: usd(x.invoice.total), expected, check: cmp.total.check, checkText: checkWord(cmp.total.check, cmp.total.difference) }
+
+  if (kind === 'own_file') {
+    facts.push({ label: 'Their invoice number', value: x.stated.theirNumber ?? '-' })
+    if (hourly || x.stated.hours != null) facts.push({ label: 'Hours on it', value: x.stated.hours == null ? '-' : hm(Math.round(x.stated.hours * 3600)) })
+    facts.push({ label: 'Total (USD)', value: usd(x.stated.total ?? x.invoice.total) })
+    if (x.stated.covers?.trim()) facts.push({ label: 'What it covers', value: x.stated.covers.trim() })
+    facts.push({ label: 'Reimbursements on it', value: ticked.length ? ticked.map(r => `${r.label} (${usd(r.amount)})`).join(', ') : 'None' })
+    // The per-client timesheet rows are left out: the timesheet card lists the hours by client.
+    const checks = [...cmp.rows.filter(r => r.check !== 'on-file' && (r.label === 'Hours in all' || r.check !== 'match')), cmp.total]
+    return { kind, facts, lines, checks, total, note: null, confirmed: x.confirmed }
+  }
+
+  if (x.stated.covers?.trim()) facts.push({ label: 'What it covers', value: x.stated.covers.trim() })
+  const sold = x.lines.filter(l => kind === 'portal' || l.kind !== 'reimbursement')
+
+  if (kind === 'portal') {
+    for (const l of sold) lines.push({
+      description: l.description, sub: null, hours: l.hoursSeconds ? hm(l.hoursSeconds) : '-', rate: l.rate != null ? usd(l.rate) : '-', amount: usd(l.amount),
+      check: null, checkText: '', checkSub: null,
+    })
+    return { kind, facts, lines, checks: [], total, note: "Made by the portal from this timesheet before November 4, 2026: the hours are the timesheet's.", confirmed: x.confirmed }
+  }
+
+  // Built in the portal: each line beside the timesheet's hours for its client.
+  const invByClient = new Map<string, number>()
+  for (const l of sold) if (l.hoursSeconds && l.client) invByClient.set(l.client, (invByClient.get(l.client) ?? 0) + l.hoursSeconds)
+  for (const l of sold) {
+    const row: DetailRow = {
+      description: l.description, sub: null, hours: l.hoursSeconds ? hm(l.hoursSeconds) : '-', rate: l.rate != null ? usd(l.rate) : '-', amount: usd(l.amount),
+      check: null, checkText: '', checkSub: null,
+    }
+    if (hourly && l.hoursSeconds && l.client) {
+      const t = x.timesheet.find(c => c.client === l.client)?.seconds ?? 0
+      const iv = invByClient.get(l.client) ?? 0
+      const several = sold.filter(o => o.client === l.client && o.hoursSeconds).length > 1
+      if (!t) { row.check = 'only-invoice'; row.checkText = checkWord('only-invoice') }
+      else {
+        const same = sameSeconds(t, iv)
+        row.check = same ? 'match' : 'differs'
+        row.checkText = checkWord(row.check, same ? '' : signed(iv - t, hm))
+        row.checkSub = `Timesheet ${hm(t)}${several ? `, ${hm(iv)} on its lines` : ''}`
+      }
+    } else if (hourly) { row.check = 'on-file'; row.checkText = checkWord('on-file') }
+    lines.push(row)
+  }
+  for (const r of x.reimbursements) {
+    const on = onIt(r.label)
+    lines.push({
+      description: `Reimbursement ${r.label}`, sub: on ? null : `Not on the invoice: approved ${usd(r.amount)}`, hours: '-', rate: '-', amount: on ? usd(r.amount) : '-',
+      check: on ? 'match' : 'only-timesheet', checkText: checkWord(on ? 'match' : 'only-timesheet'), checkSub: null,
+    })
+  }
+  if (hourly) {
+    for (const c of x.timesheet) {
+      if (!c.seconds || invByClient.has(c.client)) continue
+      lines.push({ description: c.client, sub: 'Not on the invoice', hours: '-', rate: '-', amount: '-', check: 'only-timesheet', checkText: checkWord('only-timesheet'), checkSub: `Timesheet ${hm(c.seconds)}` })
+    }
+  }
+  return { kind, facts, lines, checks: [], total, note: null, confirmed: x.confirmed }
+}
+

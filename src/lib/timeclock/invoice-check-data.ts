@@ -8,7 +8,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { compareInvoice, type Comparison, type MadeBy } from './contractor-invoice'
+import { compareInvoice, invoiceDetails, type CompareInput, type Comparison, type InvoiceDetails, type MadeBy } from './contractor-invoice'
 import { hoursByClient } from './invoices-data'
 import { loadPayTerms } from './pay-terms'
 
@@ -29,19 +29,21 @@ export function availableWhenSent(decidedAt: string | null, sentAt: string | nul
 
 export interface InvoiceCheck extends Comparison {
   madeBy: MadeBy | null
+  /** What the contractor sent, with the check beside each part ("Invoice details submitted"). */
+  details?: InvoiceDetails
 }
 
 /** The comparison for one invoice; null when it has no person or cannot be read. */
 export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Promise<InvoiceCheck | null> {
   const c = createAdminClient()
   const { data: inv, error } = await c.from('invoices')
-    .select('id, person_id, submission_id, period_start, period_end, kind, made_by, stated_hours, total, sent_at, created_at')
+    .select('id, person_id, submission_id, period_start, period_end, kind, made_by, stated_hours, stated_total, their_number, covers, confirmed_text, total, sent_at, created_at')
     .eq('id', invoiceId).maybeSingle()
   if (error || !inv) return null
   const [terms, timesheet, linesRes, rmbRes] = await Promise.all([
     loadPayTerms([inv.person_id]),
     inv.submission_id && inv.kind !== 'fixed_no_timesheet' ? hoursByClient(inv.person_id, inv.period_start, inv.period_end, now) : Promise.resolve([]),
-    c.from('invoice_lines').select('kind, client, hours_seconds, amount, reimbursement_id').eq('invoice_id', invoiceId),
+    c.from('invoice_lines').select('kind, client, description, hours_seconds, rate, amount, reimbursement_id, sort').eq('invoice_id', invoiceId).order('sort'),
     // What should be on it: the ones on this one, and their approved reimbursements still waiting for an
     // invoice (not on a reimbursement document). Which of those were there when it was sent is decided below.
     c.from('reimbursements').select('id, receipt_number, purpose, amount, state, invoice_id, decided_at').eq('person_id', inv.person_id)
@@ -58,7 +60,7 @@ export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Pro
   const onIt = new Set(lines.filter(l => l.reimbursement_id).map(l => l.reimbursement_id))
   const builderHours = lines.filter(l => l.kind === 'hours').reduce((n, l) => n + (l.hours_seconds ?? 0), 0) / 3600
   const madeBy = (inv.made_by ?? null) as MadeBy | null
-  const cmp = compareInvoice({
+  const input: CompareInput = {
     timesheet,
     pay: inv.kind === 'hourly' ? { kind: 'hourly', rate: t?.hourlyRate ?? null } : { kind: 'fixed', amount: t?.fixedAmount ?? null },
     reimbursements: rmb.map(r => ({ label: reimbursementLabel(r), amount: Number(r.amount) })),
@@ -69,8 +71,15 @@ export async function loadInvoiceCheck(invoiceId: number, now = new Date()): Pro
       total: Number(inv.total),
       reimbursements: rmb.filter(r => onIt.has(r.id)).map(reimbursementLabel),
     },
-  })
-  return { ...cmp, madeBy }
+  }
+  const cmp = compareInvoice(input)
+  const details = invoiceDetails({
+    ...input,
+    lines: lines.map(l => ({ kind: l.kind, client: l.client, description: l.description, hoursSeconds: l.hours_seconds, rate: l.rate == null ? null : Number(l.rate), amount: Number(l.amount) })),
+    stated: { theirNumber: inv.their_number, hours: inv.stated_hours == null ? null : Number(inv.stated_hours), total: inv.stated_total == null ? null : Number(inv.stated_total), covers: inv.covers },
+    confirmed: inv.confirmed_text,
+  }, cmp)
+  return { ...cmp, madeBy, details }
 }
 
 export interface InvoiceSendRow {

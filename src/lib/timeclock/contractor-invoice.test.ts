@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { builderProblem, compareInvoice, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, madeByLine, missingOnFile, payOnFile } from './contractor-invoice-rules'
+import { builderProblem, compareInvoice, invoiceDetails, confirmText, fixedLine, lineAmount, linesAtFileRate, linesFromTimesheet, madeByLine, missingOnFile, payOnFile } from './contractor-invoice-rules'
 
 // The contractor makes and sends their own invoice (leadership, 4 November 2026).
 
@@ -117,5 +117,79 @@ describe('the invoice beside the timesheet', () => {
     const c = compareInvoice({ timesheet, pay: { kind: 'hourly', rate: 25 }, reimbursements: rmb,
       invoice: { madeBy: 'builder', byClient: timesheet, hours: 160.5, total: 4012.5, reimbursements: [] } })
     expect(c.rows.find(r => r.label === 'Reimbursement RCT-2026-031')?.check).toBe('only-timesheet')
+  })
+})
+
+describe('Invoice details submitted (owner, 5 November 2026)', () => {
+  // The staging sample: Oct 11 to Oct 24, 2026, at $44.78, with RCT-2026-900.
+  const ts = [{ client: 'i7 Marketing', seconds: h(35) }, { client: 'COE Group', seconds: h(20) }, { client: 'True North Internal', seconds: h(4) }]
+  const pay = { kind: 'hourly' as const, rate: 44.78 }
+  const rmb = [{ label: 'RCT-2026-900', amount: 84 }]
+  const line = (client: string, hours: number) => ({ kind: 'hours', client, description: `${client}, Oct 11 to 24`, hoursSeconds: h(hours), rate: 44.78, amount: Math.round(hours * 44.78 * 100) / 100 })
+  const stated = { theirNumber: null, hours: null, total: null, covers: null }
+  const confirmed = 'This is my invoice. I wrote these lines and I am sending this invoice to True North for Oct 11 to 24.'
+  const built = (lines: ReturnType<typeof line>[], total: number, ticked: string[]) => invoiceDetails({
+    timesheet: ts, pay, reimbursements: rmb, lines, stated, confirmed,
+    invoice: { madeBy: 'builder', byClient: lines.map(l => ({ client: l.client, seconds: l.hoursSeconds })), hours: lines.reduce((n, l) => n + l.hoursSeconds, 0) / 3600, total, reimbursements: ticked },
+  })
+
+  it('built in the portal: their lines as sent, each beside the timesheet, the reimbursement, the total against the rate on file', () => {
+    const d = built([line('i7 Marketing', 35), line('COE Group', 20), line('True North Internal', 4)], 2726.02, ['RCT-2026-900'])
+    expect(d.kind).toBe('builder')
+    expect(d.lines.map(l => [l.description, l.hours, l.rate, l.amount, l.checkText])).toEqual([
+      ['i7 Marketing, Oct 11 to 24', '35h 00m', '$44.78', '$1,567.30', 'Matches'],
+      ['COE Group, Oct 11 to 24', '20h 00m', '$44.78', '$895.60', 'Matches'],
+      ['True North Internal, Oct 11 to 24', '4h 00m', '$44.78', '$179.12', 'Matches'],
+      ['Reimbursement RCT-2026-900', '-', '-', '$84.00', 'Matches'],
+    ])
+    expect(d.lines[0].checkSub).toBe('Timesheet 35h 00m')
+    expect(d.total).toEqual({ amount: '$2,726.02', expected: 'Expected $2,726.02: 59h 00m on the timesheet at $44.78 + $84.00 in reimbursements', check: 'match', checkText: 'Matches' })
+    expect(d.confirmed).toBe(confirmed)
+  })
+  it('a line that differs says by how much; a client left out and a reimbursement not ticked show as missing', () => {
+    const d = built([line('i7 Marketing', 37), line('COE Group', 20)], 2552.46, [])
+    expect(d.lines.find(l => l.description.startsWith('i7'))).toMatchObject({ check: 'differs', checkText: 'Differs +2h 00m', checkSub: 'Timesheet 35h 00m' })
+    expect(d.lines.find(l => l.description === 'Reimbursement RCT-2026-900')).toMatchObject({ amount: '-', check: 'only-timesheet', checkText: 'Missing' })
+    expect(d.lines.find(l => l.description === 'True North Internal')).toMatchObject({ sub: 'Not on the invoice', check: 'only-timesheet', checkText: 'Missing', checkSub: 'Timesheet 4h 00m' })
+    expect(d.total.check).toBe('differs')
+  })
+  it('a line for a client not on the timesheet', () => {
+    const d = built([line('i7 Marketing', 35), line('COE Group', 20), line('True North Internal', 4), line('GNA', 1)], 2770.80, ['RCT-2026-900'])
+    expect(d.lines.find(l => l.description.startsWith('GNA'))?.checkText).toBe('Not on timesheet')
+  })
+  it('their own file: the figures they typed, then hours in all and the total', () => {
+    const d = invoiceDetails({
+      timesheet: ts, pay, reimbursements: rmb, lines: [], confirmed: null,
+      stated: { theirNumber: '0142', hours: 59, total: 2726.02, covers: 'Oct 11 to 24 work' },
+      invoice: { madeBy: 'own_file', byClient: [], hours: 59, total: 2726.02, reimbursements: ['RCT-2026-900'] },
+    })
+    expect(d.kind).toBe('own_file')
+    expect(d.facts).toEqual([
+      { label: 'Their invoice number', value: '0142' }, { label: 'Hours on it', value: '59h 00m' }, { label: 'Total (USD)', value: '$2,726.02' },
+      { label: 'What it covers', value: 'Oct 11 to 24 work' }, { label: 'Reimbursements on it', value: 'RCT-2026-900 ($84.00)' },
+    ])
+    expect(d.checks.map(c => [c.label, c.check])).toEqual([['Hours in all', 'match'], ['Total (rate on file $44.78)', 'match']])
+    expect(d.lines).toEqual([])
+  })
+  it('a fixed amount: their line and the total against the amount on file', () => {
+    const d = invoiceDetails({
+      timesheet: [], pay: { kind: 'fixed', amount: 1800 }, reimbursements: [], confirmed: null, stated: { ...stated, covers: 'Design retainer' },
+      lines: [{ kind: 'fixed', client: 'Fixed monthly amount, October 2026', description: 'Fixed monthly amount, October 2026', hoursSeconds: null, rate: null, amount: 1800 }],
+      invoice: { madeBy: 'builder', byClient: [], hours: 0, total: 1800, reimbursements: [] },
+    })
+    expect(d.facts).toEqual([{ label: 'What it covers', value: 'Design retainer' }])
+    expect(d.lines.map(l => [l.description, l.amount, l.checkText])).toEqual([['Fixed monthly amount, October 2026', '$1,800.00', '']])
+    expect(d.total).toMatchObject({ expected: 'Expected $1,800.00: the amount on file', checkText: 'Matches' })
+  })
+  it('an old invoice the portal made: its own lines, no check per line, the note and the total', () => {
+    const d = invoiceDetails({
+      timesheet: ts, pay, reimbursements: [], confirmed: null, stated,
+      lines: [{ kind: 'hours', client: '2 - i7 Marketing', description: '2 - i7 Marketing, October 2026', hoursSeconds: h(59), rate: 44.78, amount: 2642.02 }],
+      invoice: { madeBy: null, byClient: [{ client: '2 - i7 Marketing', seconds: h(59) }], hours: 59, total: 2642.02, reimbursements: [] },
+    })
+    expect(d.kind).toBe('portal')
+    expect(d.lines).toEqual([{ description: '2 - i7 Marketing, October 2026', sub: null, hours: '59h 00m', rate: '$44.78', amount: '$2,642.02', check: null, checkText: '', checkSub: null }])
+    expect(d.note).toBe("Made by the portal from this timesheet before November 4, 2026: the hours are the timesheet's.")
+    expect(d.total.checkText).toBe('Matches')
   })
 })

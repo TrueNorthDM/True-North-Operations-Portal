@@ -18,6 +18,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ReviewTone, TimesheetReview } from '@/lib/timeclock/timesheet-review'
+import { checkWord, type Check } from '@/lib/timeclock/contractor-invoice-rules'
 import { InvoicePdfModal } from '../invoices/InvoicePdfModal'
 import { Toast, type ToastState } from '../entries/ui'
 import { Tabs } from '@/components/ui/Tabs'
@@ -272,11 +273,11 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
 
           {r.invoice && (
             <div className="md:sticky md:top-[86px] flex flex-col gap-3.5 min-w-0">
-              {/* One card (owner, 5 November 2026): the check, and the invoice itself in a window by Preview invoice. */}
-              <div className={`${CARD} px-[18px] py-4 flex flex-col gap-3`}>
+              {/* Invoice details submitted (owner, 5 November 2026): what the contractor sent, the check beside it; the invoice itself by Preview invoice. */}
+              <div className={`${CARD} px-[18px] py-4 flex flex-col gap-3 min-w-0`}>
                 <div className="flex items-start justify-between gap-2.5 flex-wrap">
                   <div className="flex flex-col gap-1.5 min-w-0">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">The invoice beside the timesheet</span>
+                    <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Invoice details submitted</span>
                     <span className="flex items-center gap-2 flex-wrap text-[12.5px] text-muted tabular-nums lining-nums">
                       <span className="font-bold text-tn-ink whitespace-nowrap">{r.invoice.number}</span>
                       <span aria-hidden="true">·</span>
@@ -287,37 +288,8 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                     <Svg d={ICONS.eye} size={14} stroke={BTN_ICON.white} />Preview invoice
                   </button>
                 </div>
-                {si?.sentLine && <p className="m-0 text-[13px] text-foreground leading-[1.5]">{si.sentLine}</p>}
-                {si?.check && (
-                  <>
-                    {si.check.note && (
-                      <div className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45] bg-[#f1f3f6] text-[#5b6b82] tabular-nums lining-nums">{si.check.note}</div>
-                    )}
-                    {si.check.summary && (
-                      <div role="alert" className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45]" style={{ background: si.check.matches ? '#e6f6ee' : '#fdeeef', color: si.check.matches ? '#0d7a4f' : '#8a1f27' }}>
-                        <Svg d={ICONS.alert} size={16} stroke="currentColor" sw={2} /><span><b>{si.check.matches ? 'They match.' : 'The invoice does not match the timesheet.'}</b> {si.check.summary}</span>
-                      </div>
-                    )}
-                    {!si.check.summary && !si.check.note && si.check.matches && (
-                      <div className="flex gap-2.5 items-center rounded-[11px] px-3.5 py-2.5 text-[13px] font-bold bg-[#e6f6ee] text-[#0d7a4f]"><Svg d={ICONS.check} size={15} stroke="currentColor" sw={3} />The invoice matches the timesheet.</div>
-                    )}
-                    <div className="flex flex-col text-[12.5px] tabular-nums lining-nums">
-                      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 pb-1.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">
-                        <span>{si.check.rows.length ? 'Client' : ''}</span><span className="text-right">Timesheet</span><span className="text-right">Invoice</span><span>Check</span>
-                      </div>
-                      {[...si.check.rows, si.check.total].map((x, i, all) => {
-                        const tone = x.check === 'match' ? '#0d7a4f' : x.check === 'on-file' ? '#5b6b82' : '#c8323d'
-                        const word = x.check === 'match' ? 'Matches' : x.check === 'on-file' ? '-' : x.check === 'differs' ? `Differs${x.difference ? ` ${x.difference}` : ''}` : x.check === 'only-timesheet' ? 'Missing' : 'Not on timesheet'
-                        return (
-                          <div key={x.label} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_86px] gap-2 py-[7px] ${i === all.length - 1 ? `${all.length > 1 ? 'border-t-2 border-[var(--panel-border)] ' : ''}font-bold text-tn-ink` : 'border-b border-[var(--row-rule)]'}`}>
-                            <span className="text-tn-ink font-semibold min-w-0">{x.label}</span><span className="text-right">{x.timesheet}</span><span className="text-right">{x.invoice}</span>
-                            <span className="font-bold" style={{ color: tone }}>{word}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
+                {si?.sentLine && <p className="m-0 text-[13px] text-foreground leading-[1.5] tabular-nums lining-nums [text-wrap:pretty]">{si.sentLine}</p>}
+                {si?.check && <InvoiceDetailsBody check={si.check} />}
               </div>
               {r.previous && (
                 <div className={`${CARD} px-[18px] py-4 flex flex-col gap-[9px]`}>
@@ -564,5 +536,77 @@ function ReasonDialog({ title, text, action, warn = null, reason, setReason, bus
         </div>
       </div>
     </div>
+  )
+}
+
+const CHECK_TONE = (c: Check | null) => (c === 'match' ? '#0d7a4f' : c === 'on-file' || c == null ? '#5b6b82' : '#c8323d')
+const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted'
+const LINE_COLS_GRID = 'grid-cols-[minmax(150px,1.6fr)_72px_72px_88px_minmax(112px,1fr)]'
+
+/** What the contractor sent, with the check beside it (owner, 5 November 2026). On a phone the table scrolls sideways inside the card. */
+function InvoiceDetailsBody({ check: c }: { check: NonNullable<NonNullable<TimesheetReview['sentInvoice']>['check']> }) {
+  const d = c.details
+  return (
+    <>
+      {c.summary && (
+        <div role="alert" className="flex gap-2.5 items-start rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45] tabular-nums lining-nums" style={{ background: c.matches ? '#e6f6ee' : '#fdeeef', color: c.matches ? '#0d7a4f' : '#8a1f27' }}>
+          <Svg d={ICONS.alert} size={16} stroke="currentColor" sw={2} /><span><b>{c.matches ? 'They match.' : 'The invoice does not match the timesheet.'}</b> {c.summary}</span>
+        </div>
+      )}
+      {!c.summary && c.matches && (
+        <div className="flex gap-2.5 items-center rounded-[11px] px-3.5 py-2.5 text-[13px] font-bold bg-[#e6f6ee] text-[#0d7a4f]"><Svg d={ICONS.check} size={15} stroke="currentColor" sw={3} />The invoice matches the timesheet.</div>
+      )}
+      {d?.note && (
+        <div className="rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold leading-[1.45] bg-[#f1f3f6] text-[#5b6b82]">{d.note}</div>
+      )}
+      {!!d?.facts.length && (
+        <dl className="m-0 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-[13px] tabular-nums lining-nums">
+          {d.facts.map(f => (
+            <div key={f.label} className="contents">
+              <dt className="text-muted">{f.label}</dt><dd className="m-0 text-tn-ink font-semibold min-w-0 [overflow-wrap:anywhere]">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {d && d.kind !== 'own_file' && (
+        <div className="overflow-x-auto -mx-1 px-1">
+          <div className="min-w-[520px] flex flex-col text-[12.5px] tabular-nums lining-nums">
+            <div className={`grid ${LINE_COLS_GRID} gap-2 pb-1.5 border-b border-[var(--panel-border)] ${HEAD}`}>
+              <span>Description</span><span className="text-right">Hours</span><span className="text-right">Rate</span><span className="text-right">Amount</span><span>{d.kind === 'portal' ? '' : 'Check'}</span>
+            </div>
+            {d.lines.map((x, i) => (
+              <div key={`${x.description}-${i}`} className={`grid ${LINE_COLS_GRID} gap-2 py-[7px] border-b border-[var(--row-rule)] items-start`}>
+                <span className="flex flex-col min-w-0"><span className="text-tn-ink font-semibold">{x.description}</span>{x.sub && <span className="text-[11.5px] text-muted">{x.sub}</span>}</span>
+                <span className="text-right">{x.hours}</span><span className="text-right">{x.rate}</span><span className="text-right">{x.amount}</span>
+                <span className="flex flex-col min-w-0"><span className="font-bold" style={{ color: CHECK_TONE(x.check) }}>{x.checkText}</span>{x.checkSub && <span className="text-[11.5px] text-muted">{x.checkSub}</span>}</span>
+              </div>
+            ))}
+            <div className={`grid ${LINE_COLS_GRID} gap-2 py-[7px] ${d.lines.length ? 'border-t-2 border-[var(--panel-border)]' : ''} font-bold text-tn-ink items-start`}>
+              <span className="flex flex-col min-w-0"><span>Total</span>{d.total.expected && <span className="text-[11.5px] text-muted font-semibold">{d.total.expected}</span>}</span>
+              <span /><span /><span className="text-right">{d.total.amount}</span>
+              <span style={{ color: CHECK_TONE(d.total.check) }}>{d.total.checkText}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {d?.kind === 'own_file' && (
+        <div className="overflow-x-auto -mx-1 px-1">
+          <div className="min-w-[420px] flex flex-col text-[12.5px] tabular-nums lining-nums">
+            <div className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(96px,auto)] gap-2 pb-1.5 border-b border-[var(--panel-border)] ${HEAD}`}>
+              <span /><span className="text-right">Expected</span><span className="text-right">Invoice</span><span>Check</span>
+            </div>
+            {d.checks.map((x, i, all) => (
+              <div key={x.label} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(96px,auto)] gap-2 py-[7px] ${i === all.length - 1 ? `${all.length > 1 ? 'border-t-2 border-[var(--panel-border)] ' : ''}font-bold text-tn-ink` : 'border-b border-[var(--row-rule)]'}`}>
+                <span className="text-tn-ink font-semibold min-w-0">{x.label}</span><span className="text-right">{x.timesheet}</span><span className="text-right">{x.invoice}</span>
+                <span className="font-bold" style={{ color: CHECK_TONE(x.check) }}>{checkWord(x.check, x.difference)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {d?.confirmed && (
+        <blockquote className="m-0 border-l-[3px] border-[var(--panel-border)] pl-3 text-[12.5px] text-muted italic leading-[1.5] [text-wrap:pretty]">&ldquo;{d.confirmed}&rdquo;</blockquote>
+      )}
+    </>
   )
 }

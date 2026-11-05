@@ -115,6 +115,15 @@ describe('the 6C page (buildReview)', () => {
     expect(buildReview(src({ me: 'wendy', level: 'team_leader', reportsTo: 'wendy', record: rec('builder') }))!.invoice).toBeNull()
   })
 
+  it('Invoice details submitted: who sent it, when and how', () => {
+    const info = (made_by: string | null, extra: Partial<NonNullable<Src['sendInfo']>> = {}) => ({ made_by, sent_at: '2026-10-01T16:47:00Z', sent_by: 'p', sent_from: 'portal', their_number: null, own_pdf_name: null, own_pdf_path: null, ...extra })
+    expect(buildReview(src({ sendInfo: info('builder') }))!.sentInvoice?.sentLine).toBe('Sent by Pat Doe on Oct 1, 12:47 PM · Built in the portal')
+    expect(buildReview(src({ sendInfo: info('own_file', { own_pdf_name: 'inv-0142.pdf', own_pdf_path: 'p/inv.pdf' }) }))!.sentInvoice?.sentLine).toBe('Sent by Pat Doe on Oct 1, 12:47 PM · Their own file "inv-0142.pdf"')
+    expect(buildReview(src({ sendInfo: info('own_file', { sent_by: null, sent_from: 'form' }) }))!.sentInvoice?.sentLine).toBe('Sent by Pat Doe on Oct 1, 12:47 PM · Their own file · Sent with the public form')
+    // An old invoice the portal made has no send on record.
+    expect(buildReview(src({ sendInfo: info(null) }))!.sentInvoice?.sentLine).toBe('')
+  })
+
   it('the button sends the hours back: its window says so', () => {
     const r = buildReview(src({}))!
     expect(r.act.returnTitle).toBe('Send the October hours back to Pat?')
