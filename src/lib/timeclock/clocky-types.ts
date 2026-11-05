@@ -263,8 +263,6 @@ export interface EntryView {
   /** 'submitted' | 'approved' | 'locked' when locked. */
   lockWhy: string | null
   canEdit: boolean
-  /** A User on their own entry: times may only move inward. */
-  shortenOnly: boolean
   canDelete: boolean
   /** Continue: start the clock with this (own, finished, timed entries). */
   canContinue: boolean
@@ -322,8 +320,10 @@ export interface EntriesData {
   submit: { start: string; end: string; kind: Period['kind']; label: string; full: string; state: string | null; submitted: boolean }
   /** Adds time and uses the week grid for someone in view (Team Leaders and up). */
   canAdd: boolean
-  /** The same for the viewer's own hours: Admins and Super Admins, not Team Leaders (owner, 25 October 2026). */
+  /** The same for the viewer's own hours: everyone since 4 November 2026. */
   canAddOwn: boolean
+  /** The Week grid (ck-grid) and Day timeline (ck-timeline) tabs; absent: both (design checks). */
+  views?: { grid: boolean; timeline: boolean }
   /** Pay periods for the "Pay period" segment: the anchor moves, oldest first. */
   anchors: { anchor: string; effectiveFrom: string | null }[]
 }
@@ -487,7 +487,6 @@ export interface SafetyOccurrence {
 }
 
 export interface ClockSafetyData {
-  access: 'full' | 'read'
   zone: string
   /** autoStops: the 5-hour stops (the ones with an end to confirm); allowanceStops: the stops at the hours allowance. */
   cards: { autoStops: number; allowanceStops: number; people: number; confirmed: number; keptGoing: number }

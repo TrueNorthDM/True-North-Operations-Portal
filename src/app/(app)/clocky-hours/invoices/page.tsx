@@ -1,5 +1,5 @@
 // Clocky, Invoices (Clocky part 2, Invoices.dc.html 6E): a contractor's own
-// invoices, or every invoice for Super Admins, Admins and Finance. Who gets
+// invoices, or every invoice for Super Admins and Finance. Who gets
 // which list is lib/timeclock/invoices-view.ts.
 
 import { requireSurface } from '@/lib/access/resolve'
@@ -31,7 +31,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const data = await loadInvoiceList(invoiceViewer(access, v?.zone ?? 'America/New_York'))
   // Try again on a failed Drive copy is a Super Admin's, as on the Google Drive card.
   if (data.drive) data.drive.retry = access.can('cs-integrations-edit')
-  // The invoice form's new senders (migration 147): for the default approver, Admins, Super Admins and Finance.
+  // The invoice form's new senders (migration 147): money, so Super Admins and Finance (newSenderRights).
   const rights = newSenderRights(access, await loadInvoiceSettings())
   let senders: Awaited<ReturnType<typeof loadWaitingSenders>> | null = null
   let people: { value: string; label: string }[] = []

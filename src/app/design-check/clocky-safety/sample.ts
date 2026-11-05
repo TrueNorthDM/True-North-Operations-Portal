@@ -73,7 +73,6 @@ export function sampleSafety(o: { period: Period; q: string; empty: boolean; acc
     }
   }).sort((a, b) => (b.autoStops + b.allowanceStops) - (a.autoStops + a.allowanceStops) || b.keptGoing - a.keptGoing)
   return {
-    access: o.access,
     zone: 'America/New_York',
     cards: {
       autoStops: occ.filter(x => !x[7]).length,

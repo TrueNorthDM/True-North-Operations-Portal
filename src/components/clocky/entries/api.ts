@@ -38,7 +38,6 @@ export interface EntriesApi {
   editEntry(i: EntryInputBody & { id: number }): Promise<Result<{ entryId: number; changes: number; toast: string }>>
   deleteEntry(i: { id: number; reason: string }): Promise<Result<{ toast: string }>>
   saveWeekGrid(i: { personId: string; weekStart: string; rows: GridRowBody[]; reason: string }): Promise<Result<{ weekSeconds: number; toast: string }>>
-  requestCorrection(i: { date: string; start: string; end: string; jobcodeId: number; fields?: Record<string, string>; notes?: string; reason: string }): Promise<Result<{ requestId: number; goesTo: string; toast: string }>>
   submitPeriod(i: { start: string; end: string }): Promise<Result<{ toast: string; locked: number; invoiceId?: number | null; sendInvoice?: boolean }>>
   decideCorrection(i: DecideBody): Promise<Result<{ entryId?: number; toast: string }>>
   decideTimeOff(i: DecideBody): Promise<Result>

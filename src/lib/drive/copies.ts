@@ -165,7 +165,7 @@ export function selfOrigin(): string {
   return internal ? new URL(internal).origin : `http://127.0.0.1:${process.env.PORT || 3000}`
 }
 
-const SERVER = { personId: null, isAdmin: true }
+const SERVER = { personId: null, can: () => true }
 
 /** The file of one copy: its name, type and bytes. */
 async function fileFor(w: Want, origin: string): Promise<{ name: string; mime: string; bytes: Uint8Array }> {

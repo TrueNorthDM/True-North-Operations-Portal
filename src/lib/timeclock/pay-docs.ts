@@ -3,7 +3,7 @@
  * Settings.dc.html docOf, 10P-2): an employee's payroll summary (a pay period
  * as it goes to Rippling) and a reimbursement document (RMB-YYYY-NNNN, paid by
  * Finance outside payroll). The builders are pure; the loaders open them to
- * the person, Super Admins, Admins and Finance only, never Team Leaders.
+ * the person, Super Admins and Finance only, never Team Leaders.
  */
 
 import type { Access } from '@/lib/access/resolve'
@@ -93,7 +93,7 @@ export function rmbDocOf(x: {
 
 // ── Reading ─────────────────────────────────────────────────────────────────
 
-type Viewer = Pick<Access, 'personId' | 'isAdmin'>
+type Viewer = Pick<Access, 'personId' | 'can'>
 
 /** The worked and time-off seconds of each week of a period. */
 export async function weeksOf(personId: string, start: string, end: string, now = new Date()): Promise<{ worked: number; off: number }[]> {

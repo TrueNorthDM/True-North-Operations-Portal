@@ -46,15 +46,21 @@ describe('every change to hours needs a reason (Rules 7)', () => {
   })
 })
 
-describe('Users only shorten (Rules 6)', () => {
-  it('editEntry refuses anything but shorter for a User', () => {
-    const b = body(read('entries-actions.ts'), 'editEntry')
-    expect(b).toMatch(/right === 'shorten'/)
-    expect(b).toMatch(/onlyShorter\(/)
-    expect(b).toMatch(/fail\(SHORTEN_ONLY\)/)
+describe('everyone adds and changes their own hours (4 November 2026)', () => {
+  it('the shorten-only rule is gone, and Request to add time is retired (5 November 2026)', () => {
+    const e = read('entries-actions.ts')
+    expect(body(e, 'editEntry')).not.toMatch(/SHORTEN_ONLY|onlyShorter|'shorten'/)
+    expect(e).not.toMatch(/noAddOwn/)
+    const rc = body(e, 'requestCorrection')
+    expect(rc).toMatch(/fail\(CORRECTIONS_RETIRED\)/)
+    expect(rc).not.toMatch(/tc_correction_requests/)
   })
 
-  it('a User never adds time, in the form or in the week grid', () => {
+  it('the week grid needs its tab (ck-grid)', () => {
+    expect(body(read('entries-actions.ts'), 'saveWeekGrid')).toMatch(/actor\('ck-grid'\)/)
+  })
+
+  it('adding checks whose hours they are, in the form and in the week grid', () => {
     const e = read('entries-actions.ts')
     expect(body(e, 'addTime')).toMatch(/canAddFor\(/)
     expect(body(e, 'saveWeekGrid')).toMatch(/canAddFor\(/)
@@ -63,7 +69,7 @@ describe('Users only shorten (Rules 6)', () => {
 
 describe('locked periods (Rules 9)', () => {
   const e = read('entries-actions.ts')
-  for (const name of ['addTime', 'editEntry', 'deleteEntry', 'saveWeekGrid', 'requestCorrection']) {
+  for (const name of ['addTime', 'editEntry', 'deleteEntry', 'saveWeekGrid']) {
     it(`${name} refuses a locked period`, () => expect(body(e, name)).toMatch(/lockedMessage\(/))
   }
   it('clocking in, approving a correction and approving time off too', () => {
@@ -88,11 +94,10 @@ describe('locked periods (Rules 9)', () => {
 })
 
 describe('no overlaps (Rules 8)', () => {
-  it('adding, editing, a correction and its approval check them', () => {
+  it('adding, editing, and approving a correction still pending check them', () => {
     const e = read('entries-actions.ts')
     expect(body(e, 'addTime')).toMatch(/resolveOverlap\(/)
     expect(body(e, 'editEntry')).toMatch(/resolveOverlap\(/)
-    expect(body(e, 'requestCorrection')).toMatch(/overlapFor\(/)
     expect(body(read('approvals/actions.ts'), 'decideCorrection')).toMatch(/overlapFor\(/)
   })
 })
@@ -119,8 +124,6 @@ describe('the full audit of 20 October 2026', () => {
     expect(add.indexOf('trimOther?.()')).toBeGreaterThan(add.indexOf(".from('tc_entries').insert("))
     const edit = body(entries, 'editEntry')
     expect(edit.indexOf('await trimOther?.()')).toBeGreaterThan(edit.indexOf(".from('tc_entries').update("))
-    // A User's longer edit is refused before anything is written.
-    expect(edit.indexOf('fail(SHORTEN_ONLY)')).toBeLessThan(edit.indexOf('await trimOther?.()'))
   })
 
   it('submitting checks that the period really moved', () => {
@@ -161,10 +164,6 @@ describe('the allowance is a real limit (owner, 25 October 2026)', () => {
     expect(run).toMatch(/announceClockStop\(/)
   })
 
-  it('a Team Leader adding to their own hours hears how to ask instead', () => {
-    const e = read('entries-actions.ts')
-    for (const name of ['addTime', 'saveWeekGrid']) expect(body(e, name), name).toMatch(/noAddOwn\(v\)/)
-  })
 })
 
 describe('the 2026 structure by date (audit 2026-10-27)', () => {
@@ -199,7 +198,6 @@ describe('an entry moved across the switch date takes that day\'s structure (aud
     const e = read('entries-actions.ts')
     expect(body(e, 'addTime')).toMatch(/offeredOn\(job, String\(input\.date/)
     expect(body(e, 'saveWeekGrid')).toMatch(/offeredOn\(job, day, catalog\.switchDate\)/)
-    expect(body(e, 'requestCorrection')).toMatch(/offeredOn\(job, String\(input\.date\), catalog\.switchDate\)/)
   })
 })
 

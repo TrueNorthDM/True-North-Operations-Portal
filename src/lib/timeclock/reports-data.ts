@@ -1,8 +1,9 @@
 /**
  * Reads Clocky > Reports (reports.ts) for one person.
  *
- *   all    Super Admins and Admins (ck-all): everyone; money for those who
- *          see it (Admins, Finance)
+ *   all    Super Admins and Admins (ck-all): everyone; money only for those
+ *          who see everyone's (Super Admins, Finance: pay-terms.ts seesMoney,
+ *          owner, 5 November 2026), else hours only
  *   team   a Team Leader (ck-team): the teams they lead, hours only, a
  *          Timesheet column instead of the invoice
  *   own    everyone else: themselves, with their own invoice
@@ -12,7 +13,7 @@ import type { Access } from '@/lib/access/resolve'
 import { teamColour } from '@/lib/directory/team-colour'
 import { allRows, db, entryClient2026, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
 import { localDate } from './format'
-import { isFinance, loadPayTerms, loadRouteSettings, loadRoutes } from './pay-terms'
+import { loadPayTerms, seesAllMoney, loadRouteSettings, loadRoutes } from './pay-terms'
 import { loadApprovedExtra } from './allowance-data'
 import { loadSubmissions } from './clocky-store'
 import { currentStep, type TimesheetState } from './routing'
@@ -46,7 +47,7 @@ const CLIENT_COLOR: Record<string, string> = {
 const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
 const colorOf = (client: string) => CLIENT_COLOR[squash(client)] ?? '#a3aebb'
 
-export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAdmin'>, query: ReportQuery, now = new Date()): Promise<ReportPage | null> {
+export async function loadReport(access: Pick<Access, 'personId' | 'can'>, query: ReportQuery, now = new Date()): Promise<ReportPage | null> {
   const me = access.personId
   if (!me) return null
   const c = db()
@@ -58,7 +59,8 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
 
   const led = dir.led.get(me) ?? new Set<string>()
   const scope: ReportPage['scope'] = access.can('ck-all') ? 'all' : access.can('ck-team') && led.size ? 'team' : 'own'
-  const money = scope === 'own' || (scope === 'all' && (access.isAdmin || isFinance(access, inv)))
+  // Every row's amount for whoever sees everyone's money; on their own page, their own (seesMoney).
+  const money = scope === 'own' || seesAllMoney(access, inv)
   const pool = [...dir.people.values()].filter(p => scope === 'all' ? p.active : scope === 'team' ? p.teamIds.some(t => led.has(t)) : p.id === me)
   const ids = pool.map(p => p.id)
 

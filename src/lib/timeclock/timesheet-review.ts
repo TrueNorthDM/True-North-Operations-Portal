@@ -5,8 +5,10 @@
  *
  * Everything the page shows is worked out here, on the server: the step
  * tracker, the banners, the three tabs (Summary, Time entries, Combined), the
- * invoice and its history, and what this viewer may do. Team Leaders never get
- * money: no invoice, no rate, no amount.
+ * invoice and its history, and what this viewer may do. Money (the invoice,
+ * the rate, every amount) only for whoever sees this person's money
+ * (pay-terms.ts seesMoney: the person, Super Admins and Finance; owner, 5
+ * November 2026): never a Team Leader, an Admin or an approver otherwise.
  *
  * Not a "use server" file: approvals/actions.ts serves it.
  */
@@ -90,7 +92,7 @@ export interface TimesheetReview {
   totalText: string
   // Fixed, no timesheet
   noTimesheet: string[] | null
-  // Money (invoice approvers, Super Admins, Admins, Finance, the person)
+  // Money (seesMoney: the person, Super Admins, Finance)
   invoice: InvoiceDocView | null
   previous: { title: string; rows: { per: string; hrs: string; amt: string; st: string; stTone: ReviewTone; current: boolean }[]; diff: string } | null
   history: { text: string; when: string; dot: string }[]
@@ -132,7 +134,7 @@ export type ReviewView = Pick<EntryView, 'kind' | 'seconds' | 'date' | 'billable
 
 /** Everything the page is built from: read by gatherReview, or made up by a design check. */
 export interface ReviewSource {
-  viewer: { personId: string; level: AccessLevel; isSuperAdmin: boolean; ledTeamIds: ReadonlySet<string>; zone: string }
+  viewer: { personId: string; level: AccessLevel; isSuperAdmin: boolean; ledTeamIds: ReadonlySet<string>; zone: string; can: (key: string) => boolean }
   sub: SubRow | null
   inv: InvRow | null
   invLines: LineRow[]
@@ -216,7 +218,7 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
   const prevLines = prevIds.length ? rowsOf(await c.from('invoice_lines').select('invoice_id, kind, hours_seconds, amount').in('invoice_id', prevIds), 'The last invoices could not be read') : []
   const ids = [personId, t.route.reportsTo, settings.defaultApprover, ...settings.invoiceApprovers, sub?.approved_by, sub?.hours_approved_by, inv?.approved_by].filter((x): x is string => !!x)
   return {
-    viewer: { personId: v.personId, level: v.level, isSuperAdmin: v.isSuperAdmin, ledTeamIds: v.ledTeamIds, zone: v.zone },
+    viewer: { personId: v.personId, level: v.level, isSuperAdmin: v.isSuperAdmin, ledTeamIds: v.ledTeamIds, zone: v.zone, can: v.can },
     sub, inv, invLines,
     prev: prevData.map(x => ({
       ...x, total: Number(x.total),
@@ -269,11 +271,11 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const hb = hoursApprover(route, settings)
   // An invoice alone (no timesheet) from the invoice form follows the form's rule (migration 147).
   const ib = !sub && inv ? loneInvoiceApprover(route, settings, inv.source) : invoiceApprover(route, settings)
-  // Who opens it: the person, whoever decides it, Admins and Super Admins, and a Team Leader of the person's team.
+  // Who opens it: the person, whoever decides it, whoever sees every approval (ck-approvals-all), Finance, and a Team Leader of the person's team.
   const ledHere = !!src.person.teamId && v.ledTeamIds.has(src.person.teamId)
-  const isAdmin = v.level === 'super_admin' || v.level === 'admin'
-  if (!(isAdmin || me === personId || me === hb || me === ib || ledHere || settings.finance.includes(me))) return null
-  const money = !isLead && seesMoney({ isAdmin, personId: me }, personId, settings) || (!isLead && me === ib)
+  if (!(v.can('ck-approvals-all') || me === personId || me === hb || me === ib || ledHere || settings.finance.includes(me))) return null
+  // Money by the one rule, nothing else: deciding the invoice does not show its amount (owner, 5 November 2026).
+  const money = seesMoney({ can: v.can, personId: me }, personId, settings)
   const nameOf = (pid: string | null) => (pid ? src.names[pid] ?? 'Someone' : 'Nobody yet')
   const youOr = (pid: string | null) => (pid && pid === me ? 'you' : nameOf(pid))
   const who = nameOf(personId)
@@ -432,7 +434,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   else if (s.state === 'approved' && route.isContractor) result = { text: `Approved by ${youOr(s.approved_by)}, ${at(s.approved_at)}${one ? '' : ` (hours by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)})`}. ${period.label} is locked${money && inv ? ` and ${inv.number} is ${inv.state === 'paid' ? 'Paid' : 'Approved, waiting for Finance'}` : ''}.${s.note ? ` Note: "${s.note}"` : ''}`, tone: 'ok', icon: 'check', retry: false }
   else if (s.state === 'approved') {
     result = job?.state === 'failed'
-      ? { text: `Approved, but Rippling refused it: "${job.last_error ?? 'no reason given'}" Fix it in Rippling, then try again.`, tone: 'bad', icon: 'alert', retry: v.isSuperAdmin || me === hb }
+      ? { text: `Approved, but Rippling refused it: "${job.last_error ?? 'no reason given'}" Fix it in Rippling, then try again.`, tone: 'bad', icon: 'alert', retry: v.can('ck-rippling-retry') || me === hb }
       : job?.state === 'done' ? { text: `Approved and sent to Rippling, ${at(job.done_at)}. The pay period is locked.`, tone: 'ok', icon: 'check', retry: false }
         : { text: `Approved, ${at(s.approved_at)}. The pay period is locked; it goes to Rippling ${job?.state === 'waiting_connection' ? 'when Rippling is connected in Company settings' : 'in a moment'}.`, tone: 'ok', icon: 'check', retry: false }
   } else if (hoursDone && !one) result = { text: `Hours approved by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)}. ${ib === me ? 'The invoice is yours to approve.' : isLead ? `${nameOf(ib)} finishes the approval.` : `The invoice is with ${nameOf(ib)}.`}`, tone: 'teal', icon: 'check', retry: false }
@@ -525,7 +527,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       returnText: route.isContractor
         ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to ${first}. ${first} sees your reason, fixes the hours, submits again and sends the invoice again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
         : `The pay period unlocks and nothing goes to Rippling. ${first} sees your reason, fixes the hours and submits again.`,
-      canReopen: v.isSuperAdmin && (s.state === 'approved' || s.state === 'recorded') && inv?.state !== 'paid',
+      canReopen: v.can('ck-reopen') && (s.state === 'approved' || s.state === 'recorded') && inv?.state !== 'paid',
       reopenWarn: payroll?.st.label === 'Sent to Rippling' ? 'These hours were already sent to Rippling. Reopening here does not change Rippling; fix it there too.' : null,
       hoursOnly: canBoth && route.isContractor,
       sendBack: (canBoth || canInv) && sendsOwn && sent && inv?.state === 'waiting' ? inv.id : null,

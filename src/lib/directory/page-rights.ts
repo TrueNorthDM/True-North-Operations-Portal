@@ -37,8 +37,9 @@ export interface PageRights {
   reports: boolean
   /**
    * Payments (Clocky part 2, 10P): invoices or pay periods, reimbursements.
-   * Decided by money, not by an access item: the person, Super Admins, Admins
-   * and Finance (lib/timeclock/pay-terms.ts seesMoney); never Team Leaders.
+   * Decided by money: the person, Super Admins (p-payments, ck-money) and
+   * Finance (lib/timeclock/pay-terms.ts seesMoney); never Team Leaders, never
+   * Admins unless Finance (owner, 5 November 2026).
    * Off here; the page turns it on after asking.
    */
   payments: boolean

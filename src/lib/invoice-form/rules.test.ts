@@ -304,13 +304,22 @@ describe('how it came in, and who links a new sender', () => {
     expect(cameFrom(null, 0)).toBeNull()
   })
 
-  it('lets the default approver and Admins link; Finance only sees; Team Leaders never', () => {
-    const s = { defaultApprover: 'arnaldo', finance: ['tina'] }
-    const a = (personId: string, isAdmin = false, level = 'user') => ({ personId, isAdmin, level, can: (k: string) => k === 'clocky-invoices' })
-    expect(newSenderRights(a('arnaldo'), s)).toEqual({ see: true, link: true })
-    expect(newSenderRights(a('boss', true, 'admin'), s)).toEqual({ see: true, link: true })
-    expect(newSenderRights(a('tina'), s)).toEqual({ see: true, link: false })
-    expect(newSenderRights(a('lead', false, 'team_leader'), s)).toEqual({ see: false, link: false })
-    expect(newSenderRights({ ...a('arnaldo'), can: () => false }, s)).toEqual({ see: false, link: false })
+  it('shows a waiting sender only to who sees everyone\'s money, and lets those of them with ck-inv-link or the default approver link (5 November 2026)', () => {
+    const s = { defaultApprover: 'david', finance: ['tina'] }
+    const KEYS: Record<string, string[]> = {
+      super_admin: ['clocky-invoices', 'ck-money', 'ck-inv-link'],
+      admin: ['clocky-invoices', 'ck-inv-link'],
+      team_leader: ['clocky-invoices'],
+      user: ['clocky-invoices'],
+    }
+    const a = (personId: string, level: string) => ({ personId, can: (k: string) => KEYS[level].includes(k) })
+    expect(newSenderRights(a('arnaldo', 'super_admin'), s)).toEqual({ see: true, link: true })
+    // An Admin who is not Finance: no amounts, so no list and no link.
+    expect(newSenderRights(a('boss', 'admin'), s)).toEqual({ see: false, link: false })
+    expect(newSenderRights(a('tina', 'user'), s)).toEqual({ see: true, link: false })
+    expect(newSenderRights(a('lead', 'team_leader'), s)).toEqual({ see: false, link: false })
+    // The default approver who is not a Super Admin or Finance sees no amounts.
+    expect(newSenderRights(a('david', 'admin'), s)).toEqual({ see: false, link: false })
+    expect(newSenderRights({ ...a('arnaldo', 'super_admin'), can: () => false }, s)).toEqual({ see: false, link: false })
   })
 })

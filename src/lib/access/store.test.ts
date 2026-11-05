@@ -107,9 +107,9 @@ describe('a saved tick', () => {
 
   it('closes what was open by default, for an Admin as well', async () => {
     const t = base()
-    expect(await can(t, 'p-cai', 'd-rates')).toBe(true)
-    t.access_rules.push({ level: 'admin', item_key: 'd-rates', allowed: false })
-    expect(await can(t, 'p-cai', 'd-rates')).toBe(false)
+    expect(await can(t, 'p-cai', 'd-log')).toBe(true)
+    t.access_rules.push({ level: 'admin', item_key: 'd-log', allowed: false })
+    expect(await can(t, 'p-cai', 'd-log')).toBe(false)
   })
 })
 
@@ -145,15 +145,15 @@ describe('exceptions', () => {
 
   it('closes one item for one person, even an Admin\'s', async () => {
     const t = base()
-    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-rates', effect: 'deny', until: null, ended_at: null })
-    expect(await can(t, 'p-cai', 'd-rates')).toBe(false)
+    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-log', effect: 'deny', until: null, ended_at: null })
+    expect(await can(t, 'p-cai', 'd-log')).toBe(false)
     expect(await can(t, 'p-cai', 'd-emails')).toBe(true)
   })
 
   it('stops counting the moment it is ended', async () => {
     const t = base()
-    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-rates', effect: 'deny', until: null, ended_at: '2026-10-07T12:00:00Z' })
-    expect(await can(t, 'p-cai', 'd-rates')).toBe(true)
+    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-log', effect: 'deny', until: null, ended_at: '2026-10-07T12:00:00Z' })
+    expect(await can(t, 'p-cai', 'd-log')).toBe(true)
   })
 
   it('opens a tool past its team list for that person only', async () => {
@@ -165,14 +165,14 @@ describe('exceptions', () => {
 
   it('is everyone\'s own: the same rows give each person their own answer', async () => {
     const t = base()
-    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-rates', effect: 'deny', until: null, ended_at: null })
+    t.access_exceptions.push({ person_id: 'p-cai', item_key: 'd-log', effect: 'deny', until: null, ended_at: null })
     const db = fakeDb(t)
     const rules = await loadRules(db)
     const everyone = await loadSubjects(db)
     const cai = everyone.find(p => p.id === 'p-cai')!
-    expect(allowedKeys(cai, rules, { today: T }).has('d-rates')).toBe(false)
+    expect(allowedKeys(cai, rules, { today: T }).has('d-log')).toBe(false)
     const other = { ...cai, exceptions: [] }
-    expect(allowedKeys(other, rules, { today: T }).has('d-rates')).toBe(true)
+    expect(allowedKeys(other, rules, { today: T }).has('d-log')).toBe(true)
   })
 })
 

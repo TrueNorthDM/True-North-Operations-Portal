@@ -19,7 +19,7 @@
  *               what); clocky-approvals
  *   Invoices    the fixed-pay invoices the 1st makes by itself and sends to
  *               the viewer (invoices-cron.ts), in the week before; informs only
- *   To pay      Super Admins, Admins and Finance (pay-terms.ts paysWhat): one line for the approved invoices
+ *   To pay      Super Admins and Finance (pay-terms.ts paysWhat): one line for the approved invoices
  *               (clocky-invoices) and every reimbursement document waiting
  *               (rq-reimbursements), by due day; Mark paid runs the pages'
  *               own markInvoicePaid and markRmbPaid

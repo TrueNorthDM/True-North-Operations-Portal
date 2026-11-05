@@ -4,7 +4,7 @@
  * billable against not, and the tables by person and by client.
  *
  * Who is in it is decided before (reports-data.ts): everyone for Super
- * Admins, Admins and Finance; their teams for a Team Leader, who never sees
+ * Admins and Finance; their teams for a Team Leader, who never sees
  * money (a Timesheet column instead of the invoice); themselves for a User.
  * Totals are in multiples of 15 minutes.
  */

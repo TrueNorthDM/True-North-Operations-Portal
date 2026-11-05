@@ -88,7 +88,7 @@ export async function markInvoicePaid(input: { id: number; paidOn: string; ref?:
  * "Link to this person" on an invoice the invoice form kept for a sender not
  * in the Directory (migration 147, decision B): it becomes that person's
  * numbered invoice, waiting for its approver, and the sender hears the number
- * by email. The default approver, Admins and Super Admins (newSenderRights).
+ * by email. Whoever sees everyone's money and holds ck-inv-link, or is the default approver (newSenderRights).
  */
 export async function linkFormSender(input: { id: number; personId: string }): Promise<Result<{ toast: string }>> {
   if (await getViewAs()) return fail('View Stage is only a preview. Close it to link an invoice.')
@@ -101,7 +101,7 @@ export async function linkFormSender(input: { id: number; personId: string }): P
   if (!v) return fail('Your login is not linked to anyone in the Directory.')
   try {
     const settings = await loadInvoiceSettings()
-    if (!newSenderRights(access, settings).link) return fail('Only the default approver, Admins and Super Admins link a new sender.')
+    if (!newSenderRights(access, settings).link) return fail('Only Super Admins, and the default approver when they are Finance, link a new sender.')
     const personId = String(input?.personId ?? '')
     if (!/^[0-9a-f-]{36}$/i.test(personId)) return fail('Pick the person from the Directory.')
     const { data: p, error } = await db().from('people').select('id, full_name').eq('id', personId).maybeSingle()

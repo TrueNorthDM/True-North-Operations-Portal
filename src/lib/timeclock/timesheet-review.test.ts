@@ -7,10 +7,11 @@ vi.mock('./clocky-entries', () => ({ loadPeriodViews: vi.fn() }))
 vi.mock('./allowance-data', () => ({ loadApprovedExtra: vi.fn() }))
 vi.mock('./invoice-record', () => ({ loadInvoiceRecord: vi.fn(), RECORD_ZONE: 'America/New_York' }))
 vi.mock('./invoices-data', () => ({ clientFolder: (p: string) => (p ? p.split(' › ')[0] : 'Other') }))
-vi.mock('./pay-terms', () => ({
-  loadInvoiceSettings: vi.fn(), loadPayTerms: vi.fn(),
-  seesMoney: (a: { isAdmin: boolean; personId: string | null }, pid: string | null, s: { finance: readonly string[] }) => a.isAdmin || (!!a.personId && (a.personId === pid || s.finance.includes(a.personId))),
-}))
+// The real money rule (pure), with the rest of the module's reads stubbed.
+vi.mock('./pay-terms', async () => {
+  const real = await vi.importActual<typeof import('./pay-terms')>('./pay-terms')
+  return { loadInvoiceSettings: vi.fn(), loadPayTerms: vi.fn(), seesMoney: real.seesMoney, seesAllMoney: real.seesAllMoney, isFinance: real.isFinance }
+})
 
 const { buildReview } = await import('./timesheet-review')
 type Src = Parameters<typeof buildReview>[0]
@@ -24,7 +25,7 @@ const view = (date: string, h: number, client = '2 - i7 Marketing') => ({
 function src(o: Partial<Src> & { me?: string; level?: Src['viewer']['level']; state?: 'submitted' | 'hours_approved' | 'approved' | 'returned'; reportsTo?: string; allowance?: number; contractor?: boolean }): Src {
   const me = o.me ?? 'ao'
   return {
-    viewer: { personId: me, level: o.level ?? 'super_admin', isSuperAdmin: (o.level ?? 'super_admin') === 'super_admin', ledTeamIds: new Set(o.level === 'team_leader' ? ['web'] : []), zone: NY },
+    viewer: { personId: me, level: o.level ?? 'super_admin', isSuperAdmin: (o.level ?? 'super_admin') === 'super_admin', ledTeamIds: new Set(o.level === 'team_leader' ? ['web'] : []), zone: NY, can: (k: string) => (o.level ?? 'super_admin') === 'super_admin' || (o.level === 'admin' && k === 'ck-approvals-all') },
     sub: {
       id: 1, person_id: 'p', state: o.state ?? 'submitted', submitted_at: '2026-11-01T14:00:00Z', approved_at: o.state === 'approved' || o.state === 'returned' ? '2026-11-02T14:00:00Z' : null,
       approved_by: o.state === 'approved' || o.state === 'returned' ? 'ao' : null, hours_approved_at: o.state === 'hours_approved' ? '2026-11-02T13:00:00Z' : null,
@@ -52,6 +53,19 @@ function src(o: Partial<Src> & { me?: string; level?: Src['viewer']['level']; st
 }
 
 describe('the 6C page (buildReview)', () => {
+  it('shows the invoice, the rate and every amount only to the person, Super Admins and Finance (money lockdown, 5 November 2026)', () => {
+    // Someone else's timesheet, opened by each level (an Admin opens every one with ck-approvals-all).
+    const as = (level: Src['viewer']['level'], me: string) => buildReview(src({ me, level, reportsTo: level === 'team_leader' ? me : 'ao' }))
+    expect(as('super_admin', 'ao')!.invoice?.number).toBe('INV-2026-0143')
+    expect(as('admin', 'dave')!.invoice).toBeNull()
+    expect(as('admin', 'dave')!.cadenceLine).not.toMatch(/\$/)
+    expect(as('team_leader', 'wendy')!.invoice).toBeNull()
+    // Finance, at the User level.
+    expect(buildReview(src({ me: 'tina', level: 'user' }))!.invoice?.number).toBe('INV-2026-0143')
+    // Their own: the person sees their own invoice.
+    expect(buildReview(src({ me: 'p', level: 'user' }))!.invoice?.number).toBe('INV-2026-0143')
+  })
+
   it('one step for the invoice approver: Approve both, with the invoice', () => {
     const r = buildReview(src({}))!
     expect(r.act.kind).toBe('both')

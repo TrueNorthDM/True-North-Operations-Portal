@@ -2,7 +2,7 @@
  * GET /clocky-hours/invoices/<id>/pdf: the invoice as a PDF, the one the
  * preview window shows (every PDF in the portal opens a preview first; this
  * is what Download fetches). The print page decides who may have it: the
- * person, Super Admins, Admins and Finance (lib/pdf/sheet-pdf.ts). Named as
+ * person, Super Admins and Finance (lib/pdf/sheet-pdf.ts). Named as
  * its copy in Google Drive: "INV-2026-010-Arnaldo Oliveira.pdf" (owner, 31
  * October 2026).
  *

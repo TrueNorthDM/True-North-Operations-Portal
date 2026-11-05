@@ -23,7 +23,7 @@ export type CheckProps = Pick<ComponentProps<typeof PeopleTab>, 'cadenceActions'
   saveColumns?: SaveHidden
 }
 
-export function RatesCostsPage({ people, allClients, cadence = null, pay = null, hiddenColumns = {}, check }: {
+export function RatesCostsPage({ people, allClients, cadence = null, pay = null, hiddenColumns = {}, check, readOnly = false }: {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
   /** Pays as, Allowance and Over (Clocky part 2, 10A-2). */
@@ -34,12 +34,14 @@ export function RatesCostsPage({ people, allClients, cadence = null, pay = null,
   hiddenColumns?: HiddenColumns
   /** Design check only: answers and a state to open in. */
   check?: CheckProps
+  /** Finance reads it without Edit (owner, 5 November 2026); only Super Admins change rates. */
+  readOnly?: boolean
 }) {
   const { saveColumns = saveHiddenColumns, ...tabCheck } = check ?? {}
   const columns = useColumnChoices(hiddenColumns, saveColumns)
   return (
     <div className="flex flex-col gap-4">
-      <PeopleTab people={people} allClients={allClients} cadence={cadence} pay={pay} {...tabCheck} columns={columns('rates')} head={actions => (
+      <PeopleTab people={people} allClients={allClients} cadence={cadence} pay={pay} {...tabCheck} readOnly={readOnly} columns={columns('rates')} head={actions => (
         <div className="flex items-end justify-between gap-3.5 flex-wrap mb-[18px]">
           {/* On a phone the words take the row and the buttons go under them. */}
           <div className="min-w-0 basis-full md:basis-auto md:flex-1">

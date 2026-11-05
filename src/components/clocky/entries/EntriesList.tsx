@@ -13,7 +13,7 @@ import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import { placeOf } from '@/components/clocky/clock/clock-model'
 import { gridTemplate, groupByDay, hasTsheetsRows, liveSeconds, minWidth, offeredColumns, overTen, visibleColumns, type ColumnKey } from './model'
-import { BTN_MODAL_NAVY, BTN_PAGE_WHITE, BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
+import { BTN_MODAL_NAVY, BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
 
 /** Closes a menu on a press outside it. */
 export function useOutside(open: boolean, close: () => void) {
@@ -92,7 +92,7 @@ function ActionButton({ tip, d, color, fill, onClick }: { tip: string; d: string
   )
 }
 
-export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setColsOpen, collapsed, toggleDay, note, emptyText, canAdd, onEdit, onHistory, onContinue, onDelete, onOpen, onAdd, onRequest }: {
+export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setColsOpen, collapsed, toggleDay, note, emptyText, canAdd, onEdit, onHistory, onContinue, onDelete, onOpen, onAdd }: {
   rows: EntryView[]
   all: boolean
   nowMs: number
@@ -112,7 +112,6 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
   /** A correction or a time off row: its card. */
   onOpen: (r: EntryView) => void
   onAdd: () => void
-  onRequest: () => void
 }) {
   const tsheets = hasTsheetsRows(rows)
   const vis = visibleColumns(cols, all, tsheets)
@@ -214,12 +213,7 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
                   <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add time
                 </button>
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-[13px] text-muted">Hours come from your clock. Missing time?</div>
-                  <button type="button" onClick={onRequest} className={BTN_PAGE_WHITE}>
-                    <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request to add time
-                  </button>
-                </div>
+                <div className="text-[13px] text-muted">Hours come from your clock.</div>
               )}
             </div>
           )}

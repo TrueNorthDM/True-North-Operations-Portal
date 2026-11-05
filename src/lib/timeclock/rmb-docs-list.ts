@@ -1,7 +1,7 @@
 /**
  * The reimbursement documents list (owner, 25 October 2026): the Documents
  * view of the Reimbursements page, every employee's RMB document for Super
- * Admins, Admins and Finance, laid out as the Invoices list (6E). Only Finance
+ * Admins and Finance, laid out as the Invoices list (6E). Only Finance
  * marks one paid. Pure: the read is loadReimbursements (requests-data.ts),
  * after its access check.
  */

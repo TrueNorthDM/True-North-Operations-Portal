@@ -4,7 +4,7 @@
  * Invoices, Clocky part 2 (Invoices.dc.html 6E):
  *
  *   My invoices   a contractor's own, a PDF button per row
- *   Invoices      Super Admins, Admins and Finance: the totals strip, the
+ *   Invoices      Super Admins and Finance: the totals strip, the
  *                 filters (state, person, period), Export CSV, and the Paid
  *                 column saying where each one is; Finance alone gets Mark paid
  *   none          an employee: the line saying why there is nothing here

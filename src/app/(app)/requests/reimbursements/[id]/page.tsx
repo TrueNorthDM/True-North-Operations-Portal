@@ -1,5 +1,5 @@
 // A reimbursement document (Clocky part 2, Requests.dc.html 9D): an employee's
-// approved items for Finance to pay. Open to the person, Super Admins, Admins
+// approved items for Finance to pay. Open to the person, Super Admins
 // and Finance; never Team Leaders (lib/timeclock/requests-data.ts).
 
 import { notFound } from 'next/navigation'

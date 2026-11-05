@@ -7,7 +7,7 @@
  *   employee     the pay periods sent to Rippling (worked, time off, the
  *                payroll summary PDF) and their reimbursement documents
  *
- * Open to the person, Super Admins, Admins and Finance; never Team Leaders
+ * Open to the person, Super Admins and Finance; never Team Leaders
  * (README_PART2). Pure builders (buildContractorPayments,
  * buildEmployeePayments) so the tests hold them to the prototype.
  */
@@ -96,7 +96,7 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
       { title: 'Invoices', sub: 'One a month, made when the timesheet is submitted.', heads: heads(['Number', 'Period', 'Hours', 'Total', 'State', 'Paid', ''], 3), rows, empty: 'No invoices yet. The first one is made when the timesheet is submitted.' },
       { title: 'Reimbursements', sub: 'Approved ones go on the next invoice by themselves.', heads: heads(['Item', 'Date', 'Category', 'Amount', 'State', 'Where it is', ''], 3), rows: rmbRows, empty: 'No reimbursements.' },
     ],
-    note: `Only ${first}, Super Admins, Admins and Finance see this tab. Every PDF opens in a preview first.`,
+    note: `Only ${first}, Super Admins and Finance see this tab. Every PDF opens in a preview first.`,
   }
 }
 
@@ -136,14 +136,14 @@ export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; 
         rows: x.docs.map(d => ({ key: `d${d.id}`, c1: d.number, c2: dateLabel(localDate(d.created_at, x.zone)), c3: String(d.items), c4: usd(Number(d.total)), st: d.state === 'paid' ? { label: 'Paid', tone: 'ok' as const } : { label: 'Approved', tone: 'teal' as const }, c5: d.state === 'paid' && d.paid_on ? paidText(d.paid_on, d.paid_ref) : 'Waiting for Finance', doc: { kind: 'rmb' as const, id: d.id } })),
       },
     ],
-    note: `No invoices for employees. Only ${first}, Super Admins, Admins and Finance see this tab. Every PDF opens in a preview first.`,
+    note: `No invoices for employees. Only ${first}, Super Admins and Finance see this tab. Every PDF opens in a preview first.`,
   }
 }
 
 // ── Reading ─────────────────────────────────────────────────────────────────
 
-/** The tab for this viewer, or null when it is not theirs to see (Team Leaders, everyone else). */
-export async function loadPayments(personId: string, v: Pick<Access, 'personId' | 'isAdmin'>, zone: string, now = new Date()): Promise<PaymentsData | null> {
+/** The tab for this viewer, or null when it is not theirs to see: only the person, Super Admins and Finance (seesMoney). */
+export async function loadPayments(personId: string, v: Pick<Access, 'personId' | 'can'>, zone: string, now = new Date()): Promise<PaymentsData | null> {
   const settings = await loadRouteSettings()
   if (!seesMoney(v, personId, settings)) return null
   const c = db()

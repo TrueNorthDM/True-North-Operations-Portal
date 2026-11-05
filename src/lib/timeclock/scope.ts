@@ -3,29 +3,25 @@
  * 16 October 2026, README "Who sees what"; Team Leaders' own hours, owner, 25
  * October 2026):
  *
- *   Level        Time entries        Change hours                          Approvals
- *   Super Admin  own + everyone      anything, anyone, themselves too      corrections, everyone
- *   Admin        own + everyone      anything, anyone, themselves too      corrections, everyone
- *   Team Leader  own + own team      anything, own team and their own      corrections, own team
- *   User         own only            anything on their own entries         hidden
+ *   Level        Time entries        Change hours
+ *   Super Admin  own + everyone      anything, anyone, themselves too
+ *   Admin        own + everyone      anything, anyone, themselves too
+ *   Team Leader  own + own team      anything, own team and their own
+ *   User         own only            anything on their own entries
  *
  * Everyone adds and changes their own hours (leadership, 4 November 2026,
  * David's answers to the rules: "we have always allowed people to adjust their
  * own timesheets... we run on trust"), as in TSheets. Every change still needs
  * a reason and stays in the entry's history, the allowance still applies, and
  * a sent timesheet is still locked. This replaces the 25 October rule that a
- * User or a Team Leader could only shorten their own entries; the rest of this
- * note is kept for the parts that still apply (corrections, approvals).
+ * User or a Team Leader could only shorten their own entries, and Request to
+ * add time is retired with it (owner, 5 November 2026); requests sent before
+ * stay in the history, and one still pending can be decided (canApproveCorrection).
  *
  * A Team Leader is a person with the Lead position in a team; "own team" is
- * the people on the teams they lead, never themselves (owner: "só as do
- * time"): their own missing time goes through a time correction request, like
- * a User's, decided by another Lead of a team they are on, an Admin or a Super
- * Admin. Admins and Super Admins still change their own hours: the rule is
- * about Team Leaders, and they see and change everyone's. Only Super Admins
- * reopen submitted periods; corrections are approved by the person's Team
- * Lead, an Admin or a Super Admin, never by the person. Time off is decided by
- * the routing (routing.ts requestApprover, owner, 1 November 2026), not here.
+ * the people on the teams they lead. Only Super Admins reopen an approved
+ * timesheet (ck-reopen). Who decides each approval is the routing
+ * (routing.ts, Company settings > Invoices, Who approves what), not here.
  *
  * The levels are the access catalogue's starting answers (lib/access/
  * catalogue.ts, module Clocky), so a Super Admin can still move a tick on
@@ -34,11 +30,13 @@
  *   clocky-hours       Time entries and the clock: their own hours
  *   ck-team            see and change the hours of the teams they lead
  *   ck-all             see and change everyone's hours
- *   clocky-approvals   Approvals: decide time corrections in their scope
- *   ck-reopen          approve, return or reopen a sent timesheet (Super Admin only)
+ *   ck-grid            the Week grid tab
+ *   ck-timeline        the Day timeline tab
+ *   clocky-approvals   Approvals: the decisions that are theirs
+ *   ck-reopen          reopen an approved timesheet (Super Admin only)
  *   ck-whos-working    Who's working, in their scope
  *   ck-clock-out-for   "Clock out for them" (Super Admin only)
- *   ck-safety          Clock safety (read only below Super Admin)
+ *   ck-safety          Clock safety (reading only, for everyone who opens it)
  *   cs-periods         Company settings > Timesheet periods
  *   cs-periods-edit    change the pay period start, the default and who
  *                      submits how (Super Admin only)
@@ -95,17 +93,15 @@ export function canView(v: ScopeViewer, t: ScopeTarget): boolean {
   return own(v, t) || seesEveryone(v) || leadsTeamOf(v, t)
 }
 
-export type ChangeRight = 'full' | 'shorten' | 'none'
+export type ChangeRight = 'full' | 'none'
 
 /**
- * What the viewer may do to the person's entries: anything (with a reason),
- * only make their own shorter (a User, and a Team Leader on their own), or
+ * What the viewer may do to the person's entries: anything, with a reason
+ * kept in the history (everyone on their own since 4 November 2026), or
  * nothing. Locks are a separate rule.
  */
 export function changeRight(v: ScopeViewer, t: ScopeTarget): ChangeRight {
-  if (!canView(v, t)) return 'none'
-  // Their own: anything, with a reason (4 November 2026). 'shorten' is no longer given.
-  return 'full'
+  return canView(v, t) ? 'full' : 'none'
 }
 
 /** "Add time": everyone for themselves; Team Leaders for their team too, Admins and Super Admins for anyone. */
@@ -130,10 +126,6 @@ export function canSeeWorking(v: ScopeViewer, t: ScopeTarget): boolean {
 export const canClockOutFor = (v: ScopeViewer, t: ScopeTarget): boolean =>
   v.can(CLOCKY_KEYS.clockOutFor) && canSeeWorking(v, t)
 
-/** Clock safety: Admin and up; only a Super Admin has it in full, an Admin reads it. */
-export const safetyAccess = (v: ScopeViewer): 'full' | 'read' | 'none' =>
-  !v.can(CLOCKY_KEYS.safety) ? 'none' : v.isSuperAdmin ? 'full' : 'read'
-
 /** Timesheet periods in Company settings: who sees them, and who changes them (Super Admins). */
 export const periodsAccess = (v: ScopeViewer): 'edit' | 'read' | 'none' =>
   v.can(CLOCKY_KEYS.periodsEdit) ? 'edit' : v.can(CLOCKY_KEYS.periods) ? 'read' : 'none'
@@ -143,29 +135,4 @@ export function whoChoice(v: ScopeViewer): 'all' | 'team' | null {
   if (seesEveryone(v)) return 'all'
   if (v.can(CLOCKY_KEYS.entries) && v.can(CLOCKY_KEYS.team) && v.ledTeamIds.size > 0) return 'team'
   return null
-}
-
-// ── Users only shorten ──────────────────────────────────────────────────────
-
-/** The red line in 3E when a User forces a longer time (exact copy). */
-export const SHORTEN_ONLY = 'You can shorten this entry, not lengthen it. To add time, ask your Team Leader.'
-
-export interface Span {
-  /** Recorded start and end; null end while running; both null for a duration-only entry. */
-  start: string | null
-  end: string | null
-  seconds: number
-}
-
-/**
- * Whether a change keeps the entry inside what was recorded: a later start, an
- * earlier end, a shorter duration. A running entry stays running.
- */
-export function onlyShorter(before: Span, after: Span): boolean {
-  if (before.start === null) return after.start === null && after.seconds <= before.seconds
-  if (after.start === null) return false
-  if (Date.parse(after.start) < Date.parse(before.start)) return false
-  if (before.end === null) return after.end === null
-  if (after.end === null) return false
-  return Date.parse(after.end) <= Date.parse(before.end)
 }

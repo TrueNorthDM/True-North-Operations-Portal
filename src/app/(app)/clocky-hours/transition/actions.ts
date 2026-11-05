@@ -24,7 +24,7 @@ export async function remindTransition(input: { personId: string; from?: string 
   if (await getViewAs()) return no('View Stage is only a preview. Close it to send a reminder.')
   const access = await writerAccess()
   if (!access) return no('Sign in again to send a reminder.')
-  if (!access.can('ck-transition')) return no('Only Super Admins and Admins send these reminders.')
+  if (!access.can('ck-transition') || !access.can('ck-transition-remind')) return no('Sending these reminders is not open to your access.')
   try {
     const personId = String(input.personId ?? '')
     const data = await loadTransition({ from: input.from, to: input.to, person: personId, problems: true })

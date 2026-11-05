@@ -30,7 +30,7 @@ export function DirectoryGuide() {
         <ul className="m-0 pl-5 flex flex-col gap-1">
           <li><strong>Personal</strong>: contact, date of birth and address. You keep these: click <strong>Edit personal data</strong>, change what you need and <strong>Save changes</strong>.</li>
           <li><strong>Work</strong>: job, type, schedule, company emails, teams, who you report to, dates, milestones and employment history. The company keeps these; if something is wrong, tell an Admin.</li>
-          <li><strong>Payments</strong>: your invoices or pay periods and reimbursements, when North Time is open to you. Only you, Super Admins, Admins and Finance see it.</li>
+          <li><strong>Payments</strong>: your invoices or pay periods and reimbursements, when North Time is open to you. Only you, Super Admins and Finance see it: someone else&apos;s pay, rates and invoices are never shown to Team Leaders, nor to Admins unless they are Finance (November 5, 2026). Rates &amp; Costs is the same: Super Admins change it, Finance reads it.</li>
           <li><strong>HR and access</strong>: onboarding, offboarding, the portal invitation, two-step sign-in and last access. It is never shown to the person themselves, unless their own level opens it on everyone&apos;s page.</li>
           <li><strong>Reports</strong>: who reports to the person, by reporting line or through a team they lead.</li>
         </ul>

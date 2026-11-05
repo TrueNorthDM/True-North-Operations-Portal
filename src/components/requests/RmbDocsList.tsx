@@ -2,7 +2,7 @@
 
 /**
  * Documents (owner, 25 October 2026): every reimbursement document for Super
- * Admins, Admins and Finance, laid out as the Invoices list (6E) with its
+ * Admins and Finance, laid out as the Invoices list (6E) with its
  * parts: the strip, the filters (state, person, and period by the document's
  * date), Export CSV and the Paid column. Finance alone gets Mark paid, with
  * the document's dialog (9D). A row opens the document, where its PDF is.

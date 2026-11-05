@@ -48,7 +48,7 @@ function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
 const HOME: Block[] = [
   { t: 'Your day', d: 'The banner across the top greets you and says how many things need you today. It holds your clock: **On the clock** or **Off the clock**, today’s hours, the job you are on, **Switch**, and **Clock in** or **Clock out**. It is the same clock as the button in the top bar.' },
   { t: 'Needs you · My Work · Requests', d: 'One card with three tabs and their counts. **Needs you**: what waits for your decision or your action, only what you can act on (a contractor also sees **Send your invoice** until it is sent). **My Work**: your Monday items due in the next 7 days or late. **Requests**: what you asked for and where it is. A row’s button (**Decide**, **Open**) opens a side panel whose buttons do the same as the page behind them.' },
-  { t: 'To pay', d: 'For Super Admins, Admins and Finance: **Invoices to pay** and **Reimbursements to pay**, pinned at the top of Needs you, with how many, the total, and red while one is past due. **Open Invoices** and **Open Reimbursements** go to the lists where Finance pays them.' },
+  { t: 'To pay', d: 'For Super Admins and Finance: **Invoices to pay** and **Reimbursements to pay**, pinned at the top of Needs you, with how many, the total, and red while one is past due. **Open Invoices** and **Open Reimbursements** go to the lists where Finance pays them.' },
   { t: 'Pay period', d: 'Your current pay period: days worked, PTO, holidays (employees only) and sick days, the hours expected so far and your pace. It is also your timesheet reminder: amber on the day your period closes, red every day after until you send it. **Review and send** opens Time entries with Submit open. It never shows money.' },
   { t: 'Agenda', d: 'Who is **Out today**, what is on **Today**, and what is **Coming up** in the next month.' },
   { t: 'i7 Budget and Publishing goals', d: 'For people with the i7 report: the **Balance left** this month, with **Open report**. For Team Leaders and above: Publishing goals over the **Last 5 weeks**, every board against its targets.' },
@@ -231,7 +231,7 @@ const QUICK: Audience[] = [
         'If someone on your team goes over without approval, your bell tells you.',
       ] },
       { t: 'Never any money', steps: [
-        'You see no invoices, rates or amounts: a timesheet in Approvals says **Hours only**.',
+        'You see no one else’s invoices, rates or amounts (only your own): a timesheet in Approvals says **Hours only**.',
         'Reports show your teams’ hours only. Time off for your team is decided as Company settings, **Who approves what**, says; your bell tells you when someone who reports to you asks.',
       ] },
     ],
@@ -258,7 +258,7 @@ const QUICK: Audience[] = [
         'Home shows **Invoices to pay**; **Open Invoices** opens North Time, Invoices on the approved ones.',
         'Filter by state (**Waiting for approval**, **Approved, not paid**, **Paid** in the month), person and period; **Export CSV**; **Preview PDF**.',
         'Only Finance marks paid, after the money left: **Mark paid**, then **Paid on**, an optional reference and note. It can be done once.',
-        'Admins and Super Admins who are not Finance see what waits, but do not mark it paid.',
+        'Super Admins who are not Finance see what waits, but do not mark it paid. Admins who are not Finance see no one else’s invoices or amounts.',
       ] },
       { t: 'The invoice form (Send an invoice)', steps: [
         'For people who send True North invoices without signing in to the portal: freelancers paid a fixed amount, or by deliverables (one line a Monday item). They make their own invoice, like every contractor. One link for everyone, in Admin, **Company settings**, Invoices, **Send an invoice**: **Copy** it to share. The address is the same for good: truenorthportal.online/send.',
@@ -409,7 +409,7 @@ export function WhereSection() {
         ))}
       </div>
       <SubHeading>Who sees what in North Time</SubHeading>
-      <p className="text-[13.5px] leading-relaxed text-foreground">Everyone has the clock, Time entries, Requests, Reports (their own hours) and Which job?. Team Leaders add Approvals and Who’s working for their teams. Admins and Super Admins see everyone, Clock safety, the TSheets transition page and Import. Invoices are for contractors (their own), Super Admins, Admins and Finance. Admin, Access levels can move any of these ticks.</p>
+      <p className="text-[13.5px] leading-relaxed text-foreground">Everyone has the clock, Time entries, Requests, Reports (their own hours) and Which job?. Team Leaders add Approvals and Who’s working for their teams. Admins and Super Admins see everyone’s hours, Clock safety, the TSheets transition page and Import. Money (rates, invoices and their amounts, reimbursement amounts, payment documents, money columns in Reports and the To pay totals) is shown only to the person it belongs to, to Super Admins and to Finance (Company settings, Invoices): never to Team Leaders, and not to Admins unless they are Finance (November 5, 2026). Everyone adds and changes their own hours, with a reason. Admin, Access levels can move the other ticks.</p>
     </section>
   )
 }

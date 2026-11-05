@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // North Time closed (migration 132): no clock, and its person-facing rows only for a Super Admin.
   const ntOpen = await northTimeOpen()
   const agOpen = await agendaGoogleOpen()
-  const hidden = new Set([...(ntOpen || access.isSuperAdmin ? [] : NORTH_TIME_CLOSED_ROWS), ...(agOpen ? [] : AGENDA_GOOGLE_CLOSED_ROWS)])
+  const hidden = new Set([...(ntOpen || access.can('cs-rollout-open') ? [] : NORTH_TIME_CLOSED_ROWS), ...(agOpen ? [] : AGENDA_GOOGLE_CLOSED_ROWS)])
   const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access), hidden: hidden.size ? hidden : undefined })
   // Clocky in the top bar (design handoff of 16 October 2026): the clock for
   // everyone with Time entries, Who's working for Team Leaders and up. Started

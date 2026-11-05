@@ -10,7 +10,7 @@ import { localMinutes } from '@/lib/timeclock/format'
 import { sharedSpan } from '@/lib/timeclock/entry-rules'
 import type { FieldName, Structure } from '@/lib/timeclock/entry-rules'
 import type { ClockChoice, EntryView, PanelField, PanelJob } from '@/lib/timeclock/clocky-types'
-import { hhmmOf, isWork, type Bounds } from './model'
+import { hhmmOf, isWork } from './model'
 
 export type FieldValues = Record<FieldName, string>
 export const EMPTY_VALUES: FieldValues = { company: '', project: '', activity: '', billable: '', code: '' }
@@ -51,7 +51,6 @@ export interface FormState {
   reason: string
   running: boolean
   /** A User on their own entry: times only inward. */
-  bounds: Bounds | null
   /** 3F's choice, sent with Save. */
   fix: { otherId: number; trim: 'other' | 'this' } | null
   /** What that choice does, said under the times in place of the overlap line. */
@@ -67,11 +66,11 @@ export function blankForm(p: { personId: string; personName: string; zone: strin
   return {
     id: null, personId: p.personId, personName: p.personName, zone: p.zone, date: p.date, type: 'range',
     start, end, dur: formatDuration((end - start) * 60), combo: '', jobcodeId: null, jobPath: '',
-    values: { ...EMPTY_VALUES }, auto: {}, notes: '', reason: '', running: false, bounds: null, fix: null, fixNote: null, error: null,
+    values: { ...EMPTY_VALUES }, auto: {}, notes: '', reason: '', running: false, fix: null, fixNote: null, error: null,
   }
 }
 
-/** "Edit entry" on a row. A User's own entry carries its bounds (shorten only). */
+/** "Edit entry" on a row. */
 export function formFromRow(r: EntryView): FormState {
   const start = r.start ? localMinutes(r.start, r.zone) : 9 * 60
   const end: number | 'now' = r.running ? 'now' : r.start && r.end ? localMinutes(r.end, r.zone) : 10 * 60
@@ -81,7 +80,6 @@ export function formFromRow(r: EntryView): FormState {
     jobcodeId: r.jobcodeId, jobPath: r.path, structure: r.structure,
     values: { company: r.company, project: r.project, activity: r.activity, billable: r.billable, code: r.code },
     auto: {}, notes: r.notes, reason: '', running: r.running,
-    bounds: r.shortenOnly ? { start: r.start ? start : null, end: r.start && !r.running ? (end as number) : null, seconds: r.start ? null : r.seconds } : null,
     fix: null, fixNote: null, error: null,
   }
 }
@@ -150,25 +148,4 @@ export function overlapAmong(span: { start: string; end: string }, personId: str
     if (s) return { row: r, ...s }
   }
   return null
-}
-
-// ── 3K-1 ────────────────────────────────────────────────────────────────────
-
-export interface RequestState {
-  date: string
-  start: number
-  end: number
-  combo: string
-  jobcodeId: number | null
-  values: FieldValues
-  reason: string
-  error: string | null
-  /** The 2026 structure, picked with the clock panel's first screen (JobPick): its remount key, See all, Browse. */
-  formKey?: number
-  more?: boolean
-  browsing?: { folder: number | null; query: string } | null
-}
-
-export function blankRequest(p: Partial<RequestState> & { date: string }): RequestState {
-  return { start: 15 * 60, end: 16 * 60, combo: '', jobcodeId: null, values: { ...EMPTY_VALUES }, reason: '', error: null, ...p }
 }

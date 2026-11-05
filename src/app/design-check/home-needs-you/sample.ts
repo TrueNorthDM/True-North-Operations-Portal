@@ -124,7 +124,7 @@ const leadRow = (key: string, title: string, sub: string, rows: [string, string]
 })
 const L2 = leadRow('l2', 'Clarise Nixon, Oct 12 to 25', '38h 10m, sent Sun, 6:40 PM. Arnaldo Oliveira approves the invoice after you.',
   [['Period', 'Oct 12 to 25'], ['Hours', '38h 10m'], ['Edited by hand', 'None'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']],
-  'You approve the hours. Amounts are never shown to Team Leaders.')
+  'You approve the hours. Amounts are shown only to the person, Super Admins and Finance.')
 const L3 = leadRow('l3', 'Stephanie Aguirre, Oct 12 to 25', '40h 00m. 2 entries were edited by hand.',
   [['Period', 'Oct 12 to 25'], ['Hours', '40h 00m'], ['Edited by hand', '2 entries'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']],
   'Oct 19: 9:00 AM to 1:00 PM added, "forgot to clock in". Oct 22: end changed from 6:40 to 5:30 PM.')

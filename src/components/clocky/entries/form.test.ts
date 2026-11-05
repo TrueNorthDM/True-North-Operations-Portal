@@ -21,7 +21,7 @@ const row = (o: Partial<EntryView>): EntryView => ({
   date: '2026-11-03', start: '2026-11-03T13:00:00.000Z', end: '2026-11-03T14:00:00.000Z', running: false, timeText: '', seconds: 3600,
   jobcodeId: 60, path: 'TN › Digital › Old site', short: 'Old site', client: 'TN', isI7: false, structure: 2, fields: { 9: 'Design' },
   company: '', project: '', activity: 'Design', billable: 'yes', code: '', notes: '', kind: 'clock', imported: false, pills: [],
-  autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null, canEdit: true, shortenOnly: false, canDelete: true,
+  autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null, canEdit: true, canDelete: true,
   canContinue: false, continuesPrevious: false, attention: null, correction: null, timeOff: null, ...o,
 })
 

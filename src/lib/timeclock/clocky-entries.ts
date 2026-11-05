@@ -149,7 +149,6 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     locked: !!lock,
     lockWhy: lock ? lock.state : null,
     canEdit: canChange,
-    shortenOnly: right === 'shorten',
     canDelete: canChange,
     canContinue: e.person_id === v.personId && kind !== 'absence' && !!e.started_at && !running && offeredOn(job, localDate(now, v.zone), catalog.switchDate),
     continuesPrevious: false,
@@ -234,7 +233,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       pills: [state === 'pending' ? PILL.warn('Added time: Pending', 'Requested time. It counts only after it is approved.')
         : PILL.bad('Added time: Denied', 'Requested time. It counts only after it is approved.')],
       autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
-      canEdit: false, shortenOnly: false, canDelete: false, canContinue: false, continuesPrevious: false,
+      canEdit: false, canDelete: false, canContinue: false, continuesPrevious: false,
       attention: attentionReason({ kind: 'correction', pending: state === 'pending', viewerDecides: decides }),
       correction: { state, reason: r.reason, requestedAt: r.requested_at, decidedBy: r.decided_by ? dir.nameOf(r.decided_by) : null, decidedAt: r.decided_at, decisionNote: r.decision_note, canDecide: decides && state === 'pending', goesTo },
       timeOff: null,
@@ -248,6 +247,8 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     const team = person?.teamId ? dir.teams.get(person.teamId) : undefined
     const decides = r.person_id !== v.personId && !!deciders?.('off', r.person_id).includes(v.personId)
     const type = catalog.jobs.get(r.jobcode_id)?.name ?? 'Time off'
+    // The reason for time off: the person and Super Admins only (owner, 5 November 2026).
+    const reason = r.person_id === v.personId || v.isSuperAdmin ? r.reason ?? '' : ''
     for (const day of offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days.filter(d => d >= q.from && d <= q.to)) {
       rows.push({
         key: `o${r.id}:${day}`, rowType: 'time_off', id: r.id, personId: r.person_id,
@@ -257,13 +258,13 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
         date: day, start: null, end: null, running: false, timeText: 'All day',
         seconds: Math.round(Number(r.hours_per_day) * 3600),
         jobcodeId: r.jobcode_id, path: `Time off › ${type}`, short: type, client: 'Time off', isI7: false,
-        fields: {}, ...EMPTY_FIELDS, notes: r.reason ?? '', kind: 'time_off', imported: false,
+        fields: {}, ...EMPTY_FIELDS, notes: reason, kind: 'time_off', imported: false,
         pills: [r.state === 'pending' ? PILL.warn('Time off: Pending') : PILL.bad('Time off: Denied')],
         autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
-        canEdit: false, shortenOnly: false, canDelete: false, canContinue: false, continuesPrevious: false,
+        canEdit: false, canDelete: false, canContinue: false, continuesPrevious: false,
         attention: attentionReason({ kind: 'time_off', pending: r.state === 'pending', viewerDecides: decides }),
         correction: null,
-        timeOff: { type, state: r.state, startDate: r.start_date, endDate: r.end_date, hoursPerDay: Number(r.hours_per_day), note: r.reason ?? '', canDecide: decides && r.state === 'pending' },
+        timeOff: { type, state: r.state, startDate: r.start_date, endDate: r.end_date, hoursPerDay: Number(r.hours_per_day), note: reason, canDecide: decides && r.state === 'pending' },
       })
     }
   }
@@ -322,8 +323,10 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       .map(t => ({ id: t.id, name: t.name, color: t.color })),
     submit: { ...period, ...periodLabel(period), state: mine?.state ?? null, submitted: isSent(mine?.state) },
     canAdd: isLeader(v),
-    // A Team Leader adds for their team, not for themselves (owner, 25 October 2026).
+    // Everyone adds to their own hours (4 November 2026).
     canAddOwn: canAddFor(v, dir.target(v.personId)),
+    // The Week grid and Day timeline tabs (ck-grid, ck-timeline).
+    views: { grid: v.can('ck-grid'), timeline: v.can('ck-timeline') },
     anchors: settings.anchors.map(a => ({ anchor: a.anchor, effectiveFrom: a.effectiveFrom })),
   }
 }

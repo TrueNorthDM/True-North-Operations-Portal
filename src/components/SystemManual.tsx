@@ -61,7 +61,7 @@ const RAIL = [
   { icon: 'home', name: 'Home', desc: 'What you need to do today: your day and clock, what needs you, your pay period, the Agenda.', admin: false },
   { icon: 'agenda', name: 'Agenda', desc: 'The company calendar, for everyone: who is out, holidays, birthdays and events.', admin: false },
   { icon: 'work', name: 'My Work', desc: 'A panel of three views: My Work, Report and My Team. With only one granted, it goes straight there.', admin: false },
-  { icon: 'clock', name: 'North Time', desc: 'The time clock, for every level. A panel: Time entries, Approvals and Who’s working (Team Leaders and up), Invoices (contractors, Super Admins, Admins and Finance) and Reports; under The module, Which job? for everyone, and for Admins Clock safety, TSheets transition and Import.', admin: false },
+  { icon: 'clock', name: 'North Time', desc: 'The time clock, for every level. A panel: Time entries, Approvals and Who’s working (Team Leaders and up), Invoices (contractors, Super Admins and Finance) and Reports; under The module, Which job? for everyone, and for Admins Clock safety, TSheets transition and Import.', admin: false },
   { icon: 'requests', name: 'Requests', desc: 'A panel: Time off (US employees), Reimbursements and Extra hours, with Approvals under Decisions. Everyone sees their own; who decides each is set in Company settings, Invoices, Who approves what.', admin: false },
   { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },

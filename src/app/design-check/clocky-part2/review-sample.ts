@@ -140,9 +140,9 @@ function invoiceOf(k: string, state: string, approvedBy: string | null, approved
 
 type Who = 'ao' | 'wendy' | 'dave'
 const VIEWER: Record<Who, ReviewSource['viewer']> = {
-  ao: { personId: 'ao', level: 'super_admin', isSuperAdmin: true, ledTeamIds: new Set(), zone: NY },
-  wendy: { personId: 'wendy', level: 'team_leader', isSuperAdmin: false, ledTeamIds: new Set(['Web']), zone: NY },
-  dave: { personId: 'dave', level: 'admin', isSuperAdmin: false, ledTeamIds: new Set(), zone: NY },
+  ao: { personId: 'ao', level: 'super_admin', isSuperAdmin: true, ledTeamIds: new Set(), zone: NY, can: () => true },
+  wendy: { personId: 'wendy', level: 'team_leader', isSuperAdmin: false, ledTeamIds: new Set(['Web']), zone: NY, can: () => false },
+  dave: { personId: 'dave', level: 'admin', isSuperAdmin: false, ledTeamIds: new Set(), zone: NY, can: k => k === 'ck-approvals-all' },
 }
 
 function source(k: string, me: Who, state: SubRow['state'], x: { hoursAt?: string; approvedAt?: string; job?: ReviewSource['job'] } = {}): ReviewSource {

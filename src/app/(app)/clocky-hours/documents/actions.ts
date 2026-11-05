@@ -3,7 +3,7 @@
 /**
  * A payroll summary or reimbursement document as its sheet, for the preview
  * window the Payments tab opens (Company Settings.dc.html 10P). The same people
- * as the PDF: the person, Super Admins, Admins and Finance (lib/timeclock/pay-docs.ts).
+ * as the PDF: the person, Super Admins and Finance (lib/timeclock/pay-docs.ts).
  */
 
 import { loadAccess } from '@/lib/access/resolve'

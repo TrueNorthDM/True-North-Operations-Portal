@@ -37,5 +37,5 @@ export default async function TransitionPage({ searchParams }: { searchParams: P
       </div>
     )
   }
-  return <TransitionLive data={data} />
+  return <TransitionLive data={data} canRemind={access.can('ck-transition-remind')} />
 }

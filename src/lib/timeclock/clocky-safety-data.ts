@@ -15,7 +15,6 @@ import { allRows, db, loadCatalog, loadDirectory, type Viewer } from './clocky-c
 import { dayLabel, localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import { addDays, monthStart } from './periods'
-import { safetyAccess } from './scope'
 import type { ClockSafetyData, SafetyOccurrence } from './clocky-types'
 import { STOP_KINDS, isStopKind, stopCounts, stopReasonOf } from './safety-stops'
 
@@ -36,8 +35,8 @@ export function safetyFrom(period: SafetyPeriod, today: string): string | null {
 const lastLabel = (day: string): string => `${dayLabel(day)}, ${day.slice(0, 4)}`
 
 export async function loadClockSafety(v: Viewer, now: Date, opts: { period: SafetyPeriod; q?: string }): Promise<ClockSafetyData | null> {
-  const access = safetyAccess(v)
-  if (access === 'none') return null
+  // Clock safety reads the same for everyone who opens it (ck-safety); nothing on it changes anything.
+  if (!v.can('ck-safety')) return null
   const c = db()
   const [dir, catalog] = await Promise.all([loadDirectory(), loadCatalog()])
   const today = localDate(now, v.zone)
@@ -112,7 +111,6 @@ export async function loadClockSafety(v: Viewer, now: Date, opts: { period: Safe
   }).sort((a, b) => (b.autoStops + b.allowanceStops) - (a.autoStops + a.allowanceStops) || b.keptGoing - a.keptGoing)
 
   return {
-    access,
     zone: v.zone,
     cards: { ...stopCounts(stops), keptGoing: keeps.length },
     byPerson,

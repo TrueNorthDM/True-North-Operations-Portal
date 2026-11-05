@@ -89,7 +89,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
   const [leaving, setLeaving] = useState<WaitingRequest | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const phone = usePhone()
-  // Super Admins, Admins and Finance also see everyone's (owner, 2026-10-23), as Time off does.
+  // Super Admins and Finance also see everyone's (owner, 2026-10-23), as Time off does.
   // Documents (owner, 25 October 2026): the same people, every reimbursement document, as the Invoices list.
   const [tab, setTab] = useState<Tab>(initial?.tab ?? 'mine')
   const all = tab === 'all' && !!data.everyone

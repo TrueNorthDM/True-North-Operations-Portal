@@ -17,5 +17,5 @@ export default async function ReportsRoute({ searchParams }: { searchParams: Pro
   const page = await loadReport(access, parseReportQuery(await searchParams))
   if (!page) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Your login is not linked to anyone in the Directory.</p>
   const zone = (await loadDirectory()).zoneOf(access.personId!)
-  return <ReportsView page={page} made={dateLabel(localDate(new Date(), zone))} />
+  return <ReportsView page={page} made={dateLabel(localDate(new Date(), zone))} canExport={access.can('ck-reports-export')} />
 }

@@ -14,6 +14,8 @@ export const metadata = { title: 'North Time report' }
 
 export default async function ReportPrintPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const access = await requireSurface('clocky-reports')
+  // The printable page is an export (ck-reports-export), as the CSV and the PDF are.
+  if (!access.can('ck-reports-export')) notFound()
   const page = await loadReport(access, parseReportQuery(await searchParams))
   if (!page) notFound()
   const zone = (await loadDirectory()).zoneOf(access.personId!)

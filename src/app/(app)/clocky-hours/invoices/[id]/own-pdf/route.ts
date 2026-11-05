@@ -1,7 +1,7 @@
 /**
  * GET /clocky-hours/invoices/<id>/own-pdf: the sender's own invoice PDF, sent
  * with the invoice form (migration 147). To the people who see the invoice:
- * its person, Super Admins, Admins and Finance (seesMoney). Read with the
+ * its person, Super Admins and Finance (seesMoney). Read with the
  * service role and sent from here: the file never has an address of its own.
  */
 

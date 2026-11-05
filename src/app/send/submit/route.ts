@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       const record = formRecord(sub, { rates, sentBy: sender.personId, email, confirmed, ownPdf })
       const made = await writeFormInvoice({ personId: sender.personId, email, sub, rates, receipts, ownPdf, againId: month.kind === 'again' ? month.invoiceId : null, record, sentAt: now, now })
       if (sub.saveToRecord) await writeBackAddress(sender.personId, sub.sender)
-      await tellApprover({ invoiceId: made.id, submissionId: null, personId: sender.personId, text: `${made.number} (${sub.sender.name}, ${usd(total)}) came from the invoice form for ${monthName}. It waits for your approval.` })
+      await tellApprover({ invoiceId: made.id, submissionId: null, personId: sender.personId, text: `${made.number} (${sub.sender.name}, ${usd(total)}) came from the invoice form for ${monthName}. It waits for your approval.`, plain: `${made.number} (${sub.sender.name}) came from the invoice form for ${monthName}. It waits for your approval.` })
       await mailSender(email, { kind: 'received', number: made.number, month: monthName, total: usd(total), lines: mailLines }, `received:${made.id}:${Date.now()}`)
       return NextResponse.json({ ok: true, number: made.number, email, madeBy: sub.madeBy, sentAt: now.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
     }

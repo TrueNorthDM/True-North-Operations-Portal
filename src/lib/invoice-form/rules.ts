@@ -466,13 +466,15 @@ export function cameFrom(source: string | null | undefined, deliverableLines: nu
 }
 
 /**
- * Who links a new sender's invoice to a person (decision B): the default
- * approver, and Super Admins and Admins, where Invoices is open to them. Who
- * may see one waiting: those, and Finance. Never Team Leaders (they never see
- * money).
+ * Who links a new sender's invoice to a person (decision B): ck-inv-link
+ * (Super Admins and Admins by default) and the default approver, where
+ * Invoices is open to them. A waiting one carries its lines and total, so
+ * only whoever sees everyone's money (ck-money: Super Admins; and Finance)
+ * sees it, and so links it (money lockdown, owner, 5 November 2026): an Admin
+ * or a default approver who is neither sees none and links none.
  */
-export function newSenderRights(a: { personId: string | null; isAdmin: boolean; level?: string; can: (k: string) => boolean }, s: { defaultApprover: string | null; finance: readonly string[] }): { see: boolean; link: boolean } {
-  if (!a.can('clocky-invoices') || !a.personId || a.level === 'team_leader') return { see: false, link: false }
-  const link = a.isAdmin || a.personId === s.defaultApprover
-  return { see: link || s.finance.includes(a.personId), link }
+export function newSenderRights(a: { personId: string | null; can: (k: string) => boolean }, s: { defaultApprover: string | null; finance: readonly string[] }): { see: boolean; link: boolean } {
+  if (!a.can('clocky-invoices') || !a.personId) return { see: false, link: false }
+  const see = a.can('ck-money') || s.finance.includes(a.personId)
+  return { see, link: see && (a.can('ck-inv-link') || a.personId === s.defaultApprover) }
 }

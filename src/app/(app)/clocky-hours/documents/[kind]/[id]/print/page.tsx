@@ -1,6 +1,6 @@
 // The page the document PDF route renders headless (Company Settings.dc.html
 // 10P): a payroll summary (kind payroll, a submission id) or a reimbursement
-// document (kind rmb). Open to the person, Super Admins, Admins and Finance
+// document (kind rmb). Open to the person, Super Admins and Finance
 // (lib/timeclock/pay-docs.ts); never Team Leaders. A reimbursement
 // document's receipts follow it, a page each (9D-p); the PDF maker draws the
 // PDF receipts into their boxes.

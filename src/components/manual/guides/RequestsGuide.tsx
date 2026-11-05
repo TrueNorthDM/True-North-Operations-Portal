@@ -104,6 +104,7 @@ export function ReimbursementsGuide() {
       </Step>
 
       <Tip title="Keep the receipt clear.">A photo where the date, the amount and the seller can be read saves a round trip: the approver opens it full size before deciding.</Tip>
+      <Tip title="Who sees the amounts.">Your own reimbursements are yours to see. Everyone else&apos;s amounts and receipts are shown only to Super Admins and Finance (November 5, 2026). The reason you give for time off is seen only by you and Super Admins.</Tip>
     </div>
   )
 }

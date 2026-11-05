@@ -99,7 +99,7 @@ export async function setAgendaGoogleOpen(input: { open: boolean }): Promise<Don
 }
 
 export async function setNorthTimeOpen(input: { open: boolean }): Promise<Done> {
-  if (!(await isSuperAdmin())) return no('Only a Super Admin opens or closes North Time.')
+  if (!(await allowedTo('cs-rollout-open'))) return no('Only a Super Admin opens or closes North Time.')
   if (typeof input?.open !== 'boolean') return no(NOT_SAVED)
   const open = input.open
   const { error } = await createAdminClient().from('app_settings').update({ north_time_open: open }).eq('singleton_id', 1)

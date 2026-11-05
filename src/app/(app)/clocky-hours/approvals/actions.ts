@@ -26,7 +26,7 @@ import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceInvoiceReturned, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
-import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes, seesMoney } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
 import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
@@ -551,7 +551,9 @@ export async function approveTimesheet(input: { id: number; note?: string; hours
     // The invoice beside the timesheet: one that does not match is approved only with a reason.
     if ((step.step === 'both' || step.step === 'invoice') && invRes.data) {
       const check = await loadInvoiceCheck(invRes.data.id)
-      if (check && !check.matches && !note) return fail(`The invoice does not match the timesheet. ${check.summary ?? ''} Write why you approve it anyway, or send the invoice back.`.replace(/\s+/g, ' ').trim())
+      // The figures only for who sees this person's money (money lockdown, 5 November 2026).
+      const figures = seesMoney(v, t.personId, settings) ? check?.summary ?? '' : ''
+      if (check && !check.matches && !note) return fail(`The invoice does not match the timesheet. ${figures} Write why you approve it anyway, or send the invoice back.`.replace(/\s+/g, ' ').trim())
     }
     // Over the allowance: the invoice approver decides, and says why. Rare since the allowance became a real
     // limit (owner, 25 October 2026): kept for time that was over before it, imported or old entries.
@@ -739,7 +741,8 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     // does not match is approved only with a reason. The form's invoices have no amount on file to check.
     if (approve && !inv.source) {
       const check = await loadInvoiceCheck(inv.id)
-      if (check && !check.matches && !note) return fail(`The invoice does not match the amount on file. ${check.summary ?? ''} Write why you approve it anyway, or send it back.`.replace(/\s+/g, ' ').trim())
+      const figures = seesMoney(v, inv.person_id, settings) ? check?.summary ?? '' : ''
+      if (check && !check.matches && !note) return fail(`The invoice does not match the amount on file. ${figures} Write why you approve it anyway, or send it back.`.replace(/\s+/g, ' ').trim())
     }
     const { data: moved, error } = await c.from('invoices')
       .update(approve ? { state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at } : { state: 'draft', approved_by: v.personId, approved_at: at, updated_at: at, paid_note: note })
@@ -778,7 +781,8 @@ export async function retryRippling(input: { submissionId: number }): Promise<Re
     if (!t || t.state !== 'approved') return fail('That pay period is not approved.')
     const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
     const route = routes.get(t.personId)
-    if (!route || route.isContractor || !(v.isSuperAdmin || hoursApprover(route, settings) === v.personId)) return fail(NO_ACCESS)
+    // ck-rippling-retry (Super Admins), or the person's hours approver.
+    if (!route || route.isContractor || !(v.can('ck-rippling-retry') || hoursApprover(route, settings) === v.personId)) return fail(NO_ACCESS)
     await retryJobs('tc_submissions', t.id, ['rippling_hours'])
     const conn = await loadConnections()
     refresh()

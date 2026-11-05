@@ -9,7 +9,7 @@
  *                  sees the Work tab.
  *   Pay and hours  Pays as, the rate or the fixed amount, the hours allowance,
  *                  and for a contractor when time off comes (10A-3).
- *                  Money: only for the person, Super Admins, Admins and
+ *                  Money: only for the person, Super Admins and
  *                  Finance; changed by whoever keeps Rates & Costs (d-rates),
  *                  inside Edit work (5 November 2026: the editor keeps the
  *                  view's sections), or with this section's own Edit for

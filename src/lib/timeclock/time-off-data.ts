@@ -66,7 +66,7 @@ export interface TimeOffPage {
 const COLS = 'id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, rippling_error, rippling_sent_at, calendar_state, entries_written_at, cancel_asked_at, cancel_reason'
 type Raw = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: OffRequest['rippling']; rippling_error: string | null; rippling_sent_at: string | null; calendar_state: OffRequest['calendar']; entries_written_at: string | null; cancel_asked_at: string | null; cancel_reason: string | null }
 
-export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSuperAdmin'>, zone: string, now = new Date()): Promise<TimeOffPage | null> {
+export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperAdmin'>, zone: string, now = new Date()): Promise<TimeOffPage | null> {
   if (!v.personId) return null
   const c = db()
   const today = localDate(now, zone)
@@ -74,7 +74,8 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
   const route = routes.get(v.personId)
   const me = dir.people.get(v.personId)
   const teamOf = (id: string) => { const p = dir.people.get(id); const t = p?.teamId ? dir.teams.get(p.teamId) : null; return { name: t?.name ?? null, color: t?.color ?? '#9CA3AF' } }
-  const canAll = v.isAdmin
+  // Everyone's time off: rq-off-all (Super Admins and Admins by default).
+  const canAll = v.can('rq-off-all')
   const from = addDays(today, -400)
   let q = c.from('tc_absence_requests').select(COLS).in('state', ['pending', 'approved']).gte('end_date', from).order('start_date', { ascending: true })
   if (!canAll) q = q.eq('person_id', v.personId)
@@ -89,10 +90,11 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
   const deciders = await loadRequestDeciders([v.personId, ...((data ?? []) as Raw[]).map(r => r.person_id)])
   const whoDecides = (personId: string) => orList(deciders('off', personId).map(id => dir.nameOf(id)))
   const kindOf = (jobcodeId: number) => { const j = catalog.jobs.get(jobcodeId); return j?.short || j?.path || 'Time off' }
+  // The reason for time off: the person and Super Admins only (owner, 5 November 2026), never anyone else who sees the row.
   const rows = ((data ?? []) as Raw[]).map(r => {
     const req: OffRequest = {
       id: r.id, personId: r.person_id, who: dir.nameOf(r.person_id), type: kindOf(r.jobcode_id), start: r.start_date, end: r.end_date,
-      hoursPerDay: Number(r.hours_per_day), state: r.state as OffRequest['state'], note: r.reason, askedAt: r.requested_at,
+      hoursPerDay: Number(r.hours_per_day), state: r.state as OffRequest['state'], note: r.person_id === v.personId || v.isSuperAdmin ? r.reason : null, askedAt: r.requested_at,
       decidedAt: r.decided_at, decidedBy: r.decided_by, decisionNote: r.decision_note, rippling: r.rippling_state, ripplingError: r.rippling_error,
       ripplingSentAt: r.rippling_sent_at, calendar: r.calendar_state, entriesWrittenAt: r.entries_written_at, cancelAskedAt: r.cancel_asked_at, cancelReason: r.cancel_reason,
     }
@@ -109,7 +111,7 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
       cancel: !own ? null : req.state === 'pending' ? 'direct' as const : req.state === 'approved' && upcoming && !req.cancelAskedAt ? 'ask' as const : null,
       drawer: {
         dates: `${daysText(req.start, req.end)}, ${req.end.slice(0, 4)}`, note: req.note,
-        steps: stepsOf(req, { days, seconds, stamp, canRetry: v.isSuperAdmin, who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
+        steps: stepsOf(req, { days, seconds, stamp, canRetry: v.can('ck-timeoff'), who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
         stateLabel: refused ? 'Approved, Rippling refused it' : pill.label, stateTone: refused ? 'bad' as const : pill.tone,
       },
     }

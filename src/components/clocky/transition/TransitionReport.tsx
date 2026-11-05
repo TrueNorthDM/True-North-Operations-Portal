@@ -54,7 +54,7 @@ export function transitionSearch(q: TransitionQuery): string {
 }
 
 /** The page: each filter changes the address, and the server reads again. */
-export function TransitionLive({ data }: { data: TransitionData }) {
+export function TransitionLive({ data, canRemind = true }: { data: TransitionData; canRemind?: boolean }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const go = (q: TransitionQuery) => {
@@ -64,7 +64,7 @@ export function TransitionLive({ data }: { data: TransitionData }) {
   const remind: Remind = personId => data.switchDate
     ? remindTransition({ personId, from: data.from, to: data.to }).catch(e => ({ ok: false as const, error: failText(e) }))
     : Promise.resolve({ ok: false as const, error: 'No switch date is set yet.' })
-  return <TransitionReport data={data} go={go} remind={remind} />
+  return <TransitionReport data={data} go={go} remind={canRemind ? remind : undefined} />
 }
 
 type Remind = (personId: string) => Promise<{ ok: true; toast: string } | { ok: false; error: string }>

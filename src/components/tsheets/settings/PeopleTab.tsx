@@ -131,6 +131,8 @@ interface Props {
   head?: (actions: ReactNode) => ReactNode
   /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
   columns?: ColumnChoice
+  /** Reading only (Finance, owner, 5 November 2026): no Edit, nothing to save. */
+  readOnly?: boolean
 }
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
@@ -198,7 +200,7 @@ const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Ma
 /** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
 const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType != null && p.employmentType !== 'contractor'
 
-export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given }: Props) {
+export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given, readOnly = false }: Props) {
   const router = useRouter()
   const choice = useColumnChoice('rates', given)
   const allColumns = useMemo(() => tableColumns(!!cadence, !!pay), [cadence, pay])
@@ -516,7 +518,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   )
 
   // The handoff's buttons at the top right (Company Settings.dc.html 10A2): Edit, or Cancel and Save changes.
-  const topActions = head && (editing ? (
+  const topActions = head && !readOnly && (editing ? (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       {error && <span className="text-[13px] text-[var(--bdg-red-fg)]">{error}</span>}
       <button type="button" onClick={cancel} disabled={saving} className={`${BTN.white} disabled:opacity-50`}>Cancel</button>
@@ -713,7 +715,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       </div>
 
       {/* save bar (a page with its own top has its buttons there) */}
-      {!head && <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200 leading-[normal]">
+      {!head && !readOnly && <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200 leading-[normal]">
         {error ? (
           <span className="text-[13px] text-[var(--bdg-red-fg)] mr-auto">{error}</span>
         ) : editing ? (

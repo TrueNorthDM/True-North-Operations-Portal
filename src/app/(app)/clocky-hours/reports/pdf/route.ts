@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   // A file, not a page: a 404 rather than a redirect Home whose HTML would come back as the PDF.
-  if (!(await loadAccess()).can('clocky-reports')) return new Response('Reports are not open to you.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
+  const access = await loadAccess()
+  if (!access.can('clocky-reports') || !access.can('ck-reports-export')) return new Response('Reports are not open to you.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   const query = new URL(request.url).searchParams
   query.delete('_vs')
   const q = query.toString()

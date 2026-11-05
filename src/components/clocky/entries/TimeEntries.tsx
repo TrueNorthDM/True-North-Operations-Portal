@@ -6,9 +6,9 @@
  * Manual Time Card and Time Slider.
  *
  *   header      Home / Clocky / Time entries
- *   toolbar     Add time (leaders, for the people they add for) or Request a
- *               time correction (Users, and Team Leaders in My: their own
- *               hours are a User's, owner 25 October 2026),
+ *   toolbar     Add time (everyone for themselves since 4 November 2026;
+ *               leaders for the people they add for; Request to add time is
+ *               retired, owner, 5 November 2026),
  *               Submit <period> by cadence, Day | Week | Pay period | Month,
  *               Today, the arrows, the range, the calendar; My | All (My |
  *               My team for a Team Leader) and the Team member picker
@@ -29,13 +29,12 @@ import { dayLabel, localDate, localMinutes, timeLabel } from '@/lib/timeclock/fo
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, OverlapInfo, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import type { Catalog, EntriesApi, EntryInputBody } from './api'
-import { CorrectionRequest } from './CorrectionRequest'
 import { DayTimeline, droppedOverlap, type Drag, type Ghost } from './DayTimeline'
 import { CorrectionReview, DeleteDialog, GridReasonDialog, SubmitDialog, TimeOffCard } from './Dialogs'
 import { EntriesList, useOutside } from './EntriesList'
 import { EntryForm } from './EntryForm'
 import { GridRowPick, type GridChoices } from './GridRowPick'
-import { blankForm, blankRequest, fieldsOf, formFromRow, formJob, formSpan, overlapAmong, type FormState, type RequestState } from './form'
+import { blankForm, fieldsOf, formFromRow, formJob, formSpan, overlapAmong, type FormState } from './form'
 import { fieldsForJob } from '@/components/clocky/clock/clock-model'
 import { HistoryDrawer } from './HistoryDrawer'
 import {
@@ -57,7 +56,6 @@ export type ModalState =
   | { kind: 'overlap'; from: 'form' | 'tl'; form: FormState; a: { start: string; end: string }; other: { id: number; key: string | null; name: string; start: string; end: string | null } }
   | { kind: 'delete'; key: string }
   | { kind: 'submit' }
-  | { kind: 'request'; rq: RequestState }
   | { kind: 'review'; key: string; deny: boolean }
   | { kind: 'off'; key: string; deny: boolean }
   | { kind: 'grid-reason' }
@@ -192,10 +190,13 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
 
   // The timeline draws one day and the grid one week: another period goes back to the list.
   const tabFor = (p: PeriodKind, t: EntriesUi['tab']): EntriesUi['tab'] => ((t === 'timeline' && p !== 'day') || (t === 'grid' && p !== 'week') ? 'list' : t)
+  // The tabs this person has (ck-grid, ck-timeline); the server refuses the grid's save without it too.
+  const views = data.views ?? { grid: true, timeline: true }
+  const tabShown: EntriesUi['tab'] = (ui.tab === 'grid' && !views.grid) || (ui.tab === 'timeline' && !views.timeline) ? 'list' : ui.tab
   const today = localDate(new Date(nowMs), viewer.zone)
   const range = periodRange(ui.period, ui.anchor, data.anchors)
   const all = ui.who === 'all' && viewer.who !== null
-  /** "Add time" here, or "Request to add time": in My, only for those who add to their own hours. */
+  /** "Add time" here: in My, for whoever adds to their own hours (everyone since 4 November 2026). */
   const addHere = all ? leader : data.canAddOwn
   const rows = data.rows
   const shown = ui.attnOnly ? rows.filter(r => r.attention) : rows
@@ -219,7 +220,6 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     const date = pre?.date ?? (today >= range.from && today <= range.to ? today : ui.anchor)
     setUi(u => ({ ...u, colsOpen: false, ghost: null, modal: { kind: 'edit', form: blankForm({ personId, personName: person?.name ?? me.name, zone, date, start: pre?.start, end: pre?.end }) } }))
   }
-  const openRequest = (pre?: Partial<RequestState>) => setModal({ kind: 'request', rq: blankRequest({ date: today, ...pre }) })
   const openAttention = async (a: AttentionItem) => {
     if (dropped && (a.key === dropped.moved.key || a.key === dropped.other.key)) return fixDropped()
     const r = rowByKey(a.key)
@@ -297,18 +297,6 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     say(`Clock running: ${nameFor(r, catalog.combinations)}.${prev ? ` Switched from ${nameFor(prev, catalog.combinations)}.` : ''}`)
     reload()
   }
-  const sendRequest = async (q: RequestState) => {
-    const job = catalog.jobs.find(j => j.id === q.jobcodeId)
-    const r = await call(() => api.requestCorrection({
-      date: q.date, start: hhmmOf(q.start), end: hhmmOf(q.end), jobcodeId: q.jobcodeId!,
-      fields: fieldsOf(q.values, fieldsForJob(catalog.fields, job), !!job?.isI7), reason: q.reason.trim(),
-    }))
-    if (!r) return
-    if (!r.ok) return setModal({ kind: 'request', rq: { ...q, error: r.error } })
-    setModal(null)
-    say(r.toast)
-    reload()
-  }
   const decideCorrection = async (r: EntryView, decision: 'approve' | 'deny', note?: string) => {
     const res = await call(() => api.decideCorrection({ id: r.id, decision, note }))
     if (!res) return
@@ -356,7 +344,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const canGrid = addsFor(gridWho)
   // Add row lists the combinations and recents of the person whose week it is (owner, 28 October 2026).
   const [theirChoices, setTheirChoices] = useState<(GridChoices & { personId: string }) | null>(null)
-  const needTheirs = ui.tab === 'grid' && canGrid && gridWho !== viewer.personId && theirChoices?.personId !== gridWho
+  const needTheirs = tabShown === 'grid' && canGrid && gridWho !== viewer.personId && theirChoices?.personId !== gridWho
   useEffect(() => {
     if (!needTheirs) return
     let off = false
@@ -409,7 +397,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const submitLabel = data.submit.submitted ? `${data.submit.label} submitted` : `Submit ${data.submit.label}`
   // 3C4: a block dropped on another entry puts both in Needs attention until
   // the overlap is fixed or undone (it is never saved).
-  const dropped = ui.tab === 'timeline' ? droppedOverlap(rows, ui.anchor, viewer.zone, ui.drag, nowMs) : null
+  const dropped = tabShown === 'timeline' ? droppedOverlap(rows, ui.anchor, viewer.zone, ui.drag, nowMs) : null
   const droppedItems: AttentionItem[] = dropped
     ? [dropped.moved, dropped.other]
       .sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!))
@@ -436,15 +424,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           onClose={() => setUi(u => ({ ...u, modal: null, drag: null }))}
           onSave={() => void saveForm(m.form)}
           onDelete={() => m.form.id !== null && setModal({ kind: 'delete', key: `e${m.form.id}` })}
-          onRequestInstead={() => {
-            const r = rowByKey(`e${m.form.id}`)
-            const end = r?.end ? localMinutes(r.end, r.zone) : 15 * 60
-            // Requests cover this week only (the server's rule): an older entry asks for today,
-            // and keeps its job only when today records the same structure (a TSheets job is not a 2026 one).
-            const date = m.form.date >= addDays(today, -6) ? m.form.date : today
-            const sameJob = structureOn(date, catalog.switchDate) === structureOn(m.form.date, catalog.switchDate)
-            openRequest({ date, start: r?.end ? end : 15 * 60, end: r?.end ? Math.min(end + 60, 23 * 60 + 45) : 16 * 60, ...(sameJob ? { jobcodeId: m.form.jobcodeId, values: m.form.values } : {}) })
-          }} />
+          />
       )
     }
     if (m.kind === 'overlap') {
@@ -466,11 +446,6 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     if (m.kind === 'submit') {
       return <SubmitDialog summary={submit?.summary ?? null} error={submit?.error ?? null} busy={busy} clockHref={clockHref}
         onClose={() => { setModal(null); setSubmit(null) }} onSubmit={() => void doSubmit()} onFix={k => { const a = submit?.summary?.attention.find(x => x.key === k); if (a) void openAttention(a) }} />
-    }
-    if (m.kind === 'request') {
-      return <CorrectionRequest rq={m.rq} setRq={patch => setUi(u => (u.modal?.kind === 'request' ? { ...u, modal: { kind: 'request', rq: { ...u.modal.rq, ...patch } } } : u))}
-        catalog={catalog} today={today} personId={viewer.personId} zone={viewer.zone} rows={rows} nowMs={nowMs} busy={busy}
-        onClose={() => setModal(null)} onSend={() => void sendRequest(m.rq)} />
     }
     if (m.kind === 'review') {
       const r = rowByKey(m.key)
@@ -515,13 +490,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        {addHere ? (
+        {addHere && (
           <button type="button" onClick={() => openAdd()} className={`${BTN_PAGE_NAVY} whitespace-nowrap`}>
             <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add time
-          </button>
-        ) : (
-          <button type="button" onClick={() => openRequest()} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>
-            <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request to add time
           </button>
         )}
         <button type="button" onClick={() => { setSubmit(null); setModal({ kind: 'submit' }) }} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>
@@ -595,8 +566,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-2.5 border-b border-[var(--panel-border)]">
-        <Tabs label="Views" className="-mb-px shadow-none" value={ui.tab}
-          items={[{ key: 'list', label: 'List' }, { key: 'grid', label: 'Week grid' }, { key: 'timeline', label: 'Day timeline' }] as const}
+        <Tabs label="Views" className="-mb-px shadow-none" value={tabShown}
+          items={([{ key: 'list', label: 'List' }, { key: 'grid', label: 'Week grid' }, { key: 'timeline', label: 'Day timeline' }] as const).filter(t => t.key === 'list' || views[t.key])}
           onChange={k => go({ tab: k, period: k === 'timeline' ? 'day' : k === 'grid' ? 'week' : ui.period, drag: null })} />
         <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums lining-nums whitespace-nowrap">
           <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}
@@ -617,7 +588,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
 
       <div className="flex gap-5 items-start flex-wrap">
         <div className="flex-1 min-w-0 basis-[560px] flex flex-col gap-3">
-          {ui.tab === 'list' && (
+          {tabShown === 'list' && (
             <EntriesList rows={shown} all={all} nowMs={nowMs} cols={ui.cols} setCols={cols => setUi(u => ({ ...u, cols }))}
               colsOpen={ui.colsOpen} setColsOpen={open => setUi(u => ({ ...u, colsOpen: open }))}
               collapsed={ui.collapsed} toggleDay={d => setUi(u => ({ ...u, collapsed: u.collapsed.includes(d) ? u.collapsed.filter(x => x !== d) : [...u.collapsed, d] }))}
@@ -627,9 +598,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               emptyText={ui.attnOnly ? 'Nothing needs attention in this period.' : 'No time in this period.'}
               canAdd={addHere}
               onEdit={openRow} onHistory={r => setUi(u => ({ ...u, drawer: `${r.rowType === 'correction' ? 'c' : 'e'}${r.id}` }))} onContinue={r => void cont(r)}
-              onDelete={r => setModal({ kind: 'delete', key: r.key })} onOpen={openRow} onAdd={() => openAdd()} onRequest={() => openRequest()} />
+              onDelete={r => setModal({ kind: 'delete', key: r.key })} onOpen={openRow} onAdd={() => openAdd()} />
           )}
-          {ui.tab === 'grid' && (
+          {tabShown === 'grid' && (
             <WeekGrid who={gridName} days={gridDays} today={today} model={grid} editable={canGrid} combos={gridChoices?.combinations ?? []}
               onOpenAdd={gridPicks2026 ? () => {
                 // A failed read of their combinations is tried again when Add row opens.
@@ -645,7 +616,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
                 setModal({ kind: 'grid-reason' })
               }} />
           )}
-          {ui.tab === 'timeline' && (
+          {tabShown === 'timeline' && (
             <DayTimeline day={ui.anchor} today={today} rows={rows} all={all} viewer={me} teams={data.teams} canAdd={addHere}
               canChange={addsFor} combos={catalog.combinations} nowMs={nowMs}
               full={ui.tlFull} setFull={f => setUi(u => ({ ...u, tlFull: f }))}

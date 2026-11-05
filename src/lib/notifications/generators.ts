@@ -524,10 +524,18 @@ export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; p
 }
 
 /** A timesheet sent: to whoever decides it first (README_PART2 routing), never the person. */
-export function clockyTimesheetSubmittedDrafts(ctx: Ctx, x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; text: string }): Draft[] {
+/**
+ * The money lockdown (owner, 5 November 2026): a bell about someone else's
+ * money says the amount only to who sees everyone's (ck-money: Super Admins;
+ * and Finance). Anyone else gets `plain`, the same line without it.
+ */
+export const seesOthersMoney = (r: { personId: string; canTool: (key: string) => boolean } | undefined, finance: readonly string[] = []): boolean =>
+  !!r && (r.canTool('ck-money') || finance.includes(r.personId))
+
+export function clockyTimesheetSubmittedDrafts(ctx: Ctx, x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; text: string; plain?: string; finance?: readonly string[] }): Draft[] {
   return x.to.filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id))
     .flatMap(r => draftFor(ctx, 'clocky-timesheet-submitted', r, {
-      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: `${x.submissionId}:${x.sentAt}`,
+      title: x.plain !== undefined && !seesOthersMoney(r, x.finance) ? x.plain : x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: `${x.submissionId}:${x.sentAt}`,
     }))
 }
 
@@ -560,10 +568,10 @@ export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; person
 }
 
 /** A reimbursement asked for: to who decides it (the Reimbursements list, owner, 1 November 2026), never the person. */
-export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string; key?: string }): Draft[] {
+export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; to: readonly string[]; text: string; plain?: string; finance?: readonly string[]; key?: string }): Draft[] {
   // `key`: a waiting request edited, joined or withdrawn (owner, 5 November 2026) is a bell of its own, not the first one again.
   return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
-    title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: x.key ?? String(x.id),
+    title: x.plain !== undefined && !seesOthersMoney(r, x.finance) ? x.plain : x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: x.key ?? String(x.id),
   }))
 }
 

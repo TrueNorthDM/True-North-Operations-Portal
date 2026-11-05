@@ -51,6 +51,8 @@ export async function POST(req: Request) {
   if (!(await northTimeOpen())) return no('North Time is not open yet.')
   const access = await writerAccess()
   if (!access?.personId) return no('Sign in again to send your invoice.', 401)
+  // Invoices must be open to them, as on the page (audit, 5 November 2026).
+  if (!access.can('clocky-invoices')) return no('Invoices is not open to your access.', 403)
   const me = access.personId
 
   let form: FormData
@@ -139,7 +141,7 @@ export async function POST(req: Request) {
       const step = sub ? currentStep(route, settings, sub.state as TimesheetState, true) : null
       to = step && step.step !== 'hours' ? step.owner : null
     } else if (route) to = invoiceApprover(route, settings)
-    if (to) await announceTimesheetSubmitted({ submissionId: period.submissionId ?? -sent.id, sentAt: at, personId: me, to: [to], period: period.label, seconds: 0, text: `${dir.nameOf(me)} sent their invoice for ${period.label} (${sent.number}, ${usd(sent.total)}).` })
+    if (to) await announceTimesheetSubmitted({ submissionId: period.submissionId ?? -sent.id, sentAt: at, personId: me, to: [to], period: period.label, seconds: 0, text: `${dir.nameOf(me)} sent their invoice for ${period.label} (${sent.number}, ${usd(sent.total)}).`, plain: `${dir.nameOf(me)} sent their invoice for ${period.label} (${sent.number}).` })
   } catch (e) {
     console.error('[send invoice] tell approver:', e instanceof Error ? e.message : e)
   }

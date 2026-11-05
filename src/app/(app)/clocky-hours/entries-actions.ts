@@ -3,16 +3,16 @@
 /**
  * Time entries (design handoff of 16 October 2026, SPEC sections 8 and 9,
  * Time Entries.dc.html): the list of a period, an entry's history, adding,
- * editing and deleting hours, the overlap fix, the week grid, the time
- * correction request, and submitting and reopening a period.
+ * editing and deleting hours, the overlap fix, the week grid, and submitting
+ * and reopening a period. Request to add time is retired (owner, 5 November
+ * 2026): everyone adds their own hours since 4 November 2026.
  *
  * The rules, enforced here and not only on the screen (README "Rules"):
  *   - every time saved is on the quarter hour; a typed duration rounds too;
  *   - every change needs a reason, kept in the entry's history;
- *   - a User only shortens their own entries (start later, end earlier) and
- *     fixes their details; more time comes through a time correction request;
- *   - Team Leaders change their teams' hours, not their own (the same as a
- *     User there); Admins and Super Admins anyone's (lib/timeclock/scope.ts);
+ *   - everyone adds and changes their own hours (leadership, 4 November
+ *     2026); Team Leaders their teams' too, Admins and Super Admins anyone's
+ *     (lib/timeclock/scope.ts);
  *   - nobody's hours go past their allowance plus the extra hours approved,
  *     whoever adds them (owner, 25 October 2026; allowance-limit.ts);
  *   - no overlaps, no entry over 24 hours;
@@ -33,19 +33,19 @@ import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
 import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
-import { correctionGoesTo, loadChoicesFor } from '@/lib/timeclock/clocky-panel'
-import { announceCorrectionRequested, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
+import { loadChoicesFor } from '@/lib/timeclock/clocky-panel'
+import { announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
 import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds, runningSeconds } from '@/lib/timeclock/rounding'
 import {
-  DAY_SECONDS, DURATION_FORMAT, END_AFTER_START, NOTHING_LEFT, OVER_24H, REASON_REQUIRED, correctionOverlapLine, instantOf,
+  DAY_SECONDS, DURATION_FORMAT, END_AFTER_START, NOTHING_LEFT, OVER_24H, REASON_REQUIRED, instantOf,
   overlapLine, reasonOf, trimOther, trimThis,
 } from '@/lib/timeclock/entry-rules'
 import { changesBetween } from '@/lib/timeclock/history'
 import { addDays, isSent, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
 import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
-import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/lib/timeclock/scope'
+import { canAddFor, changeRight } from '@/lib/timeclock/scope'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
@@ -59,11 +59,8 @@ const NO_ACCESS = 'North Time is not open to your access.'
 const NOT_YOURS = "That person's hours are not yours to change."
 const GONE = 'That entry is not there any more.'
 const PICK_JOB = 'Pick a job code.'
-/** The week grid's note for a User (exact copy), also the refusal of "Add time" to a User. */
-const USER_NO_ADD = 'Hours come from your clock. To add time, ask your Team Leader.'
-/** The same to a Team Leader adding to their own hours (owner, 25 October 2026: "só as do time"). */
-const LEADER_NO_ADD = 'Hours come from your clock. For missing time of your own, use Request to add time.'
-const noAddOwn = (v: Viewer) => (isLeader(v) ? LEADER_NO_ADD : USER_NO_ADD)
+/** Request to add time is retired (owner, 5 November 2026): everyone adds their own hours. */
+const CORRECTIONS_RETIRED = 'Request to add time is retired. Add your missing time yourself with Add time, with a reason.'
 /** Whose limit a refusal names: nobody for one's own hours ("your"), else the person. */
 const whose = (v: Viewer, personId: string, dir: { nameOf: (id: string) => string }) => (personId === v.personId ? null : dir.nameOf(personId))
 
@@ -298,7 +295,7 @@ async function resolveOverlap(
 
 // ── Add, edit, delete (3E, 3F, 3I) ──────────────────────────────────────────
 
-/** "Add time": Team Leaders (their teams, not themselves), Admins and Super Admins (anyone, themselves included), with a reason. */
+/** "Add time": everyone for themselves, Team Leaders for their teams, Admins and Super Admins for anyone, with a reason. */
 export async function addTime(input: EntryInput & { personId: string }): Promise<Result<{ entryId: number; toast: string }>> {
   const v = await actor()
   if (isFail(v)) return v
@@ -308,7 +305,7 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
-    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(NOT_YOURS)
     const noWave = await noWaveRefusal(v, personId, dir)
     if (noWave) return noWave
     const reason = reasonOf(input.reason)
@@ -359,8 +356,7 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
 }
 
 /**
- * "Edit entry", with a reason. A User on their own entry: the date and the
- * kind stay, the times only move inward (SHORTEN_ONLY). Editing an automatic
+ * "Edit entry", with a reason. Editing an automatic
  * stop that was not confirmed confirms it. A running entry stays running
  * (end "now").
  */
@@ -374,8 +370,7 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
     const e = await loadEntry(c, Number(input.id))
     if (!e) return fail(GONE)
     if (e.kind === 'absence') return fail('Time off changes through its request.')
-    const right = changeRight(v, dir.target(e.person_id))
-    if (right === 'none') return fail(NOT_YOURS)
+    if (changeRight(v, dir.target(e.person_id)) === 'none') return fail(NOT_YOURS)
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const zone = dir.zoneOf(e.person_id)
@@ -400,11 +395,9 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
     if (isFail(times)) return times
     if (running && (times.kind !== 'range' || times.end !== null)) return fail('Clock out first. Your clock is running.')
 
-    const before = { start: e.started_at, end: e.ended_at, seconds: e.duration_seconds }
     const after = times.kind === 'range'
       ? { start: times.start, end: times.end, seconds: times.end ? recordedSeconds(times.start, times.end) : 0 }
       : { start: null, end: null, seconds: times.seconds }
-    if (right === 'shorten' && (input.date !== e.entry_date || !onlyShorter(before, after))) return fail(SHORTEN_ONLY)
 
     let start = after.start
     let end = after.end
@@ -415,7 +408,6 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
       start = r.start
       end = r.end
       trimOther = r.trimOther
-      if (right === 'shorten' && !onlyShorter(before, { start, end, seconds: end ? recordedSeconds(start, end) : 0 })) return fail(SHORTEN_ONLY)
     }
     const next: Partial<EntryRow> = {
       started_at: start,
@@ -503,15 +495,17 @@ export interface GridRowInput {
  * locked days cannot be typed into; no day may pass 24 hours.
  */
 export async function saveWeekGrid(input: { personId: string; weekStart: string; rows: GridRowInput[]; reason: string }): Promise<Result<{ weekSeconds: number; toast: string }>> {
-  const v = await actor()
+  // The Week grid tab (ck-grid) as well as Time entries.
+  const v = await actor('ck-grid')
   if (isFail(v)) return v
+  if (!v.can('clocky-hours')) return fail(NO_ACCESS)
   try {
     const now = new Date()
     const c = db()
     const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
-    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(NOT_YOURS)
     const noWave = await noWaveRefusal(v, personId, dir)
     if (noWave) return noWave
     const reason = reasonOf(input.reason)
@@ -599,57 +593,20 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
   }
 }
 
-// ── Request to add time (3K) ────────────────────────────────────────────────
+// ── Request to add time (3K), retired ───────────────────────────────────────
 
 /**
- * "Request to add time": a day of this week, a start and an end (on the
- * quarter hour, the person's zone), the job and Activity, and "What happened".
- * It may not overlap an entry. It counts in no total until approved; the
- * person's Team Lead, Admins and Super Admins are told in the bell.
+ * "Request to add time" is retired (owner, 5 November 2026): everyone adds
+ * their own hours since 4 November 2026, with a reason kept in the history.
+ * Kept only so a page opened before the change gets a sentence, not an error.
+ * Requests already sent stay in the history; pending ones can still be
+ * decided on Approvals (decideCorrection).
  */
 export async function requestCorrection(input: { date: string; start: string; end: string; jobcodeId: number; fields?: Record<string, string>; notes?: string; reason: string }): Promise<Result<{ requestId: number; goesTo: string; toast: string }>> {
+  void input
   const v = await actor()
   if (isFail(v)) return v
-  try {
-    const now = new Date()
-    const c = db()
-    const catalog = await loadCatalog()
-    // Not on North Time (no wave): their missing time goes in TSheets, not here.
-    const noWave = await noWaveRefusal(v, v.personId, { nameOf: () => v.name })
-    if (noWave) return noWave
-    const reason = reasonOf(input.reason)
-    if (!reason) return fail('Say what happened.')
-    const today = localDate(now, v.zone)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.date ?? '')) || input.date > today || input.date < addDays(today, -6)) return fail('Pick a day of this week.')
-    const job = catalog.jobs.get(Number(input.jobcodeId))
-    if (!offeredOn(job, String(input.date), catalog.switchDate)) return fail(PICK_JOB)
-    const f = cleanFields(input.fields, catalog, job)
-    if ('error' in f) return fail(f.error)
-    const times = parseTimes({ date: input.date, mode: 'range', start: input.start, end: input.end }, v.zone, now, false)
-    if (isFail(times)) return times
-    if (times.kind !== 'range' || !times.end) return fail(END_AFTER_START)
-    const lock = lockOn([input.date], (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [])
-    if (lock) return fail(lockedMessage(lock))
-    const o = await overlapFor(c, v.personId, { start: times.start, end: times.end }, [], now)
-    if (o) return fail(correctionOverlapLine(o, overlapInfo(o, catalog)!.name, v.zone), { overlap: overlapInfo(o, catalog) })
-
-    const { data, error } = await c.from('tc_correction_requests').insert({
-      person_id: v.personId, entry_date: input.date, started_at: times.start, ended_at: times.end, jobcode_id: job.id,
-      fields: f.fields, notes: cleanNotes(input.notes), reason, state: 'pending',
-    }).select('id, person_id, started_at, ended_at, entry_date').single()
-    if (error) return notSaved(error)
-    const r = data as { id: number; person_id: string; started_at: string; ended_at: string; entry_date: string }
-    await announceCorrectionRequested(r)
-    const goesTo = await correctionGoesTo(v.personId)
-    const lead = /^Goes to (.+), your Team Leader\./.exec(goesTo)?.[1]
-    refresh()
-    return {
-      ok: true, requestId: r.id, goesTo,
-      toast: lead ? `Request sent to ${lead}. It counts once it is approved.` : 'Request sent. It counts once it is approved.',
-    }
-  } catch (e) {
-    return notSaved(e)
-  }
+  return fail(CORRECTIONS_RETIRED)
 }
 
 // ── Submit and reopen (3H) ──────────────────────────────────────────────────

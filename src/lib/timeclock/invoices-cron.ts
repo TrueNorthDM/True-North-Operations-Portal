@@ -75,7 +75,7 @@ export async function makeFixedInvoices(now = new Date()): Promise<FixedInvoices
       if (inv) {
         await announceInvoiceMade({ invoiceId: id, at, personId: p.id, number: inv.number, month: periodLabel({ start, end }).label, total: usd(Number(inv.total)), withHours: false })
         const ib = invoiceApprover(t.route, settings)
-        if (ib) await announceTimesheetSubmitted({ submissionId: -id, sentAt: at, personId: p.id, to: [ib], period: month, seconds: 0, text: `${inv.number} (${p.full_name}, ${usd(Number(inv.total))}) was made by itself for ${month}. It waits for your approval.` })
+        if (ib) await announceTimesheetSubmitted({ submissionId: -id, sentAt: at, personId: p.id, to: [ib], period: month, seconds: 0, text: `${inv.number} (${p.full_name}, ${usd(Number(inv.total))}) was made by itself for ${month}. It waits for your approval.`, plain: `${inv.number} (${p.full_name}) was made by itself for ${month}. It waits for your approval.` })
       }
       report.made.push(`${p.full_name}: ${inv?.number ?? id}`)
     } catch (e) {

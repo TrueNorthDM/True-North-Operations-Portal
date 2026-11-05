@@ -120,7 +120,7 @@ const TREE: Node[] = [
       { key: 'd-company', label: 'See the whole company, not only their own teams', kind: 'action', v: [1, 1, 0] },
       { key: 'd-teams', label: 'Teams', kind: 'tab', v: [1, 1, 0] },
       { key: 'd-emails', label: 'Emails', kind: 'tab', v: [1, 0, 0] },
-      { key: 'd-rates', label: 'Rates & Costs', kind: 'tab', v: [1, 0, 0] },
+      { key: 'd-rates', label: 'Rates & Costs', kind: 'tab', superOnly: true, note: 'Everyone\'s rates and costs. Finance (Company settings > Invoices) reads it too; only Super Admins change it (owner, Nov 5, 2026).' },
       { key: 'd-log', label: 'Access log', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-portal', label: 'Portal access', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-edit', label: 'Add and remove people', kind: 'action', v: [1, 0, 0] },
@@ -144,6 +144,7 @@ const TREE: Node[] = [
       { key: 'p-hr-edit', label: 'Change onboarding, offboarding and the QuickBooks Time link', kind: 'action', v: [1, 0, 0] },
       { key: 'd-2fa', label: "Reset someone's two-step sign-in", kind: 'action', superOnly: true },
       { key: 'p-reports', label: 'Reports: who reports to the person', kind: 'tab', v: [1, 0, 0] },
+      { key: 'p-payments', label: "Payments: someone else's pay, invoices and payment documents", kind: 'tab', superOnly: true, note: 'Their own always; Finance (Company settings > Invoices) too. Owner, Nov 5, 2026: Team Leaders and Admins never, unless Finance.' },
     ] },
     { key: 'organization', label: 'Organization', kind: 'page', always: true },
     { key: 'history', label: 'History', kind: 'page', always: true },
@@ -184,14 +185,15 @@ const TREE: Node[] = [
       { key: 'cs-jobs-edit', label: 'Change the job catalogue', kind: 'action', superOnly: true },
       { key: 'cs-integrations', label: 'Integrations: Rippling and Google Calendar', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-integrations-edit', label: 'Connect Rippling and Google Calendar, and try failed items again', kind: 'action', superOnly: true },
-      { key: 'cs-invoices', label: 'Invoices: numbering and billing details', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-invoices', label: 'Invoices: numbering and billing details', kind: 'tab', v: [1, 0, 0], note: 'Who approves what, who is Finance and who decides reimbursements. Finance sees everyone\'s money and marks invoices and reimbursement documents paid.' },
       { key: 'cs-invoices-edit', label: 'Change the invoice numbering and billing details', kind: 'action', superOnly: true },
       { key: 'cs-reminders', label: 'Reminders: the timesheet reminders and bell lines', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-reminders-edit', label: 'Turn the reminders on or off', kind: 'action', superOnly: true },
       // North Time rollout (owner, 27 October 2026): the two waves' start dates and who is in each.
-      { key: 'cs-rollout', label: 'North Time rollout: the waves, their start dates, and the TSheets entries set aside', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-rollout', label: 'North Time rollout: the waves, their start dates, and the TSheets entries set aside', kind: 'tab', v: [1, 0, 0], note: 'Wave 1, Wave 2 and No wave: people in No wave keep recording in TSheets and cannot add time in North Time.' },
       { key: 'cs-rollout-decide', label: 'Decide the TSheets entries set aside after the start date: count them as hours, or discard them', kind: 'action', v: [1, 0, 0] },
       { key: 'cs-rollout-edit', label: 'Set the North Time start dates and move people between waves', kind: 'action', superOnly: true },
+      { key: 'cs-rollout-open', label: 'Open or close North Time for everyone, and see its pages while closed', kind: 'action', superOnly: true },
       // The annual review (design handoff, 3 November 2026): the roles, who takes part, the dates, the Drive folder.
       { key: 'cs-hr', label: 'Human Resources: the review roles, who takes part, its dates and the Drive folder', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-hr-edit', label: 'Change the Human Resources settings (the HR person picked there can too)', kind: 'action', superOnly: true },
@@ -211,36 +213,53 @@ const TREE: Node[] = [
   // what"; owner's decisions in docs/time-clock/05-clocky-build.md). Who sees
   // and changes whose hours is lib/timeclock/scope.ts.
   { key: 'm-clocky', label: 'North Time', kind: 'module', ch: [
-    { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through Request to add time.', ch: [
-      { key: 'ck-team', label: 'See and change the hours of the teams they lead', kind: 'action', v: [1, 1, 0] },
+    { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Everyone clocks in, adds and changes their own hours, with a reason kept in the history (Nov 4, 2026). A sent timesheet stays locked; the weekly allowance applies; people in No wave cannot add time.', ch: [
+      { key: 'ck-grid', label: 'Week grid', kind: 'tab', v: [1, 1, 1] },
+      { key: 'ck-timeline', label: 'Day timeline', kind: 'tab', v: [1, 1, 1] },
+      { key: 'ck-team', label: 'See and change the hours of the teams they lead (Whose hours: My team)', kind: 'action', v: [1, 1, 0] },
       { key: 'ck-all', label: "See and change everyone's hours", kind: 'action', v: [1, 0, 0] },
-      { key: 'ck-reopen', label: 'Approve, return or reopen a sent timesheet', kind: 'action', superOnly: true },
+      { key: 'ck-reopen', label: 'Reopen an approved timesheet, until its invoice is paid', kind: 'action', superOnly: true },
       { key: 'ck-rules', label: 'Rules in force', kind: 'tab', v: [1, 0, 0] },
       { key: 'ck-import', label: 'Import from QuickBooks Time', kind: 'tab', v: [1, 0, 0] },
       { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [1, 0, 0] },
     ] },
-    { key: 'clocky-approvals', label: 'Approvals: requests to add time in their scope', kind: 'page', v: [1, 1, 0], ch: [
+    { key: 'clocky-approvals', label: 'Approvals: the decisions that are theirs', kind: 'page', v: [1, 1, 0], note: 'Whose decision each row is: hours, the person\'s Reports to; invoices, time off and extra hours, Company settings > Invoices, Who approves what; reimbursements, the Reimbursements list. Never their own. Someone who cannot open Approvals is passed over for the default approver.', ch: [
+      { key: 'ck-approvals-all', label: 'See every approval, read only (With others, Decided)', kind: 'action', v: [1, 0, 0], note: 'Amounts only with See other people\'s money or Finance.' },
       { key: 'ck-timeoff', label: 'Try again when Rippling refuses a time off', kind: 'action', superOnly: true, note: 'Who decides time off is set in Company settings, Invoices, Who approves what (1 November 2026).' },
+      { key: 'ck-rippling-retry', label: "Try again when Rippling refuses an employee's approved hours", kind: 'action', superOnly: true, note: "The person's hours approver can too." },
     ] },
-    { key: 'ck-whos-working', label: "Who's working, in their scope", kind: 'page', v: [1, 1, 0], ch: [
+    { key: 'ck-whos-working', label: "Who's working: their teams, or everyone with See everyone's hours", kind: 'page', v: [1, 1, 0], ch: [
       { key: 'ck-clock-out-for', label: 'Clock out for them', kind: 'action', superOnly: true },
     ] },
-    { key: 'clocky-invoices', label: 'Invoices', kind: 'page', v: [1, 1, 1], note: 'Contractors see their own invoices; Super Admins, Admins and Finance see every one. Employees get no invoice, and Team Leaders never see anyone else\'s. Only Finance (Company settings, Invoices) marks one paid.' },
-    { key: 'clocky-reports', label: 'Reports', kind: 'page', v: [1, 1, 1], note: 'Everyone for Super Admins and Admins; a Team Leader their teams, hours only; a User their own (Reports.dc.html).' },
+    { key: 'clocky-invoices', label: 'Invoices', kind: 'page', v: [1, 1, 1], note: 'Contractors see and send their own (Send your invoice: their PDF or built here). Employees have none. Only Finance marks one paid.', ch: [
+      { key: 'ck-inv-all', label: "See every contractor's invoice list (filters, Export CSV, Preview PDF, the Drive column)", kind: 'action', v: [1, 0, 0], note: 'Amounts only with See other people\'s money or Finance. Without them the list shows only their own invoices (owner, Nov 5, 2026).' },
+      { key: 'ck-inv-link', label: 'Link an invoice-form invoice to a person', kind: 'action', v: [1, 0, 0], note: 'The default approver can too. Amounts only with See other people\'s money or Finance.' },
+      { key: 'ck-money', label: "See other people's money: rates, amounts, invoices, reimbursements and payment documents", kind: 'action', superOnly: true, note: 'Their own always; Finance (Company settings > Invoices) too. Owner, Nov 5, 2026: Team Leaders and Admins never, unless Finance.' },
+    ] },
+    { key: 'clocky-reports', label: 'Reports', kind: 'page', v: [1, 1, 1], note: "Whose hours: everyone with See everyone's hours, the teams they lead with My team, else their own. Money columns: their own, or everyone's with See other people's money or Finance.", ch: [
+      { key: 'ck-reports-export', label: 'Export (CSV, PDF, printable page)', kind: 'action', v: [1, 1, 1] },
+    ] },
     { key: 'ck-which-job', label: 'Which job?: every job and when to use it', kind: 'page', always: true },
-    { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
-    { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, translated into the 2026 structure', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side. Reading only.' },
+    { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Reading only.' },
+    { key: 'ck-transition', label: 'TSheets transition: TSheets entries from the switch date, translated into the 2026 structure', kind: 'page', v: [1, 0, 0], note: 'While TSheets and North Time run side by side: who still records in TSheets after their start date.', ch: [
+      { key: 'ck-transition-remind', label: 'Remind them to record in North Time', kind: 'action', v: [1, 0, 0] },
+    ] },
   ] },
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
   // Who decides a request is the routing (owner, 1 November 2026: Company settings > Invoices,
   // Who approves what; routing.ts requestDeciders), not a key here. ck-timeoff and rq-decide stay
   // for what is not a decision: Rippling's retry and its bell, and reading any receipt.
   { key: 'm-requests', label: 'Requests', kind: 'module', ch: [
-    { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it.' },
-    { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays.', ch: [
-      { key: 'rq-decide', label: 'Open any receipt', kind: 'action', superOnly: true, note: 'Who decides reimbursements and extra hours is set in Company settings, Invoices, Who approves what (1 November 2026).' },
+    { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it. The reason is seen only by the person and Super Admins.', ch: [
+      { key: 'rq-off-all', label: "See everyone's time off", kind: 'action', v: [1, 0, 0] },
     ] },
-    { key: 'rq-extra-hours', label: 'Extra hours: ask before going over the allowance', kind: 'page', v: [1, 1, 1], note: 'Team Leaders can ask for someone on their team.' },
+    { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays. Amounts: their own, or with See other people\'s money or Finance.', ch: [
+      { key: 'rq-decide', label: 'Open any receipt', kind: 'action', superOnly: true, note: 'Who decides reimbursements and extra hours is set in Company settings, Invoices, Who approves what (1 November 2026).' },
+      { key: 'rq-rmb-all', label: "See everyone's reimbursements and the reimbursement documents", kind: 'action', v: [1, 0, 0], note: 'Amounts only with See other people\'s money or Finance. Without them the list shows only their own (owner, Nov 5, 2026).' },
+    ] },
+    { key: 'rq-extra-hours', label: 'Extra hours: ask before going over the allowance', kind: 'page', v: [1, 1, 1], ch: [
+      { key: 'rq-xh-team', label: 'Ask for extra hours for people on the teams they lead', kind: 'action', v: [1, 1, 0] },
+    ] },
   ] },
   { key: 'm-you', label: 'Your own', kind: 'module', ch: [
     { key: 'profile', label: 'My profile: their own page in the Directory', kind: 'page', always: true },

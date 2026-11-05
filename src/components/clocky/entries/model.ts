@@ -15,7 +15,6 @@ import { addDays, gridPeriod, monthEnd, monthStart, type AnchorChange } from '@/
 import { dayLabel, minutesLabel, monthLong, monthYear, rangeLabel, rangeLabelYear, weekdayShort } from '@/lib/timeclock/format'
 import { formatClock, formatDuration, parseDuration, roundSeconds, runningSeconds, QUARTER } from '@/lib/timeclock/rounding'
 import { DURATION_FORMAT, END_AFTER_START, OVER_24H, DAY_SECONDS, LONG_ENTRY_SECONDS } from '@/lib/timeclock/entry-rules'
-import { SHORTEN_ONLY } from '@/lib/timeclock/scope'
 import type { ClockChoice, EntryView } from '@/lib/timeclock/clocky-types'
 
 // ── Periods ─────────────────────────────────────────────────────────────────
@@ -220,15 +219,6 @@ export function exactDuration(seconds: number): string {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`
 }
 
-/** What a User may keep of their own entry: inside what was recorded. */
-export interface Bounds {
-  /** Start and end in minutes of the day; end null while running. */
-  start: number | null
-  end: number | null
-  /** A duration-only entry: no more than this. */
-  seconds: number | null
-}
-
 export interface CheckInput {
   type: 'range' | 'dur'
   start: number
@@ -239,10 +229,9 @@ export interface CheckInput {
   durText: string
   /** The red overlap sentence, already written (it needs instants and the person's zone). */
   overlapText: string | null
-  bounds: Bounds | null
 }
 
-export interface Check { text: string; bad: boolean; seconds: number; shortenOnly: boolean }
+export interface Check { text: string; bad: boolean; seconds: number }
 
 /** The seconds a form's times make. */
 export function formSeconds(x: Pick<CheckInput, 'type' | 'start' | 'end' | 'nowMinutes' | 'durText'>): number {
@@ -254,18 +243,11 @@ export function formSeconds(x: Pick<CheckInput, 'type' | 'start' | 'end' | 'nowM
 /** 3E's live check line under the times, in the prototype's order. */
 export function checkLine(x: CheckInput): Check {
   const d = formSeconds(x)
-  const out = (text: string, bad: boolean, shortenOnly = false): Check => ({ text, bad, seconds: d, shortenOnly })
+  const out = (text: string, bad: boolean): Check => ({ text, bad, seconds: d })
   if (x.type === 'range' && !(d > 0)) return out(END_AFTER_START, true)
   if (x.type === 'dur' && !(d > 0)) return out(DURATION_FORMAT, true)
   if (d > DAY_SECONDS) return out(OVER_24H, true)
   if (x.overlapText) return out(x.overlapText, true)
-  const b = x.bounds
-  if (b) {
-    const longer = b.seconds !== null
-      ? d > b.seconds
-      : (b.start !== null && x.start < b.start) || (b.end !== null && x.end !== 'now' && x.end > b.end) || (b.end !== null && x.end === 'now')
-    if (longer) return out(SHORTEN_ONLY, true, true)
-  }
   if (x.type === 'dur' && d % QUARTER) return out(`${exactDuration(d)} is recorded as ${formatDuration(d)}, the nearest 15 minutes. No overlap.`, false)
   return out(`${formatDuration(d)}. No overlap.`, false)
 }

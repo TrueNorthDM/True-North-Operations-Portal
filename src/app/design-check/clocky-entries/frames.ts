@@ -4,17 +4,17 @@
  */
 
 import type { EntriesUi } from '@/components/clocky/entries/TimeEntries'
-import { blankForm, blankRequest, formFromRow, valuesOf } from '@/components/clocky/entries/form'
+import { blankForm, formFromRow } from '@/components/clocky/entries/form'
 import { gridEditKey, gridRowKey, periodRange } from '@/components/clocky/entries/model'
 import type { EntriesData, EntryView } from '@/lib/timeclock/clocky-types'
-import { FIELDS, JOBS, KK, NOW_ISO, R, TODAY, entriesData, find, generate, jobId, makeStore, pid, reqSeed, type Level, type Rec, type Store } from './sample'
+import { JOBS, KK, NOW_ISO, R, TODAY, entriesData, find, generate, jobId, makeStore, pid, reqSeed, type Level, type Rec, type Store } from './sample'
 
 export const FRAMES: [string, string][] = [
   ['3A1', '3A List, My week'], ['3A2', '3A All day'], ['3Am', '3A Team member menu'], ['3A3', '3A Flagged + Columns'],
   ['3B1', '3B Week grid'], ['3B2', '3B Week grid (Team Leader)'], ['3B3', '3B Over 24h'],
   ['3C1', '3C Timeline, My'], ['3C2', '3C Timeline, All'], ['3C3', '3C Drag to create'], ['3C4', '3C Overlap'],
   ['3E1', '3E Add time (Team Leader)'], ['3E3', '3E User shortens own entry'], ['3E2', '3E Edit someone else'],
-  ['3K1', '3K Request a correction'], ['3K2', '3K Pending in the list'], ['3K3', '3K Leader reviews'], ['3K4', '3K Needs attention (Team Leader)'],
+  ['3K2', '3K Pending in the list'], ['3K3', '3K Leader reviews'], ['3K4', '3K Needs attention (Team Leader)'],
   ['3F', '3F Overlap fix'], ['3G', '3G History'], ['3H1', '3H Submit, every 2 weeks'], ['3H3', '3H Submit, monthly'], ['3H2', '3H Refused, running'],
   ['3I', '3I Delete'], ['3J', '3J Time off'], ['E', 'Empty'], ['P', '?person= (Their time entries)'],
 ]
@@ -100,17 +100,7 @@ export function buildFrame(code: string): Frame {
     case '3H2': initial.modal = { kind: 'submit' }; break
     case '3I': initial.modal = { kind: 'delete', key: `e${clarise(TODAY, 9.75).id}` }; break
     case '3J': sa(); initial = { ...initial, anchor: '2026-10-16', modal: { kind: 'off', key: 'o9001:2026-10-16', deny: false } }; break
-    case '3K1': {
-      initial.modal = {
-        kind: 'request',
-        rq: blankRequest({
-          date: '2026-10-14', start: 15 * 60, end: 16 * 60 + 30, combo: '1', jobcodeId: jobId(KK.i7Content.job),
-          values: valuesOf({ 1: 'True North', 2: 'In-House', 3: 'Social Media', 4: 'yes', 5: 'i7-MKTG' }, FIELDS),
-          reason: 'I kept working on the i7 LinkedIn posts after the clock stopped by itself at 3:00 PM.',
-        }),
-      }
-      break
-    }
+    // 3K1 (Request to add time) is retired (owner, 5 November 2026).
     case '3K2': recs = [...recs, reqSeed()]; break
     case '3K3': sa(); recs = [...recs, reqSeed()]; initial = { ...initial, anchor: '2026-10-14', modal: { kind: 'review', key: 'c8001', deny: false } }; break
     case '3K4': level = 'lead'; initial = { ...initial, who: 'all', attnOnly: true }; break

@@ -475,7 +475,7 @@ export default async function SettingsPage() {
       content: (
         <div>
           <SectionHead title="North Time rollout" desc="Who starts on North Time when. Wave 1 is everyone at Team Leader level or above, plus anyone added by hand; wave 2 is everyone else. Until a wave has a date, nothing changes for its people." />
-          <div className="mb-[18px]"><NorthTimeOpenSwitch open={ntOpen} canChange={access.isSuperAdmin} set={setNorthTimeOpen} /></div>
+          <div className="mb-[18px]"><NorthTimeOpenSwitch open={ntOpen} canChange={access.can('cs-rollout-open')} set={setNorthTimeOpen} /></div>
           <RolloutSettings data={rollout} canEdit={access.can('cs-rollout-edit')} api={{ saveRolloutDates, moveToWave }} skippedHref="/admin/settings/tsheets-after-switch" />
         </div>
       ),

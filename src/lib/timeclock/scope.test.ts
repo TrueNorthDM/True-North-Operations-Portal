@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { canAs } from '@/lib/access/simulate'
 import type { AccessLevel } from '@/lib/access/catalogue'
 import {
-  SHORTEN_ONLY, canAddFor, canApproveCorrection, canClockOutFor, canReopen, canSeeWorking, canView,
-  changeRight, isLeader, onlyShorter, periodsAccess, safetyAccess, whoChoice, type ScopeTarget, type ScopeViewer,
+  canAddFor, canApproveCorrection, canClockOutFor, canReopen, canSeeWorking, canView,
+  changeRight, isLeader, periodsAccess, whoChoice, type ScopeTarget, type ScopeViewer,
 } from './scope'
 
 // README "Who sees what", with the access catalogue's starting answers (no
@@ -89,34 +89,7 @@ describe('changing hours', () => {
   })
 })
 
-describe('shorten only (3E)', () => {
-  const was = { start: '2026-10-15T12:00:00Z', end: '2026-10-15T17:00:00Z', seconds: 5 * 3600 }
-
-  it('lets the start move later and the end earlier', () => {
-    expect(onlyShorter(was, { start: '2026-10-15T12:15:00Z', end: '2026-10-15T16:00:00Z', seconds: 3.75 * 3600 })).toBe(true)
-    expect(onlyShorter(was, was)).toBe(true)
-  })
-
-  it('refuses an earlier start, a later end, or a change of kind', () => {
-    expect(onlyShorter(was, { start: '2026-10-15T11:45:00Z', end: was.end, seconds: 0 })).toBe(false)
-    expect(onlyShorter(was, { start: was.start, end: '2026-10-15T17:15:00Z', seconds: 0 })).toBe(false)
-    expect(onlyShorter(was, { start: null, end: null, seconds: 3600 })).toBe(false)
-  })
-
-  it('keeps a duration-only entry to a shorter duration, and a running entry running', () => {
-    expect(onlyShorter({ start: null, end: null, seconds: 7200 }, { start: null, end: null, seconds: 3600 })).toBe(true)
-    expect(onlyShorter({ start: null, end: null, seconds: 7200 }, { start: null, end: null, seconds: 9000 })).toBe(false)
-    const running = { start: '2026-10-15T12:00:00Z', end: null, seconds: 0 }
-    expect(onlyShorter(running, { start: '2026-10-15T12:30:00Z', end: null, seconds: 0 })).toBe(true)
-    expect(onlyShorter(running, { start: '2026-10-15T12:30:00Z', end: '2026-10-15T13:00:00Z', seconds: 0 })).toBe(false)
-  })
-
-  it('says so in the words of the design', () => {
-    expect(SHORTEN_ONLY).toBe('You can shorten this entry, not lengthen it. To add time, ask your Team Leader.')
-  })
-})
-
-describe('who approves a time correction', () => {
+describe('who decides a time correction still pending (Request to add time is retired, 5 November 2026)', () => {
   it('the person\'s Team Lead, an Admin or a Super Admin', () => {
     expect(canApproveCorrection(lead, samuel)).toBe(true)
     expect(canApproveCorrection(admin, samuel)).toBe(true)
@@ -154,11 +127,11 @@ describe("Who's working, Clock safety and Timesheet periods", () => {
     expect(canClockOutFor(lead, samuel)).toBe(false)
   })
 
-  it('Clock safety: full for a Super Admin, read only for an Admin, closed below', () => {
-    expect(safetyAccess(superAdmin)).toBe('full')
-    expect(safetyAccess(admin)).toBe('read')
-    expect(safetyAccess(lead)).toBe('none')
-    expect(safetyAccess(user)).toBe('none')
+  it('Clock safety: open to Super Admins and Admins by default, the same reading for both', () => {
+    expect(superAdmin.can('ck-safety')).toBe(true)
+    expect(admin.can('ck-safety')).toBe(true)
+    expect(lead.can('ck-safety')).toBe(false)
+    expect(user.can('ck-safety')).toBe(false)
   })
 
   it('Timesheet periods: Super Admins change them, Admins read them', () => {

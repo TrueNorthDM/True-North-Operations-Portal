@@ -12,7 +12,7 @@ import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
 import { primaryTeamByPerson } from '@/lib/directory/primary-team'
@@ -26,7 +26,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
-import { loadRatesPay } from '@/lib/timeclock/pay-terms'
+import { isFinance, loadInvoiceSettings, loadRatesPay } from '@/lib/timeclock/pay-terms'
 import { loadHiddenColumns } from '@/lib/settings/columns'
 
 // The columns the list reads, and what each row carries by access, live in
@@ -37,6 +37,12 @@ import { loadHiddenColumns } from '@/lib/settings/columns'
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string; _vs?: string; tab?: string }> }) {
+  // Rates & Costs first: Finance reads it without the Directory (money lockdown, owner, 5 November 2026).
+  const { tab: firstTab } = await searchParams
+  if (firstTab === 'rates') {
+    const ratesPage = await ratesAndCosts()
+    if (ratesPage) return ratesPage
+  }
   const access = await requireSurface('directory')
   // Resolved up here, not next to the view models, because it decides which
   // COLUMNS to read a few lines below and not just what to render.
@@ -53,28 +59,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const { open: openId, _vs: vs, tab: startTab } = await searchParams
   if (openId && /^[0-9a-f-]{36}$/i.test(openId)) redirect(personHref(openId) + (vs ? `?_vs=${encodeURIComponent(vs)}` : ''))
 
-  // Rates & Costs is its own page under People (Company Settings.dc.html 10A-2,
-  // owner 2026-10-23), at the address every link already uses. It answers to its
-  // own tick (d-rates), whatever the Directory level, so whoever sees its row
-  // opens it (audit, 24 October 2026); and it reads nothing else of the Directory.
-  if (startTab === 'rates' && rights.rates) {
-    // Every pay rate: read only for d-rates.
-    const budget = await getBudgetUsageData({ pay: true })
-    // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
-    // Timesheet periods; changed by whoever may change the periods.
-    const periods = access.can('cs-periods') ? await getTimesheetPeriods() : null
-    // Pays as, Allowance and Over (Clocky part 2, 10A-2).
-    const ratesPay = await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates'))
-    const ratesCadence = periods?.ok
-      ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
-      : null
-    // The columns this person hides (owner, 25 October 2026), read here so the first paint has them.
-    const hiddenColumns = await loadHiddenColumns(createAdminClient(), (await getCurrentPerson())?.id)
-    // Active people only: someone who left is in People, Inactive, with their rates on their own page (owner, 28 October 2026).
-    return (
-      <RatesCostsPage people={budget.people.filter(p => !p.inactive)} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} hiddenColumns={hiddenColumns} />
-    )
-  }
   // Directory is reachable by everyone; the configured directory level decides
   // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
   // levels 1 and 2 the read-only, team-scoped list below.
@@ -458,5 +442,36 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         hiddenColumns={hiddenColumns}
       />
     </div>
+  )
+}
+
+/**
+ * Rates & Costs, its own page under People (Company Settings.dc.html 10A-2,
+ * owner 2026-10-23), at the address every link already uses. Everyone's rates
+ * are other people's money (owner, 5 November 2026): Super Admins (d-rates,
+ * Super Admin only) read and change it; Finance reads it, without Edit; nobody
+ * else opens it. It reads nothing else of the Directory. Null for anyone else,
+ * who goes on to the Directory (or Home).
+ */
+async function ratesAndCosts() {
+  const access = await loadAccess()
+  const keeps = access.can('d-rates')
+  const reads = keeps || (!!access.personId && isFinance(access, await loadInvoiceSettings()))
+  if (!reads) return null
+  // Every pay rate.
+  const budget = await getBudgetUsageData({ pay: true })
+  // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
+  // Timesheet periods; changed by whoever may change the periods.
+  const periods = keeps && access.can('cs-periods') ? await getTimesheetPeriods() : null
+  // Pays as, Allowance and Over (Clocky part 2, 10A-2).
+  const ratesPay = await loadRatesPay(budget.people.map(p => p.id), keeps)
+  const ratesCadence = periods?.ok
+    ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
+    : null
+  // The columns this person hides (owner, 25 October 2026), read here so the first paint has them.
+  const hiddenColumns = await loadHiddenColumns(createAdminClient(), (await getCurrentPerson())?.id)
+  // Active people only: someone who left is in People, Inactive, with their rates on their own page (owner, 28 October 2026).
+  return (
+    <RatesCostsPage people={budget.people.filter(p => !p.inactive)} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} hiddenColumns={hiddenColumns} readOnly={!keeps} />
   )
 }

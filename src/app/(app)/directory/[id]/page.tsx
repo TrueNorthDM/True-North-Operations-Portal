@@ -47,12 +47,13 @@ export default async function PersonRoute({
   // The Work tab's Timesheet section (Clocky, 16 October 2026): read only with
   // the Work tab, changed with Edit work by whoever may change the periods.
   // While North Time is closed (migration 132) the Timesheet section and Payments are a Super Admin's only.
-  const ntShown = access.isSuperAdmin || await northTimeOpen()
+  const ntShown = access.can('cs-rollout-open') || await northTimeOpen()
   const sheet = data.work && ntShown ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
-  // Approvals (no money) and Pay and hours (money: the person, Super Admins, Admins, Finance) on the Work tab.
+  // Approvals (no money) and Pay and hours (money: the person, Super Admins and Finance, seesMoney) on the Work tab.
   const pay = data.work ? await loadPersonPay(id, access) : null
-  // Payments (Clocky part 2, 10P): money, so the person, Super Admins, Admins and Finance; never Team Leaders.
-  data.rights.payments = ntShown && seesMoney(access, id, await loadInvoiceSettings())
+  // Payments (Clocky part 2, 10P): money, so their own, someone else's with p-payments (Super Admins
+  // only) and Finance's; never a Team Leader or an Admin who is not Finance (owner, 5 November 2026).
+  data.rights.payments = ntShown && (access.can('p-payments') || seesMoney(access, id, await loadInvoiceSettings()))
   const shown = resolvePageTab(tab, data.rights)
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
   const payments = shown === 'payments'

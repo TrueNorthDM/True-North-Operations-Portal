@@ -19,7 +19,7 @@ import {
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
-import { loadRequestDeciders } from './pay-terms'
+import { loadInvoiceSettings, loadRequestDeciders } from './pay-terms'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import { reportTitle, totalsText, type Amount } from './reimbursement-reports'
@@ -165,10 +165,12 @@ export async function announceClockedOutFor(x: { entryId: number; personId: stri
 }
 
 /** A period sent (3H): whoever decides it first hears of it (its Reports to, or the invoice approver). */
-export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; period: string; seconds: number; text?: string }): Promise<void> {
+export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; period: string; seconds: number; text?: string; plain?: string }): Promise<void> {
   await quiet('timesheet submitted', async () => {
     const dir = await loadDirectory()
-    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.sentAt, personId: x.personId, to: x.to, text: x.text ?? timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
+    // `plain`: the line without the amount, for a decider who does not see everyone's money (5 November 2026).
+    const finance = x.plain !== undefined ? (await loadInvoiceSettings()).finance : undefined
+    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.sentAt, personId: x.personId, to: x.to, text: x.text ?? timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds), plain: x.plain, finance })
   })
 }
 
@@ -216,7 +218,9 @@ export async function announceHoursApproved(x: { submissionId: number; at: strin
   await quiet('hours approved', async () => {
     const dir = await loadDirectory()
     const by = dir.nameOf(x.hoursBy)
-    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.at, personId: x.personId, to: [x.invoiceBy], text: hoursApprovedForApproverText(by, dir.nameOf(x.personId), x.month, x.number, x.total) })
+    // The total only for who sees everyone's money (money lockdown, 5 November 2026).
+    const finance = (await loadInvoiceSettings()).finance
+    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.at, personId: x.personId, to: [x.invoiceBy], text: hoursApprovedForApproverText(by, dir.nameOf(x.personId), x.month, x.number, x.total), plain: hoursApprovedForApproverText(by, dir.nameOf(x.personId), x.month, x.number, null), finance })
     await notifyClockyTimesheetDecided({ submissionId: x.submissionId, at: x.at, personId: x.personId, text: hoursApprovedForPersonText(by, x.month, x.number, dir.nameOf(x.invoiceBy)) })
   })
 }
@@ -229,7 +233,12 @@ const money = (n: number, currency: string) => (currency === 'USD' ? `$${n.toLoc
 export async function announceReimbursementRequested(x: { id: number; personId: string; category: string; amount: number; currency: string; purpose: string }): Promise<void> {
   await quiet('reimbursement requested', async () => {
     const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
-    await notifyClockyReimbursementRequested({ id: x.id, personId: x.personId, to: deciders('rmb', x.personId), text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).` })
+    const { finance } = await loadInvoiceSettings()
+    await notifyClockyReimbursementRequested({
+      id: x.id, personId: x.personId, to: deciders('rmb', x.personId), finance,
+      text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).`,
+      plain: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category} (${x.purpose}).`,
+    })
   })
 }
 
@@ -237,7 +246,12 @@ export async function announceReimbursementRequested(x: { id: number; personId: 
 export async function announceReimbursementReportRequested(x: { firstId: number; personId: string; name: string | null; items: readonly Amount[] }): Promise<void> {
   await quiet('reimbursement requested', async () => {
     const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
-    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}, ${totalsText(x.items)}.` })
+    const { finance } = await loadInvoiceSettings()
+    await notifyClockyReimbursementRequested({
+      id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), finance,
+      text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}, ${totalsText(x.items)}.`,
+      plain: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}.`,
+    })
   })
 }
 
@@ -254,10 +268,11 @@ export async function announceReimbursementChanged(x: { firstId: number; personI
   await quiet(`reimbursement ${x.what}`, async () => {
     const [dir, deciders] = await Promise.all([loadDirectory(), loadRequestDeciders([x.personId])])
     const who = dir.nameOf(x.personId)
-    const text = x.what === 'edited' ? `${who} changed their waiting reimbursement request: ${x.title}, ${x.total}.`
-      : x.what === 'joined' ? `${who} added ${x.added === 1 ? '1 receipt' : `${x.added ?? 0} receipts`} to their waiting request: ${x.title}, ${x.total}.`
-        : `${who} withdrew their reimbursement request: ${x.title}, ${x.total}.${x.reason?.trim() ? ` "${x.reason.trim()}"` : ''}`
-    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), text, key: `${x.firstId}:${x.what}:${x.at}` })
+    const line = (total: string) => x.what === 'edited' ? `${who} changed their waiting reimbursement request: ${x.title}${total}.`
+      : x.what === 'joined' ? `${who} added ${x.added === 1 ? '1 receipt' : `${x.added ?? 0} receipts`} to their waiting request: ${x.title}${total}.`
+        : `${who} withdrew their reimbursement request: ${x.title}${total}.${x.reason?.trim() ? ` "${x.reason.trim()}"` : ''}`
+    const { finance } = await loadInvoiceSettings()
+    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, to: deciders('rmb', x.personId), text: line(`, ${x.total}`), plain: line(''), finance, key: `${x.firstId}:${x.what}:${x.at}` })
   })
 }
 

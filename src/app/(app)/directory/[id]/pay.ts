@@ -1,8 +1,9 @@
 /**
  * The Work tab's "Approvals" and "Pay and hours" (Clocky part 2, frame 10A-1),
  * read on the server. Approvals carries no money and follows the Work tab;
- * Pay and hours is money and only reaches the person, Super Admins, Admins and
- * Finance (seesMoney), never a Team Leader. Not a "use server" file.
+ * Pay and hours is money and only reaches the person, Super Admins and Finance
+ * (seesMoney, owner, 5 November 2026), never a Team Leader nor an Admin who is
+ * not Finance. Not a "use server" file.
  */
 
 import type { Access } from '@/lib/access/resolve'

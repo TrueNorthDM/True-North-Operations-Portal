@@ -173,13 +173,13 @@ export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: str
 export const notifyClockyClockedOutFor = (x: { entryId: number; personId: string; text: string }) =>
   simple('clocky-clocked-out-for', ctx => clockyClockedOutForDrafts(ctx, x))
 
-export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; text: string }) =>
+export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; text: string; plain?: string; finance?: readonly string[] }) =>
   simple('clocky-timesheet-submitted', ctx => clockyTimesheetSubmittedDrafts(ctx, x))
 
 export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
   simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
 
-export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; to: readonly string[]; text: string; key?: string }) =>
+export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; to: readonly string[]; text: string; plain?: string; finance?: readonly string[]; key?: string }) =>
   simple('clocky-reimbursement-requested', ctx => clockyReimbursementRequestedDrafts(ctx, x))
 
 export const notifyClockyReimbursementDecided = (x: { id: number; personId: string; text: string }) =>

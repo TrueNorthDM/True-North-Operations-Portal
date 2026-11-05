@@ -307,7 +307,7 @@ function viewOf(x: Rec, level: Level, overlaps: Set<number>): EntryView {
     kind: x.kind === 'req' ? 'correction' : x.kind === 'off' ? 'time_off' : x.manual ? 'manual' : 'clock', imported: !!x.imported,
     pills, autoOut: x.auto ? { confirmed: !!x.confirmed, flagged: false } : null, edited: x.edited ? { by: x.edited, at: NOW_ISO } : null,
     clockedOutBy: null, locked: work && locked(x), lockWhy: work && locked(x) ? x.status.toLowerCase() : null,
-    canEdit, shortenOnly: canEdit && (level === 'user' || level === 'lead') && x.who === me, canDelete: canEdit,
+    canEdit, canDelete: canEdit,
     canContinue: work && x.who === me && x.s != null && x.e != null, continuesPrevious: false,
     attention: attnOf(x, level, overlaps),
     correction: x.kind === 'req' ? {
@@ -537,15 +537,6 @@ export function makeApi(store: Store): EntriesApi {
       }
       const week = store.recs.filter(x => x.who === who && x.kind === 'work' && x.date >= b.weekStart && x.date <= addDays(b.weekStart, 6)).reduce((s, x) => s + secondsOf(x), 0)
       return ok({ weekSeconds: week, toast: `Saved. Week total ${formatDuration(week)}.` })
-    },
-    requestCorrection: b => {
-      const s = secOfHHMM(b.start), e = secOfHHMM(b.end)
-      const hit = overlapWith(me, b.date, s, e, null)
-      if (hit) return no(`Overlaps ${clk(Math.max(s, hit.o.s!))} to ${clk(Math.min(e, hit.o.e ?? NOW_SEC))} with ${nameOf(hit.o)}. Ask only for time you have no entry for.`)
-      const f = b.fields ?? {}
-      store.recs.push({ id: Math.max(...store.recs.map(x => x.id)) + 1, who: me, date: b.date, kind: 'req', s, e, job: JOBS[b.jobcodeId - 1], co: f['1'] ?? '', prj: f['2'] ?? '', act: f['3'] ?? '', bill: f['4'] ?? '', code: f['5'] ?? '', notes: b.reason, reason: b.reason, status: 'Pending', asked: stamp(), askedAt: NOW_ISO, hist: [] })
-      const lead = LEAD[PM.get(me)?.t ?? ''] ?? 'Dave Sharpe'
-      return ok({ requestId: 1, goesTo: '', toast: `Request sent to ${lead}. It counts once it is approved.` })
     },
     submitPeriod: () => {
       const sp = submitPeriodOf(store.level, store.cad)

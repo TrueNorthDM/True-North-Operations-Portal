@@ -73,7 +73,15 @@ describe('the rail', () => {
   it('gives a user Organization, Human Resources and History, and a Team Leader the Directory too', () => {
     expect(rows(railFor('user'), 'people')).toEqual(['human-resources', 'history'])
     expect(rows(railFor('team_leader'), 'people')).toEqual(['directory', 'human-resources', 'history'])
-    expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'rates', 'human-resources', 'history'])
+    // Rates & Costs is everyone's money: Super Admins, and Finance (money lockdown, owner, 5 November 2026).
+    expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'human-resources', 'history'])
+    expect(rows(railFor('super_admin'), 'people')).toEqual(['directory', 'rates', 'human-resources', 'history'])
+  })
+
+  it('opens Rates & Costs for Finance whatever their level', () => {
+    const can = canAs('user', { teams: [['t1', false]], rules: rulesWithTools([]) })
+    expect(rows(buildRail({ can, canTool: can, facts: new Set(['finance']) }), 'people')).toContain('rates')
+    expect(rows(buildRail({ can, canTool: can, facts: new Set() }), 'people')).not.toContain('rates')
   })
 
   // The Clocky menu as the design handoff draws it (README "Clocky menu in

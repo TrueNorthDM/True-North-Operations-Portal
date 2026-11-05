@@ -487,7 +487,7 @@ export async function tellFormSender(invoiceId: number, event: 'approved' | 'ret
  * (invoices-cron.ts): a form invoice waits for its approver (the form's rule),
  * a new sender's for the default approver. Never throws.
  */
-export async function tellApprover(x: { invoiceId: number | null; submissionId: number | null; personId: string | null; text: string }): Promise<void> {
+export async function tellApprover(x: { invoiceId: number | null; submissionId: number | null; personId: string | null; text: string; plain?: string }): Promise<void> {
   try {
     const settings = await loadRouteSettings()
     let to: string | null = settings.defaultApprover
@@ -498,7 +498,7 @@ export async function tellApprover(x: { invoiceId: number | null; submissionId: 
     if (!to) return
     // A negative id, as the day 1 invoices use: the bell's key, never a timesheet.
     const key = x.invoiceId != null ? -x.invoiceId : -(1_000_000_000 + (x.submissionId ?? 0))
-    await announceTimesheetSubmitted({ submissionId: key, sentAt: new Date().toISOString(), personId: x.personId ?? '', to: [to], period: '', seconds: 0, text: x.text })
+    await announceTimesheetSubmitted({ submissionId: key, sentAt: new Date().toISOString(), personId: x.personId ?? '', to: [to], period: '', seconds: 0, text: x.text, plain: x.plain })
   } catch (e) {
     console.error('[invoice form] tell approver:', e instanceof Error ? e.message : e)
   }

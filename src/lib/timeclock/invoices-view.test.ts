@@ -2,9 +2,33 @@ import { describe, it, expect, vi } from 'vitest'
 
 // The builders are pure; the module also reads the database for the live pages.
 vi.mock('./clocky-context', () => ({ db: vi.fn(), loadDirectory: vi.fn() }))
-vi.mock('./pay-terms', () => ({ isFinance: vi.fn(), loadInvoiceSettings: vi.fn(), loadRoutes: vi.fn(), seesMoney: vi.fn() }))
+// The money rule is the real one (pure); whose route is whose is made up per test.
+const routes = new Map<string, { isContractor: boolean }>()
+vi.mock('./pay-terms', async () => {
+  const real = await vi.importActual<typeof import('./pay-terms')>('./pay-terms')
+  return {
+    isFinance: real.isFinance, seesAllMoney: real.seesAllMoney, seesMoney: real.seesMoney, loadInvoiceSettings: vi.fn(),
+    loadRoutes: vi.fn(async (ids: string[]) => new Map(ids.map(id => [id, routes.get(id)]))),
+  }
+})
 
-const { buildInvoiceDetail, buildInvoiceList } = await import('./invoices-view')
+const { buildInvoiceDetail, buildInvoiceList, invoiceModeFor } = await import('./invoices-view')
+const { canAs } = await import('@/lib/access/simulate')
+
+describe('which invoice list each level gets (money lockdown, 5 November 2026)', () => {
+  const settings = { finance: ['tina'] }
+  const v = (level: Parameters<typeof canAs>[0], personId: string) => ({ personId, can: canAs(level), zone: 'America/New_York' })
+  it('every invoice for Super Admins and Finance; their own for a contractor of any other level; none for an employee', async () => {
+    routes.set('con', { isContractor: true }).set('emp', { isContractor: false }).set('tina', { isContractor: false })
+    expect((await invoiceModeFor(v('super_admin', 'emp'), settings)).mode).toBe('all')
+    expect((await invoiceModeFor(v('user', 'tina'), settings))).toEqual({ mode: 'all', finance: true })
+    // An Admin who is not Finance: every row carries its amount, so their own list, or none.
+    expect((await invoiceModeFor(v('admin', 'emp'), settings)).mode).toBe('none')
+    expect((await invoiceModeFor(v('admin', 'con'), settings)).mode).toBe('mine')
+    expect((await invoiceModeFor(v('team_leader', 'con'), settings)).mode).toBe('mine')
+    expect((await invoiceModeFor(v('user', 'emp'), settings)).mode).toBe('none')
+  })
+})
 type ListSrc = Parameters<typeof buildInvoiceList>[0]
 type Inv = ListSrc['invoices'][number]
 

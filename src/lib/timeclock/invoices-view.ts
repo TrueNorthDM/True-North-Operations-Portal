@@ -3,11 +3,14 @@
  * viewer may see them.
  *
  *   mine   a contractor (any level, Team Leaders included): their own invoices
- *   all    Super Admins, Admins and Finance: every invoice, with filters, the
- *          totals strip and "where it is"; only Finance marks one paid
+ *   all    Super Admins (ck-inv-all with ck-money) and Finance: every
+ *          invoice, with filters, the totals strip and "where it is"; only
+ *          Finance marks one paid
  *   none   an employee: no invoices, a line saying why
  *
- * Team Leaders never see anyone else's money (README_PART2 "Who sees what").
+ * Nobody else sees anyone else's money (owner, 5 November 2026: not Team
+ * Leaders, not Admins unless Finance), so an Admin who is not Finance gets
+ * their own list, or none.
  * The list and its history are built by pure functions (buildInvoiceList,
  * buildInvoiceDetail) so the tests hold them to the prototype.
  */
@@ -16,7 +19,7 @@ import type { Access } from '@/lib/access/resolve'
 import { db, loadDirectory, oneOf, rowsOf } from './clocky-context'
 import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear, stampLabel } from './format'
 import { INV_COLS, LINE_COLS, invoiceDocOf, paidText, usd, type DocTone, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
-import { isFinance, loadRouteSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
+import { isFinance, loadRouteSettings, loadRoutes, seesAllMoney, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
 import { hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson } from './routing'
 import { cameFrom } from '@/lib/invoice-form/rules'
@@ -152,12 +155,14 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
 
 // ── Reading ─────────────────────────────────────────────────────────────────
 
-export interface InvoiceViewer { personId: string | null; isAdmin: boolean; zone: string }
+export interface InvoiceViewer { personId: string | null; can: (key: string) => boolean; zone: string }
 
 /** Which list this viewer gets. */
 export async function invoiceModeFor(v: InvoiceViewer, settings: Pick<InvoiceSettings, 'finance'>): Promise<{ mode: InvoiceMode; finance: boolean }> {
   const finance = isFinance({ personId: v.personId }, settings)
-  if (v.isAdmin || finance) return { mode: 'all', finance }
+  // Every contractor's list: ck-inv-all with everyone's money (Super Admins), or Finance. An Admin
+  // who is not Finance keeps their own list only, since every row carries its amount (owner, 5 November 2026).
+  if (finance || (v.can('ck-inv-all') && seesAllMoney(v, settings))) return { mode: 'all', finance }
   if (!v.personId) return { mode: 'none', finance }
   const route = (await loadRoutes([v.personId])).get(v.personId)
   return { mode: route?.isContractor ? 'mine' : 'none', finance }
@@ -211,7 +216,7 @@ export interface InvoiceDetail {
   history: { text: string; when: string; dot: string }[]
   /** For the Mark paid dialog. */
   pay: { who: string; line: string; total: string }
-  /** The "Google Drive" box (owner, 31 October 2026): for Super Admins, Admins and Finance. */
+  /** The "Google Drive" box (owner, 31 October 2026): for Super Admins and Finance. */
   drive?: DriveBoxData
   /** "The invoice form, deliverables, 3 lines" when it came from the invoice form (migration 147); null otherwise. */
   cameFrom: string | null
@@ -296,7 +301,7 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
   }
 }
 
-/** One invoice for this viewer: the person, Super Admins, Admins and Finance; null otherwise (closed and missing look the same). */
+/** One invoice for this viewer: the person, Super Admins and Finance (seesMoney); null otherwise (closed and missing look the same). */
 export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<InvoiceDetail | null> {
   const c = db()
   const { data, error } = await c.from('invoices').select(INV_COLS).eq('id', id).maybeSingle()
@@ -304,7 +309,7 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
   const inv = data as unknown as InvRow | null
   if (!inv) return null
   const settings = await loadRouteSettings()
-  if (!seesMoney({ isAdmin: v.isAdmin, personId: v.personId }, inv.person_id, settings)) return null
+  if (!seesMoney(v, inv.person_id, settings)) return null
   const [lines, events, sub, routes, dir, sends] = await Promise.all([
     // A failed read throws: no lines would show a $0.00 invoice, no timesheet the wrong state.
     c.from('invoice_lines').select(LINE_COLS).eq('invoice_id', inv.id).order('sort').then(r => rowsOf(r, 'The invoice lines could not be read') as unknown as LineRow[]),
@@ -319,7 +324,7 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
   const detail = buildInvoiceDetail({ inv, lines, events: evs, sub, route: routes.get(inv.person_id), settings, finance: isFinance({ personId: v.personId }, settings), nameOf: dir.nameOf, zone: v.zone, sends })
   await addRecord(detail, inv.id, dir.nameOf)
   // The Google Drive box: Finance's copy, so for those who see everyone's invoices, not the contractor's own page.
-  if (!v.isAdmin && !isFinance({ personId: v.personId }, settings)) return detail
+  if (!seesAllMoney(v, settings)) return detail
   try {
     const [from, row] = await Promise.all([copyFrom(), copyRow('invoice', inv.id)])
     detail.drive = {
@@ -374,4 +379,4 @@ async function addRecord(detail: InvoiceDetail, id: number, nameOf: (id: string 
 }
 
 /** The access a page already has, as the viewer these loaders take. */
-export const invoiceViewer = (a: Pick<Access, 'personId' | 'isAdmin'>, zone: string): InvoiceViewer => ({ personId: a.personId, isAdmin: a.isAdmin, zone })
+export const invoiceViewer = (a: Pick<Access, 'personId' | 'can'>, zone: string): InvoiceViewer => ({ personId: a.personId, can: a.can, zone })

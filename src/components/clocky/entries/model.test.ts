@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { SHORTEN_ONLY } from '@/lib/timeclock/scope'
 import {
   axisOf, buildGrid, calendarWeeks, checkLine, createSpan, dragSpan, exactDuration, gridChanges, gridEditKey, gridRowKey, gridTemplate,
   groupByDay, hhmmOf, hourTicks, minWidth, periodRange, rangeText, secondsAt, shiftAnchor, snapQuarter, totalsLabel, totalsOf,
@@ -53,7 +52,7 @@ const row = (o: Partial<EntryView>): EntryView => ({
   date: '2026-10-15', start: '2026-10-15T11:00:00.000Z', end: '2026-10-15T13:45:00.000Z', running: false, timeText: '7:00 AM to 9:45 AM',
   seconds: 9900, jobcodeId: 3, path: '1 - True North › Management', short: 'TN › Management', client: 'True North', isI7: false, fields: {},
   company: 'True North', project: 'In-House', activity: 'Management', billable: 'no', code: '', notes: '', kind: 'clock', imported: false,
-  pills: [], autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null, canEdit: true, shortenOnly: false,
+  pills: [], autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null, canEdit: true,
   canDelete: true, canContinue: true, continuesPrevious: false, attention: null, correction: null, timeOff: null, ...o,
 })
 
@@ -130,12 +129,8 @@ describe('the 3E check line', () => {
     expect(checkLine({ ...base, type: 'dur', durText: '2.5' }).text).toBe('2h 30m. No overlap.')
     expect(checkLine({ ...base, type: 'dur', durText: 'soon' })).toMatchObject({ text: 'Type a duration like 2h 30m, 2:30 or 2.5.', bad: true })
   })
-  it('keeps a User inside what was recorded', () => {
-    const bounds = { start: 10 * 60, end: 15 * 60, seconds: null }
-    expect(checkLine({ ...base, start: 10 * 60, end: 13 * 60, bounds }).bad).toBe(false)
-    expect(checkLine({ ...base, start: 9 * 60 + 45, end: 13 * 60, bounds })).toMatchObject({ text: SHORTEN_ONLY, shortenOnly: true })
-    expect(checkLine({ ...base, start: 10 * 60, end: 15 * 60 + 15, bounds }).shortenOnly).toBe(true)
-    expect(checkLine({ ...base, type: 'dur', durText: '3h', bounds: { start: null, end: null, seconds: 2.75 * 3600 } }).shortenOnly).toBe(true)
+  it('lets everyone lengthen their own entry (4 November 2026: no shorten-only rule)', () => {
+    expect(checkLine({ ...base, start: 9 * 60 + 45, end: 16 * 60 }).bad).toBe(false)
   })
   it('counts a running entry to now', () => {
     expect(checkLine({ ...base, start: 10 * 60 + 45, end: 'now' }).text).toBe('2h 30m. No overlap.')

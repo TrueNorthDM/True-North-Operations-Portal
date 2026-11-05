@@ -12,10 +12,11 @@
  *                     approver, named
  *   Decided           who, when and why, the last 90 days
  *
- * Team Leaders see their own teams only, and never money: a timesheet row
- * says "Hours only" instead of the invoice. Anyone else below Admin who holds
- * Approvals (a User given it) sees only the rows they decide, and money only
- * where pay-terms.ts seesMoney says so.
+ * Whoever holds ck-approvals-all (Admins by default) reads every row; a Team
+ * Leader their own teams; anyone else who holds Approvals only the rows they
+ * decide. Money only where pay-terms.ts seesMoney says so (owner, 5 November
+ * 2026: the person, Super Admins and Finance); anyone else reads "Hours only"
+ * instead of the invoice amount.
  *
  * The Approvals count (clocky-approvals.ts countWaiting) is "Waiting for you"
  * counted with the same predicates, without building the rows.
@@ -160,7 +161,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     if (!p || !t) continue
     const route = t.route
     const who = person(s.person_id)
-    const money = !isLead && seesMoney(asMoney, s.person_id, settings)
+    const money = seesMoney(asMoney, s.person_id, settings)
     const inv = invBySub.get(s.id) ?? null
     const worked = workedOf.get(s.id) ?? 0
     const label = periodLabel({ start: p.start_date, end: p.end_date })
@@ -213,7 +214,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     if (!t) continue
     const who = person(i.person_id)
     const ib = loneInvoiceApprover(t.route, settings, i.source)
-    const money = !isLead && seesMoney(asMoney, i.person_id, settings)
+    const money = seesMoney(asMoney, i.person_id, settings)
     const form = !!i.source
     push({
       key: `n${i.id}`, type: 'ts', id: i.id, personId: i.person_id, name: who.name, initials: who.initials, team: who.team,
@@ -262,10 +263,10 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
 
   const open = rows.filter(r => !r.done)
   const mine = (r: QueueRow) => !r.own && ownerOf.get(r.key) === v.personId
-  // Admins and Super Admins: everything; a Team Leader: their teams; anyone else: what they decide.
-  const isAdmin = v.level === 'super_admin' || v.level === 'admin'
+  // Every row with ck-approvals-all (Admins and Super Admins by default); a Team Leader: their teams; anyone else: what they decide.
+  const seesAll = v.can('ck-approvals-all')
   const inTeam = (r: QueueRow) => {
-    if (isAdmin) return true
+    if (seesAll) return true
     if (isLead) { const t = teamOf.get(r.key); return t != null && leadTeams.has(t) }
     return decidesOf.get(r.key) === true
   }
@@ -289,7 +290,7 @@ async function subtitleFor(v: Viewer, settings: InvoiceSettings, dir: Awaited<Re
   if (v.level === 'team_leader') {
     const teams = [...v.ledTeamIds].map(id => dir.teams.get(id)?.name).filter(Boolean)
     const def = settings.defaultApprover ? dir.nameOf(settings.defaultApprover) : 'a Super Admin'
-    return `Hours from the ${teams.join(' and ') || 'your'} team${teams.length > 1 ? 's' : ''}, and requests to add time. Invoices are not shown to Team Leaders: ${def} finishes each timesheet after you.`
+    return `Hours from the ${teams.join(' and ') || 'your'} team${teams.length > 1 ? 's' : ''}. Amounts are not shown to Team Leaders: ${def} finishes each timesheet after you.`
   }
   const mine = (must(await db().from('people').select('full_name').eq('manager_id', v.personId).eq('status', 'active').order('full_name'), 'People could not be read') ?? []).map(p => p.full_name)
   return mine.length

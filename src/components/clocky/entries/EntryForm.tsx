@@ -38,7 +38,7 @@ export function formCheck(f: FormState, rows: readonly EntryView[], catalog: Pic
     ? overlapAmong(span, f.personId, rows, f.id !== null ? `e${f.id}` : null, nowMs)
     : null
   const nowMinutes = localMinutes(new Date(nowMs), f.zone)
-  const base = { type: f.type, start: f.start, end: f.end, nowMinutes, durText: f.dur, bounds: f.bounds }
+  const base = { type: f.type, start: f.start, end: f.end, nowMinutes, durText: f.dur }
   const seconds = span ? (Date.parse(span.end) - Date.parse(span.start)) / 1000 : 0
   const overlapText = o && !f.fix ? overlapLine(seconds, { start: o.start, end: o.end }, nameFor(o.row, catalog.combinations), f.zone) : null
   const c = checkLine({ ...base, overlapText })
@@ -46,7 +46,7 @@ export function formCheck(f: FormState, rows: readonly EntryView[], catalog: Pic
   return c
 }
 
-export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, viewerId, rows, nowMs, busy, onClose, onSave, onDelete, onRequestInstead }: {
+export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, viewerId, rows, nowMs, busy, onClose, onSave, onDelete }: {
   form: FormState
   setForm: (patch: Partial<FormState>) => void
   catalog: Catalog
@@ -61,7 +61,6 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   onClose: () => void
   onSave: () => void
   onDelete: () => void
-  onRequestInstead: () => void
 }) {
   const f = form
   const check = formCheck(f, rows, catalog, nowMs)
@@ -72,7 +71,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const shownFields = defs
     .filter(d => d.required === 'always' || isI7)
     .sort((a, b) => FIELD_ORDER.indexOf(a.key) - FIELD_ORDER.indexOf(b.key))
-  const overlapOnly = check.bad && !check.shortenOnly && /Overlaps /.test(check.text)
+  const overlapOnly = check.bad && /Overlaps /.test(check.text)
 
   // The 2026 structure, from the switch date: picked on the clock panel's first screen. An entry
   // keeps its own job's structure (a TSheets entry imported after the switch date stays a TSheets one).
@@ -87,10 +86,8 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const week = weekStartOf(f.date)
   const dateOptions = (leader ? Array.from({ length: 7 }, (_, i) => addDays(week, i)) : [f.date]).map(d => ({ value: d, label: dayLabel(d) }))
 
-  const b = f.bounds
-  const inside = (m: number) => !b || b.seconds !== null || ((b.start === null || m >= b.start) && (b.end === null || m <= b.end))
-  const times = QUARTERS.filter(inside).map(timeOption)
-  const endTimes = f.running && (!b || b.end === null) ? [{ value: 'now', label: 'now' }, ...times] : times
+  const times = QUARTERS.map(timeOption)
+  const endTimes = f.running ? [{ value: 'now', label: 'now' }, ...times] : times
 
   // The jobs of the entry's day: the TSheets ones before the switch date, the 2026 projects from it.
   const jobOptions = sortedOptions(jobsOn(catalog.jobs, f.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path })))
@@ -151,11 +148,6 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         )}
       </div>
       <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums lining-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
-      {!leader && check.shortenOnly && (
-        <button type="button" onClick={onRequestInstead} className="self-start -mt-2 border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
-          Request to add time instead
-        </button>
-      )}
 
       {s2 ? (
         // The clock panel's first screen, picking (JobPick): the form, My combinations, Recent and Browse fill the entry.

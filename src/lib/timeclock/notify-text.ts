@@ -71,8 +71,9 @@ export const invoicePaidText = (number: string, month: string, paidOn: string, r
  * INV-2026-147 ($3,200.00) is waiting for you."; to the person, "Wendy Cacka
  * approved your October hours. Invoice INV-2026-147 is now with Arnaldo Oliveira."
  */
-export const hoursApprovedForApproverText = (by: string, name: string, month: string, number: string, total: string): string =>
-  `${by} approved ${name}'s ${month} hours. Invoice ${number} (${total}) is waiting for you.`
+/** Without the total (null) for an approver who does not see everyone's money (5 November 2026). */
+export const hoursApprovedForApproverText = (by: string, name: string, month: string, number: string, total: string | null): string =>
+  `${by} approved ${name}'s ${month} hours. Invoice ${number}${total ? ` (${total})` : ''} is waiting for you.`
 export const hoursApprovedForPersonText = (by: string, month: string, number: string, approver: string): string =>
   `${by} approved your ${month} hours. Invoice ${number} is now with ${approver}.`
 

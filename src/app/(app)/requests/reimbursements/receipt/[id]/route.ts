@@ -1,7 +1,7 @@
 /**
  * GET /requests/reimbursements/receipt/<id>: a reimbursement's receipt, full
- * size. To its person, Super Admins, Admins and Finance, and to whoever decides
- * reimbursements. Read with the service role and sent from here: the file
+ * size. To its person, Super Admins and Finance (seesMoney; rq-decide is
+ * Super Admin only). Read with the service role and sent from here: the file
  * never has an address of its own. Named as its copy in Google Drive:
  * "RCT-2026-005-Arnaldo Oliveira.jpg" (owner, 31 October 2026); the name it
  * was sent with stays on the request, as information.

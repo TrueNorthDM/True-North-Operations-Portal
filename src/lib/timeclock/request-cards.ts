@@ -10,7 +10,8 @@
  * cancellation and extra hours by the invoice rule, a reimbursement by anyone
  * on the Reimbursements list; never their own. Everyone else who sees a row
  * sees whose decision it is. Reimbursements are money: shown only to who sees that
- * person's money (pay-terms.ts seesMoney), and never to Team Leaders. The
+ * person's money (pay-terms.ts seesMoney: the person, Super Admins and
+ * Finance; owner, 5 November 2026). The
  * Approvals count (clocky-approvals.ts countWaiting) asks the same questions
  * (waitingRequests below), so the number and the list cannot disagree.
  *
@@ -105,7 +106,7 @@ const asked = (t: string, zone: string) => {
 // ── What the list and the count share ──────────────────────────────────────
 
 /** The access a money check takes, from the viewer. */
-export const moneyViewer = (v: Viewer) => ({ isAdmin: v.level === 'super_admin' || v.level === 'admin', personId: v.personId })
+export const moneyViewer = (v: Pick<Viewer, 'can' | 'personId'>) => ({ can: v.can, personId: v.personId })
 
 /** Waiting for a decision: time off asked for, or approved time off its person asks to cancel. */
 export const offWaiting = (r: { state: string; cancel_asked_at: string | null }): boolean =>
@@ -125,9 +126,14 @@ export function readOnlyLine(own: boolean, pending: boolean, who: string): strin
   return pending ? `Read only. ${who} decides it.` : null
 }
 
-/** A reimbursement is money: its row is for whoever sees that person's money, never a Team Leader. */
-export const showsRmb = (v: Viewer, personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
-  v.level !== 'team_leader' && seesMoney(moneyViewer(v), personId, settings)
+/**
+ * A reimbursement is money: its row is for whoever sees that person's money
+ * (seesMoney), never anyone else, whatever their level. A decider on the
+ * Reimbursements list who is neither Super Admin nor Finance is not shown the
+ * row (the safe choice, owner, 5 November 2026); today the list is Super Admins.
+ */
+export const showsRmb = (v: Pick<Viewer, 'can' | 'personId'>, personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
+  seesMoney(moneyViewer(v), personId, settings)
 
 /** A Team Leader sees the extra hours of the teams they lead, and their own. */
 export const showsXh = (v: Viewer, personId: string, teamId: string | null): boolean =>
@@ -143,9 +149,7 @@ export async function waitingRequests(v: Viewer, dir: Directory, settings: Invoi
   const [offs, rmbs, xhs] = await Promise.all([
     allRows<{ person_id: string; state: string; cancel_asked_at: string | null }>((a, b) => c.from('tc_absence_requests').select('person_id, state, cancel_asked_at')
       .or('state.eq.pending,cancel_asked_at.not.is.null').order('id').range(a, b), 'Time off could not be read'),
-    v.level === 'team_leader'
-      ? Promise.resolve([])
-      : allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read'),
+    allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read'),
     allRows<{ person_id: string }>((a, b) => c.from('extra_hours_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Extra hours could not be read'),
   ])
   const deciders = await loadRequestDeciders([...offs, ...rmbs, ...xhs].map(r => r.person_id), settings)
@@ -165,7 +169,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   const [offs, rmbs, xhs, catalog] = await Promise.all([
     allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
       .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id').range(a, b), 'Time off could not be read'),
-    v.level === 'team_leader' ? Promise.resolve([] as Rmb[]) : allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, receipt_number, report_id')
+    allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, receipt_number, report_id')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Reimbursements could not be read'),
     allRows<XhRow>((a, b) => c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Extra hours could not be read'),
@@ -221,6 +225,8 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const own = r.person_id === v.personId
       const { canDecide, decides, owner, ownerName } = routed('off', r.person_id, pending)
       const label = daysText(r.start_date, r.end_date)
+      // The reason for time off: the person and Super Admins only (owner, 5 November 2026).
+      const reason = own || v.isSuperAdmin ? r.reason : null
       const doneOf = (): CardRow['done'] => {
         if (pending) return null
         if (r.state === 'cancelled') return { label: 'Cancelled', tone: 'neu', by: `${dir.nameOf(r.cancelled_by)}, ${short(r.cancelled_at!, v.zone)}` }
@@ -232,7 +238,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         key: `o${r.id}`, type: 'off', id: r.id, personId: r.person_id, ...who,
         main: `${kind} · ${formatDuration(seconds)}`, sub: label,
         flag: cancelAsk ? { text: 'Cancellation asked', tone: 'warn' } : clash.length ? { text: `${clash[0].who} is off ${dayLabel(clash[0].d)}`, tone: 'neu' } : null,
-        why: cancelAsk ? (r.cancel_reason ? `"${r.cancel_reason}"` : null) : r.reason ? `"${r.reason}"` : null,
+        why: cancelAsk ? (r.cancel_reason ? `"${r.cancel_reason}"` : null) : reason ? `"${reason}"` : null,
         asked: cancelAsk ? `Cancellation asked ${short(r.cancel_asked_at!, v.zone)}` : asked(r.requested_at, v.zone),
         askedAt: cancelAsk ? r.cancel_asked_at! : r.requested_at,
         ownerName, owner, decides, own,
@@ -246,7 +252,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
             { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
             { k: 'Balance in Rippling', v: `${kind}: the balance shows here once Rippling is connected.` },
-            ...(cancelAsk ? [{ k: 'Why cancel', v: `"${r.cancel_reason ?? ''}"` }] : r.reason ? [{ k: 'Note', v: `"${r.reason}"` }] : []),
+            ...(cancelAsk ? [{ k: 'Why cancel', v: `"${r.cancel_reason ?? ''}"` }] : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
           ],
           allow: null,
           cal: { label: `Team calendar, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },

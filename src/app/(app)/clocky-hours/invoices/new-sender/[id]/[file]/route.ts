@@ -2,8 +2,8 @@
  * GET /clocky-hours/invoices/new-sender/<id>/<file>: a file of an invoice
  * sent through the invoice form by someone not in the Directory yet (their
  * PDF, 'pdf', or a receipt, 'r0', 'r1'...), so it can be read before it is
- * linked to a person. To the default approver, Super Admins, Admins and
- * Finance (newSenderRights).
+ * linked to a person. To Super Admins and Finance only, as it is money
+ * (newSenderRights, owner, 5 November 2026).
  */
 
 import { NextResponse } from 'next/server'

@@ -257,8 +257,9 @@ const afterDot = (s: string) => (s.includes(' · ') ? s.slice(s.indexOf(' · ') 
 
 /**
  * A timesheet or a fixed invoice waiting for the viewer, from its Approvals
- * row (approval-queue.ts). The queue shows an amount only to who may see it,
- * and never to a Team Leader; this never adds one.
+ * row (approval-queue.ts). The queue shows an amount only to who may see it
+ * (pay-terms.ts seesMoney: the person, Super Admins and Finance); this never
+ * adds one.
  *
  * A fixed invoice is labelled by what it is, whoever approves it (audit, 25
  * October 2026: a Team Leader saw "Approve hours" on an invoice). "Goes to"
@@ -270,7 +271,8 @@ export function timesheetRow(r: QueueRow, isLead: boolean, today: string, approv
   const fixed = r.key.startsWith('n')
   const period = beforeDot(r.main)
   const hours = fixed ? null : afterDot(r.main)
-  const money = !isLead && r.sub.startsWith('Invoice ')
+  // The queue's line carries an amount only for who sees this person's money.
+  const money = r.sub.startsWith('Invoice ')
   const payroll = !isLead && r.sub.startsWith('Payroll summary')
   const title = `${r.name}, ${period}`
   // The flag and the queue's line can say the same ("No timesheet"): once.
@@ -285,7 +287,7 @@ export function timesheetRow(r: QueueRow, isLead: boolean, today: string, approv
       ...(r.flag ? [{ k: 'Status', v: r.flag.text }] : []),
       ...(r.asked ? [{ k: fixed ? 'Created' : 'Sent', v: r.asked.replace(/^(Submitted|Created by itself,) /, '') }] : []),
     ],
-    note: isLead && !fixed ? 'You approve the hours. Amounts are never shown to Team Leaders.' : r.why,
+    note: isLead && !fixed ? 'You approve the hours. Amounts are shown only to the person, Super Admins and Finance.' : r.why,
     link: { label: 'Open in Approvals', href: r.href ?? approvalsHref },
     primary: {
       label: asInvoice ? 'Approve invoice' : isLead ? 'Approve hours' : 'Approve',

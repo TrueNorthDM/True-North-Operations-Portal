@@ -141,7 +141,7 @@ export function WeekGrid({ who, days, today, model, editable, combos, onOpenAdd,
       <div className="text-[12px] text-muted leading-normal">
         {editable
           ? 'Type "2:30" or "2.5"; hours round to the nearest 15 minutes when you save. Cells with a clock come from clocked entries; change those in the List or the Day timeline. Saving asks for a reason.'
-          : 'Hours come from your clock. To fix an entry, open it in the List; to add time, ask your Team Leader.'}
+          : 'These hours are read only for you. To change your own, open them in the List.'}
       </div>
     </>
   )

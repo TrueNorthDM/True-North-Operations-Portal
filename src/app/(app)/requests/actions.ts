@@ -175,7 +175,8 @@ export async function askExtraHours(input: { personId: string; hours: number; wh
     const dir = await loadDirectory()
     const target = String(input.personId ?? v.personId)
     const mine = target === v.personId
-    if (!mine && !(dir.people.get(target)?.teamIds ?? []).some(t => v.ledTeamIds.has(t))) return fail('You can ask for extra hours for yourself, or for someone on a team you lead.')
+    // For someone else: rq-xh-team (Team Leaders and Admins by default), and only on a team they lead.
+    if (!mine && !(v.can('rq-xh-team') && (dir.people.get(target)?.teamIds ?? []).some(t => v.ledTeamIds.has(t)))) return fail('You can ask for extra hours for yourself, or for someone on a team you lead.')
     const hours = Number(String(input.hours ?? '').replace(',', '.'))
     if (!(hours > 0 && hours <= 200)) return fail('Write how many hours, like 8.')
     const m = /^(week):(\d{4}-\d{2}-\d{2})$/.exec(String(input.when ?? ''))

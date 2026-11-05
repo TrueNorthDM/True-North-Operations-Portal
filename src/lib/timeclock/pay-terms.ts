@@ -6,11 +6,13 @@
  * routing input each person's timesheet is decided with (lib/timeclock/
  * routing.ts).
  *
- * Money rule (README_PART2, "Team Leaders never see invoices or money"): pay
- * is shown to the person, Super Admins, Admins and Finance, never to Team
- * Leaders or anyone else. `seesMoney` is the one place that says so. Reads go
- * through the privileged client after that check, as the rest of the money in
- * the portal does.
+ * Money rule (owner, 5 November 2026, the money lockdown): someone's pay,
+ * rates, costs, invoices, reimbursement amounts and payment documents are
+ * shown to the person themselves, to Super Admins (access item ck-money, Super
+ * Admin only) and to Finance (Company settings > Invoices), never to anyone
+ * else: not Team Leaders, and not Admins unless they are Finance. `seesMoney`
+ * is the one place that says so. Reads go through the privileged client after
+ * that check, as the rest of the money in the portal does.
  *
  * Not a "use server" file.
  */
@@ -108,27 +110,44 @@ export const loadRouteSettings = cache(async function loadRouteSettings(): Promi
   return { ...settings, approvers: audience.withTool('clocky-approvals').map(r => r.personId) }
 })
 
-/** Sees someone's pay and invoices: themselves, Super Admins, Admins and Finance. Never Team Leaders. */
-export function seesMoney(access: Pick<Access, 'isAdmin' | 'personId'>, personId: string | null, settings: Pick<InvoiceSettings, 'finance'>): boolean {
-  if (access.isAdmin) return true
+/** The access item that opens other people's money (catalogue: Super Admin only, so no tick can give it). */
+export const MONEY_KEY = 'ck-money'
+
+/**
+ * Sees someone's money (rates, amounts, invoices, reimbursements, payment
+ * documents): themselves, whoever holds ck-money (Super Admins) and Finance.
+ * Never a Team Leader; an Admin only when they are Finance (owner, 5 November
+ * 2026). With a null personId it answers for "someone else's".
+ */
+export function seesMoney(access: Pick<Access, 'can' | 'personId'>, personId: string | null, settings: Pick<InvoiceSettings, 'finance'>): boolean {
+  if (access.can(MONEY_KEY)) return true
   if (!access.personId) return false
   return access.personId === personId || settings.finance.includes(access.personId)
 }
+
+/** Sees everyone's money: Super Admins (ck-money) and Finance. */
+export const seesAllMoney = (access: Pick<Access, 'can' | 'personId'>, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
+  access.can(MONEY_KEY) || isFinance(access, settings)
 
 /** Finance: marks invoices and reimbursement documents paid. */
 export const isFinance = (access: Pick<Access, 'personId'>, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
   !!access.personId && settings.finance.includes(access.personId)
 
 /**
- * Who is shown what waits to be paid (owner, 25 October 2026): Super Admins,
- * Admins and Finance; invoices where Invoices is open to them and
- * reimbursement documents where Reimbursements is. Only Finance marks them
- * paid (on the pages); the others see that payments are waiting. Home's "to
+ * Who is shown what waits to be paid (owner, 25 October 2026; money lockdown,
+ * 5 November 2026): whoever sees everyone's money (Super Admins and Finance),
+ * invoices where Invoices is open to them and reimbursement documents where
+ * Reimbursements is. Only Finance marks them paid (on the pages). Home's "to
  * pay" lines and the rail's To pay count both read this one rule.
  */
-export function paysWhat(access: Pick<Access, 'personId' | 'can' | 'isAdmin'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
-  const sees = access.isAdmin || isFinance(access, settings)
-  return { invoices: sees && access.can('clocky-invoices'), documents: sees && access.can('rq-reimbursements') }
+export function paysWhat(access: Pick<Access, 'personId' | 'can'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
+  // Finance always; anyone else needs everyone's list (ck-inv-all, rq-rmb-all) and everyone's money (Super Admins).
+  const finance = isFinance(access, settings)
+  const all = seesAllMoney(access, settings)
+  return {
+    invoices: access.can('clocky-invoices') && (finance || (all && access.can('ck-inv-all'))),
+    documents: access.can('rq-reimbursements') && (finance || (all && access.can('rq-rmb-all'))),
+  }
 }
 
 

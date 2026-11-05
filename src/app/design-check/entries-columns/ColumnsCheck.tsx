@@ -18,7 +18,7 @@ function row(o: { date: string; start: string; end: string; time: string; second
     jobcodeId: n, path: o.path, short: o.path.split(' › ').pop() ?? '', client: o.path.split(' › ')[0], isI7: false, structure: o.structure,
     fields: {}, company: '', project: '', activity: o.activity, billable: o.billable, code: '', notes: o.notes ?? '',
     kind: 'clock', imported: false, pills: o.edited ? [...OPEN, EDITED] : OPEN, autoOut: null, edited: null, clockedOutBy: null,
-    locked: false, lockWhy: null, canEdit: true, shortenOnly: false, canDelete: true, canContinue: !!o.play, continuesPrevious: !!o.switched,
+    locked: false, lockWhy: null, canEdit: true, canDelete: true, canContinue: !!o.play, continuesPrevious: !!o.switched,
     attention: null, correction: null, timeOff: null,
   }
 }
@@ -58,7 +58,7 @@ export function ColumnsCheck() {
       <EntriesList rows={ROWS} all={false} nowMs={NOW} cols={cols} setCols={setCols} colsOpen={colsOpen} setColsOpen={setColsOpen}
         collapsed={collapsed} toggleDay={d => setCollapsed(c => (c.includes(d) ? c.filter(x => x !== d) : [...c, d]))}
         note="Times in your time zone (New York), rounded to the nearest 15 minutes." emptyText="No entries." canAdd
-        onEdit={noop} onHistory={noop} onContinue={noop} onDelete={noop} onOpen={noop} onAdd={noop} onRequest={noop} />
+        onEdit={noop} onHistory={noop} onContinue={noop} onDelete={noop} onOpen={noop} onAdd={noop} />
     </div>
   )
 }

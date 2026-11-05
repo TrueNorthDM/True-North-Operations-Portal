@@ -6,7 +6,7 @@
  *                    invoice, on a reimbursement document, paid, denied); an
  *                    employee's open document is a card that opens it
  *   RMB document     one reimbursement document (9D): the person, Super
- *                    Admins, Admins and Finance; Finance marks it paid
+ *                    Admins and Finance; Finance marks it paid
  *   Extra hours      the allowance this period and the requests; a Team Leader
  *                    also asks for, and sees, the people of their teams
  */
@@ -18,7 +18,7 @@ import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
 import { INVOICE_STATE, stateKey } from './invoices-view'
 import { money, moneyTotal } from './invoice-doc'
-import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
+import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, seesAllMoney, seesMoney } from './pay-terms'
 import { addDays } from './periods'
 import { orList, reimbursementApprovers } from './routing'
 import { formatDuration } from './rounding'
@@ -80,7 +80,7 @@ export interface WaitingRequest {
 export interface ReimbursementsPage {
   contractor: boolean
   rows: RmbRow[]
-  /** Super Admins, Admins and Finance (owner, 2026-10-23): everyone's, with who sent each. Null for the rest. */
+  /** Super Admins and Finance (owner, 2026-10-23): everyone's, with who sent each. Null for the rest. */
   everyone: RmbRow[] | null
   /** The same people: every reimbursement document, as the Invoices list (owner, 25 October 2026). Null for the rest. */
   documents: RmbDocList | null
@@ -116,12 +116,14 @@ export async function byIds<T>(ids: readonly number[], read: (ids: number[]) => 
   return out
 }
 
-export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>, zone: string, now = new Date()): Promise<ReimbursementsPage | null> {
+export async function loadReimbursements(v: Pick<Access, 'personId' | 'can'>, zone: string, now = new Date()): Promise<ReimbursementsPage | null> {
   if (!v.personId) return null
   const me = v.personId
   const c = db()
   const [dir, clients, settings] = await Promise.all([loadDirectory(), loadClients(), loadRouteSettings()])
-  const seesAll = v.isAdmin || isFinance(v, settings)
+  // Everyone's list and the documents (owner, 5 November 2026): Finance, or rq-rmb-all with everyone's
+  // money (Super Admins). Every row carries its amount, so an Admin who is not Finance keeps their own list.
+  const seesAll = isFinance(v, settings) || (v.can('rq-rmb-all') && seesAllMoney(v, settings))
   // Every row, a page at a time: PostgREST stops at 1,000, and everyone's list (with the
   // viewer's own rows taken from it) would lose the oldest without a word (audit, 27 October 2026).
   const loaded = await allRows<RRow>((a, b) => {
@@ -267,7 +269,7 @@ export interface RmbDocPage {
   pay: { who: string; line: string; total: string }
 }
 
-export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id: number, zone: string): Promise<RmbDocPage | null> {
+export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'can'>, id: number, zone: string): Promise<RmbDocPage | null> {
   const c = db()
   const d = oneOf(await c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, paid_by, created_at').eq('id', id).maybeSingle(), 'The reimbursement document could not be read')
   if (!d) return null
@@ -319,11 +321,12 @@ export interface ExtraPage {
   me: string
 }
 
-export async function loadExtraHours(v: Pick<Access, 'personId'> & { ledTeamIds: ReadonlySet<string> }, zone: string, now = new Date()): Promise<ExtraPage | null> {
+export async function loadExtraHours(v: Pick<Access, 'personId' | 'can'> & { ledTeamIds: ReadonlySet<string> }, zone: string, now = new Date()): Promise<ExtraPage | null> {
   if (!v.personId) return null
   const c = db()
   const [dir, settings, clients] = await Promise.all([loadDirectory(), loadClockySettings(), loadClients()])
-  const team = [...dir.people.values()].filter(p => p.active && p.id !== v.personId && p.teamIds.some(t => v.ledTeamIds.has(t))).map(p => p.id)
+  // The people they may ask for: those on the teams they lead, with rq-xh-team.
+  const team = v.can('rq-xh-team') ? [...dir.people.values()].filter(p => p.active && p.id !== v.personId && p.teamIds.some(t => v.ledTeamIds.has(t))).map(p => p.id) : []
   const ids = [v.personId, ...team]
   const today = localDate(now, zone)
   const terms = await loadPayTerms(ids)

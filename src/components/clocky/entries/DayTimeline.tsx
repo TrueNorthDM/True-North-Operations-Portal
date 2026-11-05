@@ -198,7 +198,7 @@ export function DayTimeline({
   const showNow = day === today && nowSec > ax.from && nowSec < ax.to
   const durationOnly = rows.filter(r => r.personId === viewer.personId && r.date === day && isWork(r) && !r.start)
   const help = (!canAdd
-    ? 'Click a block to edit it: you can shorten it or fix its details, with a reason. To add time, ask your Team Leader. '
+    ? 'Click a block to see it. These hours are read only for you. '
     : (all ? "Each lane is drawn in your time; the label shows the person's own hours. " : '') + 'Drag on empty space to add time, drag a block or its edges to change it, or click it. Every change asks for a reason. ')
     + (durationOnly.length ? `Logged as duration only, not on the timeline: ${durationOnly.map(r => `${nameFor(r, combos)} ${formatDuration(liveSeconds(r, nowMs))}`).join(', ')}.` : '')
 
@@ -274,7 +274,7 @@ export function DayTimeline({
                     const R = Math.min(ax.to, ev)
                     const ov = overlapping.has(r.key)
                     const st = blockStyle(r.client, ov)
-                    const movable = can && !r.running && !r.locked && r.canEdit && !r.shortenOnly
+                    const movable = can && !r.running && !r.locked && r.canEdit
                     const sub = `${timeLabel(r.start!, r.zone)} to ${r.running ? 'now' : timeLabel(r.end!, r.zone)}`
                     return (
                       <div key={r.key}

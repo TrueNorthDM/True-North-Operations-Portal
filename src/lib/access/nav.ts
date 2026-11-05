@@ -36,10 +36,12 @@ export interface PanelItem {
   anySurface?: readonly string[]
   /** Or when any of these tools is open to them (level and team list, Access levels). */
   tools?: readonly string[]
+  /** Or, without its surface, when the person has this fact (Rates & Costs: Finance reads it). */
+  orFact?: NavFact
   soon?: boolean
   /**
    * Also needs a fact about the person, not their level: `invoices` is for
-   * contractors, Super Admins, Admins and Finance (an employee gets no invoice);
+   * contractors, Super Admins and Finance (an employee gets no invoice);
    * `employee` is for US employees (time off goes to Rippling payroll).
    */
   needs?: NavFact
@@ -60,7 +62,7 @@ export interface PanelItem {
 export type { NavCount } from '@/lib/nav/counts'
 
 /** Facts about the person a row can need (NavContext.facts). */
-export type NavFact = 'invoices' | 'employee'
+export type NavFact = 'invoices' | 'employee' | 'finance'
 
 /**
  * A module that is not finished, drawn faded on the rail (asked for on 22
@@ -248,8 +250,9 @@ export const RAIL: readonly RailEntry[] = [
       label: null,
       items: [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
-        // Its own page since the part 2 handoff (Company Settings.dc.html 10A-2): Super Admins (d-rates).
-        { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates', count: 'no-rate' },
+        // Its own page since the part 2 handoff (Company Settings.dc.html 10A-2): Super Admins (d-rates);
+        // Finance reads it (money lockdown, owner, 5 November 2026).
+        { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates', orFact: 'finance', count: 'no-rate' },
         // The org chart lives in Human Resources since 4 November 2026 (the owner).
         { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources' },
         // Everyone signed in, like Organization (7 October 2026).
@@ -360,6 +363,7 @@ function rowVisible(i: PanelItem, ctx: NavContext): boolean {
   if (i.alsoSurface && !ctx.can(i.alsoSurface)) return false
   if (i.anySurface) return i.anySurface.some(k => ctx.can(k))
   if (i.tools) return i.tools.some(t => ctx.canTool(t))
+  if (i.orFact && ctx.facts?.has(i.orFact)) return true
   return !i.surface || ctx.can(i.surface)
 }
 

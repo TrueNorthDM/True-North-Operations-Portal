@@ -32,7 +32,8 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Document', robots: { index: false, follow: false } }
 
 /** The copy reads as Finance's records do: every document, in New York's days. */
-const SERVER = { personId: null, isAdmin: true, zone: 'America/New_York' }
+// The server itself (the signed two-minute pass): it prints any document for Finance's Drive copy.
+const SERVER = { personId: null, can: () => true, zone: 'America/New_York' }
 
 export default async function DrivePrintPage({ params, searchParams }: { params: Promise<{ kind: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { kind, id } = await params

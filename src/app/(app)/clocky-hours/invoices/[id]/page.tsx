@@ -1,6 +1,6 @@
 // One invoice (Clocky part 2, Invoices.dc.html 6F): the document, Preview PDF,
-// Mark paid for Finance, and its history. Open to the person, Super Admins,
-// Admins and Finance (lib/timeclock/invoices-view.ts); never Team Leaders.
+// Mark paid for Finance, and its history. Open to the person, Super Admins
+// and Finance (lib/timeclock/invoices-view.ts); never Team Leaders or Admins who are not Finance.
 
 import { notFound } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
