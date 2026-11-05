@@ -245,7 +245,7 @@ function PersonRow({ row: r, menuOpen, onMenu, onClockOut }: { row: WorkingRow; 
       <div className="flex items-center gap-1.5">
         <div className="flex flex-col items-end gap-[3px] tabular-nums lining-nums">
           <div className="flex items-center gap-1.5">
-            {r.warn && <span title="On the clock over 4h 30m since clock in" className="w-4 h-4 rounded-full bg-[#8a6d1a] text-[#ffffff] text-[10.5px] font-black flex items-center justify-center">!</span>}
+            {r.warn && <span title="On the clock 12h since clock in" className="w-4 h-4 rounded-full bg-[#8a6d1a] text-[#ffffff] text-[10.5px] font-black flex items-center justify-center">!</span>}
             <span className="font-(family-name:--font-display) font-extrabold text-[15px]" style={{ color: r.timerFg }}>{r.timer}</span>
           </div>
           <div className="text-[11.5px] text-muted whitespace-nowrap">Day <b className="text-foreground">{r.day}</b> · Week <b className="text-foreground">{r.week}</b></div>

@@ -66,7 +66,7 @@ export const PAGES: readonly ManualPage[] = [
   g('Admin', 'access-levels', 'Access levels and View Stage', 7, { adminOnly: true }),
   g('Admin', 'notification-rules', 'Notification rules', 3, { adminOnly: true }),
   g('Admin', 'monday-and-automations', 'Monday accounts and Automations', 5, { adminOnly: true }),
-  // North Time keeps today's text until its rules are approved (owner, 4 November 2026).
+  // North Time's pages follow the rules leadership decided on 4 November 2026.
   g('North Time', 'north-time', 'North Time'),
   g('North Time', 'north-time-quick-start', 'North Time quick start'),
   { slug: 'overview', tab: 'behind', group: 'How the portal works', title: 'Overview' },

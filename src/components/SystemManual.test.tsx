@@ -71,3 +71,26 @@ describe('SystemManual, Home and North Time (27 October 2026)', () => {
     expect(container.textContent).not.toContain('—')
   })
 })
+
+describe('SystemManual, North Time rules of 4 November 2026', () => {
+  it('describes the 12h stop and no longer the 5-hour window or "Still working?"', () => {
+    const { container } = render(<SystemManual superOnly={SUPER} />)
+    expect(container.querySelector('#north-time')).toHaveTextContent('12h 00m')
+    expect(container).not.toHaveTextContent('Still working')
+    expect(container).not.toHaveTextContent('4h 30m')
+  })
+
+  it('lets everyone add their own time: no "Request to add time" and no "shorten"', () => {
+    const { container } = render(<SystemManual superOnly={SUPER} />)
+    expect(container).not.toHaveTextContent('Request to add time')
+    expect(container).not.toHaveTextContent(/only shorten/)
+  })
+
+  it('has contractors send their own invoice, step by step', () => {
+    const { container } = render(<SystemManual superOnly={SUPER} />)
+    const qs = container.querySelector('#qs-contractors')!
+    for (const t of ['Sending your invoice (contractors)', 'Upload my own invoice', 'Build it here', 'Use my timesheet hours', 'This is my invoice']) expect(qs).toHaveTextContent(t)
+    expect(container).not.toHaveTextContent('invoice is made')
+    expect(container).not.toHaveTextContent('made by itself on the 1st')
+  })
+})

@@ -1,5 +1,31 @@
 # Clocky part 2: system design
 
+> **Changed 4 November 2026 (leadership, David's answers to the rules; built
+> and in production, migrations 151 and 152).** This file is the record of the
+> October design; where it says otherwise, these rules win:
+>
+> - **Contractors make and send their own invoice** (US labor law). The portal
+>   no longer makes an invoice when a timesheet is submitted, nor on day 1 for
+>   fixed-no-timesheet, for any kind of contractor (the `/send` form too).
+>   They send it from Invoices > Send your invoice: "Upload my own invoice"
+>   (their PDF, number, hours, total) or "Build it here" (their lines; "Use my
+>   timesheet hours"); on `/send`, "My own file" or "Fill it in here". They tick
+>   "This is my invoice"; every version is kept (`invoice_sends`). Home's Needs
+>   you, the Invoices list and a 9:00 AM daily reminder ask until it is sent
+>   (`src/lib/timeclock/contractor-invoice-rules.ts`).
+> - **Approving:** the hours can be approved before the invoice arrives. The
+>   approver sees the invoice beside the timesheet, client by client,
+>   Matches / Differs with the difference in hours and dollars; Approve both
+>   when they match, otherwise "Send the invoice back" (the invoice alone),
+>   "Approve the hours only", or approve anyway with a reason.
+> - **The invoice PDF** has a page 2, "Invoice record" (who made it, the check,
+>   the history), after the contractor's own file when they sent one.
+> - **Allowance:** salaried US employees are outside it (Rates & Costs, Pays as
+>   "Salaried (Rippling)", shown "Exempt (salaried)"); hourly employees and
+>   contractors keep it. Overtime only with an approved extra hours request.
+> - **Home:** each person chooses which cards show (Settings > Home and start);
+>   the day banner and the review card always show.
+
 Oct 21, 2026. Source: `Design/design_handoff_clocky 2/` (README_PART2.md, the
 `.dc.html` prototypes). Part 1 is `05-clocky-build.md`. Everything here ships to
 **staging only**; nothing Clocky goes to production until the owner asks.

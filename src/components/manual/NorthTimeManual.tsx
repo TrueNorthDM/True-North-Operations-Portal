@@ -4,6 +4,13 @@
  * the hours allowance, timesheets, approvals, requests, invoices), a quick
  * start for each audience, the move from TSheets, and "Where do I find...".
  *
+ * Brought up to the rules leadership decided on 4 November 2026: a clock left
+ * running stops at 12h (no "Still working?"), everyone adds and changes their
+ * own hours, salaried employees are outside the allowance, contractors make
+ * and send their own invoice (checked against the timesheet on approval, with
+ * an "Invoice record" page on the PDF), Home's cards are each person's choice,
+ * and the breaks and lunch policy.
+ *
  * Every line is written from the screens themselves (the clock panel, Time
  * entries, Approvals, Requests, Invoices, Company settings, the TSheets
  * transition page), with the button and tab names as they appear there.
@@ -40,11 +47,12 @@ function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
 
 const HOME: Block[] = [
   { t: 'Your day', d: 'The banner across the top greets you and says how many things need you today. It holds your clock: **On the clock** or **Off the clock**, today’s hours, the job you are on, **Switch**, and **Clock in** or **Clock out**. It is the same clock as the button in the top bar.' },
-  { t: 'Needs you · My Work · Requests', d: 'One card with three tabs and their counts. **Needs you**: what waits for your decision or your action, only what you can act on. **My Work**: your Monday items due in the next 7 days or late. **Requests**: what you asked for and where it is. A row’s button (**Decide**, **Open**) opens a side panel whose buttons do the same as the page behind them.' },
+  { t: 'Needs you · My Work · Requests', d: 'One card with three tabs and their counts. **Needs you**: what waits for your decision or your action, only what you can act on (a contractor also sees **Send your invoice** until it is sent). **My Work**: your Monday items due in the next 7 days or late. **Requests**: what you asked for and where it is. A row’s button (**Decide**, **Open**) opens a side panel whose buttons do the same as the page behind them.' },
   { t: 'To pay', d: 'For Super Admins, Admins and Finance: **Invoices to pay** and **Reimbursements to pay**, pinned at the top of Needs you, with how many, the total, and red while one is past due. **Open Invoices** and **Open Reimbursements** go to the lists where Finance pays them.' },
   { t: 'Pay period', d: 'Your current pay period: days worked, PTO, holidays (employees only) and sick days, the hours expected so far and your pace. It is also your timesheet reminder: amber on the day your period closes, red every day after until you send it. **Review and send** opens Time entries with Submit open. It never shows money.' },
   { t: 'Agenda', d: 'Who is **Out today**, what is on **Today**, and what is **Coming up** in the next month.' },
   { t: 'i7 Budget and Publishing goals', d: 'For people with the i7 report: the **Balance left** this month, with **Open report**. For Team Leaders and above: Publishing goals over the **Last 5 weeks**, every board against its targets.' },
+  { t: 'Your choice of cards', d: 'Each person chooses which cards Home shows: Settings, **Home and start**, a **Show ... on Home** switch for each of Needs you, Pay period, Agenda, My goals, i7 budget and Publishing goals (only the ones you can have). The day banner with the clock and the annual review card always show.' },
 ]
 
 export function HomeSection() {
@@ -62,14 +70,16 @@ export function HomeSection() {
 // ── North Time ──────────────────────────────────────────────────────────────
 
 const NT: Block[] = [
-  { t: 'The clock', d: 'The clock button in the top bar opens the clock panel. Pick **Resume** (your last job), one of **My combinations**, a **Recent** one, or search under **Something else** (**Browse** shows every job). Check the details and press **Clock in**. **Switch to** ends one entry and starts the next at the same second. There are no breaks: a break is a clock out. Times are kept on the nearest 15 minutes.' },
+  { t: 'The clock', d: 'The clock button in the top bar opens the clock panel. Pick **Resume** (your last job), one of **My combinations**, a **Recent** one, or search under **Something else** (**Browse** shows every job). Check the details and press **Clock in**. **Switch to** ends one entry and starts the next at the same second. The clock has no break button: to take a break off the clock, clock out. Times are kept on the nearest 15 minutes.' },
+  { t: 'A clock left running', d: 'If you forget to clock out, the clock stops by itself after **12h 00m** on the clock, counted from the clock in across every switch. There is no question before it. You are always told, in the bell and by email (a notification nobody can turn off), and the clock button turns red until you confirm when you really stopped. Admins see every automatic stop in **Clock safety**.' },
+  { t: 'Breaks and lunch', d: 'Longer breaks are encouraged, never required. A break under 15 minutes needs no clock out. Hourly employees and contractors clock out for lunch; salaried employees do not have to. The portal does not watch your computer and never clocks you out for being idle.' },
   { t: 'The 2026 job structure', d: 'From the switch date you pick a project as **Client › Division › Project**, then its **Activity**, grouped by family. **Billable** comes from the project and shows read only, “from the project”. **Notes** are required for **Other** and **Meeting: Other**. Before the switch date you pick the TSheets jobs, as before. **Which job?** lists every job and when to use it, with the TSheets list one choice away for people still on TSheets.' },
   { t: 'Combinations', d: 'Your favourites: a job with its Activity and note, saved under a name. Use **Save as combination** in the details, or the star on a Recent row. The panel shows the first 6; **More** shows the rest. **Manage** reorders, edits and deletes them. A combination on a TSheets job stops showing from the switch date; it is not deleted.' },
-  { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Users and Team Leaders can only shorten their own entries. **Add time** is for Team Leaders (their team), Admins and Super Admins; everyone else sends **Request to add time**. Every change needs a reason and stays in the entry’s history.' },
-  { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over.' },
-  { t: 'Timesheets and approvals', d: 'Each person submits monthly or every 2 weeks. Hours are approved by the person they report to (Directory, Work tab, **Reports to**); a contractor’s invoice by the invoice approver in Company settings, Invoices; when it is the same person it is one step. A submitted period is locked until it is returned or a Super Admin reopens it.' },
-  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Who decides is set in Company settings, Invoices, **Who approves what**: time off and extra hours follow the invoice rule (the person’s Reports to when they approve invoices, else the default approver); reimbursements go to the people on the **Reimbursements** list. Nobody decides their own. Requests to add time are decided by the person’s Team Lead, an Admin or a Super Admin, never by the person.' },
-  { t: 'Invoices and documents', d: 'A contractor’s invoice is made when they submit their timesheet, from their hours, their rate in Rates & Costs and their approved reimbursements. An employee’s approved reimbursements go on a reimbursement document. Finance pays both outside Rippling payroll and marks them paid.' },
+  { t: 'Time entries', d: 'Your hours as a **List**, a **Week grid** or a **Day timeline**, by day, week, month or pay period. Team Leaders and above switch **Whose hours** to **My team** or **All**. Everyone adds and changes their own hours, as in TSheets: **Add time**, or edit an entry. Team Leaders also change their team’s hours; Admins and Super Admins everyone’s. Every change needs a reason and stays in the entry’s history. The allowance still applies, and a sent timesheet stays locked.' },
+  { t: 'Hours allowance', d: 'Each person can have an allowance a week or a month (Directory, the person’s Work tab, **Pay and hours**). It is a hard limit: when it is used, the clock stops by itself and nothing more can be added until extra hours are approved. From 90% the clock panel says how much is left and when the clock will stop. No allowance means your hours are never flagged as over. Salaried US employees are outside the allowance (People, **Rates & Costs**, **Pays as**: **Salaried (Rippling)** shows **Exempt (salaried)**); hourly employees and contractors keep it. Overtime only with extra hours approved first.' },
+  { t: 'Timesheets and approvals', d: 'Each person submits monthly or every 2 weeks. Hours are approved by the person they report to (Directory, Work tab, **Reports to**); a contractor’s invoice by the invoice approver in Company settings, Invoices; when it is the same person it is one step. The hours can be approved before the invoice arrives. A submitted period is locked until it is returned or a Super Admin reopens it.' },
+  { t: 'Requests', d: 'In Requests on the rail: **Time off** (US employees), **Reimbursements** and **Extra hours**. Who decides is set in Company settings, Invoices, **Who approves what**: time off and extra hours follow the invoice rule (the person’s Reports to when they approve invoices, else the default approver); reimbursements go to the people on the **Reimbursements** list. Nobody decides their own.' },
+  { t: 'Invoices and documents', d: 'Contractors make and send their own invoice: the portal no longer makes one from the timesheet, nor on the 1st. After sending the timesheet, they send it from North Time, **Invoices**, **Send your invoice**: their own PDF, or one they build here. The approver checks it against the timesheet, client by client. Its PDF has a second page, **Invoice record**: who made it, the check and the history. An employee’s approved reimbursements go on a reimbursement document. Finance pays both outside Rippling payroll and marks them paid.' },
 ]
 
 export function NorthTimeSection() {
@@ -77,7 +87,7 @@ export function NorthTimeSection() {
     <section id="north-time" className="scroll-mt-6">
       <Eyebrow>Time clock</Eyebrow>
       <Heading>North Time</Heading>
-      <Lede>North Time is the portal’s own time clock. It replaces QuickBooks Time (TSheets): you clock in here, the portal keeps your hours, you submit them each pay period, and a contractor’s invoice is made from the same timesheet. It opens from the clock button in the top bar, from Home, and from North Time on the rail.</Lede>
+      <Lede>North Time is the portal’s own time clock. It replaces QuickBooks Time (TSheets): you clock in here, the portal keeps your hours, you submit them each pay period, and contractors then send their own invoice for it. It opens from the clock button in the top bar, from Home, and from North Time on the rail.</Lede>
       <Cards items={NT} />
     </section>
   )
@@ -115,17 +125,22 @@ const QUICK: Audience[] = [
         'Give it a name and save. It shows under **My combinations**.',
         '**Manage** lets you drag them in order, **Edit** or **Delete** them. Deleting keeps the hours you already recorded.',
       ] },
-      { t: 'Add time by hand', steps: [
-        'Only Team Leaders (for their team), Admins and Super Admins see **Add time** on Time entries.',
-        'Everyone else, and Team Leaders for their own hours, asks with **Request to add time** (below).',
-        'In **Add time**: the date, the start and end (or a duration), the job and Activity, and the reason. Then **Save**.',
+      { t: 'Add or change your own time', steps: [
+        'Everyone adds and changes their own hours, as in TSheets. Open North Time, **Time entries**, and press **Add time**.',
+        'Fill in the date, the start and end (or a duration), the job and Activity, and the reason. Then **Save**.',
+        'To change an entry, open it, change it and write the reason. Every change is kept in the entry’s history.',
+        'Your allowance still applies, and a sent timesheet stays locked: ask your approver to return it first.',
       ] },
-      { t: 'Request to add time', steps: [
-        'Open North Time, **Time entries**, and press **Request to add time**.',
-        'Pick the **Date**, **Start** and **End**.',
-        'Pick a combination under **Use a combination**, or the job and Activity.',
-        'Write **What happened (required)** and press **Send request**. The window says who it goes to.',
-        'The time counts only after it is approved. The answer comes to your bell.',
+      { t: 'A clock left running', steps: [
+        'Forgot to clock out? The clock stops by itself after **12h 00m** on the clock.',
+        'You are always told, in the bell and by email. Nobody can turn this one off.',
+        'The clock button turns red. Open it and confirm when you really stopped.',
+      ] },
+      { t: 'Breaks and lunch', steps: [
+        'Longer breaks are encouraged, never required.',
+        'A break under 15 minutes needs no clock out.',
+        'Hourly employees and contractors clock out for lunch. Salaried employees do not have to.',
+        'The portal does not watch your computer and never clocks you out for being idle.',
       ] },
       { t: 'Request extra hours', steps: [
         'Open Requests, **Extra hours**, and press **Ask for extra hours** (the clock panel links there too).',
@@ -138,6 +153,7 @@ const QUICK: Audience[] = [
         'From 90% it shows the hours left and, while the clock runs, the time it will stop by itself.',
         'When the allowance is used, your clock stops, and **Clock in**, **Switch** and adding time are refused.',
         'Ask for extra hours before you need them, not after.',
+        'Salaried US employees have no allowance: their hours are never stopped or flagged as over.',
       ] },
       { t: 'Submit your timesheet', steps: [
         'When your period closes, Home’s **Pay period** card turns amber (red once it is late).',
@@ -145,6 +161,7 @@ const QUICK: Audience[] = [
         'If your clock is running, clock out first.',
         'Fix anything listed under **Fix these first**, then check the total and **By client**.',
         'Press **Submit**. The period locks. If your approver returns it, you see why, fix it and submit again.',
+        'Contractors: then send your invoice for the period (see Contractors, below).',
       ] },
       { t: 'Time off (US employees)', steps: [
         'Open Requests, **Time off**, and press **Request time off**.',
@@ -159,30 +176,34 @@ const QUICK: Audience[] = [
         'For each line: the date, the category, the amount, what it was for, and its photo or PDF.',
         'Press **Send request** (**Send 3 receipts** when there are three). Someone on the **Reimbursements** list decides each receipt; the message names them.',
         'Anyone can ask for a reimbursement. Each receipt gets its own number when it is sent, like **RCT-2026-005**.',
-        'Contractors: each approved receipt goes on your next invoice as its own line. Employees: approved receipts go on a reimbursement document that Finance pays, outside Rippling payroll.',
+        'Contractors: tick your approved receipts on the next invoice you send; each goes on it as its own line. Employees: approved receipts go on a reimbursement document that Finance pays, outside Rippling payroll.',
       ] },
     ],
   },
   {
-    id: 'qs-contractors', who: 'Contractors', intro: 'Your invoice is made from your timesheet. You never type hours or your rate.',
+    id: 'qs-contractors', who: 'Contractors', intro: 'You make and send your own invoice. Making the invoice is part of being a contractor (US labor law), so the portal no longer makes it for you.',
     topics: [
-      { t: 'The invoice made with your timesheet', steps: [
-        'When you submit, the window shows **Your invoice**: its lines and the total, and who approves it.',
-        'Submit, and the invoice is made at the same time. You see it after you submit.',
-        'If Rates & Costs has no rate (or no amount a month) for you, the window says the invoice cannot be made yet. Ask a Super Admin to add it.',
-        'Paid a fixed amount with no timesheet? Your invoice is made by itself on the 1st of the month.',
+      { t: 'Sending your invoice (contractors)', steps: [
+        'Send your timesheet first (**Submit** on Time entries). Paid a fixed amount with no timesheet? Start on the 1st, for the month before.',
+        'Open North Time, **Invoices**, and press **Send your invoice**. Until it is sent, Home’s **Needs you**, the Invoices list and a reminder every morning at 9:00 AM ask for it.',
+        'Pick the period.',
+        'Choose **Upload my own invoice**: press **Choose your PDF** (up to 10 MB) and write **Your invoice number**, the **Hours on it** and the **Total (USD)**, so it can be checked.',
+        'Or choose **Build it here**: write your lines (what it covers, hours, rate). **Use my timesheet hours** copies your hours by client; you write the rate.',
+        'Tick the approved reimbursements your invoice includes.',
+        'Tick **This is my invoice.** and press **Send invoice**. It gets its INV number (like INV-2026-001).',
+        'Every version you send is kept: who sent it, when, how, and the sentence you ticked.',
+        'Sent back? You see the reason. Fix it and send it again: same number.',
       ] },
-      { t: 'What is on it', steps: [
-        'Its number (like INV-2026-001), the date, the period and the due date.',
-        'From: your name, country and email from the Directory. To: True North’s billing details.',
-        'Paid by the hour: one line per client, your hours times your rate. Fixed monthly: one line for the fixed amount, with your hours listed for the record.',
-        'Each approved reimbursement as its own line, then the total due, in US dollars.',
+      { t: 'How it is checked', steps: [
+        'Your hours can be approved before your invoice arrives.',
+        'The approver sees your invoice beside your timesheet, client by client: **Matches** or **Differs**, with the difference in hours and dollars (against your rate on file or your fixed amount).',
+        'When they differ, the approver can send the invoice back with a reason (your hours stay approved), approve the hours only, or approve anyway with a written reason.',
       ] },
       { t: 'Payments', steps: [
         'Open North Time, **Invoices** (**My invoices**) to see each invoice and where it is, for example **Waiting for approval**, **Approved** or **Paid**.',
-        '**Preview PDF** shows the invoice; download it from the preview.',
+        '**Preview PDF** shows the invoice; download it from the preview. Its last page, **Invoice record**, says who made it, the check against the timesheet and its history (after your own file, when you sent one).',
         'Finance pays approved invoices outside Rippling and marks them paid with the day.',
-        'Your bell tells you when an invoice is created, approved, returned (with the reason) and paid.',
+        'Your bell tells you when your invoice is received, sent back (with the reason) and paid.',
         'You are paid for hours worked: a company holiday adds no hours for a contractor.',
       ] },
     ],
@@ -195,15 +216,11 @@ const QUICK: Audience[] = [
         'Press **Review** to open the timesheet: the summary by client and by day, and every entry.',
         'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve and send to Rippling** for an employee. Or press **Return**, with a reason.',
       ] },
-      { t: 'Change only your team’s hours', steps: [
+      { t: 'Change your team’s hours', steps: [
         'On Time entries, set **Whose hours** to **My team** and pick the person.',
         'Use **Add time**, edit an entry, the **Week grid** or the **Day timeline**. Every change needs a reason and is kept in the history.',
-        'Your own hours work like everyone’s: you can only shorten them, and missing time goes through **Request to add time**.',
-        'Your own requests are decided by another Lead of a team you are on, an Admin or a Super Admin.',
-      ] },
-      { t: 'Requests to add time', steps: [
-        'Requests to add time from your team show in **Approvals**, **Waiting for you**.',
-        'Press **Approve**, or **Deny** with a reason. Approved, the time counts, but never past the person’s allowance.',
+        'Your own hours work like everyone’s: you add and change them yourself, with a reason.',
+        'Nobody’s hours go past their allowance, whoever adds them.',
       ] },
       { t: 'Extra hours', steps: [
         'Open Requests, **Extra hours**, **Ask for extra hours**, and pick the person under **For**.',
@@ -221,10 +238,17 @@ const QUICK: Audience[] = [
     topics: [
       { t: 'Approvals', steps: [
         'North Time, **Approvals**: **Waiting for you**, **With others** (read only) and **Decided** (the last 90 days).',
-        'Time off, its cancellation and extra hours go to the person’s Reports to when they approve invoices, else to the default approver; reimbursements (each receipt) to anyone on the **Reimbursements** list, the first to decide closes it. Only they decide, never their own; everyone else sees whose decision it is under **With others**. Admins and Super Admins decide requests to add time for everyone.',
+        'Time off, its cancellation and extra hours go to the person’s Reports to when they approve invoices, else to the default approver; reimbursements (each receipt) to anyone on the **Reimbursements** list, the first to decide closes it. Only they decide, never their own; everyone else sees whose decision it is under **With others**.',
         'A timesheet goes to the person’s Reports to; the invoice to the approver in Company settings, Invoices.',
         'Hours over the allowance that were not approved before: **Approve** still works, with a **Note to approve (required)**.',
         'A Super Admin can **Reopen** an approved timesheet until its invoice is paid.',
+      ] },
+      { t: 'Approving a contractor’s invoice', steps: [
+        'The hours can be approved before the invoice arrives; the page says when the invoice is still to come.',
+        'Open the timesheet with **Review**: the invoice sits beside it, client by client, **Matches** or **Differs**, with the difference in hours and dollars against the rate on file or the fixed amount. An uploaded PDF shows the hours and total the contractor typed.',
+        'When they match: **Approve both**.',
+        'When they do not: **Send the invoice back** (the invoice alone, with your reason; the hours stay), **Approve the hours only**, or approve anyway with a reason under **To approve anyway, write why (required)**.',
+        'The invoice PDF (preview, download and the Google Drive copy) ends with an **Invoice record** page: who made it, the check against the timesheet and the history.',
       ] },
       { t: 'Invoices to pay and Mark paid', steps: [
         'Home shows **Invoices to pay**; **Open Invoices** opens North Time, Invoices on the approved ones.',
@@ -233,10 +257,10 @@ const QUICK: Audience[] = [
         'Admins and Super Admins who are not Finance see what waits, but do not mark it paid.',
       ] },
       { t: 'The invoice form (Send an invoice)', steps: [
-        'For people who send True North invoices without signing in to the portal: freelancers paid a fixed amount, or by deliverables (one line a Monday item). One link for everyone, in Admin, **Company settings**, Invoices, **Send an invoice**: **Copy** it to share. The address is the same for good: truenorthportal.online/send.',
+        'For people who send True North invoices without signing in to the portal: freelancers paid a fixed amount, or by deliverables (one line a Monday item). They make their own invoice, like every contractor. One link for everyone, in Admin, **Company settings**, Invoices, **Send an invoice**: **Copy** it to share. The address is the same for good: truenorthportal.online/send.',
         'They write their name and email and press **Send me a code**: a 6-digit code by email, valid 10 minutes, 5 tries, **send it again** after a minute. The device then remembers their email for 30 days.',
         'Their email is looked up in the Directory (True North, Good News, personal and COE addresses). Found: their name and address come from their record, with **Edit**; what they change also goes on their record. Not found: they fill them in.',
-        'One invoice a month. Fixed amount: what it covers and the amount. Deliverables: each Monday item as a **Translated page** or a **Design asset**, at the rates in **Deliverable rates** (a person’s own in People, **Rates & Costs**, **Rate / page** and **Rate / design asset**, when set). An item already sent with the same kind, by anyone, is refused with the day it was sent. Reimbursements take the same fields and rules as **New reimbursement**, and their own PDF can go with it.',
+        'One invoice a month. First they choose **My own file** (their PDF, with the total on it) or **Fill it in here** (the portal makes the PDF from what they write). Before sending, they tick **This is my invoice**; every version sent is kept. Fixed amount: what it covers and the amount. Deliverables: each Monday item as a **Translated page** or a **Design asset**, at the rates in **Deliverable rates** (a person’s own in People, **Rates & Costs**, **Rate / page** and **Rate / design asset**, when set). An item already sent with the same kind, by anyone, is refused with the day it was sent. Reimbursements take the same fields and rules as **New reimbursement**, and their own PDF can go with it.',
         'A sender in the Directory gets an INV number at once; the invoice goes to its approver like any other (Approvals, **Invoice form**), and **Came from** on its page says how it came in, with their PDF. Approving it approves its reimbursements. A sender not in the Directory shows at the top of North Time, **Invoices**, under **New sender, not in the Directory**: the default approver picks the person (**Link to this person**; add them in Admin, People first if needed), and only then it gets its number.',
         'They hear everything by email: the copy, the number, approved, returned with the reason (they fix it and send it again from the same link, same number) and paid. While North Time is closed, the form says it is not open yet.',
       ] },
@@ -339,13 +363,15 @@ export function TransitionSection() {
 const WHERE: { what: string; where: string }[] = [
   { what: 'Clock in, switch, clock out', where: 'The clock button in the top bar, or the banner on Home' },
   { what: 'My hours', where: 'North Time, **Time entries**' },
-  { what: 'Fix missing time', where: 'Time entries, **Request to add time**' },
+  { what: 'Fix missing time', where: 'Time entries, **Add time**, with a reason' },
   { what: 'Which job to use', where: 'North Time, **Which job?**' },
   { what: 'Send my timesheet', where: 'Home, Pay period, **Review and send**, or Time entries, **Submit**' },
   { what: 'Time off', where: 'Requests, **Time off** (US employees)' },
   { what: 'Reimbursements', where: 'Requests, **Reimbursements**, **New request**' },
   { what: 'Extra hours', where: 'Requests, **Extra hours**' },
   { what: 'My invoices', where: 'North Time, **Invoices** (contractors)' },
+  { what: 'Send my invoice', where: 'North Time, **Invoices**, **Send your invoice**, or Home, Needs you (contractors)' },
+  { what: 'Choose the cards on Home', where: 'Settings, **Home and start**' },
   { what: 'Decisions waiting for me', where: 'North Time, **Approvals**, or Home, Needs you' },
   { what: 'Who is on the clock now', where: 'North Time, **Who’s working** (Team Leaders and up), also in the top bar' },
   { what: 'Hours by client, team or person', where: 'North Time, **Reports** (your own hours; Team Leaders their teams, hours only)' },
@@ -358,7 +384,7 @@ const WHERE: { what: string; where: string }[] = [
   { what: 'Job catalogue, Invoices, Reminders, North Time rollout', where: 'Admin, **Company settings**' },
   { what: 'TSheets entries since the switch date', where: 'North Time, **TSheets transition**' },
   { what: 'TSheets entries made after a person switched', where: 'Company settings, North Time rollout, **Clocked in TSheets after switching**' },
-  { what: 'Clocks that stopped by themselves', where: 'North Time, **Clock safety** (Admins and up)' },
+  { what: 'Clocks that stopped by themselves (12h)', where: 'North Time, **Clock safety** (Admins and up)' },
 ]
 
 export function WhereSection() {

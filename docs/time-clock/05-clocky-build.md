@@ -1,5 +1,24 @@
 # Clocky build, from the design handoff (Oct 16, 2026)
 
+> **Changed 4 November 2026 (leadership, David's answers to the rules; built
+> and in production).** This file is the record of the October build; where it
+> says otherwise, these rules win:
+>
+> - **Clock safety:** no "Still working?" at 4h 30m and no stop at 5h 00m. A
+>   clock left running stops by itself at **12h 00m** (`STOP_AFTER_SECONDS`,
+>   `src/lib/timeclock/safety.ts`); the person is always told, bell and email
+>   (`clocky-stopped`, locked on), and confirms the real end. The
+>   `clocky-still-working` notification and "Keep going" are switched off.
+> - **Own hours:** everyone (Users and Team Leaders too) adds and changes their
+>   own entries, with a reason and the history kept; the allowance applies and
+>   a sent timesheet stays locked (`src/lib/timeclock/scope.ts`). "Shorten
+>   only" and "Request to add time" for one's own hours are gone.
+> - **Breaks and lunch (policy, not enforced):** longer breaks encouraged,
+>   never required; hourly employees and contractors clock out for lunch,
+>   salaried employees do not have to; breaks under 15 minutes need no clock
+>   out. The portal does not monitor computers or clock people out for
+>   inactivity.
+
 The design is final: `Design/design_handoff_clocky/` (README.md wins over SPEC.md;
 the `.dc.html` files are the visual truth: measure them, do not invent). Served
 locally by the `clocky-design` preview config at http://localhost:4323/ (each

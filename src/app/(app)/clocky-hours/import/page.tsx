@@ -123,9 +123,9 @@ export default async function ClockyImportPage() {
           </div>
           <div className={card}>
             <div className={label}>Clock safety</div>
-            <div className="mt-1 font-semibold text-tn-ink">Stops after 5h</div>
+            <div className="mt-1 font-semibold text-tn-ink">Stops after 12h</div>
             <div className="text-xs text-muted mt-0.5">
-              Without an answer to &quot;Still working?&quot;
+              A clock left running; the person is always told
               {s?.import_cutoff_date ? ` · import stops at ${s.import_cutoff_date}` : ''}
             </div>
           </div>

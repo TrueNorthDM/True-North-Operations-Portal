@@ -70,6 +70,7 @@ export function HomeGuide() {
       <Step n={1} title="Take in the whole page" picture={<Picture caption="Home, as a Team Leader sees it." height={760}><HomePicture /></Picture>}>
         <p className="m-0">A navy banner across the top, then the cards. On the left, <strong>Needs you</strong>. On the right, the <strong>Agenda</strong> and, if you have the i7 report, the <strong>i7 Budget</strong>. Across the bottom, for Team Leaders and up, <strong>Publishing goals</strong>.</p>
         <p className="m-0">Each card reads on its own. If one cannot be read, it says so in its own place, and the rest of Home still shows.</p>
+        <p className="m-0">You choose which cards show, in Settings, <strong>Home and start</strong> (see <Link href="/manual/guides/profile-and-settings" className={LINK}>Your profile &amp; settings</Link>). The day banner with the clock and the annual review card always show.</p>
       </Step>
 
       <Step n={2} title="Read your day in the banner" picture={<Picture caption="The day banner."><DayBannerPicture /></Picture>}>
@@ -189,6 +190,7 @@ export function ProfileSettingsGuide() {
       <Step n={5} title="Your time zone and start page" picture={<Picture caption="Settings, Time and region."><SettingsPicture only={['time']} /></Picture>}>
         <p className="m-0">Pick <strong>Your time zone</strong> and when the <strong>Daily summary</strong> arrives: the bell and the summary follow it. Until you choose, it is New York time.</p>
         <p className="m-0">Under <strong>Home and start</strong>, <strong>After you sign in, open</strong> chooses the page you land on (Home or My Work).</p>
+        <p className="m-0">Below it, a <strong>Show ... on Home</strong> switch for each card you can have (Needs you, Pay period, Agenda, My goals, i7 budget, Publishing goals) chooses what Home shows you. The day banner with the clock and the annual review card always show.</p>
       </Step>
 
       <Step n={6} title="Your privacy" picture={<Picture caption="Settings, Privacy."><SettingsPicture only={['privacy']} /></Picture>}>

@@ -19,7 +19,7 @@
  * shows on its own.
  *
  * A clock still open from QuickBooks Time has no window of its own: it counts
- * from its start, so it closes at the 5-hour mark too, "as soon as Clocky
+ * from its start, so it closes at the 12-hour mark too, "as soon as Clocky
  * notices", and asks for the real end the same way (SPEC 1L).
  *
  * Pure: the job, the actions and the panel ask the same questions.

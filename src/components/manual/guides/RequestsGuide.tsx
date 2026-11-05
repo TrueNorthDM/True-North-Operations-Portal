@@ -3,7 +3,8 @@
 // built screens (components/requests, components/clocky/approvals) and their
 // rules (requests/actions.ts, reimbursements/new/route.ts, routing.ts); the
 // pictures are those screens with made-up data. North Time's own rules (the
-// clock, timesheets, allowances) are being redefined, so they are not explained.
+// clock, timesheets, allowances, the contractor's own invoice, decided on 4
+// November 2026) are explained in the North Time pages.
 
 import Link from 'next/link'
 import { GuideHeader, Picture, Step, Tip } from '../GuideParts'
@@ -54,7 +55,7 @@ export function ReimbursementsGuide() {
   return (
     <div className="flex flex-col gap-7">
       <GuideHeader eyebrow="Requests" title="Reimbursements" minutes={5}>
-        Ask for money you spent for work, with its receipt. Anyone can ask, employees and contractors. Approved, a contractor&apos;s goes on their next invoice by itself; an employee&apos;s goes on a reimbursement document that Finance pays, outside Rippling payroll.
+        Ask for money you spent for work, with its receipt. Anyone can ask, employees and contractors. Approved, a contractor&apos;s waits for the next invoice they send; an employee&apos;s goes on a reimbursement document that Finance pays, outside Rippling payroll.
       </GuideHeader>
 
       <Step n={1} title="Open Reimbursements" picture={<Picture caption="A contractor's reimbursements: a trip waiting, one on an invoice, one paid, one denied." height={560}><ReimbursementsPicture show="page" /></Picture>}>
@@ -87,7 +88,7 @@ export function ReimbursementsGuide() {
       </Step>
 
       <Step n={7} title="After it is approved" picture={<Picture caption="An employee's reimbursements, with the document waiting for Finance." height={460}><ReimbursementsPicture show="employee" /></Picture>}>
-        <p className="m-0"><strong>Contractors:</strong> it goes on your next invoice by itself, as its own line, and shows <strong>On invoice</strong>. If that invoice is already approved, it goes on the one after.</p>
+        <p className="m-0"><strong>Contractors:</strong> you make and send your own invoice, so it waits for it. When you send your next invoice (North Time, <strong>Invoices</strong>, <strong>Send your invoice</strong>), tick it: it goes on as its own line and shows <strong>On invoice</strong>.</p>
         <p className="m-0"><strong>Employees:</strong> the portal puts it on a reimbursement document for Finance. The card at the top of the page opens it.</p>
       </Step>
 
@@ -105,7 +106,7 @@ export function ExtraHoursGuide() {
   return (
     <div className="flex flex-col gap-7">
       <GuideHeader eyebrow="Requests" title="Extra hours" minutes={3}>
-        If you have an hours allowance and need more, ask here before you go over it, not after. Team Leaders can also ask for someone on the teams they lead.
+        If you have an hours allowance and need more, ask here before you go over it, not after: overtime needs approval first. Salaried US employees have no allowance. Team Leaders can also ask for someone on the teams they lead.
       </GuideHeader>
 
       <Step n={1} title="Open Extra hours" picture={<Picture caption="Extra hours, with one request waiting."><ExtraHoursPicture show="page" /></Picture>}>
