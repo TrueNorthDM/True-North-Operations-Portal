@@ -89,8 +89,14 @@ async function running(v: Viewer, now: Date): Promise<EntryRow | Fail> {
 /** At least a quarter hour must fit before the allowance for the clock to start (time is logged on the quarter hour). */
 const limitAt = (v: Viewer, day: string, now: Date) => limitRefusal(v.personId, { add: [{ day, seconds: QUARTER }] }, now)
 
-/** Before the person's North Time start date (in their zone) no clock starts: the sentence saying the day, else null. */
-const notStarted = async (v: Viewer, now: Date) => clockGate(await northTimeStart(v), localDate(now, v.zone))
+/**
+ * Before the person's North Time start date (in their zone) no clock starts:
+ * the sentence saying the day, else null. In no wave, never (migration 154).
+ */
+const notStarted = async (v: Viewer, now: Date) => {
+  const { startsOn, noWave } = await northTimeStart(v)
+  return clockGate(startsOn, localDate(now, v.zone), noWave)
+}
 
 // ── The panel ───────────────────────────────────────────────────────────────
 

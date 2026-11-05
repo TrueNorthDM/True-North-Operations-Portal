@@ -28,7 +28,7 @@ import { loadPayTerms } from './pay-terms'
 import { addDays, lockedMessage, periodContaining, periodLabel } from './periods'
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
 import { catalogueRows } from './job-catalogue'
-import { startDateOf } from './waves-data'
+import { startOf, type NorthTimeStart } from './waves-data'
 import { clockGate } from './waves'
 import { northTimeOpen } from './north-time-lock'
 
@@ -282,8 +282,9 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const lock = lockOn([today], subs.get(me) ?? [])
   // Before the person's North Time start date (their wave, Company settings >
   // North Time rollout), the clock does not start: they still clock in TSheets.
-  const startsOn = await northTimeStart(viewer)
-  const notYet = clockGate(startsOn, today)
+  // In no wave it never starts (migration 154).
+  const { startsOn, noWave } = await northTimeStart(viewer)
+  const notYet = clockGate(startsOn, today, noWave)
 
   // What each job fills in: the person's own history first, then the job
   // catalogue's defaults (Company, Project, billable by default; 11A).
@@ -338,15 +339,16 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
 }
 
 /**
- * The person's North Time start date, or null (no wave date set: no gate). A
- * failed read leaves the clock as it was rather than lock everyone out of it.
+ * The person's North Time start date, or null (no wave date set: no gate), and
+ * whether a Super Admin put them in no wave (the clock never starts). A failed
+ * read leaves the clock as it was rather than lock everyone out of it.
  */
-export async function northTimeStart(v: Pick<Viewer, 'personId' | 'level' | 'leader'>): Promise<string | null> {
+export async function northTimeStart(v: Pick<Viewer, 'personId' | 'level' | 'leader'>): Promise<NorthTimeStart> {
   try {
-    return await startDateOf(db(), v.personId, { level: v.level, leader: v.leader })
+    return await startOf(db(), v.personId, { level: v.level, leader: v.leader })
   } catch (e) {
     console.error('[clocky] North Time start date:', e instanceof Error ? e.message : e)
-    return null
+    return { startsOn: null, noWave: false }
   }
 }
 

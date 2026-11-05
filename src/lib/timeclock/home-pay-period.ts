@@ -40,6 +40,7 @@ import { currentStep } from './routing'
 import { formatDuration } from './rounding'
 import { holidaysBetween } from './time-off'
 import { dueTimesheet } from './home-timesheet'
+import { loadNoWave } from './waves-data'
 
 type Span = { start: string; end: string }
 
@@ -309,10 +310,11 @@ export async function loadHomePayPeriod(personId: string, now = new Date()): Pro
 
 async function readPayPeriod(personId: string, now: Date): Promise<PayPeriodResult> {
   const c = db()
-  const [dir, settings, changes, subs, routes, routeSettings, person] = await Promise.all([
+  const [dir, settings, changes, subs, routes, routeSettings, person, noWave] = await Promise.all([
     loadDirectory(), loadClockySettings(), loadCadenceChanges(c, [personId]), loadSubmissions(c, [personId]),
     loadRoutes([personId]), loadRouteSettings(),
     c.from('people').select('weekly_hours').eq('id', personId).maybeSingle(),
+    loadNoWave(c, [personId]),
   ])
   if (person.error) throw new Error(`Your schedule could not be read: ${person.error.message}`)
   const route = routes.get(personId)
@@ -358,7 +360,8 @@ async function readPayPeriod(personId: string, now: Date): Promise<PayPeriodResu
 
   const mySubs = subs.get(personId) ?? []
   const logged = (p: Span) => rows.some(r => r.source === 'portal' && r.entry_date >= p.start && r.entry_date <= p.end)
-  const due = fixed ? null : dueTimesheet(today, current, prev, mySubs, logged)
+  // No wave (migration 154): not on North Time, so no "closes today" nor "late" band.
+  const due = fixed || noWave.has(personId) ? null : dueTimesheet(today, current, prev, mySubs, logged)
   const prevSub = mySubs.find(s => s.start === prev.start && s.end === prev.end)
   const inv = invoice.data as { state: string; paid_on: string | null } | null
   const first = currentStep(route, routeSettings, 'submitted')?.owner ?? null

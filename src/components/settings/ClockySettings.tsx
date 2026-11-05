@@ -698,13 +698,16 @@ export function AgendaGoogleSwitch({ open, canChange, set }: { open: boolean; ca
 
 export interface RolloutApi {
   saveRolloutDates(i: { wave1: string; wave2: string }): Promise<Done>
-  moveToWave(i: { personId: string; wave: 1 | 2 | null }): Promise<Done>
+  /** 1 or 2, 0 for No wave, null to follow their level again. */
+  moveToWave(i: { personId: string; wave: 1 | 2 | 0 | null }): Promise<Done>
 }
 
 /**
  * The two waves (owner, 27 October 2026): wave 1 is everyone at Team Leader
  * level or above, plus anyone added by hand; wave 2 is everyone else. Each
  * starts on its own day; until a day is set nothing changes for its people.
+ * No wave (owner, 5 November 2026, migration 154) is only by hand: people it
+ * is not yet known whether they will use North Time, with no start date.
  */
 export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: RolloutData; canEdit: boolean; api: RolloutApi; skippedHref: string }) {
   const router = useRouter()
@@ -724,7 +727,14 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
       setBusy(false)
     }
   }
-  const waves = ([1, 2] as const).map(w => ({ w, date: data.dates[w], people: data.people.filter(p => p.wave === w) }))
+  const waves = ([1, 2, 0] as const).map(w => ({ w, date: w === 0 ? null : data.dates[w], people: data.people.filter(p => p.wave === w) }))
+  const title = (w: 1 | 2 | 0) => (w === 0 ? 'No wave' : `Wave ${w}`)
+  const about = (w: 1 | 2 | 0, date: string | null) => (w === 0
+    ? 'Not on North Time yet, and no start date: Clock in and Add time refuse for them, the TSheets import keeps every entry of theirs, and North Time sends them no timesheet or invoice reminders. Only by hand.'
+    : `${date ? `Starts on ${startDayLabel(date)}.` : 'No date yet.'} ${w === 1 ? 'Team Leader level and above, plus anyone added by hand.' : 'Everyone else.'}`)
+  const whereFrom = (p: RolloutData['people'][number]) => (p.wave === 0
+    ? `No wave${p.setByName ? ` (set by ${p.setByName})` : ''}`
+    : p.by === 'hand' ? `moved here by hand${p.setByName ? ` (by ${p.setByName})` : ''}` : '')
   const changed = d1 !== (data.dates[1] ?? '') || d2 !== (data.dates[2] ?? '')
   return (
     <div className="flex flex-col gap-[18px]">
@@ -746,7 +756,7 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
           ))}
         </div>
         <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 leading-[1.55]">
-          From a person&apos;s start date, North Time&apos;s clock starts for them, and the TSheets import stops taking their entries dated on or after it: those are set aside for someone to decide, never dropped. Before it, Clock in tells them the day they start and to keep clocking in TSheets. Adding time by hand and approvals are not affected. TSheets itself is never changed: their account stays as it is.
+          From a person&apos;s start date, North Time&apos;s clock starts for them, and the TSheets import stops taking their entries dated on or after it: those are set aside for someone to decide, never dropped. Before it, Clock in tells them the day they start and to keep clocking in TSheets. Adding time by hand and approvals are not affected. People in No wave have no start date at all: they stay on TSheets until moved to a wave. TSheets itself is never changed: their account stays as it is.
         </div>
         {canEdit && (
           <div className="flex justify-end">
@@ -772,22 +782,24 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
         {waves.map(({ w, date, people }) => (
           <div key={w} className={`${CARD} overflow-hidden`}>
             <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex flex-col gap-[3px]">
-              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Wave {w} · {people.length} {people.length === 1 ? 'person' : 'people'}</span>
-              <span className="text-[12.5px] text-muted">{date ? `Starts on ${startDayLabel(date)}.` : 'No date yet.'} {w === 1 ? 'Team Leader level and above, plus anyone added by hand.' : 'Everyone else.'}</span>
+              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{title(w)} · {people.length} {people.length === 1 ? 'person' : 'people'}</span>
+              <span className="text-[12.5px] text-muted">{about(w, date)}</span>
             </div>
             {people.length === 0 && <div className="px-[18px] py-3.5 text-[13px] text-muted">Nobody.</div>}
             {people.map(p => (
               <div key={p.id} className="flex items-center gap-3 px-[18px] py-2.5 border-b border-[var(--row-rule)] flex-wrap">
                 <span className="flex-1 min-w-[160px] flex flex-col gap-0.5">
                   <span className="text-[13.5px] text-tn-ink font-bold">{p.name}</span>
-                  <span className="text-[12px] text-muted">{p.levelLabel}{p.by === 'hand' ? ' · moved here by hand' : ''}</span>
+                  <span className="text-[12px] text-muted">{[p.levelLabel, whereFrom(p)].filter(Boolean).join(' · ')}</span>
                 </span>
                 {canEdit && (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 flex-wrap">
                     {p.by === 'hand' && (
                       <button type="button" disabled={busy} onClick={() => void run(() => api.moveToWave({ personId: p.id, wave: null }))} className={BTN_W}>Follow their level</button>
                     )}
-                    <button type="button" disabled={busy || !data.ready} onClick={() => void run(() => api.moveToWave({ personId: p.id, wave: w === 1 ? 2 : 1 }))} className={BTN_W}>Move to wave {w === 1 ? 2 : 1}</button>
+                    {([1, 2, 0] as const).filter(to => to !== w).map(to => (
+                      <button key={to} type="button" disabled={busy || !data.ready} onClick={() => void run(() => api.moveToWave({ personId: p.id, wave: to }))} className={BTN_W}>{to === 0 ? 'No wave' : `Move to wave ${to}`}</button>
+                    ))}
                   </span>
                 )}
               </div>

@@ -49,6 +49,8 @@ import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/l
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { ClockPanelData, EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import { closedRefusal } from '@/lib/timeclock/north-time-lock'
+import { loadNoWave } from '@/lib/timeclock/waves-data'
+import { NO_WAVE_MESSAGE, noWaveFor } from '@/lib/timeclock/waves'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
@@ -81,6 +83,21 @@ async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
   if (!access) return fail(SIGN_IN)
   if (!access.can(key)) return fail(NO_ACCESS)
   return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
+}
+
+/**
+ * A person in no wave (Company settings > North Time rollout, migration 154)
+ * is not on North Time: no time is added for them here, by anyone. A failed
+ * read leaves Add time as it was, as the clock does.
+ */
+async function noWaveRefusal(v: Viewer, personId: string, dir: { nameOf: (id: string) => string }): Promise<Fail | null> {
+  try {
+    if (!(await loadNoWave(db(), [personId])).has(personId)) return null
+  } catch (e) {
+    console.error('[clocky entries] no wave:', e instanceof Error ? e.message : e)
+    return null
+  }
+  return fail(personId === v.personId ? NO_WAVE_MESSAGE : noWaveFor(dir.nameOf(personId)))
 }
 
 async function reader(key = 'clocky-hours'): Promise<Viewer | Fail> {
@@ -292,6 +309,8 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
     if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
+    const noWave = await noWaveRefusal(v, personId, dir)
+    if (noWave) return noWave
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const job = catalog.jobs.get(Number(input.jobcodeId))
@@ -493,6 +512,8 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
     if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
+    const noWave = await noWaveRefusal(v, personId, dir)
+    if (noWave) return noWave
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.weekStart ?? ''))) return fail('Pick a week.')
@@ -593,6 +614,9 @@ export async function requestCorrection(input: { date: string; start: string; en
     const now = new Date()
     const c = db()
     const catalog = await loadCatalog()
+    // Not on North Time (no wave): their missing time goes in TSheets, not here.
+    const noWave = await noWaveRefusal(v, v.personId, { nameOf: () => v.name })
+    if (noWave) return noWave
     const reason = reasonOf(input.reason)
     if (!reason) return fail('Say what happened.')
     const today = localDate(now, v.zone)

@@ -293,7 +293,7 @@ const QUICK: Audience[] = [
         '**Job catalogue**: the 2026 structure beside the TSheets jobs. Add clients, divisions and projects; options are hidden, never deleted. From the switch date a TSheets job can be switched off, never renamed or moved.',
         '**Invoices**: the prefixes and the next number for invoices (INV), reimbursement documents (RMB) and receipts (RCT) (the count never restarts, only the year changes), **Who approves what** (timesheets, invoices, time off and extra hours, and the **Reimbursements** list: **Add a person who approves reimbursements**, **Remove**), who is **Finance** (the people who mark invoices and reimbursement documents paid: **Add a person to Finance**, **Remove**), True North’s billing details and the payment terms.',
         '**Reminders**: turn each timesheet reminder on or off; **See them in the bell**.',
-        '**North Time rollout**: each wave’s start date, who is in each wave (**Move to wave 1** or **2**, **Follow their level**), **Save dates**, and **Clocked in TSheets after switching**: each TSheets entry made after its person’s date waits under **To decide**, where you **Count it** (it becomes a Time entry; past the allowance it asks for a reason) or **Discard it**; **Decided** shows who chose what, and when.',
+        '**North Time rollout**: each wave’s start date, who is in each wave (**Move to wave 1** or **2**, **No wave**, **Follow their level**), **Save dates**, and **Clocked in TSheets after switching**: each TSheets entry made after its person’s date waits under **To decide**, where you **Count it** (it becomes a Time entry; past the allowance it asks for a reason) or **Discard it**; **Decided** shows who chose what, and when.',
         '**Timesheet periods**: when pay periods start and who submits how.',
       ] },
       { t: 'The TSheets transition page', steps: [
@@ -340,6 +340,7 @@ export function QuickStartSection() {
 const WAVES: Block[] = [
   { t: 'Wave 1: Sunday, Nov 8', d: 'Team Leaders and above: every Super Admin, Admin and Lead of a team, plus anyone a Super Admin moves there by hand.' },
   { t: 'Wave 2: Sunday, Nov 22', d: 'Everyone else. Both days are the first day of a two-week pay period, so no employee’s period is split between the two apps.' },
+  { t: 'No wave', d: 'People it is not yet known whether they will use North Time, put there by a Super Admin. They have no start date: **Clock in**, **Switch** and **Add time** are refused (“You are not on North Time yet. Keep recording your time in TSheets.”), the TSheets import keeps every entry of theirs, and North Time sends them no timesheet or invoice reminders until they are moved to a wave.' },
 ]
 
 const SWITCH: Block[] = [

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  automaticWave, beforeStart, checkDates, clockGate, hasStarted, isDay, notYetMessage,
-  personWave, splitByStart, startDayLabel,
+  NO_WAVE, NO_WAVE_MESSAGE, automaticWave, beforeStart, checkDates, clockGate, hasStarted, isDay, isWave, noWaveFor, notYetMessage,
+  personWave, splitByStart, startDayLabel, waveChoice,
 } from './waves'
 
 const DATES = { 1: '2026-11-08', 2: '2026-11-22' } as const
@@ -36,6 +36,43 @@ describe('personWave', () => {
   it('no date set: no start date, so nothing changes', () => {
     expect(personWave({ level: 'admin' }, null, { 1: null, 2: '2026-11-22' }).startsOn).toBeNull()
     expect(personWave({ level: 'user' }, null, { 1: null, 2: null }).startsOn).toBeNull()
+  })
+})
+
+describe('no wave (owner, 5 November 2026)', () => {
+  it('a person in no wave has no start date, whatever their level and the dates', () => {
+    for (const level of ['super_admin', 'admin', 'team_leader', 'user'] as const) {
+      expect(personWave({ level }, NO_WAVE, DATES)).toEqual({ wave: 0, by: 'hand', startsOn: null })
+      expect(personWave({ level, leader: true }, 0, DATES).startsOn).toBeNull()
+    }
+    expect(personWave({ level: 'user' }, 0, { 1: null, 2: null })).toEqual({ wave: 0, by: 'hand', startsOn: null })
+  })
+
+  it('the clock refuses on every day, with the sentence, dates set or not', () => {
+    expect(NO_WAVE_MESSAGE).toBe('You are not on North Time yet. Keep recording your time in TSheets.')
+    expect(clockGate(null, '2030-01-01', true)).toBe(NO_WAVE_MESSAGE)
+    expect(clockGate('2026-11-08', '2026-12-01', true)).toBe(NO_WAVE_MESSAGE)
+    expect(clockGate(null, '2030-01-01', false)).toBeNull()
+    expect(noWaveFor('Ed Wagner')).toBe('Ed Wagner is not on North Time yet: their time stays in TSheets.')
+  })
+
+  it('never has a start date for the import: every TSheets entry of theirs is kept', () => {
+    const start = personWave({ level: 'user' }, 0, DATES).startsOn
+    const starts = new Map(start ? [['ed', start]] : [])
+    const rows = [{ person_id: 'ed', entry_date: '2026-11-08' }, { person_id: 'ed', entry_date: '2027-03-01' }]
+    expect(splitByStart(rows, starts)).toEqual({ keep: rows, skip: [] })
+  })
+
+  it('the form sends 0 or "none" for no wave; null follows the level; anything else is refused', () => {
+    expect(waveChoice(0)).toBe(0)
+    expect(waveChoice('none')).toBe(0)
+    expect(waveChoice(1)).toBe(1)
+    expect(waveChoice(2)).toBe(2)
+    expect(waveChoice(null)).toBeNull()
+    expect(waveChoice(3)).toBeUndefined()
+    expect(waveChoice('1')).toBeUndefined()
+    expect(waveChoice(undefined)).toBeUndefined()
+    expect(isWave(0) && isWave(1) && isWave(2) && !isWave(-1)).toBe(true)
   })
 })
 

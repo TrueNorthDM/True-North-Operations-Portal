@@ -25,7 +25,9 @@
  *
  * Only people who use Clocky: a late reminder needs time logged in the portal
  * in that period, so nobody is chased for months kept in QuickBooks Time.
- * Fixed, no timesheet contractors submit nothing and are left out. Every line
+ * Fixed, no timesheet contractors submit nothing and are left out, and so is
+ * anyone a Super Admin put in no wave (not on North Time, migration 154): no
+ * due, ends, late or invoice line for them. Every line
  * is written once (the notifications' dedupe key), however often this runs.
  */
 
@@ -40,6 +42,7 @@ import { addDays, daysBetween, isSent, periodContaining, periodLabel, rangeText 
 import { formatDuration } from './rounding'
 import { notifyClockyReminders } from '@/lib/notifications/run'
 import { applyTypeChanges } from './type-change'
+import { loadNoWave } from './waves-data'
 import { loadBirthDates } from '@/lib/hr/contact'
 import { loadCelebrationOptOuts } from '@/lib/settings/person'
 
@@ -63,7 +66,13 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
   const over: { personId: string; key: string; to: string[]; text: string }[] = []
 
   // ── 9:00 AM in each person's zone: due, ends, late ───────────────────────
-  const atNine = people.filter(p => Math.floor(localMinutes(now, p.zone) / 60) === 9)
+  // Not people in no wave: they are not on North Time, so it asks them for no
+  // timesheet nor invoice. Unread, the log says so and nobody is left out.
+  const noWave = await loadNoWave(c).catch(e => {
+    console.error('[reminders] no wave:', e instanceof Error ? e.message : e)
+    return new Set<string>()
+  })
+  const atNine = people.filter(p => Math.floor(localMinutes(now, p.zone) / 60) === 9 && !noWave.has(p.id))
   if (atNine.length && (on.contractor_due || on.pay_period_ends || on.late)) {
     const prevOf = new Map(atNine.map(p => {
       const today = localDate(now, p.zone)

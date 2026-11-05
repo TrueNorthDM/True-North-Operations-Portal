@@ -11,7 +11,7 @@ import type { Db } from '@/lib/supabase/types'
 import { missingTable } from '@/lib/supabase/errors'
 import { loadSubjects } from '@/lib/access/store'
 import { LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
-import { NO_DATES, personWave, type Wave, type WaveDates } from './waves'
+import { NO_DATES, NO_WAVE, isWave, personWave, type Wave, type WaveDates } from './waves'
 import { northTimeOpen } from './north-time-lock'
 
 /** The two dates. A missing table is "not set"; any other failed read throws (an unread date is not "no date"). */
@@ -26,25 +26,54 @@ export async function loadWaveDates(c: Db): Promise<WaveDates> {
   return out
 }
 
-/** person id -> the wave a Super Admin moved them to. */
-export async function loadWaveOverrides(c: Db, personId?: string): Promise<Map<string, Wave>> {
-  let q = c.from('tc_rollout_people').select('person_id, wave')
-  if (personId) q = q.eq('person_id', personId)
+/** A Super Admin's choice for one person: the wave (1, 2, or 0 for no wave) and who set it. */
+export interface WaveOverride { wave: Wave; setBy: string | null }
+
+async function readOverrides(c: Db, ids?: readonly string[]): Promise<Map<string, WaveOverride>> {
+  if (ids && !ids.length) return new Map()
+  let q = c.from('tc_rollout_people').select('person_id, wave, set_by')
+  if (ids) q = q.in('person_id', [...ids])
   const { data, error } = await q.limit(5000)
   if (error) {
     if (missingTable(error)) return new Map()
     throw new Error(`The North Time rollout people could not be read: ${error.message}`)
   }
-  return new Map(((data ?? []) as { person_id: string; wave: number }[])
-    .filter(r => r.wave === 1 || r.wave === 2).map(r => [r.person_id, r.wave as Wave]))
+  return new Map(((data ?? []) as { person_id: string; wave: number; set_by: string | null }[])
+    .filter(r => isWave(r.wave)).map(r => [r.person_id, { wave: r.wave as Wave, setBy: r.set_by }]))
 }
 
-/** One person's start date, for the clock: their level from the caller, their override and the dates from here. */
+/** person id -> the wave a Super Admin moved them to (0: no wave). */
+export async function loadWaveOverrides(c: Db, personId?: string): Promise<Map<string, Wave>> {
+  const all = await readOverrides(c, personId ? [personId] : undefined)
+  return new Map([...all].map(([id, o]) => [id, o.wave]))
+}
+
+/**
+ * The people a Super Admin put in no wave, among `ids` (everyone without
+ * `ids`). They are "not started" everywhere: no clock, no Add time, no North
+ * Time reminders. A missing table is nobody; any other failed read throws.
+ */
+export async function loadNoWave(c: Db, ids?: readonly string[]): Promise<Set<string>> {
+  const all = await readOverrides(c, ids)
+  return new Set([...all].filter(([, o]) => o.wave === NO_WAVE).map(([id]) => id))
+}
+
+/** Where one person stands, for the clock: their start date, and whether they are in no wave. */
+export interface NorthTimeStart { startsOn: string | null; noWave: boolean }
+
+/** One person's start, for the clock: their level from the caller, their override and the dates from here. */
+export async function startOf(c: Db, personId: string, who: { level: AccessLevel; leader?: boolean }): Promise<NorthTimeStart> {
+  // No wave is read first: it refuses the clock even while no date is set.
+  const [dates, overrides] = await Promise.all([loadWaveDates(c), loadWaveOverrides(c, personId)])
+  const override = overrides.get(personId) ?? null
+  if (override === NO_WAVE) return { startsOn: null, noWave: true }
+  if (!dates[1] && !dates[2]) return { startsOn: null, noWave: false }
+  return { startsOn: personWave(who, override, dates).startsOn, noWave: false }
+}
+
+/** One person's start date (null in no wave or with no date). */
 export async function startDateOf(c: Db, personId: string, who: { level: AccessLevel; leader?: boolean }): Promise<string | null> {
-  const dates = await loadWaveDates(c)
-  if (!dates[1] && !dates[2]) return null
-  const override = (await loadWaveOverrides(c, personId)).get(personId) ?? null
-  return personWave(who, override, dates).startsOn
+  return (await startOf(c, personId, who)).startsOn
 }
 
 export interface RolloutPerson {
@@ -55,21 +84,28 @@ export interface RolloutPerson {
   wave: Wave
   by: 'level' | 'hand'
   startsOn: string | null
+  /** Who moved them by hand ("No wave (set by Arnaldo Oliveira)"); null when by level or unknown. */
+  setByName: string | null
 }
 
 /** Everyone active, each with their wave and start date. Sorted by name. */
 export async function loadRolloutPeople(c: Db, dates?: WaveDates): Promise<RolloutPerson[]> {
-  const [d, overrides, subjects] = await Promise.all([dates ?? loadWaveDates(c), loadWaveOverrides(c), loadSubjects(c)])
+  const [d, overrides, subjects] = await Promise.all([dates ?? loadWaveDates(c), readOverrides(c), loadSubjects(c)])
+  const nameOf = new Map(subjects.map(s => [s.id, s.name]))
   return subjects.map(s => {
     const leader = [...s.teams.values()].some(Boolean)
-    const w = personWave({ level: s.level, leader }, overrides.get(s.id) ?? null, d)
-    return { id: s.id, name: s.name, level: s.level, levelLabel: LEVEL_LABEL[s.level], ...w }
+    const o = overrides.get(s.id)
+    const w = personWave({ level: s.level, leader }, o?.wave ?? null, d)
+    const setByName = w.by === 'hand' && o?.setBy ? nameOf.get(o.setBy) ?? null : null
+    return { id: s.id, name: s.name, level: s.level, levelLabel: LEVEL_LABEL[s.level], ...w, setByName }
   }).sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
  * person id -> start date, for everyone with one. Empty while no date is set,
- * without reading anyone (the import calls it on every run).
+ * without reading anyone (the import calls it on every run). People in no
+ * wave have no start date, so they are never here: the import keeps every
+ * TSheets entry of theirs.
  */
 export async function loadStartDates(c: Db): Promise<Map<string, string>> {
   // While North Time is closed nobody has started: the import keeps every TSheets entry.

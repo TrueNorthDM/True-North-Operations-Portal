@@ -5,9 +5,15 @@
  *   wave 1  everyone at Team Leader level or above (Super Admin, Admin, Lead
  *           of any team) automatically, plus anyone moved there by hand
  *   wave 2  everyone else
+ *   no wave (0)  people it is not yet known whether they will use North Time
+ *           (owner, 5 November 2026, migration 154): only by hand, never by
+ *           level. They have no start date while there: the clock, Switch and
+ *           Add time refuse for them (noWaveMessage), the import keeps every
+ *           TSheets entry of theirs, and North Time's timesheet and invoice
+ *           reminders leave them out. "Not started", never "started".
  *
  * A Super Admin sets the two days in Company settings > North Time rollout,
- * and can move a person to the other wave (tc_rollout_people). Until a wave
+ * and can move a person to the other wave or to no wave (tc_rollout_people). Until a wave
  * has a day, its people have no start date and nothing changes for them: the
  * clock works as before and the import keeps taking their TSheets hours.
  *
@@ -23,7 +29,27 @@
 import { MONTH_SHORT } from '@/lib/format/months'
 import type { AccessLevel } from '@/lib/access/catalogue'
 
-export type Wave = 1 | 2
+/** 1 and 2 are the dated waves; 0 is "No wave" (no start date, set by hand only). */
+export type Wave = 1 | 2 | 0
+/** A wave with a start day. */
+export type DatedWave = 1 | 2
+
+export const NO_WAVE = 0 as const
+
+/** A value saved in tc_rollout_people.wave (migration 154 allows 0). */
+export function isWave(v: unknown): v is Wave {
+  return v === 0 || v === 1 || v === 2
+}
+
+/**
+ * What the rollout form may send for a person: 1 or 2, 0 or 'none' (no wave),
+ * or null (follow their level again). Anything else is undefined: refused.
+ */
+export function waveChoice(v: unknown): Wave | null | undefined {
+  if (v === null) return null
+  if (v === 'none') return NO_WAVE
+  return isWave(v) ? v : undefined
+}
 
 /** The two waves' days, YYYY-MM-DD, or null while not set. */
 export interface WaveDates { 1: string | null; 2: string | null }
@@ -40,17 +66,21 @@ export interface PersonWave {
   wave: Wave
   /** Where the wave comes from: their level, or a Super Admin moved them. */
   by: 'level' | 'hand'
-  /** The day they start on North Time, or null while their wave has no date. */
+  /** The day they start on North Time, or null while their wave has no date (always null for no wave). */
   startsOn: string | null
 }
 
 /** Team Leader and above: wave 1 without anyone adding them. */
-export function automaticWave(p: WavePerson): Wave {
+export function automaticWave(p: WavePerson): DatedWave {
   return p.leader || p.level === 'super_admin' || p.level === 'admin' || p.level === 'team_leader' ? 1 : 2
 }
 
-/** The person's wave and start date: a hand-set wave wins over the automatic one. */
+/**
+ * The person's wave and start date: a hand-set wave wins over the automatic
+ * one. No wave (0) has no start date whatever their level and the dates.
+ */
 export function personWave(p: WavePerson, override: Wave | null | undefined, dates: WaveDates): PersonWave {
+  if (override === NO_WAVE) return { wave: NO_WAVE, by: 'hand', startsOn: null }
   const wave = override === 1 || override === 2 ? override : automaticWave(p)
   return { wave, by: override === 1 || override === 2 ? 'hand' : 'level', startsOn: dates[wave] ?? null }
 }
@@ -78,8 +108,20 @@ export function notYetMessage(startsOn: string): string {
   return `You start on North Time on ${startDayLabel(startsOn)}. Until then, keep clocking in TSheets.`
 }
 
-/** The clock's gate: the sentence to show, or null when the clock may start. */
-export function clockGate(startsOn: string | null, today: string): string | null {
+/** What the clock and Add time say to someone in no wave: they are not on North Time. */
+export const NO_WAVE_MESSAGE = 'You are not on North Time yet. Keep recording your time in TSheets.'
+
+/** The same, when someone adds time for a person in no wave. */
+export function noWaveFor(name: string): string {
+  return `${name} is not on North Time yet: their time stays in TSheets.`
+}
+
+/**
+ * The clock's gate: the sentence to show, or null when the clock may start.
+ * No wave refuses on every day, dates set or not.
+ */
+export function clockGate(startsOn: string | null, today: string, noWave = false): string | null {
+  if (noWave) return NO_WAVE_MESSAGE
   return beforeStart(startsOn, today) ? notYetMessage(startsOn!) : null
 }
 

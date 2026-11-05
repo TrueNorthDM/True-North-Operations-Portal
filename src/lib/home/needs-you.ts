@@ -61,6 +61,7 @@ import { formatDuration } from '@/lib/timeclock/rounding'
 import { currentStep, invoiceApprover, orList, type TimesheetState } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
+import { loadNoWave } from '@/lib/timeclock/waves-data'
 import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, ownTimeOffShown, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
 import { loadInvoicesToSend } from '@/lib/timeclock/send-invoice-data'
 
@@ -569,6 +570,8 @@ async function myTimesheets(v: Viewer, now: Date): Promise<HomeRow[]> {
 
 /** "Send your invoice for October": each sent timesheet (or month, with no timesheet) still waiting for the contractor's own invoice. */
 async function invoicesToSend(v: Viewer, now: Date): Promise<HomeRow[]> {
+  // Someone in no wave is not on North Time (migration 154): no invoice is asked of them here.
+  if ((await loadNoWave(db(), [v.personId])).has(v.personId)) return []
   const data = await loadInvoicesToSend(v.personId, now, { hours: false })
   if (!data) return []
   const today = localDate(now, v.zone)
