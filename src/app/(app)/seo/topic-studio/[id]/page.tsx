@@ -1,119 +1,111 @@
-// One Topic Studio topic (phase 0, 5 November 2026). For now a read-only
-// overview of what the import brought: keyphrases, terms by relevance and the
-// questions marked for headings. The tabs of the mockup (Setup, Competitors,
-// Topic terms, Questions, Originality for SEOs; Writer workshop and SEO brief
-// for everyone) are built on this page in phases 1 and 2.
+// One Topic Studio topic (phase 1, 5 November 2026): the tabs of the approved
+// mockup. An SEO (topic-studio-seo) works through Setup, Competitors, Topic
+// terms, Questions and the SEO brief; a writer (topic-studio) opens only
+// topics shared with writers, and sees the SEO brief until the writer
+// workshop arrives (phase 2). Originality is phase 4.
 //
-// A writer opens only topics shared with writers; anything else is "not found",
+// The page reads the topic and its captured pages once, runs the analysis
+// only for the tabs that show it, and hands each tab plain data
+// (lib/topic-studio/views.ts). A topic a writer may not open is "not found",
 // so a link cannot tell them a hidden topic exists.
 
 import { notFound, redirect } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Pill } from '@/components/ui/Pill'
+import { Tabs, type TabItem } from '@/components/ui/Tabs'
 import { requireSurface } from '@/lib/access/resolve'
 import { previewHref } from '@/lib/auth/view-as-server'
-import { ROUTES } from '@/lib/nav/routes'
-import { formatDate } from '@/lib/directory/people-types'
-import { zoneDate } from '@/lib/notifications/schedule'
+import { ROUTES, topicStudioTopic } from '@/lib/nav/routes'
+import { compList, createAnalysis } from '@/lib/topic-studio/analysis'
+import { briefHtml, briefMarkdown, slugOf, termListHtml, termListText, termsCsv } from '@/lib/topic-studio/brief'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { readTopic, topicRole } from '@/lib/topic-studio/store'
-import { CARD, CARD_TITLE, FIELD_LABEL, PAGE_TITLE } from '@/lib/ui/type'
+import { listClientsFull, loadBundle, topicRole } from '@/lib/topic-studio/store'
+import { competitorsView, questionsView, termsView } from '@/lib/topic-studio/views'
+import { PAGE_TITLE } from '@/lib/ui/type'
+import { BriefTab } from './BriefTab'
+import { CompetitorsTab } from './CompetitorsTab'
+import { QuestionsTab } from './QuestionsTab'
+import { SetupTab } from './SetupTab'
+import { TermsTab } from './TermsTab'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Topic Studio' }
 
-type Term = { t?: unknown; tier?: unknown }
-type Question = { q?: unknown; heading?: unknown; off?: unknown }
+const SEO_TABS = ['setup', 'competitors', 'terms', 'questions', 'brief'] as const
+type Tab = (typeof SEO_TABS)[number]
 
-const lines = (v: unknown) => (typeof v === 'string' ? v.split('\n').map(s => s.trim()).filter(Boolean) : [])
-const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
-
-export default async function TopicPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TopicPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const access = await requireSurface('tools')
   const role = topicRole(access.canTool)
   if (!role) redirect(await previewHref('/'))
   const { id } = await params
-  const t = await readTopic(createAdminClient(), id, role)
-  if (!t) notFound()
+  const db = createAdminClient()
+  const b = await loadBundle(db, id, role)
+  if (!b) notFound()
 
-  const d = t.data
-  const terms = list<Term>(d.terms).filter(x => typeof x.t === 'string')
-  const tier = (name: string) => terms.filter(x => x.tier === name).map(x => String(x.t))
-  const headings = list<Question>(d.questions).filter(q => q.heading && !q.off && typeof q.q === 'string').map(q => String(q.q))
-  const answerTop = list<unknown>(d.answerTop).filter((x): x is string => typeof x === 'string')
-  const secondary = lines(d.secondary)
-  const avoid = lines(d.avoid)
+  const writer = role === 'writer'
+  const { tab: asked } = await searchParams
+  const tab: Tab = writer ? 'brief' : (SEO_TABS as readonly string[]).includes(asked ?? '') ? (asked as Tab) : 'setup'
+  const p = b.project
+
+  // The counts on the tabs need no page text: the competitor list, and the terms with their variants.
+  const light = createAnalysis(p, [])
+  const captured = compList(p, b.pages).filter(c => c.page).length
+  const base = topicStudioTopic(id)
+  const items: TabItem<Tab>[] = writer
+    ? [{ key: 'brief', label: 'SEO brief', href: base }]
+    : [
+        { key: 'setup', label: 'Setup', href: `${base}?tab=setup` },
+        { key: 'competitors', label: 'Competitors', count: captured, href: `${base}?tab=competitors` },
+        { key: 'terms', label: 'Topic terms', count: light.concepts().length, href: `${base}?tab=terms` },
+        { key: 'questions', label: 'Questions', count: p.questions.filter(q => !q.off).length, href: `${base}?tab=questions` },
+        { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` },
+      ]
+
+  // Everything that reads the captured pages shares one analysis.
+  const a = tab === 'setup' ? null : createAnalysis(p, b.pages)
+
+  let content: React.ReactNode = null
+  if (tab === 'setup') {
+    const clients = await listClientsFull(db)
+    content = (
+      <SetupTab
+        id={id} client={p.client} clients={clients.map(c => ({ code: c.code, name: c.name }))} topic={p.topic} primary={p.primary} monday={p.monday}
+        secondary={p.secondary} avoid={p.avoid}
+        ai={{ aiOverview: p.aiOverview, aiChatgpt: p.aiChatgpt, aiGemini: p.aiGemini, aiPerplexity: p.aiPerplexity }}
+        organic={p.organic} cited={p.cited} archived={b.archived}
+      />
+    )
+  } else if (a && tab === 'competitors') content = <CompetitorsTab id={id} view={competitorsView(a)} />
+  else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} />
+  else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} />
+  else if (a && tab === 'brief') {
+    content = (
+      <BriefTab
+        id={id} shared={writer ? null : p.shared}
+        html={briefHtml(a, b.client.heading)} markdown={briefMarkdown(a, b.client.heading)}
+        termListHtml={termListHtml(a)} termListText={termListText(a)} csv={termsCsv(a)}
+        slug={slugOf(p.primary, p.topic)} hasTerms={a.concepts().length > 0}
+      />
+    )
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <Breadcrumb parents={[ROUTES.topicStudio]} now={t.topic} />
+          <Breadcrumb parents={[ROUTES.topicStudio]} now={p.topic} />
           <p className="m-0 mb-1 text-[12.5px] text-muted">
-            {t.client_code} · {t.client_name}
-            {t.monday_url && <> · <a href={t.monday_url} target="_blank" rel="noopener noreferrer" className="text-tn-teal hover:underline">Open Monday task</a></>}
+            {b.client.code} · {b.client.name}
+            {p.monday && /^https?:\/\//i.test(p.monday) && <> · <a href={p.monday} target="_blank" rel="noopener noreferrer" className="text-tn-teal hover:underline">Open Monday task</a></>}
           </p>
-          <h1 className={PAGE_TITLE}>{t.topic}</h1>
-          {t.primary_keyphrase && <p className="m-0 mt-1.5"><span className="text-muted">Primary keyphrase</span> <b className="text-tn-ink">{t.primary_keyphrase}</b></p>}
+          <h1 className={PAGE_TITLE}>{p.topic}</h1>
+          {p.primary && <p className="m-0 mt-1.5"><span className="text-muted">Primary keyphrase</span> <b className="text-tn-ink">{p.primary}</b></p>}
         </div>
-        {role === 'seo' && (t.shared ? <Pill tone="green" text="Shared with writers" /> : <Pill tone="gray" text="Draft" />)}
+        {!writer && (b.archived ? <Pill tone="amber" text="Archived" /> : p.shared ? <Pill tone="green" text="Shared with writers" /> : <Pill tone="gray" text="Draft" />)}
       </div>
-
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--panel-border)] bg-tn-teal-soft px-4 py-3 text-[13px] text-tn-ink">
-        <span>
-          The workshop tabs are coming to the portal next ({role === 'seo' ? 'Setup, Competitors, Topic terms, Questions, Originality, ' : ''}Writer workshop and SEO brief). Until then, keep working on this topic in the Topic Studio Artifact.
-        </span>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className={`${CARD} p-5 space-y-3`}>
-          <h2 className={CARD_TITLE}>Keyphrases</h2>
-          <div>
-            <div className={FIELD_LABEL}>Secondary</div>
-            {secondary.length ? <ul className="m-0 mt-1.5 pl-5 space-y-1">{secondary.map(s => <li key={s}>{s}</li>)}</ul> : <p className="m-0 mt-1.5 text-muted">None.</p>}
-          </div>
-          {avoid.length > 0 && (
-            <div>
-              <div className={FIELD_LABEL}>Terms to avoid</div>
-              <p className="m-0 mt-1.5">{avoid.join(', ')}</p>
-            </div>
-          )}
-        </section>
-
-        <section className={`${CARD} p-5 space-y-3`}>
-          <h2 className={CARD_TITLE}>This topic</h2>
-          <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-[13px]">
-            <dt className="text-muted">Topic terms</dt><dd className="m-0 text-tn-ink font-semibold tabular-nums">{terms.length}</dd>
-            <dt className="text-muted">Questions for headings</dt><dd className="m-0 text-tn-ink font-semibold tabular-nums">{headings.length}</dd>
-            <dt className="text-muted">Competitor pages</dt><dd className="m-0 text-tn-ink font-semibold tabular-nums">{t.pages}</dd>
-            <dt className="text-muted">Updated in the Artifact</dt><dd className="m-0 text-tn-ink tabular-nums">{t.artifact_updated_at ? formatDate(zoneDate(new Date(t.artifact_updated_at))) : '-'}</dd>
-            <dt className="text-muted">Imported</dt><dd className="m-0 text-tn-ink tabular-nums">{t.imported_at ? formatDate(zoneDate(new Date(t.imported_at))) : '-'}</dd>
-          </dl>
-        </section>
-      </div>
-
-      {answerTop.length > 0 && (
-        <section className={`${CARD} p-5`}>
-          <h2 className={CARD_TITLE}>Answer near the top</h2>
-          <ul className="m-0 mt-3 pl-5 space-y-1.5">{answerTop.map(a => <li key={a}>{a}</li>)}</ul>
-        </section>
-      )}
-
-      {terms.length > 0 && (
-        <section className={`${CARD} p-5 space-y-3`}>
-          <h2 className={CARD_TITLE}>Key terms</h2>
-          {(['high', 'medium', 'low'] as const).map(level => tier(level).length > 0 && (
-            <p key={level} className="m-0"><span className="text-muted capitalize">{level}:</span> {tier(level).join(', ')}</p>
-          ))}
-        </section>
-      )}
-
-      {headings.length > 0 && (
-        <section className={`${CARD} p-5`}>
-          <h2 className={CARD_TITLE}>Questions to answer</h2>
-          <ul className="m-0 mt-3 pl-5 space-y-1.5">{headings.map(q => <li key={q}>{q}</li>)}</ul>
-        </section>
-      )}
+      {items.length > 1 && <Tabs items={items} value={tab} label="Topic" idPrefix="ts-tab" />}
+      {content}
     </div>
   )
 }

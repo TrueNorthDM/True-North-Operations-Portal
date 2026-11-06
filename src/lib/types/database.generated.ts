@@ -5628,6 +5628,14 @@ export type Database = {
         Args: { actor: string; payload: Json }
         Returns: string
       }
+      ts_patch_topic: {
+        Args: { p_actor: string; p_cols: Json; p_patch: Json; p_topic: string }
+        Returns: string
+      }
+      ts_save_page: {
+        Args: { p_actor: string; p_page: Json; p_topic: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

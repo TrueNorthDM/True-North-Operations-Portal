@@ -3,9 +3,8 @@
 //
 // Two grants behind one page (lib/access/tools.ts): the SEO team sees every
 // topic and imports the Artifact's .topic-studio.json files; the Writers team
-// sees only the topics shared with writers. Topics are made in the Artifact
-// until phase 1 brings Setup here, so "Start a topic brief" is not on the page
-// yet.
+// sees only the topics shared with writers. SEOs start a topic here (phase 1)
+// or import one from the Artifact.
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -17,10 +16,12 @@ import { ROUTES, topicStudioTopic } from '@/lib/nav/routes'
 import { formatDate } from '@/lib/directory/people-types'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { listTopics, topicRole } from '@/lib/topic-studio/store'
+import { listArchived, listClientsFull, listTopics, topicRole } from '@/lib/topic-studio/store'
 import { CARD, PAGE_TITLE, SECTION_TITLE, TH } from '@/lib/ui/type'
 import { segClass, SEG_BOX } from '@/lib/ui/segmented'
 import { ImportDialog } from './ImportDialog'
+import { NewTopicForm } from './NewTopicForm'
+import { RestoreButton } from './RestoreButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Topic Studio' }
@@ -31,7 +32,9 @@ export default async function TopicStudioPage({ searchParams }: { searchParams: 
   if (!role) redirect(await previewHref('/'))
   const writer = role === 'writer'
 
-  const { topics, clients } = await listTopics(createAdminClient(), role)
+  const db = createAdminClient()
+  const { topics, clients } = await listTopics(db, role)
+  const [archived, startable] = writer ? [[], []] : await Promise.all([listArchived(db), listClientsFull(db)])
   const { client: picked } = await searchParams
   const codes = [...new Set([...clients.map(c => c.code), ...topics.map(t => t.client_code)])]
   const client = picked && codes.includes(picked) ? picked : 'all'
@@ -53,6 +56,8 @@ export default async function TopicStudioPage({ searchParams }: { searchParams: 
         </div>
         {!writer && <ImportDialog />}
       </div>
+
+      {!writer && startable.length > 0 && <NewTopicForm clients={startable.map(c => ({ code: c.code, name: c.name }))} />}
 
       <section className={CARD}>
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-b border-[var(--panel-border)]">
@@ -99,6 +104,21 @@ export default async function TopicStudioPage({ searchParams }: { searchParams: 
           </p>
         )}
       </section>
+
+      {archived.length > 0 && (
+        <details className={`${CARD} p-4`}>
+          <summary className={`${SECTION_TITLE} cursor-pointer`}>Archived topics ({archived.length})</summary>
+          <ul className="m-0 mt-3 list-none p-0">
+            {archived.map(t => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 border-b border-[var(--row-rule)] py-2.5 text-[13px] last:border-0">
+                <span className="w-9 shrink-0 font-(family-name:--font-display) text-[12px] font-extrabold text-muted">{t.client_code}</span>
+                <Link href={topicStudioTopic(t.id)} className="min-w-[200px] flex-1 font-semibold text-tn-teal hover:underline">{t.topic}</Link>
+                <RestoreButton id={t.id} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   )
 }
