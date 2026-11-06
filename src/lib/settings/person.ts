@@ -82,7 +82,28 @@ export async function loadSettingsFor(db: Client, personIds: readonly string[], 
     }
     for (const r of (res.data ?? []) as Row[]) out.set(r.person_id, fromRow(r))
   }
+  await zonesFromPlaces(db, personIds, out)
   return out
+}
+
+/**
+ * Anyone who has not picked a time zone gets the one where they live, from the
+ * Directory's address or location (owner, 6 November 2026), instead of New
+ * York's. A failed read, or a place not recognised, keeps New York.
+ */
+async function zonesFromPlaces(db: Client, personIds: readonly string[], out: Map<string, PersonSettings>): Promise<void> {
+  const open = personIds.filter(id => !out.get(id)?.ownZone)
+  if (!open.length) return
+  // Loaded here, on the server only: the Settings screen imports this file's constants.
+  const [{ countryOf }, { zoneFromPlace }] = await Promise.all([import('@/lib/agenda/holidays'), import('./zone-from-place')])
+  for (let i = 0; i < open.length; i += 200) {
+    const { data, error } = await db.from('people').select('id, location, address').in('id', open.slice(i, i + 200))
+    if (error) return
+    for (const p of (data ?? []) as { id: string; location: string | null; address: { country?: string | null; state?: string | null } | null }[]) {
+      const zone = zoneFromPlace(countryOf(p.address, p.location), [p.location, p.address?.state].filter(Boolean).join(', '))
+      if (zone) out.set(p.id, { ...(out.get(p.id) ?? DEFAULT_SETTINGS), timeZone: zone })
+    }
+  }
 }
 
 export async function loadSettings(db: Client, personId: string): Promise<PersonSettings> {

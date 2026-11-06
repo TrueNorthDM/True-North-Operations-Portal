@@ -84,7 +84,7 @@ export default async function SettingsPage() {
             rules={Object.fromEntries(mine.filter(k => rules[k]).map(k => [k, rules[k]]))}
             prefs={(me && prefs.get(me.id)) ?? {}}
             savePref={saveNotificationPref}
-            zone={settings.ownZone ? settings.timeZone : null}
+            zone={settings.timeZone}
             hour={settings.summaryHour}
             sendTest={sendTestNotification}
             blocked={!ready ? 'Notification choices cannot be saved right now.' : blocked}

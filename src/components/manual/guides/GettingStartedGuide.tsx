@@ -188,7 +188,7 @@ export function ProfileSettingsGuide() {
       </Step>
 
       <Step n={5} title="Your time zone and start page" picture={<Picture caption="Settings, Time and region."><SettingsPicture only={['time']} /></Picture>}>
-        <p className="m-0">Pick <strong>Your time zone</strong> and when the <strong>Daily summary</strong> arrives: the bell and the summary follow it. Until you choose, it is New York time.</p>
+        <p className="m-0">Pick <strong>Your time zone</strong> and when the <strong>Daily summary</strong> arrives: the bell and the summary follow it. Until you choose, it is the time where your Directory profile says you live, or New York time when it does not say.</p>
         <p className="m-0">Under <strong>Home and start</strong>, <strong>After you sign in, open</strong> chooses the page you land on (Home or My Work).</p>
         <p className="m-0">Below it, a <strong>Show ... on Home</strong> switch for each card you can have (Needs you, Pay period, Agenda, My goals, i7 budget, Publishing goals) chooses what Home shows you. The day banner with the clock and the annual review card always show.</p>
       </Step>

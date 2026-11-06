@@ -204,7 +204,7 @@ export function PersonalSettings({
         </Section>
 
         <Section id="time" hidden={!!only && !only.includes('time')} title="Time and region" intro="When the daily summary reaches you, and the times in the bell.">
-          <Row label="Your time zone" hint="Your daily summary and the times in the bell follow it. Until you choose, it is New York time." status={statusFor('zone')}>
+          <Row label="Your time zone" hint="Your daily summary and the times in the bell follow it. Until you choose, it is the time where your Directory profile says you live (New York time when it does not say)." status={statusFor('zone')}>
             <Select value={s.timeZone} onChange={z => set('zone', 'timeZone', z, { timeZone: z })} options={zoneOptions()} searchable ariaLabel="Your time zone" />
           </Row>
           <Row label="Daily summary at" hint={`When the daily summary reaches you, in ${zoneLabel(s.timeZone)} time, Monday to Friday.`} status={statusFor('hour')}>
