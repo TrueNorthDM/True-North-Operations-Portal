@@ -182,6 +182,11 @@ export const config = {
     // email-templates/ holds the sign-in email templates. The self-hosted
     // sign-in service (migration plan, step p3-mail) fetches them by URL with no
     // session; they hold placeholders only, nothing private.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|logos/|email-templates/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
+    //
+    // google747fb4b6bcf41f2d.html is Google Search Console's proof that True
+    // North owns this domain (6 November 2026, for the Google app review).
+    // Google fetches it with no session and keeps checking it, so it must never
+    // be removed nor sent to the login page.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|google747fb4b6bcf41f2d\\.html|logos/|email-templates/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
   ],
 }
