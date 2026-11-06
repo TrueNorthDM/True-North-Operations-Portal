@@ -253,3 +253,11 @@ describe('citationsView', () => {
     expect(v.sources.inBrief).toEqual([])
   })
 })
+
+import { notAuthority } from './citations'
+describe('named authorities that are not authorities', () => {
+  it('drops scripture, God, pronouns and Bible books, keeps organizations and people', () => {
+    for (const n of ['Scripture', 'the Bible', 'God', 'Revelation', 'Psalms', '1 John', 'First Corinthians', 'He', 'Holy Spirit']) expect(notAuthority(n), n).toBe(true)
+    for (const n of ['Mayo Clinic', 'Mark Twain', 'John Piper', 'Harvard University', 'Forest Service', 'Job Corps']) expect(notAuthority(n), n).toBe(false)
+  })
+})

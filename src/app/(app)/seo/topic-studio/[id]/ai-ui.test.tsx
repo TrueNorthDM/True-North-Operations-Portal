@@ -88,4 +88,11 @@ describe('OriginalityTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove: Show a reading' }))
     await waitFor(() => expect(orig.saveOriginality).toHaveBeenLastCalledWith('t1', { opps: [] }))
   })
+  it('words the interview section for a faith client', () => {
+    const faith = originalityView(readAiResults({ interview: { at: 1, who: [], sme: ['q'], stories: ['s'] } }), '', true)
+    render(<OriginalityTab id="t1" view={faith} ai={ON} />)
+    expect(screen.getByText(/pastor, Bible worker or church member/)).toBeTruthy()
+    expect(screen.getByText('Story and testimony prompts')).toBeTruthy()
+    expect(screen.queryByText(/real customers/)).toBeNull()
+  })
 })

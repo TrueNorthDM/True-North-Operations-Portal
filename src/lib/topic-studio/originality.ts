@@ -36,10 +36,12 @@ export interface OriginalityView {
   selected: string[]
   /** An opening for the interview prompt: the client's own sentence about original material. */
   clientOrig: string
+  /** A faith client: the interview is with a pastor, Bible worker or church member, not a customer expert. */
+  faith: boolean
 }
 
-export function originalityView(r: AiResults, clientOrig: string): OriginalityView {
-  return { commodity: r.commodity, opps: r.opps, angle: r.angle, interview: r.interview, interviewManual: r.interviewManual, selected: interviewSelected(r), clientOrig }
+export function originalityView(r: AiResults, clientOrig: string, faith = false): OriginalityView {
+  return { commodity: r.commodity, opps: r.opps, angle: r.angle, interview: r.interview, interviewManual: r.interviewManual, selected: interviewSelected(r), clientOrig, faith }
 }
 
 export function originalityBriefHtml(r: AiResults, interview = true): string {

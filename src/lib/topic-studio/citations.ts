@@ -56,6 +56,22 @@ export function sourceLinks(s: Source): [string, string][] {
 const labelOf = (s: Source): string => (typeof s.label === 'string' ? s.label : '')
 const domainOf = (s: Source): string => (typeof s.domain === 'string' ? s.domain : '')
 
+/**
+ * Words that follow "according to" but are not an organization or an expert: the
+ * scripture itself, a Bible book, God, pronouns. Without this the list of named
+ * authorities fills with "Scripture" and "Revelation" on every faith topic.
+ */
+const NOT_AUTHORITY = new Set(['scripture', 'scriptures', 'bible', 'god', 'jesus', 'christ', 'jesus christ', 'lord', 'holy spirit', 'gospel', 'he', 'she', 'it', 'they', 'we', 'this', 'that', 'these', 'those', 'some', 'many', 'most', 'him', 'his', 'her'])
+const BOOK_NUMBER = /^([123]|I{1,3}|First|Second|Third)$/
+export function notAuthority(raw: string): boolean {
+  const name = raw.replace(/^the\s+/i, '').trim()
+  if (NOT_AUTHORITY.has(name.toLowerCase())) return true
+  const words = name.split(/\s+/)
+  // A Bible book on its own ("Revelation", "1 John"); "Mark Twain" is a person, not a book.
+  if (words.length === 1) return bibleRefs(name).books.size > 0
+  return words.length === 2 && BOOK_NUMBER.test(words[0]) && bibleRefs(`${name} 1`).books.size > 0
+}
+
 const ACCORD_RE = /\b(?:[Aa]ccording to|[Rr]esearch (?:from|by)|[Aa] study (?:from|by)|[Ss]tudies (?:from|by)|[Aa]s (?:noted|explained) by)\s+((?:the\s+)?[A-Z][\w.&'’-]*(?:\s+(?:of\s+|for\s+|and\s+)?[A-Z][\w.&'’-]*){0,5})/g
 
 const ranked = <T extends { from: string[]; n?: number }>(m: Map<string, T>): (T & { df: number })[] =>
@@ -99,7 +115,7 @@ export function citationData(a: Analysis): CitationData {
     const seen = new Set<string>()
     for (const m of text.matchAll(ACCORD_RE)) {
       const n = m[1].replace(/^the\s+/i, '').trim()
-      if (n.length < 3 || seen.has(n)) continue
+      if (n.length < 3 || seen.has(n) || notAuthority(n)) continue
       seen.add(n)
       const e = accord.get(n) ?? { name: n, from: [] }
       e.from.push(label)

@@ -109,12 +109,12 @@ export function OriginalityTab({ id, view, ai = NO_AI, interview = true }: { id:
         </Sub>
       </div>
 
-      {interview && <Sub title="Interview prompts" hint="Questions for a subject-matter expert, and prompts for stories from real customers. These go into the SEO brief.">
+      {interview && <Sub title="Interview prompts" hint={view.faith ? 'Questions for a pastor, Bible worker or church member, and prompts for personal stories and testimonies. These go into the SEO brief.' : 'Questions for a subject-matter expert, and prompts for stories from real customers. These go into the SEO brief.'}>
         {view.interview && (
           <div className="mb-4 grid gap-4 lg:grid-cols-3">
             <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Who to ask</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.who.map(x => <li key={x}>{x}</li>)}</ul></div>
-            <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Questions for the expert</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.sme.map(x => <li key={x}>{x}</li>)}</ul></div>
-            <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Story prompts</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.stories.map(x => <li key={x}>{x}</li>)}</ul></div>
+            <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">{view.faith ? 'Questions to ask' : 'Questions for the expert'}</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.sme.map(x => <li key={x}>{x}</li>)}</ul></div>
+            <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">{view.faith ? 'Story and testimony prompts' : 'Story prompts'}</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.stories.map(x => <li key={x}>{x}</li>)}</ul></div>
           </div>
         )}
         <h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Your own questions</h4>

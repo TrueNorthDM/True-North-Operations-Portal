@@ -105,7 +105,7 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
   else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} feedback={await listFeedbackRows(db, id)} ai={ai} />
   else if (a && tab === 'writer') content = <WriterTab id={id} initialHtml={b.draft.html} version={b.draft.version} model={workshopModel(a)} ai={ai} results={{ review: p.ai.review, placements: p.ai.placements }} />
   else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} ai={ai} />
-  else if (a && tab === 'originality') content = <OriginalityTab id={id} view={originalityView(p.ai, b.client.orig)} ai={ai} interview={on.interview} />
+  else if (a && tab === 'originality') content = <OriginalityTab id={id} view={originalityView(p.ai, b.client.orig, b.client.faith)} ai={ai} interview={on.interview} />
   else if (a && tab === 'citations') content = <CitationsTab id={id} view={citationsView(a, p.curated, b.client)} />
   else if (a && tab === 'discussions') {
     const dv = discussionsView(b.pages)
