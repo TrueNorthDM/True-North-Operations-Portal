@@ -8,6 +8,7 @@
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { BTN } from '@/lib/ui/buttons'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Pill } from '@/components/ui/Pill'
 import { requireSurface } from '@/lib/access/resolve'
@@ -54,7 +55,12 @@ export default async function TopicStudioPage({ searchParams }: { searchParams: 
               : 'SEO topic briefs and the writer workshop. Research a topic, build the brief, share it with a writer.'}
           </p>
         </div>
-        {!writer && <ImportDialog />}
+        {!writer && (
+          <div className="flex flex-wrap items-center gap-3">
+            {access.isSuperAdmin && <Link href={`${ROUTES.topicStudio}/settings`} className={BTN.smallWhite}>Settings</Link>}
+            <ImportDialog />
+          </div>
+        )}
       </div>
 
       {!writer && startable.length > 0 && <NewTopicForm clients={startable.map(c => ({ code: c.code, name: c.name }))} />}
