@@ -157,10 +157,10 @@ export function SetupTab(props: SetupProps) {
             <input id="s-monday" className={`${INPUT} w-full`} value={vals.monday} data-field="monday" onChange={edit} inputMode="url" placeholder="https://truenorth.monday.com/boards/…" />
           </Field>
           <Field id="s-secondary" label={<>Secondary keyphrases <span className="font-normal normal-case tracking-normal">(one per line)</span></>} hint="Terms sharing these words rank a little higher.">
-            <textarea id="s-secondary" className={`${TEXTAREA} min-h-[132px]`} value={vals.secondary} data-field="secondary" onChange={edit} placeholder="seasoning firewood" />
+            <textarea id="s-secondary" className={`${TEXTAREA} min-h-[132px]`} value={vals.secondary} data-field="secondary" onChange={edit} placeholder="One keyphrase per line" />
           </Field>
           <Field id="s-avoid" label={<>Specific terms to avoid <span className="font-normal normal-case tracking-normal">(one per line)</span></>} hint="Terms containing these, or built from their distinctive words, are left out. Words that are part of the topic itself are kept.">
-            <textarea id="s-avoid" className={`${TEXTAREA} min-h-[132px]`} value={vals.avoid} data-field="avoid" onChange={edit} placeholder="what does the bible say about marriage problems pdf" />
+            <textarea id="s-avoid" className={`${TEXTAREA} min-h-[132px]`} value={vals.avoid} data-field="avoid" onChange={edit} placeholder="One word or phrase per line" />
           </Field>
         </div>
       </section>
