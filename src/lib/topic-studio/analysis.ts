@@ -17,7 +17,7 @@ import {
   scoreAgainst, splitLines, splitSentences, termKey, tokenize,
   type Candidate, type Ctx, type Excluded, type Rules, type Source, type Term,
 } from './engine'
-import { AI_KEYS, AI_LABEL, FEATURES, FEEDBACK_TERMS, hasAnswer, type AiKey, type Project, type TermEntry, type TopicPage } from './project'
+import { AI_KEYS, AI_LABEL, hasAnswer, type AiKey, type Project, type TermEntry, type TopicPage } from './project'
 
 /** One row of the competitor list: a URL from Setup, with its page once captured. */
 export interface Comp {
@@ -131,9 +131,9 @@ export function createAnalysis(project: Project, pages: readonly TopicPage[]): A
     if (!cands) {
       const built = buildCandidates(live, ais, ctx, [p.topic, p.primary].join('. '), {
         primary: p.primary, rules,
-        secondary: FEATURES.secondary ? p.secondary : '',
-        rich: [FEATURES.rich ? p.rich : '', FEATURES.followups ? p.aiFollowups : ''].filter(Boolean).join('\n'),
-        avoid: FEATURES.avoid ? p.avoid : '',
+        secondary: p.rules.features.secondary ? p.secondary : '',
+        rich: [p.rules.features.rich ? p.rich : '', p.rules.features.followups ? p.aiFollowups : ''].filter(Boolean).join('\n'),
+        avoid: p.rules.features.avoid ? p.avoid : '',
       })
       cands = { ...built, list: mixOrder(built.list, live, rules) }
     }
@@ -248,7 +248,7 @@ export function createAnalysis(project: Project, pages: readonly TopicPage[]): A
     const n = cs.length
     const all = termObjs().length
     const out: string[] = []
-    const F = FEEDBACK_TERMS
+    const F = p.rules.terms
     if (!n || all < F.general.minList) return out
     const pc = (x: number) => Math.round(100 * x)
     const variants = all - n

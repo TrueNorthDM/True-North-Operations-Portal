@@ -10,6 +10,7 @@ import { ROUTES } from '@/lib/nav/routes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { claudeConfigured } from '@/lib/topic-studio/ai/claude'
 import { loadSettings, recentUsage } from '@/lib/topic-studio/ai/store'
+import { listClientsFull } from '@/lib/topic-studio/store'
 import { PAGE_TITLE } from '@/lib/ui/type'
 import { SettingsForm } from './SettingsForm'
 
@@ -20,14 +21,14 @@ export default async function TopicStudioSettings() {
   const access = await requireSurface('tools')
   if (!access.isSuperAdmin) notFound()
   const db = createAdminClient()
-  const [settings, usage] = await Promise.all([loadSettings(db), recentUsage(db, 100)])
+  const [settings, usage, clients] = await Promise.all([loadSettings(db), recentUsage(db, 100), listClientsFull(db)])
   return (
     <div className="space-y-5">
       <div>
-        <Breadcrumb parents={[ROUTES.topicStudio]} now="Settings" />
+        <Breadcrumb self={`${ROUTES.topicStudio}/settings`} />
         <h1 className={PAGE_TITLE}>Topic Studio settings</h1>
       </div>
-      <SettingsForm ai={settings.ai} connected={claudeConfigured()} usage={usage} />
+      <SettingsForm settings={settings} clients={clients} connected={claudeConfigured()} usage={usage} />
     </div>
   )
 }

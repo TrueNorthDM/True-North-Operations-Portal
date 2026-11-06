@@ -7,7 +7,7 @@
 
 import { RULES_DEFAULT, letterGrade, makeAvoidTest, splitLines, type Rules } from './engine'
 import type { Analysis } from './analysis'
-import { AI_KEYS, AI_LABEL, FEATURES, FEEDBACK_TERMS, missingAnswers, type AiKey, type Tier } from './project'
+import { AI_KEYS, AI_LABEL, missingAnswers, type AiKey, type Tier } from './project'
 
 /* Competitors */
 
@@ -109,7 +109,7 @@ export function termsView(a: Analysis): TermsView {
   const terms = a.termObjs()
   const cands = a.N ? a.candidates() : { list: [], excluded: [], N: 0 }
   const whyOf = new Map(cands.list.map(c => [c.k, c.why]))
-  const avoidTest = makeAvoidTest(FEATURES.avoid ? p.avoid : '', [p.topic, p.primary].join('. '))
+  const avoidTest = makeAvoidTest(p.rules.features.avoid ? p.avoid : '', [p.topic, p.primary].join('. '))
   const vm = a.variantMap()
   const byKey = new Map(terms.map(t => [t.key, t]))
   const concepts = a.concepts()
@@ -128,7 +128,7 @@ export function termsView(a: Analysis): TermsView {
   })
 
   const n = concepts.length
-  const sz = FEEDBACK_TERMS.size
+  const sz = p.rules.terms.size
   const size: TermsView['size'] = !n || !sz.on ? null
     : n < sz.thin ? { tone: 'bad', text: 'This list may be thin. Writers could miss important ideas, so look through More candidate terms for anything that matters.', short: sz.short, max: sz.max }
     : n < sz.short ? { tone: 'warn', text: 'A little short. Check More candidate terms for important ideas that are missing.', short: sz.short, max: sz.max }

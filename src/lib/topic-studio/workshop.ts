@@ -18,16 +18,8 @@ import {
   type Block, type Source, type Term,
 } from './engine'
 import type { Analysis } from './analysis'
+import type { FeedbackWriter } from './ai/settings'
 import type { Tier } from './project'
-
-/** The writer-side feedback rules (the Artifact's defaults; adjustable in phase 4). */
-export const FEEDBACK_WRITER = {
-  coverage: { on: true, good: 86, ok: 65, h1: true, intro: true, keys: true, cover: 66, keyNeed: 2, introWords: 160 },
-  length: { on: true, thin: 800, long: 2500 },
-  readability: { on: true, target: 60 },
-  terms: { on: true, grouped: true },
-  used: { on: true, overuse: true, minWords: 150, termMult: 2, termPer1k: 5, wordPer1k: 10 },
-} as const
 
 export interface WorkshopTerm { t: string; key: string; tier: Tier; alts: string[]; altKeys: string[]; group: string }
 
@@ -42,6 +34,8 @@ export interface WorkshopModel {
   keyTerms: { t: string; alts: string[] }[]
   /** How often competitors use each term, per 1,000 words (median over the pages that use it). */
   rates: Record<string, number>
+  /** The writer-side feedback rules from the settings. */
+  rules: FeedbackWriter
 }
 
 const per1k = (n: number, words: number) => (words ? (1000 * n) / words : 0)
@@ -64,6 +58,7 @@ export function workshopModel(a: Analysis): WorkshopModel {
     target: a.compScores().target,
     keyTerms: a.keyTerms().map(k => ({ t: k.t, alts: k.alts })),
     rates,
+    rules: a.project.rules.writer,
   }
 }
 
@@ -74,7 +69,7 @@ export const draftSource = (blocks: Block[]): Source => buildSource({ label: 'Yo
 const asTerm = (t: WorkshopTerm): Term => ({ ...t })
 
 /** The introduction: what comes before the first subheading (or the first paragraphs), cut to the rule's length. */
-export function introText(blocks: Block[]): string {
+export function introText(blocks: Block[], words = 160): string {
   const pre: string[] = []
   for (const [tag, text] of blocks) {
     if (/^h[2-6]$/.test(tag)) break
@@ -82,7 +77,7 @@ export function introText(blocks: Block[]): string {
     pre.push(text)
   }
   const use = pre.length ? pre : blocks.filter(b => !/^h/.test(b[0])).slice(0, 3).map(b => b[1])
-  return use.join(' ').split(/\s+/).slice(0, FEEDBACK_WRITER.coverage.introWords).join(' ')
+  return use.join(' ').split(/\s+/).slice(0, words).join(' ')
 }
 
 export type Check = { st: 'ok' | 'part' | 'no' | null; l: string }
@@ -91,7 +86,7 @@ export type Check = { st: 'ok' | 'part' | 'no' | null; l: string }
 export function keyChecks(m: WorkshopModel, d: Source | null): Check[] {
   const labels = ['Primary keyphrase ideas in the H1', 'Primary keyphrase ideas in the introduction', 'Some key terms in the introduction']
   if (!d) return labels.map(l => ({ st: null, l }))
-  const cv = FEEDBACK_WRITER.coverage
+  const cv = m.rules.coverage
   const pk = contentRoots(m.primary)
   const cover = (txt: string): 'ok' | 'part' | 'no' | null => {
     if (!pk.length) return null
@@ -100,7 +95,7 @@ export function keyChecks(m: WorkshopModel, d: Source | null): Check[] {
     return n / pk.length >= cv.cover / 100 ? 'ok' : n > 0 ? 'part' : 'no'
   }
   const h1 = d.headings.find(h => h.l === 1) ?? d.headings[0]
-  const intro = introText(d.blocks)
+  const intro = introText(d.blocks, cv.introWords)
   const iset = new Set(contentRoots(intro))
   const hits = m.keyTerms.filter(t => [t.t, ...t.alts].some(x => { const rs = contentRoots(x); return rs.length > 0 && rs.every(r => iset.has(r)) })).length
   const need = m.keyTerms.length >= 4 ? cv.keyNeed : 1
@@ -141,9 +136,9 @@ export interface DraftReport {
 export function analyzeDraft(m: WorkshopModel, blocks: Block[]): DraftReport | null {
   if (!blocks.length) return null
   const d = draftSource(blocks)
-  const cv = FEEDBACK_WRITER.coverage
-  const ln = FEEDBACK_WRITER.length
-  const rd = FEEDBACK_WRITER.readability
+  const cv = m.rules.coverage
+  const ln = m.rules.length
+  const rd = m.rules.readability
   const mine = scoreAgainst(d, m.terms.map(asTerm))
   const ratio = mine.score / Math.max(35, m.target || 0)
   const missing = m.terms.filter(t => !mine.used.has(t.key))
@@ -171,7 +166,7 @@ export interface Overuse { items: { w: string; n: number; x: number; term: boole
 
 /** Words and terms used noticeably more than is natural for the draft's length (rules adjustable in phase 4). */
 export function overuseCheck(m: WorkshopModel, blocks: Block[]): Overuse {
-  const us = FEEDBACK_WRITER.used
+  const us = m.rules.used
   const d = draftSource(blocks)
   if (d.words < us.minWords) return { items: [], short: true }
   const items: Overuse['items'] = []

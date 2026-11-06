@@ -13,6 +13,7 @@
  */
 
 import { RULES_DEFAULT, termKey } from './engine'
+import { DEFAULT_SETTINGS, type FeedbackTerms, type FeedbackWriter, type TsSettings } from './ai/settings'
 import { readCurated, type Curated } from './citations'
 import { readAiResults, type AiResults } from './ai/results'
 import type { Block } from './engine'
@@ -93,22 +94,14 @@ export interface Project {
   ai: AiResults
   /** The sources and authorities the SEO picked for the brief. */
   curated: Curated
+  /** Feature switches and feedback rules from the settings. */
+  rules: SettingsRules
   shared: boolean
 }
 
-/** The Artifact's feature switches; fixed until the settings area (phase 4). */
-export const FEATURES = { secondary: true, rich: false, followups: false, avoid: true, questions: true } as const
-
-/** The term list feedback rules (the Artifact's defaults; adjustable in phase 4). */
-export const FEEDBACK_TERMS = {
-  general: { minList: 10 },
-  size: { on: true, thin: 15, short: 20, max: 35, long: 45 },
-  variants: { on: true, share: 25, perTerm: 4 },
-  bigGroup: { on: true, minTerms: 8, share: 35 },
-  fewGroups: { on: true, minTerms: 15, groups: 3 },
-  singles: { on: true, share: 70 },
-  relevance: { on: true, share: 70, spread: 30, spreadOnce: 50, minComps: 3 },
-} as const
+/** The settings that shape the analysis: which fields are on and the feedback rules. Defaults until the topic is loaded with the saved ones (store.loadBundle). */
+export type SettingsRules = Pick<TsSettings, 'features'> & { terms: FeedbackTerms; writer: FeedbackWriter }
+export const DEFAULT_RULES: SettingsRules = { features: DEFAULT_SETTINGS.features, terms: DEFAULT_SETTINGS.feedback.terms, writer: DEFAULT_SETTINGS.feedback.writer }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const text = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -174,6 +167,7 @@ export function readProject(row: { topic: string; primary_keyphrase: string; mon
     draftHtml: text(d.draftHtml),
     ai: readAiResults(d),
     curated: readCurated(d),
+    rules: DEFAULT_RULES,
     shared: row.shared,
   }
 }

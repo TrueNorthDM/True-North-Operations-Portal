@@ -72,7 +72,7 @@ function Editable({ id, field, items, placeholder, empty }: { id: string; field:
   )
 }
 
-export function OriginalityTab({ id, view, ai = NO_AI }: { id: string; view: OriginalityView; ai?: AiInfo }) {
+export function OriginalityTab({ id, view, ai = NO_AI, interview = true }: { id: string; view: OriginalityView; ai?: AiInfo; interview?: boolean }) {
   const c = view.commodity
   return (
     <div className="space-y-4">
@@ -83,7 +83,7 @@ export function OriginalityTab({ id, view, ai = NO_AI }: { id: string; view: Ori
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AiBtn id={id} feature="commodity" ai={ai} label={c ? 'Map again with Claude' : 'Map originality with Claude'} done="Claude mapped what competitors say and where the gaps are." />
-          <AiBtn id={id} feature="interview" ai={ai} label={view.interview ? 'Draft interview prompts again' : 'Draft interview prompts'} done="Claude drafted the interview prompts." />
+          {interview && <AiBtn id={id} feature="interview" ai={ai} label={view.interview ? 'Draft interview prompts again' : 'Draft interview prompts'} done="Claude drafted the interview prompts." />}
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export function OriginalityTab({ id, view, ai = NO_AI }: { id: string; view: Ori
         </Sub>
       </div>
 
-      <Sub title="Interview prompts" hint="Questions for a subject-matter expert, and prompts for stories from real customers. These go into the SEO brief.">
+      {interview && <Sub title="Interview prompts" hint="Questions for a subject-matter expert, and prompts for stories from real customers. These go into the SEO brief.">
         {view.interview && (
           <div className="mb-4 grid gap-4 lg:grid-cols-3">
             <div><h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Who to ask</h4><ul className="m-0 list-disc pl-5 text-[13px]">{view.interview.who.map(x => <li key={x}>{x}</li>)}</ul></div>
@@ -119,7 +119,7 @@ export function OriginalityTab({ id, view, ai = NO_AI }: { id: string; view: Ori
         )}
         <h4 className="m-0 mb-1 text-[12.5px] font-bold text-muted">Your own questions</h4>
         <Editable id={id} field="interviewManual" items={view.interviewManual} placeholder="Add your own question" empty="None yet." />
-      </Sub>
+      </Sub>}
     </div>
   )
 }

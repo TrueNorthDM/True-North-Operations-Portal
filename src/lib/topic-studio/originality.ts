@@ -42,7 +42,7 @@ export function originalityView(r: AiResults, clientOrig: string): OriginalityVi
   return { commodity: r.commodity, opps: r.opps, angle: r.angle, interview: r.interview, interviewManual: r.interviewManual, selected: interviewSelected(r), clientOrig }
 }
 
-export function originalityBriefHtml(r: AiResults): string {
+export function originalityBriefHtml(r: AiResults, interview = true): string {
   const c = r.commodity
   const parts: string[] = []
   if (c && (c.baseline.length || c.unique.length || c.gaps.length)) {
@@ -53,12 +53,12 @@ export function originalityBriefHtml(r: AiResults): string {
   }
   if (r.opps.length) parts.push(`<h4>Opportunities to add original value</h4>${ul(r.opps.map(esc))}`)
   if (r.angle.length) parts.push(`<h4>Angle to stand out</h4>${ul(r.angle.map(esc))}`)
-  const q = interviewSelected(r)
+  const q = interview ? interviewSelected(r) : []
   if (q.length) parts.push(`<h3>Interview prompts for a subject-matter expert</h3>${ul(q.map(esc))}`)
   return parts.join('\n')
 }
 
-export function originalityBriefMarkdown(r: AiResults): string {
+export function originalityBriefMarkdown(r: AiResults, interview = true): string {
   const c = r.commodity
   const li = (items: string[]) => items.map(x => `- ${x}`).join('\n')
   const out: string[] = []
@@ -70,7 +70,7 @@ export function originalityBriefMarkdown(r: AiResults): string {
   }
   if (r.opps.length) out.push('### Opportunities to add original value', li(r.opps), '')
   if (r.angle.length) out.push('### Angle to stand out', li(r.angle), '')
-  const q = interviewSelected(r)
+  const q = interview ? interviewSelected(r) : []
   if (q.length) out.push('## Interview prompts for a subject-matter expert', li(q), '')
   return out.join('\n').trim()
 }

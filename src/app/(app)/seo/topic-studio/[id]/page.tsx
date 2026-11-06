@@ -60,23 +60,25 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
 
   const writer = role === 'writer'
   const { tab: asked } = await searchParams
-  const tab: Tab = writer ? (asked === 'brief' ? 'brief' : 'writer') : (SEO_TABS as readonly string[]).includes(asked ?? '') ? (asked as Tab) : 'setup'
+  const tabOn: Record<string, boolean> = { questions: b.project.rules.features.questions, originality: b.project.rules.features.originality, citations: b.project.rules.features.sources, discussions: b.project.rules.features.discussions }
+  const tab: Tab = writer ? (asked === 'brief' ? 'brief' : 'writer') : (SEO_TABS as readonly string[]).includes(asked ?? '') && tabOn[asked ?? ''] !== false ? (asked as Tab) : 'setup'
   const p = b.project
 
   // The counts on the tabs need no page text: the competitor list, and the terms with their variants.
   const light = createAnalysis(p, [])
   const captured = compList(p, b.pages).filter(c => c.page).length
   const base = topicStudioTopic(id)
+  const on = p.rules.features
   const items: TabItem<Tab>[] = writer
     ? [{ key: 'writer', label: 'Writer workshop', href: base }, { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` }]
     : [
         { key: 'setup', label: 'Setup', href: `${base}?tab=setup` },
         { key: 'competitors', label: 'Competitors', count: captured, href: `${base}?tab=competitors` },
         { key: 'terms', label: 'Topic terms', count: light.concepts().length, href: `${base}?tab=terms` },
-        { key: 'questions', label: 'Questions', count: p.questions.filter(q => !q.off).length, href: `${base}?tab=questions` },
-        { key: 'originality', label: 'Originality', href: `${base}?tab=originality` },
-        { key: 'citations', label: 'Citations', href: `${base}?tab=citations` },
-        { key: 'discussions', label: 'Discussions', count: discussionsView(b.pages).total, href: `${base}?tab=discussions` },
+        ...(on.questions ? [{ key: 'questions', label: 'Questions', count: p.questions.filter(q => !q.off).length, href: `${base}?tab=questions` }] as TabItem<Tab>[] : []),
+        ...(on.originality ? [{ key: 'originality', label: 'Originality', href: `${base}?tab=originality` }] as TabItem<Tab>[] : []),
+        ...(on.sources ? [{ key: 'citations', label: 'Citations', href: `${base}?tab=citations` }] as TabItem<Tab>[] : []),
+        ...(on.discussions ? [{ key: 'discussions', label: 'Discussions', count: discussionsView(b.pages).total, href: `${base}?tab=discussions` }] as TabItem<Tab>[] : []),
         { key: 'writer', label: 'Writer workshop', href: `${base}?tab=writer` },
         { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` },
       ]
@@ -103,7 +105,7 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
   else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} feedback={await listFeedbackRows(db, id)} ai={ai} />
   else if (a && tab === 'writer') content = <WriterTab id={id} initialHtml={b.draft.html} version={b.draft.version} model={workshopModel(a)} ai={ai} results={{ review: p.ai.review, placements: p.ai.placements }} />
   else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} ai={ai} />
-  else if (a && tab === 'originality') content = <OriginalityTab id={id} view={originalityView(p.ai, b.client.orig)} ai={ai} />
+  else if (a && tab === 'originality') content = <OriginalityTab id={id} view={originalityView(p.ai, b.client.orig)} ai={ai} interview={on.interview} />
   else if (a && tab === 'citations') content = <CitationsTab id={id} view={citationsView(a, p.curated, b.client)} />
   else if (a && tab === 'discussions') {
     const dv = discussionsView(b.pages)
@@ -116,7 +118,7 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
   }
   else if (a && tab === 'brief') {
     const cb = citationsBrief(a, p.curated, b.client)
-    const extra = { html: [originalityBriefHtml(p.ai), citationsBriefHtml(cb)].filter(Boolean).join('\n'), md: [originalityBriefMarkdown(p.ai), citationsBriefMarkdown(cb)].filter(Boolean).join('\n\n') }
+    const extra = { html: [originalityBriefHtml(p.ai, on.interview), citationsBriefHtml(cb)].filter(Boolean).join('\n'), md: [originalityBriefMarkdown(p.ai, on.interview), citationsBriefMarkdown(cb)].filter(Boolean).join('\n\n') }
     content = (
       <BriefTab
         id={id} shared={writer ? null : p.shared}

@@ -10,23 +10,65 @@ import { useState } from 'react'
 import { Select } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
 import { BTN } from '@/lib/ui/buttons'
-import { INPUT, TEXTAREA } from '@/lib/ui/fields'
+import { CHECKBOX, INPUT, INPUT_SM, TEXTAREA } from '@/lib/ui/fields'
 import { CARD, CARD_TITLE, FIELD_LABEL, TH } from '@/lib/ui/type'
 import { PROMPT_DEFS, PROMPT_ORDER, type PromptKey } from '@/lib/topic-studio/ai/prompt-defs'
-import { EFFORTS, MODEL_CHOICES, type AiSettings, type Effort } from '@/lib/topic-studio/ai/settings'
+import { EFFORTS, MODEL_CHOICES, type Effort, type TsSettings } from '@/lib/topic-studio/ai/settings'
+import type { ClientFull } from '@/lib/topic-studio/store'
 import type { UsageLine } from '@/lib/topic-studio/ai/store'
-import { saveAiSettings } from '../actions-settings'
+import { saveAiSettings, saveClient } from '../actions-settings'
+import { SWITCH_LABELS, TERM_RULES, WRITER_RULES } from './rules'
 import { useTopicCall } from '../[id]/use-topic-call'
 
 const effortOpts = EFFORTS.map(e => ({ value: e, label: e[0].toUpperCase() + e.slice(1) }))
 const num = (v: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)))
 
-export function SettingsForm({ ai, connected, usage }: { ai: AiSettings; connected: boolean; usage: UsageLine[] }) {
+type Group = Record<string, number | boolean>
+
+/** One rule group: its switch (if any) and its numbers and ticks, named by `labels`. */
+function Rules({ title, labels, value, onChange }: { title: string; labels: Record<string, string>; value: Group; onChange: (v: Group) => void }) {
+  const set = (k: string, v: number | boolean) => onChange({ ...value, [k]: v })
+  return (
+    <div className="rounded-[12px] border border-[var(--panel-border)] p-3">
+      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="m-0 text-[13px] font-bold text-tn-ink">{title}</h3>{typeof value.on === 'boolean' && <Switch on={value.on} label={`${title} on`} onChange={v => set('on', v)} />}</div>
+      <div className="space-y-2">
+        {Object.entries(labels).map(([k, label]) => typeof value[k] === 'boolean'
+          ? <label key={k} className="flex items-center gap-2 text-[12.5px]"><input type="checkbox" className={CHECKBOX} checked={value[k] as boolean} onChange={e => set(k, e.target.checked)} />{label}</label>
+          : <label key={k} className="flex items-center justify-between gap-3 text-[12.5px]"><span>{label}</span><input className={`${INPUT_SM} w-20 text-right`} inputMode="numeric" aria-label={`${title}: ${label}`} value={value[k] as number} onChange={e => set(k, Number(e.target.value.replace(/\D/g, '')) || 0)} /></label>)}
+      </div>
+    </div>
+  )
+}
+
+function ClientEditor({ client, onDone }: { client: ClientFull | null; onDone: () => void }) {
   const { call, busy, toast } = useTopicCall()
-  const [s, setS] = useState<AiSettings>(ai)
+  const [c, setC] = useState<ClientFull>(client ?? { code: '', name: '', heading: '', faith: false, about: '', orig: '' })
+  const f = (k: keyof ClientFull, v: string | boolean) => setC(x => ({ ...x, [k]: v }))
+  return (
+    <div className="rounded-[12px] border border-[var(--panel-border)] p-3">
+      {toast}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block"><span className={FIELD_LABEL}>Code</span><input className={`${INPUT} mt-1 w-full`} value={c.code} disabled={!!client} maxLength={6} onChange={e => f('code', e.target.value.toUpperCase())} /></label>
+        <label className="block"><span className={FIELD_LABEL}>Name</span><input className={`${INPUT} mt-1 w-full`} value={c.name} maxLength={80} onChange={e => f('name', e.target.value)} /></label>
+        <label className="block"><span className={FIELD_LABEL}>Brief heading</span><input className={`${INPUT} mt-1 w-full`} value={c.heading} maxLength={60} placeholder={`${c.code || 'XX'} Topic`} onChange={e => f('heading', e.target.value)} /></label>
+      </div>
+      <label className="mt-3 flex items-center gap-2 text-[12.5px]"><input type="checkbox" className={CHECKBOX} checked={c.faith} onChange={e => f('faith', e.target.checked)} />A faith client (Claude looks at Scripture and Bible books)</label>
+      <label className="mt-3 block"><span className={FIELD_LABEL}>About the client (what Claude is told)</span><textarea className={`${TEXTAREA} mt-1 min-h-[90px] w-full`} value={c.about} maxLength={4000} onChange={e => f('about', e.target.value)} /></label>
+      <label className="mt-3 block"><span className={FIELD_LABEL}>What original material means here</span><textarea className={`${TEXTAREA} mt-1 min-h-[70px] w-full`} value={c.orig} maxLength={4000} onChange={e => f('orig', e.target.value)} /></label>
+      <div className="mt-3"><button type="button" className={BTN.smallNavy} disabled={busy || !c.code.trim() || !c.name.trim()} onClick={async () => { if (await call(() => saveClient(c), { ok: 'Client saved.' })) onDone() }}>{client ? 'Save client' : 'Add client'}</button></div>
+    </div>
+  )
+}
+
+export function SettingsForm({ settings, clients, connected, usage }: { settings: TsSettings; clients: ClientFull[]; connected: boolean; usage: UsageLine[] }) {
+  const { call, busy, toast } = useTopicCall()
+  const [all, setAll] = useState<TsSettings>(settings)
+  const [adding, setAdding] = useState(false)
+  const s = all.ai
+  const setS = (f: (x: TsSettings['ai']) => TsSettings['ai']) => setAll(a => ({ ...a, ai: f(a.ai) }))
   const [open, setOpen] = useState<PromptKey | null>(null)
   const modelOpts = (cur: string) => [...MODEL_CHOICES.map(m => ({ value: m.id, label: m.label })), ...(MODEL_CHOICES.some(m => m.id === cur) ? [] : [{ value: cur, label: cur }])]
-  const feat = (k: PromptKey, patch: Partial<AiSettings['features'][PromptKey]>) => setS(x => ({ ...x, features: { ...x.features, [k]: { ...x.features[k], ...patch } } }))
+  const feat = (k: PromptKey, patch: Partial<TsSettings['ai']['features'][PromptKey]>) => setS(x => ({ ...x, features: { ...x.features, [k]: { ...x.features[k], ...patch } } }))
   const prompt = (k: PromptKey) => s.prompts[k] ?? PROMPT_DEFS[k].template
   const setPrompt = (k: PromptKey, text: string) => setS(x => { const p = { ...x.prompts }; if (text === PROMPT_DEFS[k].template) delete p[k]; else p[k] = text; return { ...x, prompts: p } })
 
@@ -78,7 +120,46 @@ export function SettingsForm({ ai, connected, usage }: { ai: AiSettings; connect
         </section>
       )}
 
-      <div><button type="button" className={BTN.navy} disabled={busy} onClick={() => void call(() => saveAiSettings(s), { ok: 'Settings saved.', refresh: false })}>Save settings</button></div>
+      <section className={`${CARD} p-4`}>
+        <h2 className={CARD_TITLE}>Tabs and fields</h2>
+        <p className="m-0 mt-1 mb-3 text-[12.5px] text-muted">Switch off what the team does not use. A tab that is off disappears from every topic; its data is kept.</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(SWITCH_LABELS).map(([k, label]) => (
+            <div key={k} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--panel-border)] px-3 py-2 text-[13px]"><span>{label}</span><Switch on={all.features[k as keyof typeof all.features]} label={label} onChange={v => setAll(a => ({ ...a, features: { ...a.features, [k]: v } }))} /></div>
+          ))}
+        </div>
+      </section>
+
+      <section className={`${CARD} p-4`}>
+        <h2 className={CARD_TITLE}>Term list warnings</h2>
+        <p className="m-0 mt-1 mb-3 text-[12.5px] text-muted">The notes SEOs see about a term list that looks thin, repetitive or lopsided.</p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Object.entries(TERM_RULES).map(([g, [title, labels]]) => (
+            <Rules key={g} title={title} labels={labels} value={all.feedback.terms[g as keyof typeof all.feedback.terms] as Group} onChange={v => setAll(a => ({ ...a, feedback: { ...a.feedback, terms: { ...a.feedback.terms, [g]: v } } }))} />
+          ))}
+        </div>
+      </section>
+
+      <section className={`${CARD} p-4`}>
+        <h2 className={CARD_TITLE}>Writer guidance</h2>
+        <p className="m-0 mt-1 mb-3 text-[12.5px] text-muted">The panels beside a writer’s draft. Writers never see grades or competitor targets, only guidance in words.</p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Object.entries(WRITER_RULES).map(([g, [title, labels]]) => (
+            <Rules key={g} title={title} labels={labels} value={all.feedback.writer[g as keyof typeof all.feedback.writer] as Group} onChange={v => setAll(a => ({ ...a, feedback: { ...a.feedback, writer: { ...a.feedback.writer, [g]: v } } }))} />
+          ))}
+        </div>
+      </section>
+
+      <div><button type="button" className={BTN.navy} disabled={busy} onClick={() => void call(() => saveAiSettings(all), { ok: 'Settings saved.', refresh: false })}>Save settings</button></div>
+
+      <section className={`${CARD} p-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className={CARD_TITLE}>Clients</h2><button type="button" className={BTN.smallWhite} onClick={() => setAdding(a => !a)}>{adding ? 'Cancel' : 'Add a client'}</button></div>
+        <p className="m-0 mt-1 mb-3 text-[12.5px] text-muted">Each client has its own profile: what Claude is told about it, and its heading in the brief. Saved on their own button, not with the settings above.</p>
+        <div className="space-y-3">
+          {adding && <ClientEditor client={null} onDone={() => setAdding(false)} />}
+          {clients.map(c => <details key={c.code} className="rounded-[12px] border border-[var(--panel-border)]"><summary className="cursor-pointer px-3 py-2.5 text-[13px] font-semibold text-tn-ink">{c.code} · {c.name}</summary><div className="p-2"><ClientEditor client={c} onDone={() => {}} /></div></details>)}
+        </div>
+      </section>
 
       <section className={`${CARD} overflow-x-auto`}>
         <h2 className={`${CARD_TITLE} px-4 pt-4`}>Usage log</h2>

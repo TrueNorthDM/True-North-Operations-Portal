@@ -11,6 +11,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { Existing, ImportTopic } from './import-file'
 import { draftOf } from './import-file'
+import { loadSettings } from './ai/store'
 import { readPage, readProject, type Project, type TopicPage } from './project'
 
 type Db = ReturnType<typeof createAdminClient>
@@ -113,6 +114,12 @@ export async function listClientsFull(db: Db): Promise<ClientFull[]> {
   return (data ?? []).map(c => profileOf(c.code, c.name, c.profile))
 }
 
+/** Adds a client or changes the one with this code. */
+export async function saveClientRow(db: Db, code: string, name: string, profile: { heading: string; faith: boolean; about: string; orig: string }): Promise<void> {
+  const { error } = await db.from('ts_clients').upsert({ code, name, profile, updated_at: new Date().toISOString() })
+  if (error) throw new Error(`The client could not be saved: ${error.message}`)
+}
+
 export interface DraftRow { html: string; version: number; updatedAt: string | null; updatedBy: string | null }
 
 export interface Bundle {
@@ -141,6 +148,8 @@ export async function loadBundle(db: Db, id: string, role: TopicRole): Promise<B
   if (!row || (role === 'writer' && (!row.shared || row.archived))) return null
   const c = await db.from('ts_clients').select('code, name, profile').eq('code', row.client_code).maybeSingle()
   const project = readProject(row)
+  const rules = await loadSettings(db)
+  project.rules = { features: rules.features, terms: rules.feedback.terms, writer: rules.feedback.writer }
   return {
     id: row.id,
     project,

@@ -72,7 +72,7 @@ export interface TsSettings {
   feedback: { terms: FeedbackTerms; writer: FeedbackWriter }
 }
 
-export const FEATURE_DEFAULTS: FeatureSwitches = { secondary: true, rich: false, followups: false, avoid: true, questions: true, sources: false, discussions: false, originality: true, interview: false }
+export const FEATURE_DEFAULTS: FeatureSwitches = { secondary: true, rich: false, followups: false, avoid: true, questions: true, sources: true, discussions: true, originality: true, interview: true }
 
 export const FEEDBACK_TERMS_DEFAULT: FeedbackTerms = {
   general: { minList: 10 },

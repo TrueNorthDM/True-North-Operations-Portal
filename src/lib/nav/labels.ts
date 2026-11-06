@@ -44,6 +44,7 @@ export const NAV_LABEL = {
   /** The parent of AAAF and HFA. */
   '/seo/href-links': 'Href Links',
   '/seo/topic-studio': 'Topic Studio',
+  '/seo/topic-studio/settings': 'Settings',
 } as const
 
 export type NavHref = keyof typeof NAV_LABEL

@@ -14,7 +14,7 @@ import { BTN } from '@/lib/ui/buttons'
 import { TEXTAREA } from '@/components/clocky/entries/ui'
 import { CARD, FIELD_LABEL } from '@/lib/ui/type'
 import type { Block } from '@/lib/topic-studio/engine'
-import { FEEDBACK_WRITER, overuseCheck, type DraftReport, type Overuse, type Tone, type WorkshopModel, type WorkshopTerm } from '@/lib/topic-studio/workshop'
+import { overuseCheck, type DraftReport, type Overuse, type Tone, type WorkshopModel, type WorkshopTerm } from '@/lib/topic-studio/workshop'
 import type { AiResults } from '@/lib/topic-studio/ai/results'
 import { sendTermFeedback } from '../actions'
 import { AiBtn, NO_AI, type AiInfo } from './AiBtn'
@@ -60,14 +60,14 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm, ai = NO_
   results?: Pick<AiResults, 'review' | 'placements'>
 }) {
   const { call, busy, toast } = useTopicCall()
-  const [grouped, setGrouped] = useState<boolean>(FEEDBACK_WRITER.terms.grouped)
+  const [grouped, setGrouped] = useState<boolean>(model.rules.terms.grouped)
   const [over, setOver] = useState<{ result: Overuse; html: string } | null>(null)
   const [rating, setRating] = useState<'good' | 'problems' | null>(null)
   const [note, setNote] = useState('')
 
-  const cv = FEEDBACK_WRITER.coverage
-  const ln = FEEDBACK_WRITER.length
-  const rd = FEEDBACK_WRITER.readability
+  const cv = model.rules.coverage
+  const ln = model.rules.length
+  const rd = model.rules.readability
 
   if (!model.terms.length) {
     return <Card title="Topic coverage"><p className="m-0 text-[13px] text-muted">The SEO team has not built the topic term list yet.</p></Card>
@@ -137,7 +137,7 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm, ai = NO_
         </Card>
       )}
 
-      {FEEDBACK_WRITER.terms.on && (
+      {model.rules.terms.on && (
         <Card title="Terms to consider">
           {missing.length ? (
             <>
@@ -151,10 +151,10 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm, ai = NO_
         </Card>
       )}
 
-      {FEEDBACK_WRITER.used.on && (
+      {model.rules.used.on && (
         <Card title="Terms you’ve used">
           {used.length ? <>{chips(used, false)}{groupToggle}</> : <p className="m-0 text-[13px] text-muted">None yet.</p>}
-          {report && FEEDBACK_WRITER.used.overuse && (
+          {report && model.rules.used.overuse && (
             <div className="mt-3">
               <button type="button" className={BTN.smallWhite} onClick={() => setOver({ result: overuseCheck(model, blocks), html })}>{over ? 'Check again' : 'Check for overused words'}</button>
               {over && (over.result.short
