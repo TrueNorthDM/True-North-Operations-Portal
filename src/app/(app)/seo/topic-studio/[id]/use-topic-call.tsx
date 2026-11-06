@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Toast, type ToastState } from '@/components/clocky/entries/ui'
-import { failText } from '@/lib/ui/action-error'
+import { isStalePage, failText } from '@/lib/ui/action-error'
 import type { Done } from '../actions'
 
 export function useTopicCall() {
@@ -27,7 +27,7 @@ export function useTopicCall() {
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
   /** Runs `fn`; returns its answer when it worked, null when it did not (the toast says why). */
-  const call = useCallback(async <T extends object>(fn: () => Promise<Done<T>>, opts: { refresh?: boolean; ok?: string | ((r: T) => string | undefined) } = {}): Promise<T | null> => {
+  const call = useCallback(async <T extends object>(fn: () => Promise<Done<T>>, opts: { refresh?: boolean; ok?: string | ((r: T) => string | undefined); fail?: string } = {}): Promise<T | null> => {
     setBusy(true)
     try {
       const r = await fn()
@@ -37,7 +37,7 @@ export function useTopicCall() {
       if (opts.refresh !== false) router.refresh()
       return r
     } catch (e) {
-      say(failText(e), true)
+      say(opts.fail && !isStalePage(e) ? opts.fail : failText(e), true)
       return null
     } finally {
       setBusy(false)

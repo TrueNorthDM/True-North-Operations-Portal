@@ -38,7 +38,8 @@ export function CompetitorsTab({ id, view }: { id: string; view: CompetitorsView
     const cap = parseCapture(txt, html, domain)
     if (!cap || !cap.blocks.length) { say('Nothing to capture in that paste. Copy the article text or use the capture button.', true); return }
     if (JSON.stringify(cap).length > MAX_BYTES) { say('That page is too long to capture. Copy just the article text and paste again.', true); return }
-    const r = await call(() => saveCapture(id, cap, /<[a-z]/i.test(html), target))
+    // The server's firewall refuses text that holds a classic script-injection sample (tested 5 November 2026): say so rather than "check your connection".
+    const r = await call(() => saveCapture(id, cap, /<[a-z]/i.test(html), target), { fail: 'The server did not accept that page. If it contains sample code, such as a script alert, copy the article text without it and paste again.' })
     if (r) say([`Saved ${n(r.words)} words for ${r.label}.`, ...r.notes].join(' '))
     ;(e.target as HTMLElement).blur()
   }
