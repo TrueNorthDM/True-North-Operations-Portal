@@ -63,7 +63,7 @@ export const PROMPT_DEFS: Record<PromptKey, PromptDef> = {
     template: "You help writers creating content for {{client}} understand what real people say about a topic so they can answer people’s actual needs with care.\n\nTopic: {{topic}}\nPrimary keyphrase: {{primary}}\n\nSocial discussion threads:\n{{discussion_threads}}\n\nSummarize what these discussions reveal. Paraphrase; don't quote usernames. Keep each item to one sentence.\n\nReply with only JSON: {\"painPoints\":[\"...\"],\"language\":[\"phrases people use to describe it\"],\"questions\":[\"questions people ask\"],\"misconceptions\":[\"...\"],\"angles\":[\"helpful angles the article could take\"]}",
   },
   commodity: {
-    title: "Competitor analysis",
+    title: "Map originality",
     tab: "Originality tab",
     does: "Reads the competitor pages and AI answers and drafts the originality opportunities, angle and depth, and the commodity map.",
     vars: [["client", "The client’s name and description", false], ["topic", "The Monday task name", false], ["primary", "The primary keyphrase", false], ["original_definition", "What counts as original for this client, from Admin → Clients", false], ["ai_answers", "The pasted AI answers", false], ["competitor_content", "Condensed text and headings of each captured competitor page", true]],

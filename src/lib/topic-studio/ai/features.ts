@@ -265,7 +265,7 @@ function insights(ctx: AiContext): FeatureRun {
   }
 }
 
-/* 6. Competitor analysis (the commodity map) */
+/* 6. Map originality (the commodity map) */
 
 function commodity(ctx: AiContext): FeatureRun {
   const a = ctx.analysis
