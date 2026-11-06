@@ -19,6 +19,7 @@ export const ROUTES = {
   i7: '/ops/client-reports/i7',
   projectHours: '/ops/client-reports/project-hours',
   hrefLinks: '/seo/href-links',
+  topicStudio: '/seo/topic-studio',
   organization: '/organization',
   history: '/history',
   chat: '/chat',
@@ -31,3 +32,6 @@ export const hrefLinksSite = (siteCode: string) => `${ROUTES.hrefLinks}/${siteCo
 
 /** One page of a site's list. */
 export const hrefLinksPage = (siteCode: string, id: string | number) => `${hrefLinksSite(siteCode)}/${id}`
+
+/** One topic brief in Topic Studio. */
+export const topicStudioTopic = (id: string) => `${ROUTES.topicStudio}/${id}`

@@ -17,7 +17,7 @@ import { NAV_LABEL, type NavHref } from '@/lib/nav/labels'
 import { onPath, pathOf } from '@/lib/nav/path'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import { ROUTES } from '@/lib/nav/routes'
-import { CLIENT_REPORT_TOOLS, TOOLS, type ToolGroup } from '@/lib/access/tools'
+import { CLIENT_REPORT_TOOLS, TOOLS, TOPIC_STUDIO_TOOLS, type ToolGroup } from '@/lib/access/tools'
 import type { NavCount } from '@/lib/nav/counts'
 
 export type Level = 1 | 2 | 3
@@ -107,6 +107,13 @@ const toolRows = (group: ToolGroup): PanelItem[] => {
     if (CLIENT_REPORT_TOOLS.includes(t.key)) {
       if (!rows.some(r => r.key === 'client-reports')) {
         rows.push({ key: 'client-reports', label: NAV_LABEL[ROUTES.clientReports], href: ROUTES.clientReports, icon: 'client-reports', tools: CLIENT_REPORT_TOOLS })
+      }
+      continue
+    }
+    // Topic Studio's two grants (writer, SEO) are one row too.
+    if (TOPIC_STUDIO_TOOLS.includes(t.key)) {
+      if (!rows.some(r => r.key === 'topic-studio')) {
+        rows.push({ key: 'topic-studio', label: NAV_LABEL[ROUTES.topicStudio], href: ROUTES.topicStudio, icon: 'topic-studio', tools: TOPIC_STUDIO_TOOLS })
       }
       continue
     }

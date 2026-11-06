@@ -117,6 +117,26 @@ export const TOOLS: ToolDef[] = [
     icon: 'href-links',
     description: 'Hreflang tags for the WordPress pages of each project, AAAF and HFA.',
   },
+  // Topic Studio (5 November 2026), the SEO brief tool that was a Claude
+  // Artifact. Two grants behind one row: the Writers and SEO teams open the
+  // first (the topics shared with writers), the SEO team the second (every
+  // topic and tab, import, share). The page asks for either.
+  {
+    key: 'topic-studio',
+    label: 'Topic Studio',
+    href: ROUTES.topicStudio,
+    group: 'SEO Tools',
+    icon: 'topic-studio',
+    description: 'SEO topic briefs and the writer workshop: the topics an SEO has shared with writers.',
+  },
+  {
+    key: 'topic-studio-seo',
+    label: 'Topic Studio · SEO research',
+    href: ROUTES.topicStudio,
+    group: 'SEO Tools',
+    icon: 'topic-studio',
+    description: 'Research every topic: import topic files, build the brief, share it with writers.',
+  },
 
   // ── Operations ───────────────────────────────────────────────────────────
   {
@@ -162,6 +182,9 @@ export const TOOLS: ToolDef[] = [
 
 /** The tools behind the one Client Reports row, in tab order. */
 export const CLIENT_REPORT_TOOLS: readonly string[] = ['i7-budget', 'grant-pass-report']
+
+/** The tools behind the one Topic Studio row: the writer's grant and the SEO's. */
+export const TOPIC_STUDIO_TOOLS: readonly string[] = ['topic-studio', 'topic-studio-seo']
 
 /** Valid tool keys, the server action validates writes against this. */
 export const TOOL_KEYS: ReadonlySet<string> = new Set(TOOLS.map(t => t.key))

@@ -43,6 +43,7 @@ export const NAV_LABEL = {
   '/ops/client-reports/project-hours': 'Client Report · Project Hours & Others',
   /** The parent of AAAF and HFA. */
   '/seo/href-links': 'Href Links',
+  '/seo/topic-studio': 'Topic Studio',
 } as const
 
 export type NavHref = keyof typeof NAV_LABEL

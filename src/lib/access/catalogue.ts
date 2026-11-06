@@ -95,6 +95,10 @@ const TREE: Node[] = [
     { key: 'image-optimization', label: 'Image Optimization', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'analytics', label: 'Analytics', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'impact-globe', label: 'Impact Globe', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
+    // Topic Studio (5 November 2026): two grants behind one row, as the client
+    // reports. Its team lists decide who is a writer and who is an SEO.
+    { key: 'topic-studio', label: 'Topic Studio', kind: 'tool', group: 'SEO Tools', v: [1, 1, 1], note: 'The Writer workshop and SEO brief of the topics an SEO has shared with writers.' },
+    { key: 'topic-studio-seo', label: 'Topic Studio · SEO research', kind: 'tool', group: 'SEO Tools', v: [1, 1, 1], note: 'Every topic and every tab: import topic files, research, and share topics with writers.' },
     { key: 'publishing', label: 'Publishing Goals', kind: 'tool', group: 'Operations', v: [1, 1, 1] },
     // Whoever opens it sees the whole report, budget included, and the budget
     // widget on Home (owner's decision, 7 October 2026).

@@ -20,6 +20,8 @@ export const NAV_ICON = {
   'analytics': 'M3 3v18h18M7 15l4-4 3 3 5-6',
   'impact-globe': 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18',
   'href-links': 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+  // Topic Studio (owner approved the mockup, 5 November 2026): a page with a magnifier.
+  'topic-studio': 'M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M13 3l5 5M13 3v5h5M9 9h1M9 13h3M16.5 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18.7 18.2 21 20.5',
   'publishing-goals': 'M22 2 11 13M22 2l-7 20-4-9-9-4z',
   'boards': 'M3 3h18v18H3zM9 3v18M15 3v18',
   'client-reports': 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M12 11v8M14 13h-3a1 1 0 0 0 0 2h2a1 1 0 0 1 0 2h-3',

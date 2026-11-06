@@ -5274,6 +5274,198 @@ export type Database = {
           },
         ]
       }
+      ts_clients: {
+        Row: {
+          code: string
+          name: string
+          profile: Json
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          name: string
+          profile?: Json
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          name?: string
+          profile?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ts_pages: {
+        Row: {
+          artifact_id: string | null
+          captured_at: string | null
+          data: Json
+          id: number
+          kind: string
+          position: number
+          title: string
+          topic_id: string
+          url: string
+        }
+        Insert: {
+          artifact_id?: string | null
+          captured_at?: string | null
+          data?: Json
+          id?: number
+          kind?: string
+          position?: number
+          title?: string
+          topic_id: string
+          url?: string
+        }
+        Update: {
+          artifact_id?: string | null
+          captured_at?: string | null
+          data?: Json
+          id?: number
+          kind?: string
+          position?: number
+          title?: string
+          topic_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_pages_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_topic_history: {
+        Row: {
+          id: number
+          pages: Json
+          reason: string
+          saved_at: string
+          saved_by: string | null
+          topic: Json
+          topic_id: string
+        }
+        Insert: {
+          id?: number
+          pages?: Json
+          reason: string
+          saved_at?: string
+          saved_by?: string | null
+          topic: Json
+          topic_id: string
+        }
+        Update: {
+          id?: number
+          pages?: Json
+          reason?: string
+          saved_at?: string
+          saved_by?: string | null
+          topic?: Json
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_topic_history_saved_by_fkey"
+            columns: ["saved_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_topic_history_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_topics: {
+        Row: {
+          archived: boolean
+          artifact_id: string | null
+          artifact_updated_at: string | null
+          client_code: string
+          content_hash: string | null
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          imported_at: string | null
+          imported_by: string | null
+          monday_url: string | null
+          primary_keyphrase: string
+          shared: boolean
+          topic: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived?: boolean
+          artifact_id?: string | null
+          artifact_updated_at?: string | null
+          client_code: string
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          monday_url?: string | null
+          primary_keyphrase?: string
+          shared?: boolean
+          topic: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived?: boolean
+          artifact_id?: string | null
+          artifact_updated_at?: string | null
+          client_code?: string
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          monday_url?: string | null
+          primary_keyphrase?: string
+          shared?: boolean
+          topic?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_topics_client_code_fkey"
+            columns: ["client_code"]
+            referencedRelation: "ts_clients"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "ts_topics_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_topics_imported_by_fkey"
+            columns: ["imported_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_topics_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       monday_assignment_events_since: {
@@ -5431,6 +5623,10 @@ export type Database = {
       tc_rename_field_option: {
         Args: { p_label: string; p_option_id: number }
         Returns: number
+      }
+      ts_import_topic: {
+        Args: { actor: string; payload: Json }
+        Returns: string
       }
     }
     Enums: {
