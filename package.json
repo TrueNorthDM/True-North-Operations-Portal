@@ -13,6 +13,7 @@
     "verify": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "date-holidays": "3.37.0",

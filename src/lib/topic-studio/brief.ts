@@ -51,7 +51,10 @@ function parts(a: Analysis, clientHeading: string): Parts {
   }
 }
 
-export function briefHtml(a: Analysis, clientHeading: string): string {
+/** Sections other tabs add to the brief (originality, citations), already written as HTML and Markdown. */
+export interface BriefExtra { html: string; md: string }
+
+export function briefHtml(a: Analysis, clientHeading: string, extra?: BriefExtra): string {
   const b = parts(a, clientHeading)
   const ul = (items: string[]) => (items.length ? `<ul>${items.map(x => `<li>${x}</li>`).join('')}</ul>` : '<p>None</p>')
   const questions = b.direct.length || b.mindset.length
@@ -66,11 +69,12 @@ export function briefHtml(a: Analysis, clientHeading: string): string {
     b.key.length ? `<h3>Key terms for the meta description and introduction</h3><p><i>${esc(KEY_NOTE)}</i></p><div style="${HL}">${ul(b.key.map(t => esc(t.text) + (t.alts.length ? ` <i>(also: ${esc(t.alts.join(', '))})</i>` : '')))}</div>` : '',
     b.answer.length ? `<h3>Answer near the top</h3><p><i>${esc(ANS_NOTE)}</i></p><div style="${HL}">${ul(b.answer.map(esc))}</div>` : '',
     questions,
+    extra?.html ?? '',
     b.competitors.length ? `<h3>Competitors analyzed</h3><ul>${b.competitors.map(u => `<li><a href="${esc(u)}">${esc(u)}</a></li>`).join('')}</ul>` : '',
   ].filter(Boolean).join('\n')
 }
 
-export function briefMarkdown(a: Analysis, clientHeading: string): string {
+export function briefMarkdown(a: Analysis, clientHeading: string, extra?: BriefExtra): string {
   const b = parts(a, clientHeading)
   const li = (items: string[]) => (items.length ? items.map(x => `- ${x}`).join('\n') : '- None')
   const out: string[] = [`# ${b.heading}: ${b.topic}`, '', '## Title, metas, and introduction', `**${b.primary}**`, '']
@@ -80,6 +84,7 @@ export function briefMarkdown(a: Analysis, clientHeading: string): string {
   if (b.direct.length || b.mindset.length) out.push('## Questions', '')
   if (b.direct.length) out.push('### Questions to answer directly (and have summary answers for)', li(b.direct), '')
   if (b.mindset.length) out.push('### Questions that reveal the mindset of the searchers (can answer indirectly)', li(b.mindset), '')
+  if (extra?.md) out.push(extra.md, '')
   out.push('## Competitors analyzed', ...b.competitors.map(u => `- ${u}`))
   return out.join('\n')
 }

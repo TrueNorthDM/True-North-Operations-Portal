@@ -6,7 +6,7 @@
  * as a ranked list; terms that mean the same sit under their main term and
  * count once; each term shows which competitors use it and how often. Rules
  * adjust how terms are scored before a rebuild, and a click on a term shows it
- * in context. The Claude buttons of the Artifact arrive in phase 3.
+ * in context. Claude refines the list and groups it (phase 3).
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -22,6 +22,7 @@ import type { Rules } from '@/lib/topic-studio/engine'
 import type { TermRow, TermsView } from '@/lib/topic-studio/views'
 import type { FeedbackRow } from '@/lib/topic-studio/store'
 import { editTopic, previewRules, resolveFeedback, type TopicOp } from '../actions'
+import { AiBtn, NO_AI, type AiInfo } from './AiBtn'
 import { TermDrawer } from './TermDrawer'
 import { useTopicCall } from './use-topic-call'
 
@@ -66,7 +67,7 @@ const Chip = ({ children, onClick, title, dashed, disabled }: { children: React.
     className={`inline-flex items-center gap-1.5 rounded-full border bg-white px-2.5 py-1 text-[12.5px] text-tn-ink transition-colors hover:border-tn-teal disabled:opacity-50 ${dashed ? 'border-dashed border-[var(--faint)]' : 'border-[var(--panel-border)]'}`}>{children}</button>
 )
 
-export function TermsTab({ id, view, feedback = [] }: { id: string; view: TermsView; feedback?: FeedbackRow[] }) {
+export function TermsTab({ id, view, feedback = [], ai = NO_AI }: { id: string; view: TermsView; feedback?: FeedbackRow[]; ai?: AiInfo }) {
   const { call, busy, say, toast } = useTopicCall()
   const [confirmDialog, confirm] = useConfirm()
   const [mode, setMode] = useState<'grouped' | 'list'>('grouped')
@@ -200,8 +201,8 @@ export function TermsTab({ id, view, feedback = [] }: { id: string; view: TermsV
 
         <div className="flex flex-wrap items-center gap-2">
           {view.N > 0 && <button type="button" className={view.all ? BTN.smallWhite : BTN.smallNavy} disabled={busy} onClick={() => void rebuild()}>{view.all ? 'Rebuild from data' : 'Build term list'}</button>}
-          <button type="button" className={`${BTN.smallWhite} opacity-60`} disabled title="Needs the Anthropic key">Refine with Claude</button>
-          <span className="text-[11.5px] text-muted">Phase 3</span>
+          {view.N > 0 && <AiBtn id={id} feature="refine" ai={ai} label="Refine with Claude" done="Claude refined the term list. Look over what it added and removed." />}
+          {view.N > 0 && view.all > 0 && <AiBtn id={id} feature="group" ai={ai} label="Group with Claude" done="Claude grouped the terms and found variants." />}
           <span className="flex-1" />
           <input className={`${INPUT_SM} w-52`} placeholder="Add a missing term" aria-label="Add a missing term" value={adding} maxLength={120} onChange={e => setAdding(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void addTerm() }} />
           <button type="button" className={BTN.smallNavy} disabled={busy || !adding.trim()} onClick={() => void addTerm()}>Add</button>

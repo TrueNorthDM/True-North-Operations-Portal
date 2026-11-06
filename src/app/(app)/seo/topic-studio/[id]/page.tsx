@@ -2,7 +2,7 @@
 // mockup. An SEO (topic-studio-seo) works through Setup, Competitors, Topic
 // terms, Questions, the Writer workshop and the SEO brief; a writer
 // (topic-studio) opens only topics shared with writers and uses the Writer
-// workshop and the SEO brief. Originality is phase 4.
+// workshop and the SEO brief.
 //
 // The page reads the topic and its captured pages once, runs the analysis
 // only for the tabs that show it, and hands each tab plain data
@@ -17,13 +17,25 @@ import { requireSurface } from '@/lib/access/resolve'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { ROUTES, topicStudioTopic } from '@/lib/nav/routes'
 import { compList, createAnalysis } from '@/lib/topic-studio/analysis'
+import { claudeConfigured } from '@/lib/topic-studio/ai/claude'
+import { PROMPT_ORDER } from '@/lib/topic-studio/ai/prompt-defs'
+import { loadSettings } from '@/lib/topic-studio/ai/store'
+import { featureConfig } from '@/lib/topic-studio/ai/settings'
+import { citationsBrief, citationsBriefHtml, citationsBriefMarkdown, citationsView } from '@/lib/topic-studio/citations'
+import { discussionSearchLinks, discussionsView } from '@/lib/topic-studio/discussions'
+import { originalityBriefHtml, originalityBriefMarkdown, originalityView } from '@/lib/topic-studio/originality'
 import { briefHtml, briefMarkdown, slugOf, termListHtml, termListText, termsCsv } from '@/lib/topic-studio/brief'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { listClientsFull, listFeedbackRows, loadBundle, topicRole } from '@/lib/topic-studio/store'
 import { workshopModel } from '@/lib/topic-studio/workshop'
 import { competitorsView, questionsView, termsView } from '@/lib/topic-studio/views'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import type { AiInfo } from './AiBtn'
 import { BriefTab } from './BriefTab'
+import { CitationsTab } from './CitationsTab'
+import { DiscussionsTab } from './DiscussionsTab'
+import { InsightsPanel } from './InsightsPanel'
+import { OriginalityTab } from './OriginalityTab'
 import { ShareControl } from './ShareControl'
 import { WriterTab } from './WriterTab'
 import { CompetitorsTab } from './CompetitorsTab'
@@ -34,7 +46,7 @@ import { TermsTab } from './TermsTab'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Topic Studio' }
 
-const SEO_TABS = ['setup', 'competitors', 'terms', 'questions', 'writer', 'brief'] as const
+const SEO_TABS = ['setup', 'competitors', 'terms', 'questions', 'originality', 'citations', 'discussions', 'writer', 'brief'] as const
 type Tab = (typeof SEO_TABS)[number]
 
 export default async function TopicPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
@@ -62,9 +74,16 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
         { key: 'competitors', label: 'Competitors', count: captured, href: `${base}?tab=competitors` },
         { key: 'terms', label: 'Topic terms', count: light.concepts().length, href: `${base}?tab=terms` },
         { key: 'questions', label: 'Questions', count: p.questions.filter(q => !q.off).length, href: `${base}?tab=questions` },
+        { key: 'originality', label: 'Originality', href: `${base}?tab=originality` },
+        { key: 'citations', label: 'Citations', href: `${base}?tab=citations` },
+        { key: 'discussions', label: 'Discussions', count: discussionsView(b.pages).total, href: `${base}?tab=discussions` },
         { key: 'writer', label: 'Writer workshop', href: `${base}?tab=writer` },
         { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` },
       ]
+
+  // Claude's buttons: connected once the key is on the server, each on unless an Admin switched it off.
+  const settings = await loadSettings(db)
+  const ai: AiInfo = { connected: claudeConfigured(), on: Object.fromEntries(PROMPT_ORDER.map(k => [k, featureConfig(settings.ai, k).on])) }
 
   // Everything that reads the captured pages shares one analysis.
   const a = tab === 'setup' ? null : createAnalysis(p, b.pages)
@@ -81,14 +100,27 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
       />
     )
   } else if (a && tab === 'competitors') content = <CompetitorsTab id={id} view={competitorsView(a)} />
-  else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} feedback={await listFeedbackRows(db, id)} />
-  else if (a && tab === 'writer') content = <WriterTab id={id} initialHtml={b.draft.html} version={b.draft.version} model={workshopModel(a)} />
-  else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} />
+  else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} feedback={await listFeedbackRows(db, id)} ai={ai} />
+  else if (a && tab === 'writer') content = <WriterTab id={id} initialHtml={b.draft.html} version={b.draft.version} model={workshopModel(a)} ai={ai} results={{ review: p.ai.review, placements: p.ai.placements }} />
+  else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} ai={ai} />
+  else if (a && tab === 'originality') content = <OriginalityTab id={id} view={originalityView(p.ai, b.client.orig)} ai={ai} />
+  else if (a && tab === 'citations') content = <CitationsTab id={id} view={citationsView(a, p.curated, b.client)} />
+  else if (a && tab === 'discussions') {
+    const dv = discussionsView(b.pages)
+    content = (
+      <>
+        <DiscussionsTab id={id} view={dv} searches={discussionSearchLinks(p.primary || p.topic, b.client.faith)} />
+        <InsightsPanel id={id} insights={p.ai.insights} threads={dv.total} ai={ai} />
+      </>
+    )
+  }
   else if (a && tab === 'brief') {
+    const cb = citationsBrief(a, p.curated, b.client)
+    const extra = { html: [originalityBriefHtml(p.ai), citationsBriefHtml(cb)].filter(Boolean).join('\n'), md: [originalityBriefMarkdown(p.ai), citationsBriefMarkdown(cb)].filter(Boolean).join('\n\n') }
     content = (
       <BriefTab
         id={id} shared={writer ? null : p.shared}
-        html={briefHtml(a, b.client.heading)} markdown={briefMarkdown(a, b.client.heading)}
+        html={briefHtml(a, b.client.heading, extra)} markdown={briefMarkdown(a, b.client.heading, extra)}
         termListHtml={termListHtml(a)} termListText={termListText(a)} csv={termsCsv(a)}
         slug={slugOf(p.primary, p.topic)} hasTerms={a.concepts().length > 0}
       />

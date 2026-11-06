@@ -5274,6 +5274,64 @@ export type Database = {
           },
         ]
       }
+      ts_ai_usage: {
+        Row: {
+          at: string
+          error: string
+          feature: string
+          id: number
+          input_tokens: number
+          model: string
+          ms: number
+          ok: boolean
+          output_tokens: number
+          person_id: string | null
+          topic_id: string | null
+          topic_name: string
+        }
+        Insert: {
+          at?: string
+          error?: string
+          feature: string
+          id?: number
+          input_tokens?: number
+          model?: string
+          ms?: number
+          ok: boolean
+          output_tokens?: number
+          person_id?: string | null
+          topic_id?: string | null
+          topic_name?: string
+        }
+        Update: {
+          at?: string
+          error?: string
+          feature?: string
+          id?: number
+          input_tokens?: number
+          model?: string
+          ms?: number
+          ok?: boolean
+          output_tokens?: number
+          person_id?: string | null
+          topic_id?: string | null
+          topic_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_ai_usage_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_ai_usage_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ts_clients: {
         Row: {
           code: string
@@ -5472,6 +5530,34 @@ export type Database = {
             foreignKeyName: "ts_pages_topic_id_fkey"
             columns: ["topic_id"]
             referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]

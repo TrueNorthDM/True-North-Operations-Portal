@@ -5,8 +5,8 @@
  * draft covers the topic, its length and reading level, the terms still to
  * consider and the ones already used, a check for overused words, and a place to
  * tell the SEO team what the term list got right or wrong. Guidance in words, no
- * grades and no targets from competitors (the SEO team's decision). The Claude
- * review and placement suggestions arrive in phase 3.
+ * grades and no targets from competitors (the SEO team's decision). Claude's
+ * review and placement suggestions sit in the same column (phase 3).
  */
 
 import { useState } from 'react'
@@ -15,8 +15,13 @@ import { TEXTAREA } from '@/components/clocky/entries/ui'
 import { CARD, FIELD_LABEL } from '@/lib/ui/type'
 import type { Block } from '@/lib/topic-studio/engine'
 import { FEEDBACK_WRITER, overuseCheck, type DraftReport, type Overuse, type Tone, type WorkshopModel, type WorkshopTerm } from '@/lib/topic-studio/workshop'
+import type { AiResults } from '@/lib/topic-studio/ai/results'
 import { sendTermFeedback } from '../actions'
+import { AiBtn, NO_AI, type AiInfo } from './AiBtn'
+import { PlacementsResult, ReviewResult } from './AiResults'
 import { useTopicCall } from './use-topic-call'
+
+const NO_RESULTS: Pick<AiResults, 'review' | 'placements'> = { review: null, placements: null }
 
 const n = (v: number) => v.toLocaleString('en-US')
 const TONE: Record<Tone, string> = { good: 'text-[var(--ok-fg)]', ok: 'text-[var(--ok-fg)]', neutral: 'text-foreground', warn: 'text-[var(--warn-fg)]', poor: 'text-[#c8323d]' }
@@ -41,7 +46,7 @@ function Chip({ t, missing, onClick }: { t: WorkshopTerm; missing: boolean; onCl
   )
 }
 
-export function WriterPanels({ id, model, report, blocks, html, onTerm }: {
+export function WriterPanels({ id, model, report, blocks, html, onTerm, ai = NO_AI, results = NO_RESULTS }: {
   id: string
   model: WorkshopModel
   report: DraftReport | null
@@ -50,6 +55,9 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm }: {
   /** The draft's HTML, to tell when an overuse check is out of date. */
   html: string
   onTerm: (t: { key: string; label: string }) => void
+  ai?: AiInfo
+  /** What Claude left on the topic: the last review and placement suggestions. */
+  results?: Pick<AiResults, 'review' | 'placements'>
 }) {
   const { call, busy, toast } = useTopicCall()
   const [grouped, setGrouped] = useState<boolean>(FEEDBACK_WRITER.terms.grouped)
@@ -89,8 +97,9 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm }: {
     <div className="space-y-3">
       {toast}
       <Card title="Content review">
-        <button type="button" className={`${BTN.smallWhite} opacity-60`} disabled title="Needs the Anthropic key">Review with Claude</button>
-        <span className="ml-2 text-[11.5px] text-muted">Phase 3</span>
+        <AiBtn id={id} feature="review" ai={ai} label={results.review ? 'Review again' : 'Review with Claude'} done="Claude reviewed the draft." />
+        {results.review && <ReviewResult review={results.review} />}
+        {!results.review && <Hint>Claude reads the whole draft and says where it is strong, where it is thin, and what to fix. It never grades the writer.</Hint>}
       </Card>
 
       {cv.on && (
@@ -138,7 +147,7 @@ export function WriterPanels({ id, model, report, blocks, html, onTerm }: {
             </>
           ) : <p className="m-0 text-[13px] text-[var(--ok-fg)]">Every term is covered.</p>}
           {!report && <p className="m-0 mt-2 text-[12px] text-muted">Add your draft to see which of these it already uses.</p>}
-          {report && missing.length > 0 && <div className="mt-3 flex items-center gap-2"><button type="button" className={`${BTN.smallWhite} opacity-60`} disabled title="Needs the Anthropic key">Suggest natural placements</button><span className="text-[11.5px] text-muted">Phase 3</span></div>}
+          {report && missing.length > 0 && <div className="mt-3"><AiBtn id={id} feature="place" ai={ai} label={results.placements ? 'Suggest again' : 'Suggest natural placements'} done="Claude suggested where the missing terms could fit." />{results.placements && <PlacementsResult placements={results.placements} />}</div>}
         </Card>
       )}
 

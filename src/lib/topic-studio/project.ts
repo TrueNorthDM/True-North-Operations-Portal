@@ -13,6 +13,8 @@
  */
 
 import { RULES_DEFAULT, termKey } from './engine'
+import { readCurated, type Curated } from './citations'
+import { readAiResults, type AiResults } from './ai/results'
 import type { Block } from './engine'
 
 export type Tier = 'high' | 'medium' | 'low'
@@ -87,6 +89,10 @@ export interface Project {
   answerTop: string[]
   /** The draft an import brought, used until the topic has a draft of its own (ts_drafts). */
   draftHtml: string
+  /** What Claude's features left on the topic (commodity map, interview prompts, review, ...). */
+  ai: AiResults
+  /** The sources and authorities the SEO picked for the brief. */
+  curated: Curated
   shared: boolean
 }
 
@@ -166,6 +172,8 @@ export function readProject(row: { topic: string; primary_keyphrase: string; mon
     questions,
     answerTop: strings(d.answerTop),
     draftHtml: text(d.draftHtml),
+    ai: readAiResults(d),
+    curated: readCurated(d),
     shared: row.shared,
   }
 }

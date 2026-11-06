@@ -4,8 +4,8 @@
  * Questions (Topic Studio, phase 1): choose the questions the article answers
  * directly, review the ones that show what searchers are thinking, and note
  * what the short summary answer at the top should say. These sections appear
- * in the SEO brief in the same order. Finding gaps with Claude arrives in
- * phase 3.
+ * in the SEO brief in the same order. Claude cleans up the questions, finds
+ * gaps and drafts the summary answer (phase 3).
  */
 
 import { useState } from 'react'
@@ -15,6 +15,7 @@ import { INPUT } from '@/lib/ui/fields'
 import { CARD, CARD_TITLE, SECTION_TITLE } from '@/lib/ui/type'
 import type { QuestionRow, QuestionsView } from '@/lib/topic-studio/views'
 import { editTopic, type TopicOp } from '../actions'
+import { AiBtn, NO_AI, type AiInfo } from './AiBtn'
 import { useTopicCall } from './use-topic-call'
 
 const Tag = ({ children, title, tone = 'gray' }: { children: React.ReactNode; title?: string; tone?: 'gray' | 'teal' | 'gold' }) => (
@@ -28,7 +29,7 @@ const Sub = ({ children, hint }: { children: React.ReactNode; hint?: string }) =
   </div>
 )
 
-export function QuestionsTab({ id, view }: { id: string; view: QuestionsView }) {
+export function QuestionsTab({ id, view, ai = NO_AI }: { id: string; view: QuestionsView; ai?: AiInfo }) {
   const { call, busy, toast } = useTopicCall()
   const [direct, setDirect] = useState('')
   const [note, setNote] = useState('')
@@ -94,8 +95,8 @@ export function QuestionsTab({ id, view }: { id: string; view: QuestionsView }) 
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={BTN.smallWhite} disabled={busy || !view.captured} title={view.captured ? undefined : 'Capture competitor pages first'} onClick={() => void run({ op: 'syncQuestions' })}>{view.hasCompetitorQuestions ? 'Re-scan competitors' : 'Find competitor questions'}</button>
-            <button type="button" className={`${BTN.smallWhite} opacity-60`} disabled title="Needs the Anthropic key">Clean up and find gaps with Claude</button>
-            <span className="text-[11.5px] text-muted">Phase 3</span>
+            <AiBtn id={id} feature="cleanq" ai={ai} label="Clean up and find gaps with Claude" done="Claude cleaned up the questions and suggested gaps." />
+            <AiBtn id={id} feature="answer" ai={ai} label="Draft the summary answer" done="Claude drafted the points for the summary answer." />
           </div>
         </div>
       </section>

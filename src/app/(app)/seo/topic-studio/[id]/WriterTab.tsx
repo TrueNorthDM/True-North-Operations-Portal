@@ -17,6 +17,8 @@ import { CARD } from '@/lib/ui/type'
 import { draftBlocksFromHtml } from '@/lib/topic-studio/draft-client'
 import { analyzeDraft, highlightSpecs, type WorkshopModel } from '@/lib/topic-studio/workshop'
 import { saveDraft } from '../actions'
+import type { AiResults } from '@/lib/topic-studio/ai/results'
+import { NO_AI, type AiInfo } from './AiBtn'
 import { TermDrawer } from './TermDrawer'
 import { useTopicCall } from './use-topic-call'
 import { VersionHistory } from './VersionHistory'
@@ -30,11 +32,13 @@ export interface WriterTabProps {
   /** The save counter the draft was read at. */
   version: number
   model: WorkshopModel
+  ai?: AiInfo
+  results?: Pick<AiResults, 'review' | 'placements'>
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
-export function WriterTab({ id, initialHtml, version, model }: WriterTabProps) {
+export function WriterTab({ id, initialHtml, version, model, ai = NO_AI, results }: WriterTabProps) {
   const client = useIsClient()
   const { call, say, toast } = useTopicCall()
   const api = useRef<EditorHandle>(null)
@@ -113,7 +117,7 @@ export function WriterTab({ id, initialHtml, version, model }: WriterTabProps) {
       </section>
 
       <aside className="min-w-0 lg:sticky lg:top-[calc(var(--chrome-top)+16px)] lg:max-h-[calc(100vh-var(--chrome-top)-32px)] lg:overflow-y-auto lg:pr-1" aria-label="Guidance for your draft">
-        <WriterPanels id={id} model={model} report={report} blocks={blocks} html={html} onTerm={setTerm} />
+        <WriterPanels id={id} model={model} report={report} blocks={blocks} html={html} onTerm={setTerm} ai={ai} results={results} />
       </aside>
 
       {history && (
