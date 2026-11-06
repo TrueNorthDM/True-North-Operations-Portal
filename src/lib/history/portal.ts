@@ -81,6 +81,7 @@ export const BUILT: { when: string; what: string; how: string; isNew?: boolean }
   { when: 'September 2026', what: 'Navigation and Notifications', how: 'A navy rail with panels and search, and a bell for new work, deadlines and syncs, with a daily summary.' },
   { when: 'Jul to Sep 2026', what: 'The True North look', how: 'The whole portal rebranded to True North Digital Marketing\'s identity.' },
   { when: 'October 2026', what: 'A home of its own', how: 'Its own server and address, sign-in by invitation with a second step on the phone, nightly backups, and a staging copy where every change is tried before the team sees it.', isNew: true },
+  { when: 'November 2026', what: 'Topic Studio', how: 'The SEO team\'s topic brief tool, built as a Claude Artifact, began moving into the portal on November 5, first on the staging copy: topics imported from the Artifact, for the SEO and Writers teams, with the writer workshop and the brief to follow.' },
 ]
 
 /** Chapter 4: the move, phase by phase. */
