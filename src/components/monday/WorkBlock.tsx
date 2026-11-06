@@ -9,7 +9,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { chip, PRIORITY_CHIP, DUE_BADGE, DUE_TIME } from './tokens'
 import { StatusChip } from './StatusChip'
 import { BandHeader, BandMap, NextBandPill, OrderMark, type BandSummary } from './OrderBands'
-import { OpenHistory, OpenInMonday } from './RowLinks'
+import { OpenHistory, OpenInMonday, OpenTopic } from './RowLinks'
 import { n, type readDue } from './shared'
 import { bandRange, bandReason, bandsOf } from '@/lib/monday/worklist/order-bands'
 import type { Sort, SortKey } from '@/lib/monday/worklist/list-view'
@@ -119,7 +119,7 @@ function RowCells({ r, d, columns, onPick, marks = false }: {
           case 'item':
             return (
               <div key={c.key} className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
-                <span className="line-clamp-2">{r.itemName}</span>
+                <span className="line-clamp-2">{r.itemName}{r.topicId && <OpenTopic href={`/seo/topic-studio/${r.topicId}`} label={r.itemName} />}</span>
               </div>
             )
           case 'language':

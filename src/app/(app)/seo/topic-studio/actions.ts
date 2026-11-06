@@ -26,8 +26,10 @@ import {
   addDirectQuestion, addTerm, buildTerms, cleanNotes, cleanRules, clearBuild, cycleTier, deleteGroup, moveKeysToGroup, moveTerm, moveToEnd, newGroup, notVariant,
   removeTerms, renameGroup, restoreAll, restoreTerm, syncQuestions, toggleDirect, toggleQuestionOff, type Patch,
 } from '@/lib/topic-studio/term-ops'
+import { MAX_DRAFT_CHARS, draftWords, sanitizeDraftHtml } from '@/lib/topic-studio/sanitize'
 import {
-  createTopicRow, deleteTopicRow, listClientsFull, loadBundle, pageIdsByAddress, patchTopic, removePages, savePage, type Bundle, type Cols,
+  addFeedbackRow, addVersionRow, createTopicRow, deleteTopicRow, lastVersionAt, listClientsFull, listVersionRows, loadBundle, pageIdsByAddress, patchTopic, readVersionHtml,
+  removePages, resolveFeedbackRow, saveDraftRow, savePage, topicRole, type Bundle, type Cols, type TopicRole, type VersionInfo,
 } from '@/lib/topic-studio/store'
 
 export type Done<T = object> = ({ ok: true } & T) | { ok: false; error: string }
@@ -63,6 +65,22 @@ async function open(id: string): Promise<{ db: ReturnType<typeof createAdminClie
   const b = await loadBundle(g.db, id, 'seo')
   if (!b) throw new Say('That topic no longer exists.')
   return { ...g, b }
+}
+
+/**
+ * Someone who may work in a topic's workshop: an SEO on any topic, a writer on a
+ * topic shared with writers (loadBundle returns nothing otherwise).
+ */
+async function member(id: string): Promise<{ db: ReturnType<typeof createAdminClient>; personId: string; role: TopicRole; b: Bundle }> {
+  const access = await writerAccess()
+  if (!access) throw new Say('Sign in again to save. A View Stage preview cannot save.')
+  const role = topicRole(access.canTool)
+  if (!role) throw new Say('Topic Studio is not open to your access.')
+  if (!access.personId) throw new Say('Your login is not linked to anyone in the Directory.')
+  const db = createAdminClient()
+  const b = await loadBundle(db, id, role)
+  if (!b) throw new Say('That topic is not available.')
+  return { db, personId: access.personId, role, b }
 }
 
 const text = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
@@ -262,7 +280,7 @@ export async function previewRules(id: string, rules: Partial<Rules>): Promise<D
 /** Where a term is used, for the drawer on the Topic terms tab. */
 export async function termContext(id: string, key: string, label: string): Promise<Done<{ context: TermContext }>> {
   return run(async () => {
-    const { b } = await open(id)
+    const { b } = await member(id)
     const k = text(key, 300)
     if (!k) throw new Say('That term is no longer on the list.')
     return { context: buildTermContext(createAnalysis(b.project, b.pages), k, text(label, 200) || k) }
@@ -275,6 +293,106 @@ export async function deleteTopic(id: string): Promise<Done> {
     const { db } = await open(id)
     await deleteTopicRow(db, id)
     refresh(id, true)
+    return {}
+  })
+}
+
+
+/* The writer workshop: the draft, its versions and feedback on the term list. */
+
+const AUTO_VERSION_MS = 30 * 60 * 1000
+const MIN_WORDS_FOR_VERSION = 30
+const MAX_VERSION_CHARS = 180_000
+
+/**
+ * Saves the draft. `base` is the version the editor started from: when someone
+ * else has saved since, nothing is written and `saved` is false with the current
+ * version, so the screen can say so instead of overwriting their work. The HTML is
+ * sanitized here again whatever the browser sent. A snapshot of what the draft
+ * was is kept automatically when a first edit starts or half an hour has passed.
+ */
+export async function saveDraft(id: string, html: unknown, base: number): Promise<Done<{ saved: boolean; version: number; savedAt: string | null }>> {
+  return run(async () => {
+    const { db, personId, b } = await member(id)
+    if (typeof html !== 'string') throw new Say('That draft could not be read.')
+    if (html.length > MAX_DRAFT_CHARS * 2) throw new Say('This draft is too long to save.')
+    const clean = sanitizeDraftHtml(html)
+    const r = await saveDraftRow(db, id, clean, Number.isInteger(base) && base >= 0 ? base : 0, personId)
+    if (r.saved) {
+      const before = sanitizeDraftHtml(b.draft.html)
+      if (before && before !== clean && before.length <= MAX_VERSION_CHARS && draftWords(before) >= MIN_WORDS_FOR_VERSION) {
+        const last = await lastVersionAt(db, id)
+        if (!last || Date.now() - Date.parse(last) > AUTO_VERSION_MS) await addVersionRow(db, id, 'auto', before, last ? '' : 'Before this editing session', draftWords(before), personId)
+      }
+    }
+    return r
+  })
+}
+
+/** Keeps a snapshot of the saved draft the writer can go back to. */
+export async function saveVersionNow(id: string): Promise<Done<{ version: VersionInfo | null }>> {
+  return run(async () => {
+    const { db, personId, b } = await member(id)
+    const html = sanitizeDraftHtml(b.draft.html)
+    if (!html) throw new Say('Nothing to save yet. Write or paste your draft first.')
+    if (html.length > MAX_VERSION_CHARS) throw new Say('This draft is too long to keep in version history.')
+    await addVersionRow(db, id, 'saved', html, '', draftWords(html), personId)
+    return { version: (await listVersionRows(db, id))[0] ?? null }
+  })
+}
+
+export async function listVersions(id: string): Promise<Done<{ versions: VersionInfo[] }>> {
+  return run(async () => {
+    const { db } = await member(id)
+    return { versions: await listVersionRows(db, id) }
+  })
+}
+
+/** One version's text, for the preview in the history. */
+export async function readVersion(id: string, versionId: number): Promise<Done<{ html: string }>> {
+  return run(async () => {
+    const { db } = await member(id)
+    const html = Number.isInteger(versionId) ? await readVersionHtml(db, id, versionId) : null
+    if (html === null) throw new Say('That version no longer exists.')
+    return { html: sanitizeDraftHtml(html) }
+  })
+}
+
+/** Puts an earlier version back as the draft; what the draft was is kept first. */
+export async function restoreVersion(id: string, versionId: number): Promise<Done<{ html: string; version: number }>> {
+  return run(async () => {
+    const { db, personId, b } = await member(id)
+    const stored = Number.isInteger(versionId) ? await readVersionHtml(db, id, versionId) : null
+    if (stored === null) throw new Say('That version no longer exists.')
+    const html = sanitizeDraftHtml(stored)
+    const cur = sanitizeDraftHtml(b.draft.html)
+    if (cur && cur !== html && cur.length <= MAX_VERSION_CHARS) await addVersionRow(db, id, 'restore', cur, 'Before restoring an earlier version', draftWords(cur), personId)
+    const r = await saveDraftRow(db, id, html, b.draft.version, personId)
+    if (!r.saved) throw new Say('The draft changed while you were restoring. Reload the page and try again.')
+    return { html, version: r.version }
+  })
+}
+
+/** What a writer thinks of the topic's term list, for the SEO team. */
+export async function sendTermFeedback(id: string, rating: 'good' | 'problems', note: string): Promise<Done> {
+  return run(async () => {
+    const { db, personId } = await member(id)
+    if (rating !== 'good' && rating !== 'problems') throw new Say('Choose whether the list is good or has problems.')
+    const n = text(note, 2000)
+    if (rating === 'problems' && !n) throw new Say('Say what the problem is, so the SEO team can fix the list.')
+    await addFeedbackRow(db, id, rating, n, personId)
+    refresh(id)
+    return {}
+  })
+}
+
+/** An SEO marks feedback as dealt with, or open again. */
+export async function resolveFeedback(id: string, feedbackId: number, resolved: boolean): Promise<Done> {
+  return run(async () => {
+    const { db, personId } = await open(id)
+    if (!Number.isInteger(feedbackId)) throw new Say('That feedback no longer exists.')
+    await resolveFeedbackRow(db, id, feedbackId, personId, resolved === true)
+    refresh(id)
     return {}
   })
 }

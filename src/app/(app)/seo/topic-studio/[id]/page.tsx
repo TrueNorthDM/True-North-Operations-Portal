@@ -1,8 +1,8 @@
 // One Topic Studio topic (phase 1, 5 November 2026): the tabs of the approved
 // mockup. An SEO (topic-studio-seo) works through Setup, Competitors, Topic
-// terms, Questions and the SEO brief; a writer (topic-studio) opens only
-// topics shared with writers, and sees the SEO brief until the writer
-// workshop arrives (phase 2). Originality is phase 4.
+// terms, Questions, the Writer workshop and the SEO brief; a writer
+// (topic-studio) opens only topics shared with writers and uses the Writer
+// workshop and the SEO brief. Originality is phase 4.
 //
 // The page reads the topic and its captured pages once, runs the analysis
 // only for the tabs that show it, and hands each tab plain data
@@ -19,10 +19,13 @@ import { ROUTES, topicStudioTopic } from '@/lib/nav/routes'
 import { compList, createAnalysis } from '@/lib/topic-studio/analysis'
 import { briefHtml, briefMarkdown, slugOf, termListHtml, termListText, termsCsv } from '@/lib/topic-studio/brief'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { listClientsFull, loadBundle, topicRole } from '@/lib/topic-studio/store'
+import { listClientsFull, listFeedbackRows, loadBundle, topicRole } from '@/lib/topic-studio/store'
+import { workshopModel } from '@/lib/topic-studio/workshop'
 import { competitorsView, questionsView, termsView } from '@/lib/topic-studio/views'
 import { PAGE_TITLE } from '@/lib/ui/type'
 import { BriefTab } from './BriefTab'
+import { ShareControl } from './ShareControl'
+import { WriterTab } from './WriterTab'
 import { CompetitorsTab } from './CompetitorsTab'
 import { QuestionsTab } from './QuestionsTab'
 import { SetupTab } from './SetupTab'
@@ -31,7 +34,7 @@ import { TermsTab } from './TermsTab'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Topic Studio' }
 
-const SEO_TABS = ['setup', 'competitors', 'terms', 'questions', 'brief'] as const
+const SEO_TABS = ['setup', 'competitors', 'terms', 'questions', 'writer', 'brief'] as const
 type Tab = (typeof SEO_TABS)[number]
 
 export default async function TopicPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
@@ -45,7 +48,7 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
 
   const writer = role === 'writer'
   const { tab: asked } = await searchParams
-  const tab: Tab = writer ? 'brief' : (SEO_TABS as readonly string[]).includes(asked ?? '') ? (asked as Tab) : 'setup'
+  const tab: Tab = writer ? (asked === 'brief' ? 'brief' : 'writer') : (SEO_TABS as readonly string[]).includes(asked ?? '') ? (asked as Tab) : 'setup'
   const p = b.project
 
   // The counts on the tabs need no page text: the competitor list, and the terms with their variants.
@@ -53,12 +56,13 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
   const captured = compList(p, b.pages).filter(c => c.page).length
   const base = topicStudioTopic(id)
   const items: TabItem<Tab>[] = writer
-    ? [{ key: 'brief', label: 'SEO brief', href: base }]
+    ? [{ key: 'writer', label: 'Writer workshop', href: base }, { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` }]
     : [
         { key: 'setup', label: 'Setup', href: `${base}?tab=setup` },
         { key: 'competitors', label: 'Competitors', count: captured, href: `${base}?tab=competitors` },
         { key: 'terms', label: 'Topic terms', count: light.concepts().length, href: `${base}?tab=terms` },
         { key: 'questions', label: 'Questions', count: p.questions.filter(q => !q.off).length, href: `${base}?tab=questions` },
+        { key: 'writer', label: 'Writer workshop', href: `${base}?tab=writer` },
         { key: 'brief', label: 'SEO brief', href: `${base}?tab=brief` },
       ]
 
@@ -77,7 +81,8 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
       />
     )
   } else if (a && tab === 'competitors') content = <CompetitorsTab id={id} view={competitorsView(a)} />
-  else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} />
+  else if (a && tab === 'terms') content = <TermsTab id={id} view={termsView(a)} feedback={await listFeedbackRows(db, id)} />
+  else if (a && tab === 'writer') content = <WriterTab id={id} initialHtml={b.draft.html} version={b.draft.version} model={workshopModel(a)} />
   else if (a && tab === 'questions') content = <QuestionsTab id={id} view={questionsView(a)} />
   else if (a && tab === 'brief') {
     content = (
@@ -102,7 +107,7 @@ export default async function TopicPage({ params, searchParams }: { params: Prom
           <h1 className={PAGE_TITLE}>{p.topic}</h1>
           {p.primary && <p className="m-0 mt-1.5"><span className="text-muted">Primary keyphrase</span> <b className="text-tn-ink">{p.primary}</b></p>}
         </div>
-        {!writer && (b.archived ? <Pill tone="amber" text="Archived" /> : p.shared ? <Pill tone="green" text="Shared with writers" /> : <Pill tone="gray" text="Draft" />)}
+        {!writer && (b.archived ? <Pill tone="amber" text="Archived" /> : <ShareControl id={id} shared={p.shared} />)}
       </div>
       {items.length > 1 && <Tabs items={items} value={tab} label="Topic" idPrefix="ts-tab" />}
       {content}

@@ -105,3 +105,19 @@ export function EyeIcon() {
     </svg>
   )
 }
+
+/** A small link to the task's Topic Studio topic, beside its name (6 November 2026). */
+export function OpenTopic({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      aria-label={`Open the Topic Studio topic of ${label}`}
+      title="Open in Topic Studio"
+      className="ml-1.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] bg-[var(--chip-neutral-bg)] align-[-4px] text-tn-teal transition-colors hover:bg-[rgba(30,125,127,.12)]"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M13 3l5 5M13 3v5h5M9 9h1M9 13h3M16.5 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18.7 18.2 21 20.5" />
+      </svg>
+    </a>
+  )
+}

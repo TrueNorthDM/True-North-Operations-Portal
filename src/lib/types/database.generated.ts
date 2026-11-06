@@ -5295,6 +5295,144 @@ export type Database = {
         }
         Relationships: []
       }
+      ts_draft_versions: {
+        Row: {
+          html: string
+          id: number
+          kind: string
+          note: string
+          saved_at: string
+          saved_by: string | null
+          topic_id: string
+          words: number
+        }
+        Insert: {
+          html: string
+          id?: number
+          kind: string
+          note?: string
+          saved_at?: string
+          saved_by?: string | null
+          topic_id: string
+          words?: number
+        }
+        Update: {
+          html?: string
+          id?: number
+          kind?: string
+          note?: string
+          saved_at?: string
+          saved_by?: string | null
+          topic_id?: string
+          words?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_draft_versions_saved_by_fkey"
+            columns: ["saved_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_draft_versions_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_drafts: {
+        Row: {
+          html: string
+          topic_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          html?: string
+          topic_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          html?: string
+          topic_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_drafts_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_drafts_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_feedback: {
+        Row: {
+          created_at: string
+          id: number
+          kind: string
+          note: string
+          person_id: string | null
+          rating: string
+          resolved_at: string | null
+          resolved_by: string | null
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          kind?: string
+          note?: string
+          person_id?: string | null
+          rating: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          kind?: string
+          note?: string
+          person_id?: string | null
+          rating?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_feedback_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_feedback_resolved_by_fkey"
+            columns: ["resolved_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            referencedRelation: "ts_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ts_pages: {
         Row: {
           artifact_id: string | null
@@ -5624,6 +5762,10 @@ export type Database = {
         Args: { p_label: string; p_option_id: number }
         Returns: number
       }
+      ts_add_version: {
+        Args: { p_actor: string; p_html: string; p_kind: string; p_note: string; p_topic: string; p_words: number }
+        Returns: number
+      }
       ts_import_topic: {
         Args: { actor: string; payload: Json }
         Returns: string
@@ -5631,6 +5773,10 @@ export type Database = {
       ts_patch_topic: {
         Args: { p_actor: string; p_cols: Json; p_patch: Json; p_topic: string }
         Returns: string
+      }
+      ts_save_draft: {
+        Args: { p_actor: string; p_base: number; p_html: string; p_topic: string }
+        Returns: Json
       }
       ts_save_page: {
         Args: { p_actor: string; p_page: Json; p_topic: string }

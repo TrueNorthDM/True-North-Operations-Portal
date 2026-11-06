@@ -22,6 +22,8 @@ import { TeamPriorityEditor } from '@/components/monday/TeamPriorityEditor'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { allowedTo } from '@/lib/access/resolve'
+import { topicRole } from '@/lib/topic-studio/store'
+import { topicsByItem } from '@/lib/topic-studio/work-links'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 import {
   canSetOrder, editorTeamFor, hasLevels, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
@@ -241,6 +243,15 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
         .map(m => ({ id: m.teamId, name: m.teamName }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     }
+  }
+  // A task that has a Topic Studio topic this person may open gets a link beside its name.
+  // The list never waits on this: a failed read only leaves the links out.
+  const topicAccess = topicRole(access.canTool)
+  if (topicAccess) {
+    try {
+      const topics = await topicsByItem(supabase, topicAccess)
+      if (topics.size) rows = rows.map(r => { const t = topics.get(r.itemId); return t ? { ...r, topicId: t } : r })
+    } catch (e) { console.error('[my-work] topic links', e) }
   }
   return (
     <WorkList

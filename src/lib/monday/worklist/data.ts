@@ -69,6 +69,11 @@ export interface WorkRow {
   /** Straight to the item in Monday. Null only while the slug is unknown. */
   url: string | null
   /**
+   * The Topic Studio topic of this task, when it has one the viewer may open
+   * (set by the My Work page, never by the worklist read).
+   */
+  topicId?: string
+  /**
    * Whether the Monday account behind this row is a person we know. False for
    * deleted accounts and anyone not linked yet, which is what the Unknown user
    * block collects: their work is real, it just has nobody to file it under.

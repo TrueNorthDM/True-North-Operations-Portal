@@ -85,6 +85,8 @@ export interface Project {
   buildRules: Partial<typeof RULES_DEFAULT>
   questions: QuestionEntry[]
   answerTop: string[]
+  /** The draft an import brought, used until the topic has a draft of its own (ts_drafts). */
+  draftHtml: string
   shared: boolean
 }
 
@@ -163,6 +165,7 @@ export function readProject(row: { topic: string; primary_keyphrase: string; mon
     buildRules: rules,
     questions,
     answerTop: strings(d.answerTop),
+    draftHtml: text(d.draftHtml),
     shared: row.shared,
   }
 }

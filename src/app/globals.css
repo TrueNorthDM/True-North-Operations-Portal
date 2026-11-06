@@ -316,3 +316,22 @@ h1, h2, h3 {
 /* The staging copy's strip stays on screen, at a fixed height, so everything
    below it can count on it (components/StagingBanner.tsx). */
 html.staging { --banner-h: 30px; }
+
+/* Topic Studio writer workshop (6 November 2026): the draft editor and the term highlights.
+   First use of a term is marked with a soft teal fill, later uses with a dotted underline. Painted
+   with the CSS Custom Highlight API, so typing is never interrupted and the draft's HTML stays clean. */
+::highlight(term-first) { background-color: rgba(30, 125, 127, 0.18); }
+::highlight(term-again) { text-decoration: underline dotted rgba(30, 125, 127, 0.8) 2px; }
+
+.ts-editor { min-height: 520px; padding: 22px 26px; outline: none; font-size: 15px; line-height: 1.7; color: var(--color-tn-ink); overflow-wrap: anywhere; }
+.ts-editor.is-empty::before { content: attr(data-ph); color: var(--muted); pointer-events: none; }
+.ts-editor h1, .ts-editor h2, .ts-editor h3, .ts-editor h4 { font-family: var(--font-display); font-weight: 800; color: var(--color-tn-ink); line-height: 1.25; margin: 1.2em 0 .45em; }
+.ts-editor h1 { font-size: 26px; margin-top: 0; }
+.ts-editor h2 { font-size: 21px; }
+.ts-editor h3 { font-size: 17.5px; }
+.ts-editor h4 { font-size: 15.5px; }
+.ts-editor p { margin: 0 0 .8em; }
+.ts-editor ul, .ts-editor ol { margin: 0 0 .8em; padding-left: 1.5em; }
+.ts-editor li { margin: .15em 0; }
+.ts-editor blockquote { margin: 0 0 .8em; padding: .1em 0 .1em 1em; border-left: 3px solid var(--panel-border); color: var(--foreground); }
+.ts-editor a { color: var(--color-tn-teal); text-decoration: underline; }

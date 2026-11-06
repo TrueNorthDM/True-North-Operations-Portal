@@ -113,9 +113,12 @@ export async function listClientsFull(db: Db): Promise<ClientFull[]> {
   return (data ?? []).map(c => profileOf(c.code, c.name, c.profile))
 }
 
+export interface DraftRow { html: string; version: number; updatedAt: string | null; updatedBy: string | null }
+
 export interface Bundle {
   id: string
   project: Project
+  draft: DraftRow
   pages: TopicPage[]
   client: ClientFull
   archived: boolean
@@ -126,18 +129,23 @@ export interface Bundle {
 /** A topic with its captured pages, or null when it does not exist or the role may not open it. */
 export async function loadBundle(db: Db, id: string, role: TopicRole): Promise<Bundle | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null
-  const [t, pg] = await Promise.all([
+  const [t, pg, dr] = await Promise.all([
     db.from('ts_topics').select('id, client_code, topic, primary_keyphrase, monday_url, shared, archived, data, updated_at, imported_at').eq('id', id).maybeSingle(),
     db.from('ts_pages').select('artifact_id, kind, url, title, data, captured_at, position').eq('topic_id', id).order('position'),
+    db.from('ts_drafts').select('html, version, updated_at, updated_by').eq('topic_id', id).maybeSingle(),
   ])
+  if (dr.error) throw new Error(`The draft could not be read: ${dr.error.message}`)
   if (t.error) throw new Error(`The topic could not be read: ${t.error.message}`)
   if (pg.error) throw new Error(`The captured pages could not be read: ${pg.error.message}`)
   const row = t.data
   if (!row || (role === 'writer' && (!row.shared || row.archived))) return null
   const c = await db.from('ts_clients').select('code, name, profile').eq('code', row.client_code).maybeSingle()
+  const project = readProject(row)
   return {
     id: row.id,
-    project: readProject(row),
+    project,
+    // A topic that has not been written in yet shows the draft an import brought (version 0).
+    draft: dr.data ? { html: dr.data.html, version: dr.data.version, updatedAt: dr.data.updated_at, updatedBy: dr.data.updated_by } : { html: project.draftHtml, version: 0, updatedAt: null, updatedBy: null },
     pages: (pg.data ?? []).map(readPage),
     client: c.data ? profileOf(c.data.code, c.data.name, c.data.profile) : profileOf(row.client_code, row.client_code, null),
     archived: row.archived,
@@ -191,4 +199,74 @@ export async function pageIdsByAddress(db: Db, id: string, matches: (url: string
   const { data, error } = await db.from('ts_pages').select('id, url, kind').eq('topic_id', id)
   if (error) throw new Error(`The captured pages could not be read: ${error.message}`)
   return (data ?? []).filter(r => r.kind === 'competitor' && matches(r.url)).map(r => r.id)
+}
+
+
+/* Phase 2: the draft, its versions and what writers say about the term list. */
+
+export interface DraftSave { saved: boolean; version: number; savedAt: string | null }
+
+/** Saves the draft when the caller started from the current version (ts_save_draft); otherwise says which version is current. */
+export async function saveDraftRow(db: Db, id: string, html: string, base: number, actor: string): Promise<DraftSave> {
+  const { data, error } = await db.rpc('ts_save_draft', { p_topic: id, p_html: html, p_base: base, p_actor: actor })
+  if (error) throw new Error(error.message === 'topic_not_found' ? 'That topic no longer exists.' : error.message)
+  const r = (data ?? {}) as { ok?: boolean; version?: number; updated_at?: string }
+  return { saved: r.ok === true, version: typeof r.version === 'number' ? r.version : base, savedAt: r.updated_at ?? null }
+}
+
+export type VersionKind = 'saved' | 'auto' | 'restore'
+
+export async function addVersionRow(db: Db, id: string, kind: VersionKind, html: string, note: string, words: number, actor: string | null): Promise<void> {
+  const { error } = await db.rpc('ts_add_version', { p_topic: id, p_kind: kind, p_html: html, p_note: note, p_words: words, p_actor: actor as string })
+  if (error) throw new Error(`The version could not be saved: ${error.message}`)
+}
+
+export interface VersionInfo { id: number; savedAt: string; by: string; kind: VersionKind; note: string; words: number }
+
+const nameOf = async (db: Db, ids: (string | null)[]): Promise<Map<string, string>> => {
+  const uniq = [...new Set(ids.filter((x): x is string => !!x))]
+  if (!uniq.length) return new Map()
+  const { data, error } = await db.from('people').select('id, full_name').in('id', uniq)
+  if (error) throw new Error(`Names could not be read: ${error.message}`)
+  return new Map((data ?? []).map(p => [p.id, p.full_name ?? '']))
+}
+
+/** The versions of a draft, newest first, without their text. */
+export async function listVersionRows(db: Db, id: string): Promise<VersionInfo[]> {
+  const { data, error } = await db.from('ts_draft_versions').select('id, saved_at, saved_by, kind, note, words').eq('topic_id', id).order('saved_at', { ascending: false }).order('id', { ascending: false }).limit(40)
+  if (error) throw new Error(`Versions could not be read: ${error.message}`)
+  const names = await nameOf(db, (data ?? []).map(v => v.saved_by))
+  return (data ?? []).map(v => ({ id: v.id, savedAt: v.saved_at, by: (v.saved_by && names.get(v.saved_by)) || 'Someone', kind: v.kind as VersionKind, note: v.note, words: v.words }))
+}
+
+export async function readVersionHtml(db: Db, id: string, versionId: number): Promise<string | null> {
+  const { data, error } = await db.from('ts_draft_versions').select('html').eq('topic_id', id).eq('id', versionId).maybeSingle()
+  if (error) throw new Error(`The version could not be read: ${error.message}`)
+  return data?.html ?? null
+}
+
+/** When the newest version of a topic was taken, or null when there is none. */
+export async function lastVersionAt(db: Db, id: string): Promise<string | null> {
+  const { data, error } = await db.from('ts_draft_versions').select('saved_at').eq('topic_id', id).order('saved_at', { ascending: false }).limit(1)
+  if (error) throw new Error(`Versions could not be read: ${error.message}`)
+  return data?.[0]?.saved_at ?? null
+}
+
+export interface FeedbackRow { id: number; by: string; rating: 'good' | 'problems'; note: string; createdAt: string; resolved: boolean }
+
+export async function addFeedbackRow(db: Db, id: string, rating: 'good' | 'problems', note: string, person: string): Promise<void> {
+  const { error } = await db.from('ts_feedback').insert({ topic_id: id, person_id: person, kind: 'terms', rating, note })
+  if (error) throw new Error(`The feedback could not be saved: ${error.message}`)
+}
+
+export async function listFeedbackRows(db: Db, id: string): Promise<FeedbackRow[]> {
+  const { data, error } = await db.from('ts_feedback').select('id, person_id, rating, note, created_at, resolved_at').eq('topic_id', id).order('created_at', { ascending: false }).limit(100)
+  if (error) throw new Error(`Feedback could not be read: ${error.message}`)
+  const names = await nameOf(db, (data ?? []).map(f => f.person_id))
+  return (data ?? []).map(f => ({ id: f.id, by: (f.person_id && names.get(f.person_id)) || 'Someone', rating: f.rating as 'good' | 'problems', note: f.note, createdAt: f.created_at, resolved: !!f.resolved_at }))
+}
+
+export async function resolveFeedbackRow(db: Db, topic: string, feedbackId: number, person: string, resolved: boolean): Promise<void> {
+  const { error } = await db.from('ts_feedback').update(resolved ? { resolved_at: new Date().toISOString(), resolved_by: person } : { resolved_at: null, resolved_by: null }).eq('topic_id', topic).eq('id', feedbackId)
+  if (error) throw new Error(`The feedback could not be updated: ${error.message}`)
 }
