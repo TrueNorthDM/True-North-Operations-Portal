@@ -37,7 +37,11 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({}) }))
 
 // Active and invited in the Directory (lib/auth/portal-access.ts, tested on its own).
 let mayUsePortal = true
-vi.mock('@/lib/auth/portal-access', () => ({ portalAllowsWrites: async () => mayUsePortal }))
+vi.mock('@/lib/auth/portal-access', () => ({ portalAllowsWrites: async () => mayUsePortal, checkPortalAccess: async () => (mayUsePortal ? 'ok' : 'denied') }))
+
+// The session's two-step state, as the app layout reads it (lib/auth/two-step.ts).
+let twoStepNeed: 'ok' | 'challenge' | 'enroll-required' | 'enroll-optional' = 'ok'
+vi.mock('@/lib/auth/two-step', () => ({ checkTwoStep: async () => ({ need: twoStepNeed, hasFactor: false, deadline: null, skipped: false, since: null }) }))
 
 type Subj = { id: string; name: string; level: string; given: string | null; teams: Map<string, boolean>; exceptions: never[]; profileId: null; status: string }
 let subjects: Subj[] = []
@@ -58,6 +62,7 @@ beforeEach(() => {
   realPerson = { id: 'p-real' }
   preview = null
   aalPending = false
+  twoStepNeed = 'ok'
   mayUsePortal = true
   subjects = [person('p-real', 'team_leader', [['seo', true]]), person('p-admin', 'admin'), person('p-user', 'user')]
 })
@@ -169,5 +174,29 @@ describe('verifiedSession, behind every write (own rows included)', () => {
   it('is null when signed out', async () => {
     signedIn = null
     expect(await verifiedSession()).toBeNull()
+  })
+})
+
+describe('loadAccess outside the layout (security audit, 6 November 2026)', () => {
+  beforeEach(() => { subjects = [person('p-real', 'super_admin')] })
+  it('gives a session that still owes its two-step code nothing, so routes and actions refuse it', async () => {
+    twoStepNeed = 'challenge'
+    expect((await loadAccess()).can('access-levels')).toBe(false)
+    twoStepNeed = 'enroll-required'
+    expect((await loadAccess()).toolKeys.size).toBe(0)
+  })
+  it('gives nothing to a person no longer active or invited', async () => {
+    mayUsePortal = false
+    expect((await loadAccess()).can('access-levels')).toBe(false)
+    mayUsePortal = true
+  })
+  it('still answers while setting up the app is optional, as the pages do', async () => {
+    twoStepNeed = 'enroll-optional'
+    expect((await loadAccess()).can('access-levels')).toBe(true)
+  })
+  it('holds a View Stage preview to the same checks', async () => {
+    preview = { role: 'admin' }
+    twoStepNeed = 'challenge'
+    expect((await loadAccess()).level).toBe('user')
   })
 })

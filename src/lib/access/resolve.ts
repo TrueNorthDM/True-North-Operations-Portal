@@ -26,7 +26,8 @@ import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getRealPerson, getSessionUser } from '@/lib/auth/session'
-import { portalAllowsWrites } from '@/lib/auth/portal-access'
+import { checkPortalAccess, portalAllowsWrites } from '@/lib/auth/portal-access'
+import { checkTwoStep } from '@/lib/auth/two-step'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { ALIAS, ITEM, TOOL_ITEMS, type AccessLevel } from './catalogue'
@@ -88,9 +89,24 @@ export const loadRealAccess = cache(async function loadRealAccess(): Promise<Acc
   return accessFrom(s, allowedKeys(s, rules, { today: today() }), me?.id ?? null)
 })
 
+/**
+ * Whether the session has passed the checks the app layout makes before any
+ * page shows: its two-step code is given (or not yet required), and its person
+ * is still active and invited. Routes and server actions do not run inside the
+ * layout, so loadAccess asks the same questions itself: a session that still
+ * owes its code reads nothing anywhere (security audit, 6 November 2026). Both
+ * checks are memoised per request, so a page pays nothing extra. Setting up the
+ * app stays skippable while the grace week runs, as on the pages.
+ */
+async function sessionCleared(): Promise<boolean> {
+  const [portal, twoStep] = await Promise.all([checkPortalAccess(), checkTwoStep()])
+  return portal !== 'denied' && twoStep.need !== 'challenge' && twoStep.need !== 'enroll-required'
+}
+
 // Memoised per request: the layout resolves access to build the rail and each
 // guarded page resolves it again.
 export const loadAccess = cache(async function loadAccess(): Promise<Access> {
+  if (!(await sessionCleared())) return accessFrom(NOBODY, new Set(), null)
   const vs = await getViewAs()
   if (!vs) return loadRealAccess()
   const [rules, { subject, personId }] = await Promise.all([loadRulesCached(), previewSubject(vs.role)])
