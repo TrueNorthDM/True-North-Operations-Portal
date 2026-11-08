@@ -12,13 +12,14 @@
 
 import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
-import { launchBrowser } from '@/lib/pdf/browser'
+import { launchBrowser, sendOnlyToOrigin } from '@/lib/pdf/browser'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { resolveReportView } from '@/lib/report/view'
 import { reportToday } from '@/lib/report/clock'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentPerson } from '@/lib/auth/session'
 import { exportName } from '@/lib/report/csv'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
   try {
     browser = await launchBrowser()
     const page = await browser.newPage()
-    if (cookie) await page.setExtraHTTPHeaders({ cookie })
+    if (cookie) await sendOnlyToOrigin(page, target, { cookie })
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
 
@@ -85,12 +86,11 @@ export async function GET(request: Request) {
     })
 
     const name = `${exportName(tab, shown, period, reportToday())}.pdf`
-    const ascii = name.replace(/[^\x20-\x7e]/g, '-')
 
     return new Response(pdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'Content-Disposition': contentDisposition(name),
         'Cache-Control': 'no-store',
       },
     })

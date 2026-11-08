@@ -12,7 +12,7 @@ import type { Browser } from 'puppeteer-core'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { internalOrigin } from '@/lib/auth/public-origin'
-import { launchBrowser } from './browser'
+import { launchBrowser, sendOnlyToOrigin } from './browser'
 import { fitOnePage, pagePx, sheetPages, type ReceiptBox } from '@/lib/timeclock/receipt-pages'
 import { contentDisposition } from '@/lib/drive/file-names'
 
@@ -70,7 +70,7 @@ export async function printSheet(target: URL, headers: Record<string, string>, l
   try {
     browser = await launchBrowser()
     const page = await browser.newPage()
-    if (Object.keys(headers).length) await page.setExtraHTTPHeaders(headers)
+    await sendOnlyToOrigin(page, target, headers)
     const res = await page.goto(target.toString(), { waitUntil: 'networkidle0', timeout: 45_000 })
     if (!res || res.status() === 404) return null
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
