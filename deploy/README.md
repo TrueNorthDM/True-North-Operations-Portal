@@ -85,7 +85,11 @@ check, wherever a table's row rules are broad.
   signed link, or any other storage call, needs the key.
 - Roll back: `db-gate.sh <env> off`. The `.htaccess` before the first "on" is
   kept beside it as `.htaccess.before-gate`.
-- Check from outside: `/rest/v1/` answers 403, `/auth/v1/health` answers 200.
+- Sign-in (`/auth/`) is behind the gate too since 8 November 2026 (security
+  audit): the portal signs people in from its server, with the key. Only
+  `/auth/v1/health` stays open, for the uptime check.
+- Check from outside: `/rest/v1/` and `/auth/v1/otp` answer 403, `/auth/v1/health`
+  answers 200 or 401.
 
 ## Staging (`deploy/staging/`)
 

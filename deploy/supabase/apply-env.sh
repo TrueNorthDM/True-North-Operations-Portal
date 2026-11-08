@@ -20,7 +20,10 @@ setv SITE_URL "$PORTAL_URL"
 # Fetched by the sign-in service from the portal container over Docker's network
 # (deploy/portal/docker-compose.yml); the public address refuses its client.
 setv EMAIL_TEMPLATES_BASE http://tnportal-portal:3000/email-templates
-setv ADDITIONAL_REDIRECT_URLS "https://truenorthportal.online/**,https://staging.truenorthportal.online/**,http://localhost:3000/**"
+# Production sends people back only to production (security audit, 8 November
+# 2026: staging and localhost were allowed too). Staging's own .env lists only
+# staging.
+setv ADDITIONAL_REDIRECT_URLS "https://truenorthportal.online/**"
 setv DISABLE_SIGNUP false
 setv ENABLE_EMAIL_SIGNUP true
 setv ENABLE_EMAIL_AUTOCONFIRM false
