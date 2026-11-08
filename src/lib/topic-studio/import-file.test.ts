@@ -113,3 +113,16 @@ describe('topicRole', () => {
     expect(topicRole(() => false)).toBeNull()
   })
 })
+
+describe('what an import may bring in (security audit, 8 November 2026)', () => {
+  it('cleans the draft the way the editor\'s saves are cleaned', () => {
+    const f = parsed(exportFile({}, { draftHtml: '<h1>Title</h1><p onclick="x()">Hi<script>alert(1)</script></p><img src=x onerror=y>' }))
+    const html = String(f.data.draftHtml)
+    expect(html).toContain('<h1>Title</h1>')
+    expect(html).not.toMatch(/script|onclick|onerror|<img/i)
+  })
+  it('keeps only web addresses for the captured pages', () => {
+    const f = parsed(exportFile({ pages: [{ id: 'a', kind: 'competitor', url: 'javascript:alert(1)', title: 'x', blocks: [] }, { id: 'b', kind: 'competitor', url: 'https://ok.example/x', title: 'y', blocks: [] }] }))
+    expect(f.pages.map(p => p.url)).toEqual(['', 'https://ok.example/x'])
+  })
+})

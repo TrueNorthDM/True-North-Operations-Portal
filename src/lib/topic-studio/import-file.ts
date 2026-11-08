@@ -25,6 +25,7 @@
  */
 
 import { createHash } from 'node:crypto'
+import { sanitizeDraftHtml } from './sanitize'
 
 export const EXPORT_KIND = 'topic-studio-writer'
 /** Bigger than any real export (they are 100 to 400 KB), small enough to read at once. */
@@ -104,7 +105,8 @@ export function parseTopicFile(text: string): ImportTopic | string {
     return {
       artifact_id: str(pid, 64) || null,
       kind: str(kind, 32) || 'competitor',
-      url: str(url, 2000),
+      // Only a web address is kept: the tabs show it as a link (security audit, 8 November 2026).
+      url: webOnly(str(url, 2000)),
       title: str(title, 500),
       data: rest,
       captured_at: when(captured),
@@ -115,7 +117,10 @@ export function parseTopicFile(text: string): ImportTopic | string {
   // (set by a writer's offline copy) is not content.
   const { importedAt: _imp, ...project } = p
   void _imp
-  const data: Record<string, unknown> = { ...project, exported: { v: pkg.v ?? 1, at: when(pkg.exportedAt), feedback: pkg.feedback ?? null, features: pkg.features ?? null } }
+  // The draft is cleaned on the way in, as every save from the editor is (security
+  // audit, 8 November 2026); the hash below still reads the file as it was sent.
+  const clean = typeof project.draftHtml === 'string' ? { draftHtml: sanitizeDraftHtml(project.draftHtml) } : {}
+  const data: Record<string, unknown> = { ...project, ...clean, exported: { v: pkg.v ?? 1, at: when(pkg.exportedAt), feedback: pkg.feedback ?? null, features: pkg.features ?? null } }
   const content_hash = createHash('sha256').update(stable({ project, pages: pkg.pages ?? [] })).digest('hex')
 
   return {
@@ -142,6 +147,8 @@ export function importStatus(file: ImportTopic, existing: Existing | null): Impo
 }
 
 /** The draft in a topic's data, as the Artifact keeps it. */
+const webOnly = (u: string): string => (/^https?:\/\//i.test(u) ? u : '')
+
 export const draftOf = (data: unknown): string => (isObj(data) && typeof data.draftHtml === 'string' ? data.draftHtml : '')
 
 /** The file as it will be written: a file without a draft keeps the one here. */
