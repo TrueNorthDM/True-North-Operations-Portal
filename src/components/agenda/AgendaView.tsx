@@ -107,6 +107,9 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
   const open = data.items.find(x => x.id === card) ?? null
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
 
+  // The month view counts its own month only, not the days of the next or last month around it.
+  const todayInView = view === 'month' ? anchor.slice(0, 7) === data.today.slice(0, 7)
+    : (({ from, to }) => from <= data.today && data.today <= to)(viewDays(view, anchor))
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex items-end justify-between gap-3.5 flex-wrap">
@@ -124,7 +127,9 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
       {/* The view, the days and the filters on one line (owner, 31 October 2026). */}
       <div className="flex items-center gap-2.5 flex-wrap">
         <Segmented label="View" options={VIEW_OPTS} value={view} onChange={k => go(k, anchor)} />
-        <button type="button" onClick={() => go(view, data.today)} className={BTN.smallWhite}>Today</button>
+        {/* Faded while today is already in view: a click there changed nothing and read as broken (owner, 8 November 2026). */}
+        <button type="button" onClick={() => go(view, data.today)} disabled={todayInView}
+          title={todayInView ? 'Today is already in view' : undefined} className={`${BTN.smallWhite} disabled:opacity-45 disabled:cursor-default`}>Today</button>
         <div className="flex items-center gap-0.5">
           <button type="button" aria-label="Previous" onClick={() => go(view, stepAnchor(view, anchor, -1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M15 18l-6-6 6-6" size={17} width={2.2} /></button>
           <button type="button" aria-label="Next" onClick={() => go(view, stepAnchor(view, anchor, 1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M9 6l6 6-6 6" size={17} width={2.2} /></button>

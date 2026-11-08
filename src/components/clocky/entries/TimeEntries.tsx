@@ -501,7 +501,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         <span className="w-px h-[26px] bg-[var(--panel-border)] mx-1" />
         <Segmented label="Period" options={periods} value={ui.period}
           onChange={k => go({ period: k, tab: tabFor(k, ui.tab) })} />
-        <button type="button" onClick={() => go({ anchor: today })} className={BTN_SMALL}>Today</button>
+        {/* Faded while the period shown already holds today: a click there changed nothing and read as broken (owner, 8 November 2026). */}
+        <button type="button" onClick={() => go({ anchor: today })} disabled={range.from <= today && today <= range.to}
+          title={range.from <= today && today <= range.to ? 'Today is already in view' : undefined} className={`${BTN_SMALL} disabled:opacity-45 disabled:cursor-default`}>Today</button>
         <div className="flex items-center gap-0.5 text-tn-ink">
           <button type="button" aria-label="Previous" onClick={() => go({ anchor: shiftAnchor(ui.period, ui.anchor, -1, data.anchors) })} className={ICON_BTN}><Icon d={ICON.left} size={16} width={2.4} /></button>
           <button type="button" aria-label="Next" onClick={() => go({ anchor: shiftAnchor(ui.period, ui.anchor, 1, data.anchors) })} className={ICON_BTN}><Icon d={ICON.right} size={16} width={2.4} /></button>
