@@ -58,6 +58,7 @@ const PILL = {
   warn: (text: string, tip = ''): Pill => ({ text, tone: 'warn', tip }),
   bad: (text: string, tip = ''): Pill => ({ text, tone: 'bad', tip }),
   neutral: (text: string, tip = ''): Pill => ({ text, tone: 'neutral', tip }),
+  info: (text: string, tip = ''): Pill => ({ text, tone: 'info', tip }),
 }
 
 const STATE_LABEL: Record<string, string> = { open: 'Open', submitted: 'Submitted', approved: 'Approved', locked: 'Approved' }
@@ -107,10 +108,13 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
   else if (running) pills.push(PILL.ok('Running', 'The clock is running'))
   else {
     const label = lock ? (lock.state === 'approved' || lock.state === 'recorded' ? 'Approved' : 'Submitted') : STATE_LABEL[e.state] ?? 'Open'
-    pills.push(label === 'Approved' ? PILL.ok(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : '') : PILL.neutral(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : ''))
+    // Open is still the person's (gray), Submitted waits for the approver (amber), Approved is done (green) (owner, 8 November 2026).
+    const tip = e.source === 'tsheets' ? 'Imported from QuickBooks Time' : ''
+    pills.push(label === 'Approved' ? PILL.ok(label, tip) : label === 'Submitted' ? PILL.warn(label, tip) : PILL.neutral(label, tip))
   }
   if (autoOut) pills.push(PILL.bad('Auto out', autoOut.confirmed ? `Stopped by North Time after ${STOP_AFTER_LABEL}. Real end time confirmed.` : `Stopped by North Time after ${STOP_AFTER_LABEL}. End time not confirmed.`))
-  if (e.edited_by) pills.push(PILL.neutral('Edited', `Edited by ${dir.nameOf(e.edited_by)}`))
+  // A fact to notice, not a state of the entry: blue, so it never looks like Open.
+  if (e.edited_by) pills.push(PILL.info('Edited', `Edited by ${dir.nameOf(e.edited_by)}`))
 
   const canChange = kind !== 'absence' && !lock && right !== 'none'
   return {
@@ -230,7 +234,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       // A 2026 project's Billable is the project's own, as on its entries.
       billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : k.billable ? f[k.billable] ?? '' : '', code: k.code ? f[k.code] ?? '' : '',
       notes: r.notes ?? r.reason, kind: 'correction', imported: false,
-      pills: [state === 'pending' ? PILL.warn('Added time: Pending', 'Requested time. It counts only after it is approved.')
+      pills: [state === 'pending' ? PILL.warn('Added time: Waiting', 'Requested time. It counts only after it is approved.')
         : PILL.bad('Added time: Denied', 'Requested time. It counts only after it is approved.')],
       autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
       canEdit: false, canDelete: false, canContinue: false, continuesPrevious: false,
@@ -259,7 +263,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
         seconds: Math.round(Number(r.hours_per_day) * 3600),
         jobcodeId: r.jobcode_id, path: `Time off › ${type}`, short: type, client: 'Time off', isI7: false,
         fields: {}, ...EMPTY_FIELDS, notes: reason, kind: 'time_off', imported: false,
-        pills: [r.state === 'pending' ? PILL.warn('Time off: Pending') : PILL.bad('Time off: Denied')],
+        pills: [r.state === 'pending' ? PILL.warn('Time off: Waiting') : PILL.bad('Time off: Denied')],
         autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
         canEdit: false, canDelete: false, canContinue: false, continuesPrevious: false,
         attention: attentionReason({ kind: 'time_off', pending: r.state === 'pending', viewerDecides: decides }),

@@ -1,5 +1,6 @@
 'use client'
 
+import { pillClass } from '@/components/ui/Pill'
 import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
@@ -101,7 +102,7 @@ export function ClientsTab({ clients, estimateRate }: Props) {
                   <td className="px-5 py-4">
                     <span className="font-(family-name:--font-display) font-bold text-tn-ink">{client.name}</span>
                     {!client.active && (
-                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--bdg-slate-fg)] bg-[var(--bdg-slate-bg)] px-2 py-0.5 rounded-full">Inactive</span>
+                      <span className={`ml-2 ${pillClass('gray')}`}>Inactive</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-right tabular-nums text-foreground">

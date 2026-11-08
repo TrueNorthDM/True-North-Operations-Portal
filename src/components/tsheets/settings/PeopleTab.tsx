@@ -23,6 +23,7 @@
  * leaves the grid, in Edit too; Save still saves every change.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT_SM } from '@/lib/ui/fields'
 import { staleOr } from '@/lib/ui/action-error'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
@@ -610,7 +611,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                   </span>
                   <Link href={withViewAs(personHref(p.id))} title={`Open ${p.name}'s page`} className="text-[14px] font-bold text-tn-ink truncate transition-colors hover:text-tn-teal">{p.name}</Link>
                   {p.inactive && (
-                    <span title="No longer active, listed because they logged time this year" className="shrink-0 rounded-md bg-[var(--chip-neutral-bg)] px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[var(--chip-neutral-fg)]">Inactive</span>
+                    <span title="No longer active, listed because they logged time this year" className={`shrink-0 ${pillClass('gray')}`}>Inactive</span>
                   )}
                 </span>
 

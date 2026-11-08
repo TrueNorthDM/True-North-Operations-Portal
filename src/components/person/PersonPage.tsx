@@ -7,6 +7,7 @@
  * its own fields and saves them on its own (app/(app)/directory/[id]/actions.ts).
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { StatusIcon } from '@/components/ui/StatusIcon'
 import Link from 'next/link'
 import { useRef, useState, useTransition, type ReactNode } from 'react'
@@ -149,7 +150,7 @@ function Cover({ data }: { data: PersonPageData }) {
               </span>
             ))}
             {cover.hireDate && <span className="inline-flex items-center rounded-full px-[11px] py-[5px] text-[12px] font-bold bg-subtle text-foreground">Joined {formatDate(cover.hireDate)}</span>}
-            {!data.active && <span className="inline-flex items-center rounded-full px-[11px] py-[5px] text-[12px] font-bold bg-[var(--chip-neutral-bg)] text-muted">Inactive</span>}
+            {!data.active && <span className={pillClass('gray')}>Inactive</span>}
           </div>
         </div>
         {(cover.email || cover.whatsapp) && (

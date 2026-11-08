@@ -153,8 +153,10 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
 
 // ── 3K-3 and 3J: a request under review ─────────────────────────────────────
 
-const STATE_TONE: Record<string, PillTone> = { pending: 'warn', approved: 'ok', denied: 'bad', returned: 'bad' }
-const stateText = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+// One word and one colour per state across the portal (owner, 8 November 2026): Waiting, Sent back.
+const STATE_TONE: Record<string, PillTone> = { pending: 'warn', approved: 'ok', denied: 'bad', returned: 'warn' }
+const STATE_WORD: Record<string, string> = { pending: 'Waiting', returned: 'Sent back' }
+const stateText = (s: string) => STATE_WORD[s] ?? s.charAt(0).toUpperCase() + s.slice(1)
 
 function DetailGrid({ rows }: { rows: [string, string, boolean?][] }) {
   return (

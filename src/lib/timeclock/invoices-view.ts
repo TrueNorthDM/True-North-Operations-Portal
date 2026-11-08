@@ -37,7 +37,7 @@ export type InvoiceStateKey = 'draft' | 'hrs' | 'wait' | 'appr' | 'paid'
 /** Invoices.dc.html ST: the label and tone of each state. */
 export const INVOICE_STATE: Record<InvoiceStateKey, { label: string; tone: DocTone }> = {
   draft: { label: 'Draft', tone: 'neu' },
-  hrs: { label: 'Waiting for hours', tone: 'neu' },
+  hrs: { label: 'Waiting for hours', tone: 'warn' },
   wait: { label: 'Waiting for approval', tone: 'warn' },
   appr: { label: 'Approved', tone: 'teal' },
   paid: { label: 'Paid', tone: 'ok' },

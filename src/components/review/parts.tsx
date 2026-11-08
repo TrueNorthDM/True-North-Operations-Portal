@@ -281,7 +281,7 @@ export function PastGoal({ g, year, editable, api, onSaved, onError }: {
       {editable ? (
         <Segmented label="How it went" value={result} options={GOAL_RESULT.map(x => ({ key: x.key, label: x.label }))}
           onChange={k => { setResult(k); void api.markGoal({ goalId: g.id, result: k }).then(r => r.ok ? onSaved(r.savedAt ?? '') : onError(r.error)) }} />
-      ) : <span className={`rounded-[9px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] whitespace-nowrap ${res ? 'bg-tn-ink text-[#ffffff]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{res ? res.label : 'Not marked'}</span>}
+      ) : <Pill tone={res ? res.tone : 'gray'} text={res ? res.label : 'Not marked'} />}
       {editable
         ? <input value={comment.value} onChange={e => comment.change(e.target.value)} onBlur={comment.blur} placeholder="How it went, in a sentence" aria-label="How it went"
             className="col-span-2 min-h-[44px] rounded-[10px] border border-[#e4e7ec] bg-white px-3 py-2.5 text-[13.5px] leading-[1.5] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.12)]" />

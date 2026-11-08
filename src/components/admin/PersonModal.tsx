@@ -38,7 +38,7 @@ import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { BTN } from '@/lib/ui/buttons'
 import { FIELD_LABEL } from '@/lib/ui/type'
-import { PILL } from '@/components/ui/Pill'
+import { PILL, pillClass } from '@/components/ui/Pill'
 
 export type ModalState = null | { mode: 'add' }
 
@@ -113,7 +113,7 @@ export function PersonModal({
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: colour, background: `${colour}1a` }}>{firstTeam?.name ?? 'No team'}</span>
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">New</span>
+                  <span className={pillClass('blue')}>New</span>
                 </div>
               </div>
             </div>

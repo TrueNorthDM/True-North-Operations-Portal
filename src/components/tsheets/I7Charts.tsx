@@ -6,6 +6,7 @@
 // (activity mix). Values and labels are always shown as text (accessible; no
 // colour-only meaning). The client PDF draws its own (ReportPrint).
 
+import { pillClass } from '@/components/ui/Pill'
 import type { ReactNode } from 'react'
 import type { I7Report } from '@/lib/tsheets/types'
 import { fmtHours } from '@/lib/tsheets/format'
@@ -108,8 +109,8 @@ function Rings({ rows }: { rows: { label: string; pct: number | null; hours: num
             <div className="min-w-0">
               <div className="text-[13px] font-(family-name:--font-display) font-bold text-tn-ink truncate">{row.label}</div>
               {row.budget > 0 && <div className="text-[11px] text-muted mt-0.5">{fmtHours(row.hours)} of {fmtHours(row.budget)} hrs used</div>}
-              {over && <span className="inline-flex items-center mt-1.5 text-[9px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-red-fg)] bg-[var(--bdg-red-bg)] rounded-[5px] px-1.5 py-0.5">Over budget</span>}
-              {near && <span className="inline-flex items-center mt-1.5 text-[9px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-gold-fg)] bg-[var(--bdg-gold-bg)] rounded-[5px] px-1.5 py-0.5">Near budget</span>}
+              {over && <span className={`mt-1.5 ${pillClass('red')}`}>Over budget</span>}
+              {near && <span className={`mt-1.5 ${pillClass('amber')}`}>Watch</span>}
             </div>
           </div>
         )

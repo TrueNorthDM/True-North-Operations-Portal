@@ -157,7 +157,8 @@ export type PillKind = 'green' | 'amber' | 'pink' | 'red' | 'blue' | 'teal' | 'g
 
 export const PILL_CLASS: Record<PillKind, string> = {
   green: 'text-[var(--bdg-green-fg)] bg-[var(--bdg-green-bg)]',
-  amber: 'text-[var(--bdg-gold-fg)] bg-[var(--bdg-gold-bg)]',
+  // The same amber as the shared pill (owner, 8 November 2026).
+  amber: 'text-[var(--bdg-orange-fg)] bg-[var(--bdg-orange-bg)]',
   pink: 'text-rose-700 bg-rose-100',
   red: 'text-[var(--bdg-red-fg)] bg-[var(--bdg-red-bg)]',
   blue: 'text-[var(--bdg-blue-fg)] bg-[var(--bdg-blue-bg)]',

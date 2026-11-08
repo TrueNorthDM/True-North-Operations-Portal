@@ -19,7 +19,7 @@ import { CARD } from '@/lib/ui/type'
 /** Invoices.dc.html ST: each state's words, and its pill's tone (components/ui/Pill). */
 export const STATE_PILL: Record<InvoiceStateKey, { label: string; tone: PillColor }> = {
   draft: { label: 'Draft', tone: 'gray' },
-  hrs: { label: 'Waiting for hours', tone: 'gray' },
+  hrs: { label: 'Waiting for hours', tone: 'amber' },
   wait: { label: 'Waiting for approval', tone: 'amber' },
   appr: { label: 'Approved', tone: 'green' },
   paid: { label: 'Paid', tone: 'green' },

@@ -17,7 +17,7 @@ export type TwoStepState = 'on' | 'not-set-up' | 'no-account'
 
 const PILL: Record<TwoStepState, Pill> = {
   on: { kind: 'green', label: 'On' },
-  'not-set-up': { kind: 'amber', label: 'Not set up yet' },
+  'not-set-up': { kind: 'amber', label: 'Not set up' },
   'no-account': { kind: 'grey', label: 'No account yet' },
 }
 

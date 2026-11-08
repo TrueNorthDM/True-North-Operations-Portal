@@ -131,7 +131,8 @@ export const READING_LABEL: Record<Reading, string> = {
 
 export const READING_CHIP: Record<Reading, string> = {
   overloaded: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]',
-  waiting: 'bg-[rgba(87,155,252,.16)] text-[#2a5cab]',
+  // A wait, so amber (owner, 8 November 2026).
+  waiting: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]',
   'at-capacity': 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]',
   spare: 'bg-[rgba(30,125,127,.12)] text-tn-teal',
   steady: 'bg-[rgba(133,147,164,.14)] text-[var(--chip-neutral-fg)]',

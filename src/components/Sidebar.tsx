@@ -25,6 +25,7 @@
  * (md:flex); the top bar stays usable on its own there.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -311,7 +312,7 @@ export function Sidebar({
                   >
                     <NavIcon name={item.icon} size={17} className="shrink-0" />
                     <span className="flex-1 min-w-0 leading-snug">{item.label}</span>
-                    {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
+                    {item.soon && <span className={`shrink-0 ${pillClass('gray')}`}>SOON</span>}
                     {count > 0 && (
                       <span title={meaning} className="shrink-0 min-w-5 h-5 box-border px-1.5 rounded-full bg-[var(--warn-bg)] border border-[#e9d48a] text-[var(--warn-fg)] text-[11px] font-bold inline-flex items-center justify-center tabular-nums">{count}</span>
                     )}

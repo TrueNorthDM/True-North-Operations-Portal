@@ -58,7 +58,7 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
       : st === 'appr' ? `Approved ${i.approved_at ? dateLabel(i.approved_at.slice(0, 10)) : ''}, waiting for Finance`
         : st === 'hrs' ? `Hours with ${x.nameOf(hb)}`
           : st === 'wait' ? (!i.submission_id || (x.route && oneStep(x.route, x.settings)) ? `With ${x.nameOf(ib)}` : `Hours approved · with ${x.nameOf(ib)}`)
-            : i.source ? 'Returned: send it again through the invoice form' : 'Draft: submit the timesheet again'
+            : i.source ? 'Sent back: send it again through the invoice form' : 'Draft: submit the timesheet again'
     return { st, text }
   }
   const rows = x.invoices.map(i => {
@@ -112,11 +112,11 @@ export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; 
     const st: PaymentsRow['st'] = sentNow ? { label: 'Sent', tone: 'ok' }
       : p.sent?.state === 'failed' ? { label: 'Not sent', tone: 'bad' }
         : p.state === 'approved' || p.state === 'recorded' ? { label: 'Approved', tone: 'teal' }
-          : p.state === 'returned' ? { label: 'Returned', tone: 'bad' } : { label: 'Waiting for approval', tone: 'warn' }
+          : p.state === 'returned' ? { label: 'Sent back', tone: 'warn' } : { label: 'Waiting for approval', tone: 'warn' }
     const c5 = sentNow ? (p.sent!.at ?? 'Sent')
       : p.sent?.state === 'failed' ? `Rippling refused it${p.sent.error ? `: "${p.sent.error}"` : ''}`
         : p.state === 'approved' || p.state === 'recorded' ? (p.sent?.state === 'waiting_connection' ? 'Waits for the Rippling connection' : 'Queued for Rippling')
-          : p.state === 'returned' ? 'Returned: change it and submit again'
+          : p.state === 'returned' ? 'Sent back: change it and submit again'
             : `With ${x.hoursBy ?? 'the approver'}${p.offText ? ` · ${p.offText}` : ''}`
     return { key: `p${p.id}`, c1: periodLabel({ start: p.start, end: p.end }).label, c2: formatDuration(p.worked), c3: p.off ? formatDuration(p.off) : '-', c4: formatDuration(p.worked + p.off), st, c5, doc: { kind: 'payroll' as const, id: p.id } }
   })

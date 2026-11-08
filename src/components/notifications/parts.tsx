@@ -6,7 +6,7 @@
 
 import { NavIcon } from '@/components/NavIcon'
 import { CATEGORY_LABEL, timingIsChoice, type NotificationType, type Rule, type Timing } from '@/lib/notifications/catalogue'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 import { TH as BASE_TH, TH_CELL } from '@/lib/ui/type'
 
 export function LockGlyph({ open = false, size = 11 }: { open?: boolean; size?: number }) {
@@ -105,7 +105,7 @@ export function NameCell({ t, faded, below }: { t: NotificationType; faded: bool
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{t.title}</span>
-            {faded && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">NOT YET</span>}
+            {faded && <span className={pillClass('gray')}>NOT YET</span>}
           </div>
           <p className="text-[12px] text-muted m-0 mt-0.5 leading-snug">{faded ? t.blockedBy : `${t.description} Goes to: ${t.who.charAt(0).toLowerCase()}${t.who.slice(1)}.`}</p>
           {below}

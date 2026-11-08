@@ -6,6 +6,7 @@
 // Data comes from the report's `trend` series (Σ budget − Σ cost running
 // balance), so the carry-in for a month is simply the previous month's balance.
 
+import { pillClass } from '@/components/ui/Pill'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7TrendPoint } from '@/lib/tsheets/types'
 import { HistoryExport } from '@/components/tsheets/HistoryExport'
@@ -103,7 +104,7 @@ export function ClientFullHistory(
                       <tr key={t.month} className={`border-b border-slate-100 last:border-0 ${isCurrent ? 'bg-[#f2c40a12]' : ''}`}>
                         <td className="px-5 py-3 text-left font-(family-name:--font-display) font-bold text-tn-ink whitespace-nowrap">
                           {monthLabel(t.month)}
-                          {isCurrent && <span className="ml-2 text-[10px] font-extrabold uppercase tracking-wide text-[#a8790a] bg-[#f2c40a2e] rounded-[6px] px-1.5 py-0.5 align-middle">In progress</span>}
+                          {isCurrent && <span className={`ml-2 align-middle ${pillClass('amber')}`}>In progress</span>}
                         </td>
                         <td className="px-5 py-3 text-right tabular-nums font-semibold text-tn-ink">{money(t.budget)}</td>
                         <td className={`px-5 py-3 text-right tabular-nums ${carryIn != null && carryIn < 0 ? 'text-[#c2410c]' : 'text-muted'}`}>{carryIn == null ? <span className="text-slate-300">-</span> : moneySigned(carryIn)}</td>

@@ -531,7 +531,7 @@ function TeamPriorities({ t, cycleId, year, approvers, teamsOpenBy, api, busy, r
   run: (go: () => Promise<Res>) => Promise<void>; onSaved: (a: string) => void; onError: (e: string) => void
 }) {
   const editable = t.state === 'draft' || t.state === 'returned'
-  const pill = t.state === 'approved' ? <Pill tone="green" text="Approved" /> : t.state === 'sent' ? <Pill tone="blue" text="Waiting for approval" /> : t.state === 'returned' ? <Pill tone="amber" text="Sent back" /> : <Pill tone="gray" text="Not sent yet" />
+  const pill = t.state === 'approved' ? <Pill tone="green" text="Approved" /> : t.state === 'sent' ? <Pill tone="amber" text="Waiting for approval" /> : t.state === 'returned' ? <Pill tone="amber" text="Sent back" /> : <Pill tone="gray" text="Not sent yet" />
   return (
     <Section id={`team-${t.teamId}`} tone={editable ? 'teal' : undefined} title={`Team priorities for ${year + 1}`} sub={`For ${teamOf(t.teamName)}. Your team sees them at the top of their reviews, with the whole-company ones, and can tie their goals to them.`} right={pill}>
       {t.reason && <p className="m-0 rounded-[10px] bg-[var(--bdg-orange-bg)] px-3.5 py-2.5 text-[13px] text-tn-ink"><strong>Sent back:</strong> {t.reason}</p>}

@@ -14,6 +14,7 @@
  * Super Admins change it; Admins read it.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT, INPUT_SM, TEXTAREA, CHECKBOX } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { failText } from '@/lib/ui/action-error'
@@ -45,7 +46,7 @@ const LABEL = FIELD_LABEL
 const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z'
 const NO_FOLDER = 'top'
 
-const billPill = (on: boolean) => ({ text: on ? 'Billable' : 'Not billable', cls: on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]' })
+const billPill = (on: boolean) => ({ text: on ? 'Billable' : 'Not billable', cls: pillClass(on ? 'green' : 'gray') })
 
 export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, startField, linked = true }: {
   data: CatalogueData
@@ -365,7 +366,7 @@ function Clients2026({ rows, folders, canEdit, run, link }: {
                 </div>
                 <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{divisions.length || '-'}</div>
                 <div className="px-4 py-[11px] text-right tabular-nums lining-nums text-foreground">{projects}</div>
-                <div className="px-4 py-[11px]"><span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] ${c.active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
+                <div className="px-4 py-[11px]"><span className={pillClass(c.active ? 'green' : 'gray')}>{c.active ? 'Active' : 'Inactive'}</span></div>
               </div>
             )
           })}
@@ -441,7 +442,7 @@ function Clients({ data }: { data: CatalogueData }) {
         <div key={c.name} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px] items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]">
           <div className="px-4 py-[11px] text-tn-ink font-bold font-(family-name:--font-display)">{c.name}</div>
           <div className="px-4 py-[11px] text-foreground">{c.folder || '-'}</div>
-          <div className="px-4 py-[11px]"><span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] ${c.active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
+          <div className="px-4 py-[11px]"><span className={pillClass(c.active ? 'green' : 'gray')}>{c.active ? 'Active' : 'Inactive'}</span></div>
         </div>
       ))}
     </div>

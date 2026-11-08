@@ -1,5 +1,6 @@
 'use client'
 
+import { pillClass } from '@/components/ui/Pill'
 import { DATE_FIELD_SM, INPUT_SM, TEXTAREA } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { Select } from '@/components/ui/Select'
@@ -41,7 +42,7 @@ export function Exceptions({ data, people, onDone }: { data: AccessPageData; peo
                 <tr key={e.id} className="border-t border-[var(--row-rule)] align-top">
                   <td className="px-3 py-2.5"><b className="text-tn-ink">{e.person}</b></td>
                   <td className="px-3 py-2.5">{item?.label ?? e.key} {item && item.kind !== 'module' && <Tag kind={item.kind as Exclude<ItemKind, 'module'>} />}</td>
-                  <td className="px-3 py-2.5"><span className={`text-[11.5px] font-bold rounded-full px-2 py-0.5 ${e.effect === 'grant' ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#fce8e9] text-[#c8323d]'}`}>{e.effect === 'grant' ? 'Can open' : 'Cannot open'}</span></td>
+                  <td className="px-3 py-2.5"><span className={pillClass(e.effect === 'grant' ? 'green' : 'red')}>{e.effect === 'grant' ? 'Can open' : 'Cannot open'}</span></td>
                   <td className="px-3 py-2.5">{e.until ?? 'Until removed'}</td>
                   <td className="px-3 py-2.5">{e.reason}</td>
                   <td className="px-3 py-2.5 text-muted">{e.by ?? 'Someone'}, {when(e.at)}</td>

@@ -6,6 +6,7 @@
 // It no longer offers "Suggest what it should do" (audit, 10 October 2026):
 // that link led to Admin > Tickets, which was retired.
 
+import { pillClass } from '@/components/ui/Pill'
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { NavIcon } from '@/components/NavIcon'
@@ -30,7 +31,7 @@ export function ComingSoon({ icon, title, description, parents, self }: {
         <span className="w-[68px] h-[68px] rounded-[18px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center">
           <NavIcon name={icon} size={32} strokeWidth={1.8} />
         </span>
-        <span className="rounded-[5px] bg-[#fbf1cf] px-[9px] py-1 text-[10.5px] font-bold tracking-[.1em] text-[#8a6703]">COMING SOON</span>
+        <span className={pillClass('gray')}>COMING SOON</span>
         <h1 className={PAGE_TITLE}>{title}</h1>
         <p className="text-[14px] leading-relaxed text-foreground m-0">{description}</p>
         <div className="flex gap-2.5 mt-2 flex-wrap justify-center">

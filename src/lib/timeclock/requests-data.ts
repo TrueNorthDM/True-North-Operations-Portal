@@ -297,7 +297,7 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'can'>, id: nu
   if (paid && d.paid_on) hist.push({ text: `Paid by ${dir.nameOf(d.paid_by)}${d.paid_ref ? `, ref. ${d.paid_ref}` : ''}`, when: dateLabel(d.paid_on), dot: '#1E9E6A' })
   const first = who.split(' ')[0]
   return {
-    id: d.id, number: d.number, paid, st: paid ? { label: 'Paid', tone: 'ok' } : { label: 'Approved, waiting for Finance', tone: 'teal' },
+    id: d.id, number: d.number, paid, st: paid ? { label: 'Paid', tone: 'ok' } : { label: 'Approved', tone: 'teal' },
     date: dateLabel(localDate(d.created_at, zone)), personId: d.person_id, who, team, first,
     items: list.map(i => ({ id: i.id, date: dateLabel(i.spent_on).replace(/, \d{4}$/, ''), category: i.category, what: i.purpose, amount: money(Number(i.amount), i.currency), file: `${i.receipt_number ? `${i.receipt_number} · ` : ''}${i.receipt_name || 'receipt'}` })),
     total: moneyTotal(list.map(i => ({ amount: Number(i.amount), currency: i.currency }))),

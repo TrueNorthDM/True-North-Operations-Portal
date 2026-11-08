@@ -1,5 +1,6 @@
 'use client'
 
+import { pillClass } from '@/components/ui/Pill'
 import { TEXTAREA } from '@/lib/ui/fields'
 import { useMemo, useState, useTransition, useEffect } from 'react'
 import { CATALOGUE, ITEM, LEVELS, LEVEL_LABEL, isConfigurable, type AccessLevel, type CatalogueItem, type ConfigurableLevel, type ItemKind } from '@/lib/access/catalogue'
@@ -140,7 +141,7 @@ export function Permissions({
             <button type="button" onClick={() => setClosed(s => { const n = new Set(s); if (n.has(item.key)) n.delete(item.key); else n.add(item.key); return n })}
               className="inline-flex items-center gap-2 font-(family-name:--font-display) font-black text-[14px] text-tn-ink">
               <span className={`text-muted transition-transform ${isClosed ? '-rotate-90' : ''}`}>{Glyph.chev}</span>{item.label}
-              {item.building && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">BEING BUILT</span>}
+              {item.building && <span className={pillClass('gray')}>BEING BUILT</span>}
             </button>
           </td>
           <td className="border-t border-[var(--panel-border)]" />
@@ -157,7 +158,7 @@ export function Permissions({
         <td className="py-2 pr-3 border-t border-[var(--row-rule)]" style={{ paddingLeft: d === 1 ? 30 : 54 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={d === 1 ? 'text-[13.5px] font-semibold text-tn-ink' : 'text-[13px] text-foreground'}>{item.label}</span>
-            {item.soon && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
+            {item.soon && <span className={pillClass('gray')}>SOON</span>}
             {item.superOnly && <span className="rounded bg-tn-primary px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#F2C40A]">SUPER ADMIN ONLY</span>}
             {item.group && <span className="text-[11.5px] text-muted">{item.group}</span>}
           </div>

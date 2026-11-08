@@ -22,7 +22,7 @@ import {
   overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 
 // ── Alerts at the top of the body ───────────────────────────────────────────
@@ -246,7 +246,7 @@ export function ChooseView({ data, day, phone, first, query, browse, onQuery, on
                   {lineOf(r) && <span className="text-[12px] text-foreground leading-[1.45] [text-wrap:pretty]">{lineOf(r)!.use}</span>}
                 </span>
                 {lineOf(r)?.billable != null && (
-                  <span className={`shrink-0 self-start mt-px text-[10.5px] font-bold rounded-full px-2 py-[3px] ${lineOf(r)!.billable ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{lineOf(r)!.billable ? 'Billable' : 'Not billable'}</span>
+                  <span className={`shrink-0 self-start mt-px ${pillClass(lineOf(r)!.billable ? 'green' : 'gray')}`}>{lineOf(r)!.billable ? 'Billable' : 'Not billable'}</span>
                 )}
                 {r.type === 'folder' && <Icon d={ICON.chevronRight} size={16} stroke="#8593a4" sw={2} className="shrink-0" />}
               </button>

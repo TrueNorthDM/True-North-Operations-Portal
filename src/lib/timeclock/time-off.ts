@@ -90,14 +90,14 @@ export interface OffCheck { t: string; tone: OffTone; icon: 'check' | 'x' | 'clo
 
 /** The chips of a row in My time off (7B). `who`: whoever decides it, by name (routing.ts requestApprover). */
 export function checksOf(r: OffRequest, who = ''): OffCheck[] {
-  if (r.state === 'pending') return [{ t: who ? `${who} decides` : 'Waiting for a decision', tone: 'neu', icon: 'clock' }]
-  if (r.cancelAskedAt) return [{ t: who ? `Waiting for ${who}` : 'Waiting for a decision', tone: 'neu', icon: 'clock' }]
+  if (r.state === 'pending') return [{ t: who ? `${who} decides` : 'Waiting for a decision', tone: 'warn', icon: 'clock' }]
+  if (r.cancelAskedAt) return [{ t: who ? `Waiting for ${who}` : 'Waiting for a decision', tone: 'warn', icon: 'clock' }]
   const rip: OffCheck = r.rippling === 'sent' ? { t: 'Sent to Rippling', tone: 'ok', icon: 'check' }
     : r.rippling === 'refused' ? { t: 'Rippling refused it', tone: 'bad', icon: 'x' }
-      : { t: 'Waiting for Rippling', tone: 'neu', icon: 'clock' }
+      : { t: 'Waiting for Rippling', tone: 'warn', icon: 'clock' }
   const cal: OffCheck = r.calendar === 'done' ? { t: 'On the team calendar', tone: 'ok', icon: 'check' }
     : r.calendar === 'failed' ? { t: 'Not on the calendar', tone: 'bad', icon: 'x' }
-      : { t: 'Waiting for the calendar', tone: 'neu', icon: 'clock' }
+      : { t: 'Waiting for the calendar', tone: 'warn', icon: 'clock' }
   return [rip, cal]
 }
 

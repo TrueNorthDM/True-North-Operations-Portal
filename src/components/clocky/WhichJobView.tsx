@@ -7,6 +7,7 @@
  * Codes by brand.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT } from '@/lib/ui/fields'
 import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -68,7 +69,7 @@ export function WhichJobView({ groups, codes, switcher }: { groups: GuideGroup[]
                 <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[200px_minmax(0,1fr)_120px] gap-x-3.5 gap-y-1 md:gap-y-3.5 items-start px-4 py-[11px] border-b border-[var(--row-rule)] text-[13px] leading-[normal]">
                   <span className="font-(family-name:--font-display) font-bold text-tn-ink">{r.name}</span>
                   <span className="col-span-2 row-start-2 md:col-span-1 md:row-start-auto text-foreground leading-[1.5] [text-wrap:pretty]">{r.use}</span>
-                  <span className={`col-start-2 row-start-1 md:col-start-auto md:row-start-auto justify-self-end text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${r.billable ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{r.billable ? 'Billable' : 'Not billable'}</span>
+                  <span className={`col-start-2 row-start-1 md:col-start-auto md:row-start-auto justify-self-end ${pillClass(r.billable ? 'green' : 'gray')}`}>{r.billable ? 'Billable' : 'Not billable'}</span>
                 </div>
               ))}
             </div>

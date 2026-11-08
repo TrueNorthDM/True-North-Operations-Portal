@@ -191,7 +191,7 @@ describe('BriefTab', () => {
   it('shows the brief and shares with writers through one switch', async () => {
     render(<BriefTab {...props} shared={false} />)
     expect(screen.getByRole('heading', { name: 'BM Topic: X' })).toBeInTheDocument()
-    expect(screen.getByText('Not shared')).toBeInTheDocument()
+    expect(screen.getByText('Draft')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: 'Shared with writers' }))
     await waitFor(() => expect(edit).toHaveBeenCalledWith('t1', { op: 'share', shared: true }))
   })

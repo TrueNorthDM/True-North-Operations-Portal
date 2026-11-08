@@ -296,11 +296,11 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const form = !!i.source
     const result = st === 'approved'
       ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const, retry: false }
-      : st === 'returned' ? { text: `Returned: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const, retry: false } : null
+      : st === 'returned' ? { text: `Sent back: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const, retry: false } : null
     return {
       id: i.id, kind: 'invoice', personId, who, initials: initialsOf(who), team, zoneCity,
       title: `${who}, ${period.full}`,
-      state: { label: st === 'approved' ? 'Approved' : st === 'returned' ? 'Returned' : 'Waiting for approval', tone: st === 'approved' ? 'ok' : st === 'returned' ? 'bad' : 'warn' },
+      state: { label: st === 'approved' ? 'Approved' : st === 'returned' ? 'Sent back' : 'Waiting for approval', tone: st === 'approved' ? 'ok' : 'warn' },
       submitted: `${form ? 'Sent through the invoice form' : 'Created by itself'}, ${dateLabel(localDate(i.created_at, v.zone))}`,
       steps: [{ n: st === 'approved' ? '✓' : '1', label: `Invoice · ${nameOf(ib)}`, sub: st === 'approved' ? `Approved ${noYear(stampLabel(i.approved_at!, v.zone))}` : st === 'returned' ? 'Returned' : 'Waiting. No hours to approve', state: st === 'approved' ? 'done' : st === 'returned' ? 'bad' : 'now' }],
       result, readOnly: !canBoth && !done ? `Read only. Invoice: ${nameOf(ib)}.` : null,
@@ -411,8 +411,9 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const canHours = mine && step!.step === 'hours'
   const canBoth = mine && (step!.step === 'both' || step!.step === 'payroll')
   const canInv = mine && step!.step === 'invoice'
-  const stLabel = s.state === 'approved' || s.state === 'recorded' ? (s.state === 'recorded' ? 'Recorded' : 'Approved') : s.state === 'returned' ? 'Returned' : hoursDone ? 'Hours approved' : 'Waiting for approval'
-  const stTone: ReviewTone = s.state === 'approved' ? 'ok' : s.state === 'returned' ? 'bad' : s.state === 'recorded' ? 'neu' : hoursDone ? 'teal' : 'warn'
+  const stLabel = s.state === 'approved' || s.state === 'recorded' ? (s.state === 'recorded' ? 'Recorded' : 'Approved') : s.state === 'returned' ? 'Sent back' : hoursDone ? 'Hours approved' : 'Waiting for approval'
+  // Sent back and Hours approved still wait on someone: amber (owner, 8 November 2026).
+  const stTone: ReviewTone = s.state === 'approved' ? 'ok' : s.state === 'recorded' ? 'neu' : 'warn'
   const at = (iso: string | null) => (iso ? noYear(stampLabel(iso, v.zone)) : '')
   const ret = s.state === 'returned'
   const steps: TimesheetReview['steps'] = one
@@ -429,7 +430,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const ripWhat = `${hm(tot)} regular${offTotal ? ` and ${hm(offTotal)} ${offType}` : ''}`
 
   let result: TimesheetReview['result'] = null
-  if (ret) result = { text: `Returned, ${at(s.approved_at)}: "${s.note ?? ''}". The timesheet is open again${route.isContractor ? ` and ${money && inv ? inv.number : 'the rest'} is back to Draft` : ' and nothing went to Rippling'}.`, tone: 'bad', icon: 'undo', retry: false }
+  if (ret) result = { text: `Sent back, ${at(s.approved_at)}: "${s.note ?? ''}". The timesheet is open again${route.isContractor ? ` and ${money && inv ? inv.number : 'the rest'} is back to Draft` : ' and nothing went to Rippling'}.`, tone: 'bad', icon: 'undo', retry: false }
   else if (s.state === 'recorded') result = { text: `Recorded, ${at(s.submitted_at)}. The Deputy Director's timesheet needs no approval.`, tone: 'neu', icon: 'check', retry: false }
   else if (s.state === 'approved' && route.isContractor) result = { text: `Approved by ${youOr(s.approved_by)}, ${at(s.approved_at)}${one ? '' : ` (hours by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)})`}. ${period.label} is locked${money && inv ? ` and ${inv.number} is ${inv.state === 'paid' ? 'Paid' : 'Approved, waiting for Finance'}` : ''}.${s.note ? ` Note: "${s.note}"` : ''}`, tone: 'ok', icon: 'check', retry: false }
   else if (s.state === 'approved') {
@@ -448,7 +449,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const invoiceView = money && inv && sent ? withRecord(invoiceDocOf(inv, src.invLines, period.full), src.record, src.sendInfo) : null
   const history: TimesheetReview['history'] = []
   if (s.state === 'approved') history.push({ text: `Approved by ${youOr(s.approved_by)}`, when: noYear(stampLabel(s.approved_at!, v.zone)), dot: '#1E9E6A' })
-  else if (ret) history.push({ text: 'Returned, back to Draft', when: noYear(stampLabel(s.approved_at ?? now.toISOString(), v.zone)), dot: '#c8323d' })
+  else if (ret) history.push({ text: 'Sent back, back to Draft', when: noYear(stampLabel(s.approved_at ?? now.toISOString(), v.zone)), dot: '#c8323d' })
   else history.push({ text: `Waiting for ${youOr(ib)}`, when: 'Now', dot: '#F2C40A' })
   if (s.hours_approved_at && !one) history.push({ text: `Hours approved by ${youOr(s.hours_approved_by)}`, when: noYear(stampLabel(s.hours_approved_at, v.zone)), dot: '#1E9E6A' })
   if (s.submitted_at) history.push({ text: `Created when ${first} submitted ${period.label}`, when: noYear(stampLabel(s.submitted_at, v.zone)), dot: '#1E7D7F' })

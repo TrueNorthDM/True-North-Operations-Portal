@@ -217,7 +217,7 @@ export type GoalStatus = 'not_started' | 'on_track' | 'at_risk' | 'done' | 'drop
 export type GoalResult = 'met' | 'partly' | 'not_met' | 'dropped'
 export const GOAL_STATUS: { key: GoalStatus; label: string; tone: 'gray' | 'blue' | 'amber' | 'green' }[] = [
   { key: 'not_started', label: 'Not started', tone: 'gray' },
-  { key: 'on_track', label: 'On track', tone: 'blue' },
+  { key: 'on_track', label: 'On track', tone: 'green' },
   { key: 'at_risk', label: 'At risk', tone: 'amber' },
   { key: 'done', label: 'Done', tone: 'green' },
   { key: 'dropped', label: 'No longer relevant', tone: 'gray' },

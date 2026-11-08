@@ -28,7 +28,8 @@ export interface ImportListRow { id: number; name: string; file: string; when: s
 export interface StartCheck { key: string; label: string; text: string; ok: boolean | 'warn'; href: string; action: string }
 
 const STEP_PILL: Record<ListRow['step'], [string, PillToneName]> = {
-  waiting: ['Not open yet', 'gray'], self: ['Self-review', 'blue'], review: ['Review', 'blue'], meeting: ['Meeting', 'blue'], approval: ['Approval', 'blue'], approved: ['Approved', 'green'],
+  // Each step waits on someone: amber (owner, 8 November 2026).
+  waiting: ['Not open yet', 'gray'], self: ['Self-review', 'amber'], review: ['Review', 'amber'], meeting: ['Meeting', 'amber'], approval: ['Approval', 'amber'], approved: ['Approved', 'green'],
 }
 type Filter = 'all' | 'self' | 'review' | 'meeting' | 'approved'
 

@@ -209,7 +209,8 @@ export interface ClockPanelData {
 
 // ── Time entries (3A to 3K) ─────────────────────────────────────────────────
 
-export type PillTone = 'ok' | 'warn' | 'bad' | 'neutral'
+/** ok green, warn amber, bad red, neutral gray, info blue (components/ui/Pill.tsx). */
+export type PillTone = 'ok' | 'warn' | 'bad' | 'neutral' | 'info'
 export interface Pill { text: string; tone: PillTone; tip: string }
 
 export interface EntryView {

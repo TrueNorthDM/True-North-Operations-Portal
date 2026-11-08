@@ -41,7 +41,7 @@ export const PILL_TONE: Record<PillColor, string> = {
  * is green.
  */
 export type PillToneName = PillColor | PillTone | 'neu' | 'teal' | 'navy'
-const ALIAS: Record<string, PillColor> = { ok: 'green', warn: 'amber', bad: 'red', neutral: 'gray', neu: 'gray', teal: 'green', navy: 'blue' }
+const ALIAS: Record<string, PillColor> = { ok: 'green', warn: 'amber', bad: 'red', neutral: 'gray', info: 'blue', neu: 'gray', teal: 'green', navy: 'blue' }
 
 export function pillTone(tone: PillToneName): string {
   return PILL_TONE[ALIAS[tone] ?? (tone as PillColor)] ?? PILL_TONE.gray

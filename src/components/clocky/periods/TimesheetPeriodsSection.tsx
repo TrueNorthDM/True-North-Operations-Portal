@@ -222,7 +222,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
       <section className={`${CARD} gap-2.5`} aria-label="Monthly">
         <div className="flex items-center gap-2.5">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Monthly</span>
-          <span className={`${TAG} text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)]`}>Every month</span>
+          <span className={`${TAG} text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)]`}>Monthly</span>
         </div>
         <p className="m-0 text-[13.5px] text-foreground leading-[1.55]">From the 1st to the last day of each month, in each person&apos;s own time zone. Nothing to set.</p>
         <p className="m-0 text-[12.5px] text-muted">{data.counts.monthly} people submit monthly</p>

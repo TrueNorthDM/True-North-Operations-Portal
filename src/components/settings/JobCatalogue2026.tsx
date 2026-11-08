@@ -12,6 +12,7 @@
  * drag here.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT, TEXTAREA } from '@/lib/ui/fields'
 import { useState } from 'react'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
@@ -31,7 +32,7 @@ export interface Api2026 {
 
 export const SMALL_BTN = `${BTN.smallWhite} disabled:opacity-50`
 const PLUS = 'M12 5v14M5 12h14'
-const OFF = 'text-[10.5px] font-bold rounded-full px-2 py-[3px] bg-[#f1f3f6] text-muted whitespace-nowrap'
+const OFF = pillClass('gray')
 
 export function Switch({ on, label, disabled, onChange }: { on: boolean; label: string; disabled?: boolean; onChange: () => void }) {
   return (

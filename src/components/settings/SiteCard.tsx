@@ -16,6 +16,7 @@
  * field has a <label>, and the buttons are the portal's two (lib/ui/buttons).
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT } from '@/lib/ui/fields'
 import { useId, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -200,7 +201,7 @@ export function SiteCard({ site }: SiteCardProps) {
           <div key={code} className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
             <span className="w-3 h-3 rounded-[4px] shrink-0" style={{ background: languageDot(code) }} aria-hidden="true" />
             <span className="flex-1 min-w-0 text-[14px] font-semibold text-tn-ink truncate">{languageName(code)}</span>
-            <span className={`inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 ${active ? 'text-tn-teal bg-tn-teal-soft' : 'text-[var(--bdg-slate-fg)] bg-[var(--bdg-slate-bg)]'}`}>{active ? 'Active' : 'Paused'}</span>
+            <span className={pillClass(active ? 'green' : 'gray')}>{active ? 'Active' : 'Paused'}</span>
             <Switch on={active} disabled={!editing || pending} onChange={() => toggle(code, active)} label={`Track ${languageName(code)}`} />
           </div>
         ))}

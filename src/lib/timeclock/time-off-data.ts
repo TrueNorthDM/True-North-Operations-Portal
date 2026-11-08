@@ -113,7 +113,7 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
       drawer: {
         dates: `${daysText(req.start, req.end)}, ${req.end.slice(0, 4)}`, note: req.note,
         steps: stepsOf(req, { days, seconds, stamp, canRetry: v.can('ck-timeoff'), who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
-        stateLabel: refused ? 'Approved, Rippling refused it' : pill.label, stateTone: refused ? 'bad' as const : pill.tone,
+        stateLabel: refused ? 'Rippling refused it' : pill.label, stateTone: refused ? 'bad' as const : pill.tone,
       },
     }
   })

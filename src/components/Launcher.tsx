@@ -11,6 +11,7 @@
  * in the Directory for whoever may open it, loaded the first time it opens.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -164,7 +165,7 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
                       >
                         <NavIcon name={r.icon} size={16} className="text-slate-500 shrink-0" />
                         <span className="flex-1">{r.label}</span>
-                        {r.soon && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
+                        {r.soon && <span className={pillClass('gray')}>SOON</span>}
                       </button>
                     )
                   })}

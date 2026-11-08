@@ -175,10 +175,11 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     const ib = invoiceApprover(route, settings)
     let flag: QueueRow['flag'] = null
     if (route.isContractor && !oneStep(route, settings)) {
-      flag = s.state === 'hours_approved' ? { text: `Hours approved by ${nameOf(s.hours_approved_by)}`, tone: 'ok' } : s.state === 'submitted' ? { text: `Hours with ${nameOf(hb)}`, tone: 'neu' } : null
+      flag = s.state === 'hours_approved' ? { text: `Hours approved by ${nameOf(s.hours_approved_by)}`, tone: 'ok' } : s.state === 'submitted' ? { text: `Hours with ${nameOf(hb)}`, tone: 'warn' } : null
     }
     if (route.isContractor && route.paysAs !== 'fixed_no_timesheet' && !sent && (s.state === 'submitted' || s.state === 'hours_approved')) {
-      flag = { text: inv ? 'Invoice sent back, waiting for it again' : 'Invoice not sent yet', tone: 'neu' }
+      // A wait, so amber (owner, 8 November 2026).
+      flag = { text: inv ? 'Invoice sent back, waiting for it again' : 'Invoice not sent yet', tone: 'warn' }
     }
     if (over > 0 && !isLead && (s.state === 'submitted' || s.state === 'hours_approved')) flag = { text: `${formatDuration(over)} over the allowance, not approved`, tone: 'warn' }
     const nR = inv ? rmbCount.get(inv.id) ?? 0 : 0
@@ -187,7 +188,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
         ? `Hours: ${nameOf(s.hours_approved_by)}, ${dateLabel(localDate(s.hours_approved_at!, v.zone)).replace(/, \d{4}$/, '')}. Invoice: ${nameOf(s.approved_by)}, ${shortStamp(s.approved_at!, v.zone)}.`
         : `${nameOf(s.approved_by)}, ${shortStamp(s.approved_at ?? s.submitted_at ?? now.toISOString(), v.zone)}` }
       : s.state === 'returned'
-        ? { label: 'Returned', tone: 'bad', by: `${nameOf(s.approved_by)}, ${shortStamp(s.approved_at ?? now.toISOString(), v.zone)}: "${s.note ?? ''}"` }
+        ? { label: 'Sent back', tone: 'warn', by: `${nameOf(s.approved_by)}, ${shortStamp(s.approved_at ?? now.toISOString(), v.zone)}: "${s.note ?? ''}"` }
         : s.state === 'recorded'
           ? { label: 'Recorded', tone: 'neu', by: `No approval for the Deputy Director. Recorded ${shortStamp(s.submitted_at ?? now.toISOString(), v.zone)}.` }
           : null
@@ -226,7 +227,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
       askedAt: i.created_at,
       ownerName: nameOf(ib),
       own: i.person_id === v.personId,
-      done: i.state === 'approved' || i.state === 'paid' ? { label: 'Approved', tone: 'ok', by: `${nameOf(i.approved_by)}, ${shortStamp(i.approved_at!, v.zone)}` } : i.state === 'draft' ? { label: 'Returned', tone: 'bad', by: `${nameOf(i.approved_by)}` } : null,
+      done: i.state === 'approved' || i.state === 'paid' ? { label: 'Approved', tone: 'ok', by: `${nameOf(i.approved_by)}, ${shortStamp(i.approved_at!, v.zone)}` } : i.state === 'draft' ? { label: 'Sent back', tone: 'warn', by: `${nameOf(i.approved_by)}` } : null,
       href: `/clocky-hours/approvals/invoice/${i.id}`,
       card: null,
       request: null,

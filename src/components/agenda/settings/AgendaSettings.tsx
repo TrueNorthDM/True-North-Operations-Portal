@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
+import { pillClass } from '@/components/ui/Pill'
 import { BTN } from '@/lib/ui/buttons'
 import { failText } from '@/lib/ui/action-error'
 import type { AgendaAccount, AgendaSettingsData } from '@/lib/agenda/settings-data'
@@ -45,8 +46,9 @@ const BTN_W = `${BTN.white} disabled:opacity-50`
 const BTN_N = `${BTN.navy} disabled:opacity-50`
 const LINK = `${BTN.link} disabled:opacity-50`
 const LINK_RED = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13px] text-[#b2412f] hover:underline disabled:opacity-50'
-const PILL_OK = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-[#e2f2ee] text-[#16695c]'
-const PILL_SAMPLE = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-subtle text-muted'
+// The shared status pill (components/ui/Pill), one colour per meaning (owner, 8 November 2026).
+const PILL_OK = pillClass('green')
+const PILL_SAMPLE = pillClass('gray')
 const TIMES = Array.from({ length: 49 }, (_, i) => i * 30).map(m => ({ value: String(m), label: m === 1440 ? '12:00 AM (midnight)' : clockLabel(m) }))
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -58,7 +60,7 @@ function useToast() {
 
 const CONNECT_ME = '/api/agenda/google/connect?for=me'
 const CONNECT_TEAM = '/api/agenda/google/connect?for=team'
-const PILL_WARN = 'text-[11px] font-extrabold rounded-[6px] px-[7px] py-0.5 bg-[var(--warn-bg)] text-[#8a6703]'
+const PILL_WARN = pillClass('amber')
 
 /** What came back from Google's sign-in, above the cards until closed. */
 function Notice({ notice }: { notice: { text: string; error: boolean } }) {

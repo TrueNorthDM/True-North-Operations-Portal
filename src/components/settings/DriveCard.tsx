@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { BTN } from '@/lib/ui/buttons'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
-import { PILL } from '@/components/ui/Pill'
+import { pillClass } from '@/components/ui/Pill'
 import { ERROR_TEXT } from '@/lib/ui/feedback'
 import type { DriveStatus } from '@/lib/drive/copies'
 
@@ -114,7 +114,7 @@ export function DriveCard({ data, canEdit, api, say }: {
         <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
           <div className="flex items-center gap-2.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">Google Drive</span>
-            <span className={`${PILL} ${on ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{on ? 'Folder picked' : 'Not set up'}</span>
+            <span className={pillClass(on ? 'green' : 'amber')}>{on ? 'Folder picked' : 'Not set up'}</span>
           </div>
           <span className="text-[12.5px] text-muted">{data.ready ? data.who : data.why}</span>
         </div>

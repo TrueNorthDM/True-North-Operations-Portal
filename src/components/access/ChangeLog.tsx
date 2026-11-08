@@ -1,5 +1,6 @@
 'use client'
 
+import { pillClass } from '@/components/ui/Pill'
 import { TEXTAREA } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { ITEM, LEVEL_LABEL, type AccessLevel } from '@/lib/access/catalogue'
@@ -30,7 +31,7 @@ function ChangeLines({ changes, teamName }: { changes: unknown; teamName: Map<st
         if (c.kind === 'rule') return <div key={i} className="flex flex-wrap items-center gap-2"><span className="text-[11.5px] font-semibold rounded-full bg-subtle px-2">{LEVEL_LABEL[c.level as AccessLevel] ?? c.level}</span>{c.label} <span className="text-[#c8323d] line-through">{(c.beforeEffective ?? c.before) ? 'On' : 'Off'}</span> → <b className="text-[#0d7a4f]">{c.after ? 'On' : 'Off'}</b></div>
         if (c.kind === 'tool') return <div key={i} className="flex flex-wrap items-center gap-2"><span className="text-[11.5px] font-semibold rounded-full bg-[#efedfc] text-[#5b4bc4] px-2">Teams</span>{c.label}: {c.before !== undefined && <span className="text-[#c8323d] line-through">{scope(c.before, c.teamNames)}</span>} → <b className="text-[#0d7a4f]">{scope(c.after, c.teamNames)}</b></div>
         if (c.kind === 'level' || (c.person && c.from && c.to)) return <div key={i}>{c.person}: <span className="text-[#c8323d] line-through">{LEVEL_LABEL[c.from as AccessLevel] ?? c.from}</span> → <b className="text-[#0d7a4f]">{LEVEL_LABEL[c.to as AccessLevel] ?? c.to}</b></div>
-        if (c.kind === 'exception-add') return <div key={i}>{c.person} · {c.label} <span className={`text-[11.5px] font-bold rounded-full px-2 ${c.effect === 'grant' ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#fce8e9] text-[#c8323d]'}`}>{c.effect === 'grant' ? 'Can open' : 'Cannot open'}</span> {c.until ? `until ${c.until}` : 'until removed'}</div>
+        if (c.kind === 'exception-add') return <div key={i}>{c.person} · {c.label} <span className={pillClass(c.effect === 'grant' ? 'green' : 'red')}>{c.effect === 'grant' ? 'Can open' : 'Cannot open'}</span> {c.until ? `until ${c.until}` : 'until removed'}</div>
         if (c.kind === 'exception-end') return <div key={i}>{c.person} · {c.label}: exception ended</div>
         return null
       })}

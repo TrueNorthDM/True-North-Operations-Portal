@@ -7,6 +7,7 @@
  * the same table style. One search at the top filters both.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT } from '@/lib/ui/fields'
 import { useState, type ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -21,7 +22,7 @@ export interface ProjectRow { client: string; division: string; project: string;
 /** The table head and the Billable pill, shared with Company settings > Job catalogue. */
 export const TH = `${TH_CELL} text-left px-3.5 py-2.5`
 export const Bill = ({ on }: { on: boolean }) => (
-  <span className={`text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${on ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{on ? 'Billable' : 'Not billable'}</span>
+  <span className={pillClass(on ? 'green' : 'gray')}>{on ? 'Billable' : 'Not billable'}</span>
 )
 
 export function WhichJob2026View({ projects, activities, switcher }: { projects: ProjectRow[]; activities: ActivityRow[]; switcher?: ReactNode }) {

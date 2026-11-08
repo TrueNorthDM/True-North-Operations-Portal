@@ -36,7 +36,7 @@ import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type Toast
 import { DateField } from '@/components/ui/DateField'
 import { Select } from '@/components/ui/Select'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
-import { PILL, Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 // The portal's buttons (lib/ui/buttons.ts): the small white in rows and cards, the navy to save.
@@ -102,7 +102,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
             <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
               <div className="flex items-center gap-2.5">
                 <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">{g.name}</span>
-                <span className={`${PILL} ${g.on ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{g.on ? g.onLabel : 'Not connected'}</span>
+                <span className={pillClass(g.on ? 'green' : 'gray')}>{g.on ? g.onLabel : 'Not connected'}</span>
               </div>
               <span className="text-[12.5px] text-muted">{g.d.who}</span>
             </div>
@@ -195,7 +195,7 @@ function GoogleAppCard({ app, canEdit, busy, onEdit }: { app: IntegrationsData['
         <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
           <div className="flex items-center gap-2.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-[normal]">Google sign-in</span>
-            <span className={`${PILL} ${app.saved ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-[#5b6b82]'}`}>{app.saved ? 'Set up' : 'Not set up'}</span>
+            <span className={pillClass(app.saved ? 'green' : 'amber')}>{app.saved ? 'Set up' : 'Not set up'}</span>
           </div>
           <span className="text-[12.5px] text-muted">{app.who}</span>
         </div>

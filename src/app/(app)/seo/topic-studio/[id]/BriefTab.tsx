@@ -75,7 +75,7 @@ export function BriefTab(p: BriefProps) {
         {p.shared !== null && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--row-rule)] pb-4">
             <div>
-              <div className="flex items-center gap-2"><b className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Shared with writers</b>{p.shared ? <Pill tone="green" text="Shared" /> : <Pill tone="gray" text="Not shared" />}</div>
+              <div className="flex items-center gap-2"><b className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Shared with writers</b>{p.shared ? <Pill tone="green" text="Shared" /> : <Pill tone="gray" text="Draft" />}</div>
               <div className="text-[12.5px] text-muted">{p.shared ? 'Writers on the Writers team can open this topic and read the brief.' : 'Only the SEO team sees this topic. Share it when the brief is ready.'}</div>
             </div>
             <Switch on={p.shared} label="Shared with writers" disabled={busy} onChange={v => void call(() => editTopic(p.id, { op: 'share', shared: v }), { ok: r => r.message })} />

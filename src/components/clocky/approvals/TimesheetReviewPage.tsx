@@ -146,7 +146,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
         <div key={c.label} className="flex justify-between items-center gap-2.5 text-[13px] border-b border-[var(--row-rule)] pb-[7px]">
           <span className="flex items-center gap-2 min-w-0">
             <span className="text-tn-ink font-semibold whitespace-nowrap">{c.label}</span>
-            <span className="text-[10.5px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap" style={c.billable ? { background: '#e6f6ee', color: '#0d7a4f' } : { background: '#f1f3f6', color: '#5b6b82' }}>{c.billable ? 'Billable' : 'Not billable'}</span>
+            <span className={pillClass(c.billable ? 'green' : 'gray')}>{c.billable ? 'Billable' : 'Not billable'}</span>
           </span>
           <span className="font-bold text-tn-ink tabular-nums lining-nums">{c.val}</span>
         </div>
@@ -385,7 +385,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                         <div className="px-3 py-[9px] text-foreground">{x.act}</div>
                         <div className="px-3 py-[9px] text-foreground">{x.cp}</div>
                         <div className="px-3 py-[9px] text-foreground font-mono text-[12px]">{x.code}</div>
-                        <div className="px-3 py-[9px]"><span className="text-[10.5px] font-bold rounded-full px-2 py-[3px] whitespace-nowrap" style={x.billable ? { background: '#e6f6ee', color: '#0d7a4f' } : { background: '#f1f3f6', color: '#5b6b82' }}>{x.billable ? 'Billable' : 'Not billable'}</span></div>
+                        <div className="px-3 py-[9px]"><span className={pillClass(x.billable ? 'green' : 'gray')}>{x.billable ? 'Billable' : 'Not billable'}</span></div>
                         <div className="px-3 py-[9px] text-[#5b6b82] text-[12.5px] leading-[1.45]">{x.note}</div>
                       </div>
                     ))}
@@ -426,7 +426,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                   <span className="text-[12px] text-[#5b6b82]">{x.meta}</span>
                   {x.note && <span className="text-[12.5px] text-foreground">&quot;{x.note}&quot;</span>}
                   <div className="flex gap-1.5 flex-wrap mt-0.5">
-                    <span className="text-[10.5px] font-bold rounded-full px-2 py-[3px]" style={x.billable ? { background: '#e6f6ee', color: '#0d7a4f' } : { background: '#f1f3f6', color: '#5b6b82' }}>{x.billable ? 'Billable' : 'Not billable'}</span>
+                    <span className={pillClass(x.billable ? 'green' : 'gray')}>{x.billable ? 'Billable' : 'Not billable'}</span>
                     {x.flag && <span className="text-[10.5px] font-bold rounded-full px-2 py-[3px] whitespace-nowrap" style={{ background: TONE[x.flag.tone].bg, color: TONE[x.flag.tone].fg }}>{x.flag.text}</span>}
                   </div>
                 </div>
