@@ -30,6 +30,7 @@ import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
 import { csvFile, csvRow } from '@/lib/format/csv'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${name.replace(/[^\x20-\x7e]/g, '-')}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+      'Content-Disposition': contentDisposition(name),
       'Cache-Control': 'no-store',
     },
   })

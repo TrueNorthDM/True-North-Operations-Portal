@@ -26,6 +26,7 @@ import { csvRow } from '@/lib/format/csv'
 import { loadMethod } from '@/lib/report/method'
 import { readRecording } from '@/lib/report/data'
 import { reportToday } from '@/lib/report/clock'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,12 +77,11 @@ export async function GET(request: Request) {
   const name = `${exportName(tab, label, period, reportToday())}.csv`
   // HTTP headers are Latin-1, so an accented name needs an ASCII fallback
   // alongside the RFC 5987 form that carries the real one.
-  const ascii = name.replace(/[^\x20-\x7e]/g, '-')
 
   return new Response(toFile(lines), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+      'Content-Disposition': contentDisposition(name),
       'Cache-Control': 'no-store',
     },
   })

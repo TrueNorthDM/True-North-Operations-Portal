@@ -6,6 +6,7 @@
 import { loadAccess } from '@/lib/access/resolve'
 import { loadReport } from '@/lib/timeclock/reports-data'
 import { parseReportQuery, reportCsv } from '@/lib/timeclock/reports'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,6 +18,6 @@ export async function GET(request: Request) {
   const page = await loadReport(access, parseReportQuery(Object.fromEntries(new URL(request.url).searchParams)))
   if (!page) return new Response('Your login is not linked to anyone in the Directory.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   return new Response(reportCsv(page.view), {
-    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${page.file}.csv"`, 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': contentDisposition(`${page.file}.csv`), 'Cache-Control': 'no-store' },
   })
 }

@@ -19,13 +19,14 @@
 
 import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
-import { launchBrowser } from '@/lib/pdf/browser'
+import { launchBrowser, sendOnlyToOrigin } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { requireReportMoney } from '@/lib/tsheets/report-money'
 import { I7_EXPORT_KEYS, projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { spanWording } from '@/lib/tsheets/range'
 import { monthName } from '@/lib/timeclock/periods'
 import { ROUTES } from '@/lib/nav/routes'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
   try {
     browser = await launchBrowser()
     const page = await browser.newPage()
-    if (cookie) await page.setExtraHTTPHeaders({ cookie })
+    if (cookie) await sendOnlyToOrigin(page, target, { cookie })
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })
     // The document, or a page saying why there is none (the print page's
     // PrintError): that reason goes back to the preview instead of a PDF.
@@ -129,12 +130,11 @@ export async function GET(request: Request) {
         : `i7 Budget Month Report - ${label}.pdf`)
     // HTTP headers are Latin-1: an em dash character breaks a plain filename="...".
     // Provide an ASCII fallback + RFC 5987 UTF-8 form so the nice name survives.
-    const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
 
     return new Response(pdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'Content-Disposition': contentDisposition(name),
         'Cache-Control': 'no-store',
       },
     })

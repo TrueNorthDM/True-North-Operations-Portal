@@ -25,6 +25,7 @@ import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
 import { csvDate, csvFile, csvRow } from '@/lib/format/csv'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -110,12 +111,11 @@ export async function GET(request: Request) {
   // BOM so Excel reads UTF-8 (accented names, the em dash) correctly.
   const csv = csvFile(lines)
   const name = (type === 'internal' ? `i7 Budget Internal Report - ${label}` : `i7 Budget Report - ${label}`) + '.csv'
-  const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
 
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+      'Content-Disposition': contentDisposition(name),
       'Cache-Control': 'no-store',
     },
   })

@@ -19,6 +19,7 @@ import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { money as cents } from '@/lib/tsheets/format'
 import { monthName } from '@/lib/timeclock/periods'
+import { contentDisposition } from '@/lib/drive/file-names'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -129,11 +130,10 @@ export async function GET(request: Request) {
 
     const label = monthLabel(month)
     const name = `i7 Budget Summary - ${label}.png`
-    const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
     return new Response(png as unknown as BodyInit, {
       headers: {
         'Content-Type': 'image/png',
-        'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'Content-Disposition': contentDisposition(name),
         'Cache-Control': 'no-store',
       },
     })
