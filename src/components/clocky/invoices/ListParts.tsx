@@ -11,11 +11,11 @@ import type { InvoiceStateKey } from '@/lib/timeclock/invoices-view'
 import { STATE_PILL } from './InvoiceParts'
 import { SEG_BOX, segClass } from '@/lib/ui/segmented'
 import { Pill } from '@/components/ui/Pill'
+import { csvCell } from '@/lib/format/csv'
 
 export const LIST_HEAD = 'px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted whitespace-nowrap'
 const DOWN = 'M12 3v12M7 10l5 5 5-5M5 21h14'
 
-const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
 
 /** Saves the lines as <name>, a CSV file. */
 export function downloadCsv(name: string, lines: readonly (readonly string[])[]) {

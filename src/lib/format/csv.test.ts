@@ -96,3 +96,16 @@ describe('csvDate (owner, 5 November 2026)', () => {
     expect(csvDate('Waiting for Finance')).toBe('Waiting for Finance')
   })
 })
+
+import { defuse } from './csv'
+describe('formula-like cells (security audit, 6 November 2026)', () => {
+  it('turns text that starts like a formula into plain text', () => {
+    for (const s of ['=HYPERLINK("http://x","click")', '+cmd', '-2+3', '@SUM(A1)', '\tx', '\rx']) expect(defuse(s)).toBe(`'${s}`)
+    expect(csvCell('=1+1')).toBe("'=1+1")
+    expect(csvCell('=A1,"b"')).toBe(`"'=A1,""b"""`)
+  })
+  it('leaves ordinary text and numbers written as text alone', () => {
+    for (const s of ['Alice', '-12.50', '+3', '1,234.56', '-5%', 'a=b', '']) expect(defuse(s)).toBe(s)
+    expect(csvCell(-5)).toBe('-5')
+  })
+})

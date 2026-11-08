@@ -14,8 +14,19 @@ export type CsvValue = string | number | null | undefined
  */
 export function csvCell(v: CsvValue): string {
   if (v == null) return ''
-  const s = String(v)
+  const s = typeof v === 'string' ? defuse(v) : String(v)
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/**
+ * A text cell that starts like a formula (= + - @, a tab or a CR) gets a
+ * leading apostrophe, so Excel and Sheets show it as text instead of running
+ * it (security audit, 6 November 2026: Monday names and Topic Studio terms
+ * reach the exports). A plain number written as text, such as "-12.50", is
+ * left alone so it still adds up.
+ */
+export function defuse(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) && !/^[-+]?[\d.,]+%?$/.test(s) ? `'${s}` : s
 }
 
 /** One line of cells, comma separated. */
