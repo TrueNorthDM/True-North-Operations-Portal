@@ -27,7 +27,7 @@ import { sampleMeetLink } from '@/lib/agenda/sample-plan'
 import { DC, localOf } from '@/lib/agenda/time'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
 import { notifyAgendaBooking } from '@/lib/notifications/run'
-import { visitorOf } from '@/lib/auth/send-limit'
+import { visitorFrom } from '@/lib/auth/send-limit'
 
 type Fail = { ok: false; error: string }
 const no = (error: string): Fail => ({ ok: false, error })
@@ -35,12 +35,19 @@ const TRY_AGAIN = 'Something went wrong. Try again in a moment.'
 const NOT_TAKING = 'This booking page is not taking bookings right now.'
 /** Holds per network address and per email in an hour. */
 const PER_CLIENT = 8, PER_EMAIL = 4, MAX_EMAILS = 3
+/**
+ * And in a day (security audit, 6 November 2026): a confirmed booking sends
+ * Google invitations to up to ten guests the booker names, so the page is held
+ * to a few bookings a day per visitor and per email, not eight an hour around
+ * the clock.
+ */
+const PER_CLIENT_DAY = 16, PER_EMAIL_DAY = 8
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex')
 /** The visitor as our own proxy saw them (the LAST x-forwarded-for entry): the browser cannot pick its own. */
 async function clientKey(): Promise<string> {
   const h = await headers()
-  return sha(`agenda-booking:${visitorOf(h.get('x-forwarded-for'))}`)
+  return sha(`agenda-booking:${visitorFrom(h)}`)
 }
 
 export interface HoldPreview { subject: string; link: string; html: string }
@@ -70,11 +77,13 @@ export async function holdBooking(input: BookingInput & { slug: string }): Promi
   const c = createAdminClient()
   const key = await clientKey()
   const since = new Date(Date.now() - 3600e3).toISOString()
-  const [byClient, byEmail] = await Promise.all([
-    c.from('agenda_bookings').select('id', { count: 'exact', head: true }).eq('client_key', key).gt('created_at', since),
-    c.from('agenda_bookings').select('id', { count: 'exact', head: true }).ilike('email', b.email).gt('created_at', since),
-  ])
+  const sinceDay = new Date(Date.now() - 24 * 3600e3).toISOString()
+  // The email is stored in lower case (checkBooking), so it is matched exactly: no % or _ wildcards.
+  const count = (col: 'client_key' | 'email', val: string, from: string) =>
+    c.from('agenda_bookings').select('id', { count: 'exact', head: true }).eq(col, val).gt('created_at', from)
+  const [byClient, byEmail, dayClient, dayEmail] = await Promise.all([count('client_key', key, since), count('email', b.email, since), count('client_key', key, sinceDay), count('email', b.email, sinceDay)])
   if ((byClient.count ?? 0) >= PER_CLIENT || (byEmail.count ?? 0) >= PER_EMAIL) return no('Too many tries in the last hour. Try again later.')
+  if ((dayClient.count ?? 0) >= PER_CLIENT_DAY || (dayEmail.count ?? 0) >= PER_EMAIL_DAY) return no('Too many bookings today. Try again tomorrow, or write to the person directly.')
 
   try {
     const free = await freeSlots(host, Date.now())
