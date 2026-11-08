@@ -82,7 +82,7 @@ export function LoginForm() {
         </div>
         <h2 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-xl text-tn-ink">Check your inbox</h2>
         <p role="status" className="text-sm text-foreground">
-          We sent a code to <strong className="text-tn-ink">{trimmed}</strong>. Type it here, or press the button in the email.
+          If <strong className="text-tn-ink">{trimmed}</strong> is invited to the portal, a code is on its way. Type it here, or press the button in the email. Nothing after a few minutes? Check the address, or ask an admin to invite you.
         </p>
         <div className="pt-1 text-left">
           <label htmlFor="code" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-tn-ink">

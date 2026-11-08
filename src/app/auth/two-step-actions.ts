@@ -22,6 +22,7 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { withStartPage } from '@/lib/auth/start-page'
 import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
 import { getSessionUser } from '@/lib/auth/session'
+import { TWO_STEP_TRIES, sendLimiter } from '@/lib/auth/send-limit'
 
 // Short on purpose: it is written into the QR code twice (label and issuer), and a
 // longer name makes a denser code that phone cameras struggle to read. It is also
@@ -74,9 +75,17 @@ export async function startEnroll(): Promise<EnrollStart | { error: string }> {
 }
 
 const WRONG = 'That code is not right. Codes change every 30 seconds: type the one the app shows now.'
+const TOO_MANY = 'Too many codes tried. Wait five minutes, then type the one the app shows.'
+
+/** One more authenticator code tried by this account; false once the five minutes' allowance is used. */
+async function mayTry(): Promise<boolean> {
+  const user = await getSessionUser()
+  return !!user && sendLimiter.take(`totp:${user.id}`, TWO_STEP_TRIES)
+}
 
 /** The first code from the app: it proves the app works and turns the factor on. */
 export async function verifyEnroll(input: { factorId: string; code: string }): Promise<{ ok: false; error: string } | never> {
+  if (!(await mayTry())) return { ok: false, error: TOO_MANY }
   const supabase = await createClient()
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: input.factorId, code: input.code.replace(/\D/g, '') })
   if (error) return { ok: false, error: WRONG }
@@ -90,6 +99,7 @@ export async function verifyTwoStep(code: string): Promise<{ ok: false; error: s
   const { data } = await supabase.auth.mfa.listFactors()
   const factor = (data?.totp ?? []).find(f => f.status === 'verified')
   if (!factor) redirect('/auth/two-step/setup')
+  if (!(await mayTry())) return { ok: false, error: TOO_MANY }
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.replace(/\D/g, '') })
   if (error) return { ok: false, error: WRONG }
   redirect(await landing())

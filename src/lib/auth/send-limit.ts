@@ -10,11 +10,24 @@
 
 export interface Window { limit: number; ms: number }
 
-/** Codes asked for: per address, and per visitor across addresses. */
+/**
+ * Codes asked for: per address from one visitor, per address from everyone, and
+ * per visitor across addresses. The first is the tight one, so a stranger asking
+ * for someone else's codes uses up only their own allowance and cannot keep the
+ * real person from getting a code (security audit, 8 November 2026); the second
+ * still stops a flood of emails to one inbox.
+ */
 export const SEND_PER_ADDRESS: Window = { limit: 5, ms: 15 * 60_000 }
+export const SEND_PER_ADDRESS_ALL: Window = { limit: 15, ms: 15 * 60_000 }
 export const SEND_PER_VISITOR: Window = { limit: 20, ms: 15 * 60_000 }
 /** Codes typed: per address, so six digits cannot be guessed by trying. */
 export const TRY_PER_ADDRESS: Window = { limit: 10, ms: 15 * 60_000 }
+/**
+ * Authenticator codes typed, per account. The sign-in service's own limit counts
+ * by address, and every request reaches it from the portal's server, so without
+ * this a first-step session could keep guessing (security audit, 8 November 2026).
+ */
+export const TWO_STEP_TRIES: Window = { limit: 5, ms: 5 * 60_000 }
 
 /** A sliding-window counter. Pure apart from the clock it is given. */
 export class Limiter {

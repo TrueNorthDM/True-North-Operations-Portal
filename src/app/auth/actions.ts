@@ -5,7 +5,8 @@
  *
  * - sendMagicLink: checks on the SERVER (not just client) that the address is
  *   invited (migration 089), then asks Supabase to email a 6-digit code and a
- *   one-click link. The email template is public/email-templates/magic-link.html.
+ *   one-click link. An address that is not invited gets the same answer and no
+ *   email, so the form never says who has access. The email template is public/email-templates/magic-link.html.
  * - verifyCode: signs in with the 6-digit code, typed on any device.
  * - confirmLink: signs in with the one-click link from the email (the page at
  *   /auth/confirm calls it when the person presses the button).
@@ -19,7 +20,7 @@
 
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { isAllowedEmail, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { isAllowedEmail, SHAPE_MESSAGE } from '@/lib/auth-constants'
 import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
 import { withStartPage } from '@/lib/auth/start-page'
@@ -28,7 +29,7 @@ import type { SignedInIdentity } from '@/lib/directory/current-person'
 import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
-import { SEND_PER_ADDRESS, SEND_PER_VISITOR, TRY_PER_ADDRESS, sendLimiter, visitorFrom } from '@/lib/auth/send-limit'
+import { SEND_PER_ADDRESS, SEND_PER_ADDRESS_ALL, SEND_PER_VISITOR, TRY_PER_ADDRESS, sendLimiter, visitorFrom } from '@/lib/auth/send-limit'
 
 /**
  * Where the person was going when the sign-in started, kept for an hour. The code
@@ -51,10 +52,13 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   // Per visitor only when we know who they are: an unknown address shared by
   // everybody would turn the per-visitor limit into one for the whole company.
   const visitorOk = visitor === 'unknown' || sendLimiter.take(`visitor:${visitor}`, SEND_PER_VISITOR)
-  if (!sendLimiter.take(`send:${email}`, SEND_PER_ADDRESS) || !visitorOk) {
+  if (!sendLimiter.take(`send:${email}:${visitor}`, SEND_PER_ADDRESS) || !sendLimiter.take(`send:${email}`, SEND_PER_ADDRESS_ALL) || !visitorOk) {
     return { ok: false, error: 'Too many codes asked for. Wait a few minutes, then try again.' }
   }
-  if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
+  // An address that may not sign in gets the same answer as one that may, and no
+  // email: the form must not tell a stranger who has access (security audit,
+  // 8 November 2026). The screen says a code is on its way if the address is invited.
+  if (!(await canSignIn(email))) return { ok: true }
 
   const next = safeNext(input.next)
   const store = await cookies()
@@ -112,11 +116,12 @@ export async function verifyCode(input: { email: string; code: string }): Promis
   }
   // The invitation check again: the code was sent while they were invited, and
   // this closes the window if an admin revoked them in between.
-  if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
+  const WRONG_CODE = 'That code is not right, or it has expired. Check the latest email, or send a new one.'
+  if (!(await canSignIn(email))) return { ok: false, error: WRONG_CODE }
 
   const supabase = await createClient()
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-  if (error) return { ok: false, error: 'That code is not right, or it has expired. Check the latest email, or send a new one.' }
+  if (error) return { ok: false, error: WRONG_CODE }
   redirect(await landing(data.user))
 }
 
