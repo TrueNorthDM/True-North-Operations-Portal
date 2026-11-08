@@ -9,6 +9,7 @@
  * useModal).
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Select, type SelectOption } from '@/components/ui/Select'
@@ -105,7 +106,7 @@ export function LabeledSelect({ label, value, options, onChange, placeholder = '
         <FieldLabel>{label}</FieldLabel>
         {auto && !!value && (
           <span title="Filled for this job, from your history or the job catalogue. You can change it."
-            className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-tn-teal bg-tn-teal-soft rounded-full px-[7px] py-0.5">auto</span>
+            className={pillClass('blue')}>auto</span>
         )}
       </div>
       <Select value={value} onChange={onChange} options={options} placeholder={placeholder} searchable={search}

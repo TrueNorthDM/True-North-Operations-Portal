@@ -8,6 +8,7 @@
  * search input, the combination row and the toast.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import type { ReactNode, RefObject } from 'react'
 import { Select } from '@/components/ui/Select'
 import { BTN } from '@/lib/ui/buttons'
@@ -158,7 +159,7 @@ export function ClockField({ label, value, options, onChange, search = false, au
         <div className="flex items-center gap-1.5 min-h-4">
           <SectionLabel>{label}</SectionLabel>
           {auto && has && (
-            <span title="Filled for this job, from your history or the job catalogue. You can change it." className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-tn-teal bg-tn-teal-soft rounded-full px-[7px] py-[2px]">auto</span>
+            <span title="Filled for this job, from your history or the job catalogue. You can change it." className={pillClass('blue')}>auto</span>
           )}
           {warn && <span className="text-[11px] font-semibold text-[#8a6d1a]">{warn}</span>}
         </div>

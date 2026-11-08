@@ -9,6 +9,7 @@
  * window, since the panel's own banner sits under it.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { INPUT } from '@/lib/ui/fields'
 import { useRef, useState, type ReactNode } from 'react'
 import { useModal } from '@/components/ui/useModal'
@@ -204,7 +205,7 @@ export function ManageCombosModal({ combinations, busy, error, contained, onReor
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{c.name}</span>
-                  {i >= SHOWN_COMBINATIONS && <span className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[7px] py-[2px]">Under More</span>}
+                  {i >= SHOWN_COMBINATIONS && <span className={pillClass('gray')}>Under More</span>}
                 </div>
                 <div className="text-[12px] text-muted mt-0.5 truncate">{`${c.path} · ${c.activity || 'No activity'}`}</div>
               </div>
