@@ -18,6 +18,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN } from '@/lib/ui/buttons'
 import { CHECKBOX, INPUT_SM } from '@/lib/ui/fields'
 import { CARD, CARD_TITLE, FIELD_LABEL, SECTION_TITLE, TH } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 import type { Rules } from '@/lib/topic-studio/engine'
 import type { TermRow, TermsView } from '@/lib/topic-studio/views'
 import type { FeedbackRow } from '@/lib/topic-studio/store'
@@ -146,7 +147,7 @@ export function TermsTab({ id, view, feedback = [], ai = NO_AI }: { id: string; 
           <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-left font-semibold text-tn-ink hover:text-tn-teal hover:underline" onClick={() => setDrawer({ key: t.key, label: t.t })}>{t.t}</button>
           {vmain && <><span className="ml-2 rounded bg-subtle px-1.5 py-0.5 text-[11px] text-muted" title="Counts as the same term when grading">same as {vmain.t}</span> <button type="button" className={`${BTN.link} ml-1 !text-[12px]`} disabled={busy} onClick={() => void run({ op: 'notVariant', key: t.key })}>Not the same</button></>}
           {t.src === 'manual' && <span className="ml-2 text-[11.5px] text-muted">added by you</span>}
-          {t.avoid ? <span className="ml-2 rounded bg-[var(--bdg-red-bg)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--bdg-red-fg)]" title={`Matches “${t.avoid}”`}>matches a phrase to avoid</span> : t.reason ? <span className="ml-2 text-[11.5px] text-muted">{REASON[t.reason]}</span> : null}
+          {t.avoid ? <span className={`${pillClass('red')} ml-2`} title={`Matches “${t.avoid}”`}>matches a phrase to avoid</span> : t.reason ? <span className="ml-2 text-[11.5px] text-muted">{REASON[t.reason]}</span> : null}
         </td>
         <td className="px-3 py-2.5 whitespace-nowrap">{tierName(t)}</td>
         <td className="px-3 py-2.5 whitespace-nowrap"><Dots t={t} labels={view.labels} /> <span className="ml-1 text-[12px] text-muted tabular-nums" title={`${t.df} of ${view.N} competitors and ${t.ai} of ${view.aiCount} AI answers`}>{t.df + t.ai}/{den}</span></td>
@@ -259,7 +260,7 @@ export function TermsTab({ id, view, feedback = [], ai = NO_AI }: { id: string; 
           <ul className="m-0 mt-2 list-none p-0">
             {feedback.map(f => (
               <li key={f.id} className={`flex flex-wrap items-start gap-3 border-b border-[var(--row-rule)] py-2.5 text-[13px] last:border-0 ${f.resolved ? 'opacity-60' : ''}`}>
-                <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${f.rating === 'good' ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]'}`}>{f.rating === 'good' ? 'Looks good' : 'Has problems'}</span>
+                <span className={`${pillClass(f.rating === 'good' ? 'green' : 'amber')} mt-0.5 shrink-0`}>{f.rating === 'good' ? 'Looks good' : 'Has problems'}</span>
                 <span className="min-w-[200px] flex-1 [overflow-wrap:anywhere]">{f.note || <span className="text-muted">No note.</span>}<span className="block text-[12px] text-muted">{f.by} · {new Date(f.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></span>
                 <button type="button" className={BTN.link} disabled={busy} onClick={() => void call(() => resolveFeedback(id, f.id, !f.resolved), { ok: f.resolved ? 'Reopened.' : 'Marked as dealt with.' })}>{f.resolved ? 'Reopen' : 'Mark as dealt with'}</button>
               </li>

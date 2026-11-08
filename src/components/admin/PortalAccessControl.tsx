@@ -19,7 +19,8 @@ import { PILL as PILL_SHAPE } from '@/components/ui/Pill'
 
 const PILL: Record<PortalAccessState, Pill> = {
   'signed-in': { kind: 'green', label: 'Has access' },
-  invited: { kind: 'teal', label: 'Invited' },
+  // Waiting on the person to sign in for the first time: amber, as on the list.
+  invited: { kind: 'amber', label: 'Invited' },
   'not-invited': { kind: 'grey', label: 'Not invited' },
   'no-address': { kind: 'amber', label: 'No GoodNews address' },
   inactive: { kind: 'grey', label: 'No access (inactive)' },

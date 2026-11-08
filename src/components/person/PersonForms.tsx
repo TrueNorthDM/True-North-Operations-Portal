@@ -24,6 +24,7 @@ import type { CadencePreview } from '@/lib/timeclock/clocky-periods-data'
 import { DateField } from '@/components/ui/DateField'
 import { FIELD_LABEL } from '@/lib/ui/type'
 import { CHECKBOX } from '@/lib/ui/fields'
+import { Pill } from '@/components/ui/Pill'
 
 /** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
 export interface CadenceActions {
@@ -58,7 +59,7 @@ function SaveBar({ what, pending, error, onCancel, onSave, left }: { what: strin
       {error && <p className="text-sm text-[#c8323d] mt-4 mb-0">{error}</p>}
       <div className="sticky bottom-3 mt-5 flex items-center justify-between gap-3 flex-wrap rounded-[12px] bg-tn-primary px-4 py-2.5 shadow-[0_18px_36px_-18px_rgba(1,35,88,.7)]">
         <span className="flex items-center gap-2.5 text-[13px] text-[#ffffff]">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">Editing</span>
+          <Pill tone="amber" text="Editing" />
           {what}. The other tabs stay as they are.
         </span>
         <span className="flex items-center gap-2">

@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react'
 import { BEGINNINGS, BUILT, MOVE, NEXT, NUMBERS, PURPOSE, TIMELINE, UPDATED, WHY } from '@/lib/history/portal'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { CARD, TH } from '@/lib/ui/type'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 const CHAPTERS = [
   { id: 'how-it-started', label: '1 · How it started' },
@@ -260,7 +260,7 @@ export function PortalHistory() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {NEXT.map(col => (
               <div key={col.kind} className={`${card} px-5 py-4 flex flex-col gap-2.5`}>
-                <span className={`self-start font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.12em] rounded-full px-2.5 py-0.5 ${col.kind === 'building' ? 'bg-[#e6f6ee] text-[#0d7a4f]' : col.kind === 'planned' ? 'bg-tn-teal-soft text-tn-teal' : 'bg-subtle text-muted'}`}>{col.label}</span>
+                <span className={`${pillClass(col.kind === 'building' ? 'green' : col.kind === 'planned' ? 'blue' : 'gray')} self-start`}>{col.label}</span>
                 <ul className="list-disc pl-5 flex flex-col gap-1.5 text-[14px] leading-relaxed text-foreground marker:text-tn-teal">
                   {col.items.map(([b, rest]) => <li key={b}><strong className="text-tn-ink">{b}</strong>{rest}</li>)}
                 </ul>

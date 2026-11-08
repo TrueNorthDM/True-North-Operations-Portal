@@ -151,7 +151,7 @@ function GoalCard({ g, onUpdate, comment }: { g: GoalItem; onUpdate?: () => void
       <div className="flex flex-wrap gap-1.5 items-center pl-10">
         <span className="text-[12px] font-semibold text-[#435066] bg-[#f4f2ec] rounded-full px-2.5 py-[3px] whitespace-nowrap">By {g.by}{g.term ? ` · ${g.term}` : ''}</span>
         {g.serves && <span className="text-[12px] font-semibold text-[#1E7D7F] bg-[#eaf4f4] rounded-full px-2.5 py-[3px]">Serves: {g.serves}</span>}
-        {g.dueNote && <span className="text-[12px] font-bold text-[#9a5a00] bg-[#fdf1e0] rounded-full px-2.5 py-[3px]">{g.dueNote}</span>}
+        {g.dueNote && <Pill tone="amber" text={g.dueNote} />}
       </div>
       <div className="ml-10 rounded-[10px] bg-[#f8f7f3] px-3.5 py-2.5 flex flex-col gap-1">
         <span className="text-[12px] font-bold text-[#8593a4]">{g.lastUpdate ? `Updated ${fmtInstantDay(g.lastUpdate.at, true).replace(/^\w+, /, '')}` : 'No update yet'}</span>

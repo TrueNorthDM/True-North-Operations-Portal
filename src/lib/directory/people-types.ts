@@ -174,13 +174,6 @@ export const typePill = (v: string | null): Pill | null =>
 export const timePill = (v: string | null): Pill | null =>
   v == null ? null : v === 'part' ? { kind: 'pink', label: 'Part-Time' } : { kind: 'blue', label: 'Full-Time' }
 export const statusPill = (active: boolean): Pill => (active ? { kind: 'green', label: 'Active' } : { kind: 'grey', label: 'Inactive' })
-export const ynPill = (v: string | null): Pill | null => {
-  if (v === 'yes') return { kind: 'green', label: 'Yes' }
-  if (v === 'no') return { kind: 'amber', label: 'No' }
-  if (v === 'sometimes') return { kind: 'pink', label: 'Sometimes' }
-  if (v === 'notyet') return { kind: 'red', label: 'Not yet' }
-  return null
-}
 
 // Onboarding / Offboarding lifecycle status (migration 043).
 export const LIFECYCLE_OPTIONS = ['not_started', 'in_progress', 'completed'] as const

@@ -31,7 +31,7 @@ import Link from 'next/link'
 import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
 import { HomeSection, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
 import { AnnualReviewSection } from './manual/AnnualReviewManual'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 // ── Icons (line style, system look) ─────────────────────────────────
 const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
@@ -324,7 +324,7 @@ export function ManualSection({ id, superOnly }: { id: string; superOnly: readon
                   <div key={f.surface} className="grid grid-cols-[140px_1fr_84px] sm:grid-cols-[180px_1fr_96px] gap-3.5 px-[18px] py-3 border-b border-slate-100 last:border-0 items-center">
                     <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{f.surface}</span>
                     <span className="text-[13px] text-muted leading-snug">{f.reads}</span>
-                    <span className={`justify-self-end text-[10.5px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-[3px] ${f.both ? 'bg-tn-teal-soft text-tn-teal' : 'bg-subtle text-muted'}`}>{f.both ? 'read + write' : 'read'}</span>
+                    <span className={`${pillClass(f.both ? 'green' : 'gray')} justify-self-end`}>{f.both ? 'read + write' : 'read'}</span>
                   </div>
                 ))}
               </div>

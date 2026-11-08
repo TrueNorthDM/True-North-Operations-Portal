@@ -23,7 +23,6 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
-import type { OffTone } from '@/lib/timeclock/time-off'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, TEXTAREA_WARN, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -40,9 +39,6 @@ export interface TimeOffApi {
   retryTimeOffRippling(i: { id: number }): Promise<Result<{ toast: string }>>
 }
 
-const TONE: Record<OffTone, { bg: string; fg: string }> = {
-  ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' }, neu: { bg: '#f1f3f6', fg: '#5b6b82' },
-}
 const CHECK_ICON = { check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6 6 18', clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2' }
 const BTN_WHITE = BTN.white
 const BTN_NAVY = `${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`
@@ -149,7 +145,7 @@ export function TimeOffView({ data, api, initial }: {
                 </span>
                 <span className="flex-[1_1_250px] flex flex-wrap gap-1.5">
                   {r.checks.map(c => (
-                    <span key={c.t} className="inline-flex items-center gap-[5px] text-[11.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap" style={{ background: TONE[c.tone].bg, color: TONE[c.tone].fg }}>
+                    <span key={c.t} className={`${pillClass(c.tone)} gap-[5px]`}>
                       <Icon d={CHECK_ICON[c.icon]} size={11} width={3} />{c.t}
                     </span>
                   ))}

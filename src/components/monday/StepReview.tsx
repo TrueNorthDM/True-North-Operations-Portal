@@ -15,6 +15,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { Switch } from '@/components/ui/Switch'
 import { setStepSource } from '@/app/(app)/admin/settings/monday/actions'
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { isNotAStep, type StepUnderReview } from '@/lib/monday/worklist/steps-review'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 
@@ -64,7 +65,7 @@ export function StepReview(
           {`${progress.unverifiedAssignments.toLocaleString('en-US')} assignments still rest on a guess`}
         </span>
         {progress.suspicious > 0 ? (
-          <span className={`${chip} bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]`}>
+          <span className={`${chip} ${pillTone('red')}`}>
             {`${progress.suspicious} look wrong`}
           </span>
         ) : null}
@@ -103,7 +104,7 @@ export function StepReview(
                 <span className="text-[13px] font-semibold text-tn-ink truncate">{s.stepName}</span>
                 {s.suspicious ? (
                   <span
-                    className={`${chip} bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]`}
+                    className={`${chip} ${pillTone('red')}`}
                     title="This reads like a dropdown rather than a stage of work"
                   >
                     check
@@ -130,7 +131,7 @@ export function StepReview(
             </span>
 
             {isNotAStep(s) ? (
-              <span className={`flex-none ${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>not a step</span>
+              <span className={`flex-none ${chip} ${pillTone('gray')}`}>not a step</span>
             ) : s.source === 'guess' ? (
               <span className="flex-none flex items-center gap-2">
                 <button type="button" onClick={() => decide(s, 'confirmed')}
@@ -146,10 +147,7 @@ export function StepReview(
               // A decision has to be reversible in place, or a wrong click
               // becomes a support question.
               <span className="flex-none flex items-center gap-2">
-                <span className={`${chip} ${s.source === 'confirmed'
-                  ? 'bg-[var(--ok-bg)] text-[var(--ok-fg)]'
-                  : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'}`}
-                >
+                <span className={`${chip} ${pillTone(s.source === 'confirmed' ? 'green' : 'gray')}`}>
                   {s.source === 'confirmed' ? 'step' : 'off'}
                 </span>
                 <button type="button" onClick={() => decide(s, 'guess')}

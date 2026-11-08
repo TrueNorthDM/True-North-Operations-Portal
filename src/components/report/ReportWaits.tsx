@@ -6,6 +6,7 @@
 // just a sort order on the one before it.
 
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { formatDays } from '@/lib/report/overview'
 import type { StepWait, BoardWait, StuckItem } from '@/lib/report/types'
 export type { StepWait, BoardWait, StuckItem }
@@ -40,11 +41,7 @@ function ByBoard({ boards }: { boards: BoardWait[] }) {
             {/* A quarter of the work late is the line where a board stops
                 being a scheduling wobble and starts being a problem. */}
             <span
-              className={`${chip} w-14 justify-center ${b.latePct === null
-                ? 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'
-                : b.latePct >= 25
-                  ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
-                  : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
+              className={`${chip} w-14 justify-center ${pillTone(b.latePct === null ? 'gray' : b.latePct >= 25 ? 'red' : 'green')}`}
             >
               {b.latePct === null ? '-' : `${b.latePct}%`}
             </span>
@@ -136,7 +133,7 @@ export function ReportWaits(
             <div className="px-3 py-2.5 text-[12.5px] text-foreground">
               {s.who}
               {s.inactive ? (
-                <span className={`${chip} ml-1.5 bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>Inactive</span>
+                <span className={`${chip} ml-1.5 ${pillTone('gray')}`}>Inactive</span>
               ) : null}
             </div>
             <div className="px-3 py-2.5 text-[12.5px] text-muted">{s.step}</div>

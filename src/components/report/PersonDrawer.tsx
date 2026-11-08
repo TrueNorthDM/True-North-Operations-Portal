@@ -8,6 +8,7 @@
 
 import { useRef } from 'react'
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { useModal } from '@/components/ui/useModal'
 import { formatDays } from '@/lib/report/overview'
 import {
@@ -141,9 +142,7 @@ function Deliveries({ detail }: { detail: PersonDetail }) {
             <div className="px-3 py-2.5 text-[12.5px] text-muted">{r.step}</div>
             <div className="px-3 py-2.5 text-right text-[12.5px] text-foreground">{formatDays(r.heldDays)}</div>
             <div className="px-3 py-2.5 text-right">
-              <span className={`${chip} ${l.late
-                ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
-                : l.noDue ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
+              <span className={`${chip} ${pillTone(l.late ? 'red' : l.noDue ? 'gray' : 'green')}`}
               >
                 {l.label}
               </span>

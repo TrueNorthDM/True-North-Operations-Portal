@@ -13,7 +13,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { moveTwoStep } from '@/app/auth/two-step-actions'
 import { useConfirm } from '@/components/ui/useConfirm'
-import { PILL_CLASS, formatDate } from '@/lib/directory/people-types'
+import { formatDate } from '@/lib/directory/people-types'
+import { pillClass } from '@/components/ui/Pill'
 import { BTN } from '@/lib/ui/buttons'
 
 
@@ -49,7 +50,7 @@ export function TwoStepSelf({ since, daysLeft, blocked }: {
       {confirmDialog}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
-          <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] ${since ? PILL_CLASS.green : PILL_CLASS.amber}`}>
+          <span className={pillClass(since ? 'green' : 'amber')}>
             {since ? 'On' : 'Not set up'}
           </span>
           <span className="text-[13px] text-muted">

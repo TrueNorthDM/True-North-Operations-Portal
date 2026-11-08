@@ -37,6 +37,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { Segmented } from '@/components/ui/Segmented'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { chip, PRIORITY_CHIP } from './tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { BandHeader, BandMap, NextBandPill, OrderMark, type BandSummary } from './OrderBands'
 import { ARROW, BoardLevel, HEAD, WorkspaceLevel, type BoardInfo } from './PriorityLevels'
 import { dateLabel, n, useIsClient, workToday, WORK_ZONE } from './shared'
@@ -86,10 +87,10 @@ function Drift({ from, to, levels }: { from: number; to: number; levels: boolean
 }
 
 function Delta({ by }: { by: number }) {
-  if (by === 0) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>placed</span>
+  if (by === 0) return <span className={`${chip} ${pillTone('gray')}`}>placed</span>
   return by > 0
-    ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${n(by)}`}</span>
-    : <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`down ${n(-by)}`}</span>
+    ? <span className={`${chip} ${pillTone('green')}`}>{`up ${n(by)}`}</span>
+    : <span className={`${chip} ${pillTone('amber')}`}>{`down ${n(-by)}`}</span>
 }
 
 function GripIcon() {
@@ -539,7 +540,7 @@ export function TeamPriorityEditor({
             ) : (
               <span className="text-[13px] font-semibold text-tn-ink truncate" title={s.itemName}>{s.itemName}</span>
             )}
-            {isFresh && <span className={`${chip} bg-[rgba(1,35,88,.08)] text-tn-ink shrink-0`}>new</span>}
+            {isFresh && <span className={`${chip} ${pillTone('blue')} shrink-0`}>new</span>}
           </div>
           <div className="text-[11.5px] text-muted truncate">
             {[levelsOn ? workspaceOf(s) : null, s.language, s.parentItemName, s.boardName, s.stepName].filter(Boolean).join(' · ')}

@@ -28,7 +28,7 @@ import type { Result, TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
 import type { AnchorPreview } from '@/lib/timeclock/clocky-periods-data'
 import { FIELD_LABEL, PeriodsDialog, useToast } from './ui'
 import { SECTION_TITLE, CARD as SHARED_CARD } from '@/lib/ui/type'
-import { PILL } from '@/components/ui/Pill'
+import { PILL, pillClass } from '@/components/ui/Pill'
 
 // The Edit / Done button (Timesheet Periods.dc.html 5A): Edit navy 11px 20px with
 // its shadow, Done white 10px 18px; 8px gap, no letter spacing.
@@ -209,8 +209,8 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
                 <div key={p.start} className={`grid grid-cols-[minmax(0,1fr)_150px] items-center gap-2.5 px-3.5 py-[9px] border-b border-[var(--row-rule)] tabular-nums lining-nums ${now ? 'bg-tn-teal-soft' : 'bg-white'}`}>
                   <span className={`text-[13px] ${now ? 'font-bold' : 'font-normal'} ${past ? 'text-muted' : 'text-tn-ink'}`}>{p.label}</span>
                   <span className="justify-self-end">
-                    {past && <span className={`${TAG} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>Closed</span>}
-                    {now && <span className={`${TAG} bg-tn-teal text-[#ffffff]`}>Current</span>}
+                    {past && <span className={pillClass('gray')}>Closed</span>}
+                    {now && <span className={pillClass('green')}>Current</span>}
                   </span>
                 </div>
               )
@@ -222,7 +222,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
       <section className={`${CARD} gap-2.5`} aria-label="Monthly">
         <div className="flex items-center gap-2.5">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Monthly</span>
-          <span className={`${TAG} text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)]`}>Monthly</span>
+          <span className={pillClass('gray')}>Monthly</span>
         </div>
         <p className="m-0 text-[13.5px] text-foreground leading-[1.55]">From the 1st to the last day of each month, in each person&apos;s own time zone. Nothing to set.</p>
         <p className="m-0 text-[12.5px] text-muted">{data.counts.monthly} people submit monthly</p>

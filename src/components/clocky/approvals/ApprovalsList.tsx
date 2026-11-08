@@ -23,7 +23,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { ApprovalRow, HistoryData } from '@/lib/timeclock/clocky-types'
-import type { QueueData, QueueRow, QueueType, Tone } from '@/lib/timeclock/approval-queue'
+import type { QueueData, QueueRow, QueueType } from '@/lib/timeclock/approval-queue'
 import type { DecideBody } from '../entries/api'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CorrectionReview } from '../entries/Dialogs'
@@ -57,10 +57,6 @@ const TYPES: Record<QueueType, { label: string; bg: string; fg: string }> = {
   rmb: { label: 'Reimbursement', bg: '#fbf3e4', fg: '#8a5a12' },
   xh: { label: 'Extra hours', bg: '#f0edfb', fg: '#5847c9' },
   cor: { label: 'Added time', bg: '#eaf4f4', fg: '#1E7D7F' },
-}
-const TONES: Record<Tone, { bg: string; fg: string }> = {
-  ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
-  neu: { bg: '#f1f3f6', fg: '#5b6b82' }, teal: { bg: '#eaf4f4', fg: '#1E7D7F' },
 }
 const FILTERS: [Filter, string][] = [['all', 'All'], ['ts', 'Timesheet'], ['off', 'Time off'], ['rmb', 'Reimbursement'], ['xh', 'Extra hours'], ['cor', 'Added time']]
 const ROW_GRID = 'grid grid-cols-[minmax(170px,.9fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_250px] gap-x-[22px] gap-y-3 items-center px-[18px] py-4'
@@ -237,9 +233,7 @@ export function ApprovalsList({ initialData, api, initial }: {
                     </div>
                     <span className="text-[13px] text-foreground tabular-nums lining-nums">{r.sub}</span>
                     {r.flag && (
-                      <span className="self-start inline-flex items-center gap-1.5 text-[12px] font-bold rounded-full px-2.5 py-[3px]" style={{ background: TONES[r.flag.tone].bg, color: TONES[r.flag.tone].fg }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: TONES[r.flag.tone].fg }} />{r.flag.text}
-                      </span>
+                      <span className={`${pillClass(r.flag.tone)} self-start`}>{r.flag.text}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex flex-col gap-1">

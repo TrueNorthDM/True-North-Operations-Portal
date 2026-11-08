@@ -38,6 +38,7 @@ import { addDays } from '@/lib/notifications/schedule'
 import { codeFromInput } from '@/lib/language-display'
 import { ROUTES } from '@/lib/nav/routes'
 import { CARD } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 /**
  * Text colours that reach 4.5:1 on white (audit, 10 October 2026). The old
@@ -168,7 +169,7 @@ function LangRow({ lang, target, weeks, hits }: { lang: string; target: number; 
   const mx = Math.max(target * 1.5, ...cells.map(c => c.done), 1)
   const sy = (v: number) => 23 - (v / mx) * 20
   const path = 'M' + cells.map((c, i) => `${sx(i)} ${sy(c.done).toFixed(1)}`).join(' L')
-  const [pillBg, pillFg] = hits === n ? ['#e6f6ee', GREEN] : hits >= 2 ? ['#fdf3e3', AMBER] : ['#fdeeef', RED]
+  const tone = hits === n ? 'green' : hits >= 2 ? 'amber' : 'red'
   return (
     // Below sm the sparkline gives its room to the five cells, which carry
     // the same figures.
@@ -205,7 +206,7 @@ function LangRow({ lang, target, weeks, hits }: { lang: string; target: number; 
           )
         })}
       </span>
-      <span className="text-[12px] font-extrabold rounded-full px-2 py-0.5 tabular-nums" style={{ background: pillBg, color: pillFg }}>
+      <span className={`${pillClass(tone)} tabular-nums`}>
         {hits}/{n}
       </span>
     </div>

@@ -1,4 +1,4 @@
-import { PILL } from '@/components/ui/Pill'
+import { PILL, pillTone } from '@/components/ui/Pill'
 // The badge vocabulary of the work list.
 //
 // Its own module, with no 'use client', for two reasons. A server component
@@ -14,8 +14,8 @@ import { PILL } from '@/components/ui/Pill'
 export const chip = `${PILL} align-top`
 
 export const PRIORITY_CHIP: Record<string, string> = {
-  high: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]',
-  medium: 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]',
+  high: pillTone('red'),
+  medium: pillTone('gray'),
   // #66727f is 4.9:1 on white. It was #9aa7b6, 2.5:1, quiet enough to be
   // unreadable (audit, 10 October 2026).
   low: 'text-[#66727f]',
@@ -24,10 +24,10 @@ export const PRIORITY_CHIP: Record<string, string> = {
 export type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 
 export const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
-  late: { label: 'Late', className: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]' },
-  today: { label: 'Due today', className: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' },
-  upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  odd: { label: 'Check date', className: 'bg-[var(--chip-neutral-bg)] text-muted' },
+  late: { label: 'Late', className: pillTone('red') },
+  today: { label: 'Due today', className: pillTone('amber') },
+  upcoming: { label: 'Upcoming', className: pillTone('blue') },
+  odd: { label: 'Check date', className: pillTone('gray') },
 }
 
 export const DUE_TIME: Record<DueState, string> = {

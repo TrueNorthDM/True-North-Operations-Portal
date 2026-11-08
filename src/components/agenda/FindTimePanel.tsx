@@ -15,6 +15,7 @@ import { findDay, nextFree, WINDOW, type Avail } from '@/lib/agenda/find-time'
 import { clockLabel, DC, instantOf } from '@/lib/agenda/time'
 import { FIELD_LABEL } from '@/lib/ui/type'
 import { CloseButton } from '@/components/clocky/entries/ui'
+import { pillClass } from '@/components/ui/Pill'
 
 type Person = { id: string; name: string; place: string; avail: Avail }
 export type FindTimeApi = (i: { personIds: string[]; from: string }) => Promise<{ ok: true; people: Person[] } | { ok: false; error: string }>
@@ -127,7 +128,7 @@ export function FindTimePanel({ api, personIds, externals, names, me, date, from
                 {b.missing.map(m => (
                   <div key={m.id} className="flex items-center gap-3 text-[13px]">
                     <span className="flex-1 min-w-0 flex flex-col"><b className="text-tn-ink">{nameOf(m.id)}</b><small className="text-[11.5px] text-muted">{people?.find(p => p.id === m.id)?.place}</small></span>
-                    <span className={`text-[11px] font-extrabold rounded-[6px] px-2 py-0.5 ${m.why === 'Busy' ? 'bg-[#e8edf6] text-tn-ink' : 'bg-subtle text-[#5b6b82]'}`}>{m.why}</span>
+                    <span className={pillClass(m.why === 'Busy' ? 'amber' : 'gray')}>{m.why}</span>
                   </div>
                 ))}
               </div>) })()}
@@ -161,7 +162,7 @@ export function FindTimePanel({ api, personIds, externals, names, me, date, from
           {rows.length > shown.length && <><div className="text-[13px] font-bold text-tn-ink">+ {rows.length - shown.length} more<small className="block text-[11px] font-semibold text-muted">counted in Everyone free</small></div><div /></>}
           {externals.map(e => (
             <div key={e} className="contents">
-              <div className="min-w-0 text-[13px] font-bold text-tn-ink truncate" title={e}>{e}<span className="block w-fit mt-[3px] text-[10.5px] font-extrabold tracking-[.04em] uppercase text-[#8a6703] bg-[var(--warn-bg)] border border-[#e9d48a] rounded-[6px] px-[7px] py-px">External guest</span></div>
+              <div className="min-w-0 text-[13px] font-bold text-tn-ink truncate" title={e}>{e}<span className="block mt-[3px]"><span className={pillClass('blue')}>External guest</span></span></div>
               <div className="h-[26px] rounded-[7px] bg-[#f6f4ee] px-2.5 text-[11.5px] text-muted leading-[26px] truncate">Their calendar is not in the portal</div>
             </div>
           ))}

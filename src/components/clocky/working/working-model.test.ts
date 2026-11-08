@@ -56,12 +56,12 @@ describe('a person row', () => {
       status: 'On the clock', line: '2 - i7 Marketing › Content · Content: Writing', local: '5:59 PM EAT',
       timer: '4:40:12', timerFg: '#8a6d1a', warn: true, day: '7:45', week: '36:15',
     })
-    expect(r.tags).toEqual([{ text: 'Kept going', bg: '#f1f3f6', fg: '#5b6b82', tip: 'Answered "Still working?" at 10:48 AM' }])
+    expect(r.tags).toEqual([{ text: 'Kept going', tone: 'gray', tip: 'Answered "Still working?" at 10:48 AM' }])
   })
 
   it('marks an automatic stop today, and someone off the clock with their last clock out', () => {
     const w = rowOf(wendy, { nowMs: ms(NOW), dataNowMs: ms(NOW), viewerZone: 'America/New_York' })
-    expect(w.tags[0]).toEqual({ text: 'Auto out', bg: '#fdeeef', fg: '#c8323d', tip: 'North Time stopped this clock at 10:00 AM after 12h 00m' })
+    expect(w.tags[0]).toEqual({ text: 'Auto out', tone: 'red', tip: 'North Time stopped this clock at 10:00 AM after 12h 00m' })
     expect(w.local).toBe('9:59 AM CDT')
     const o = rowOf(olivia, { nowMs: ms(NOW), dataNowMs: ms(NOW), viewerZone: 'America/New_York' })
     expect(o).toMatchObject({ status: 'Off', line: 'Off the clock, last: Wed, 5:10 PM', timer: 'Off', timerFg: '#a3aebb', dot: '#cbd2da' })

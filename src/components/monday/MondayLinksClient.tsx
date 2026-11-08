@@ -12,13 +12,14 @@ import type { AccountProfile } from '@/lib/monday/worklist/account'
 import { dateLabel, n } from './shared'
 import { CARD_TITLE, CARD } from '@/lib/ui/type'
 import { ERROR_BOX } from '@/lib/ui/feedback'
+import { PILL, pillTone } from '@/components/ui/Pill'
 
 interface Option { value: string; label: string }
 
 const card = `${CARD} overflow-hidden`
 const head = 'px-5 py-3.5 border-b border-slate-200 flex items-center justify-between gap-3'
 const title = CARD_TITLE
-const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
+const chip = PILL
 const btn = 'text-xs font-bold px-2.5 py-1.5 rounded-[8px] border transition-colors whitespace-nowrap'
 
 /**
@@ -185,7 +186,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
                   </span>
                   <span className="block text-xs text-muted truncate">{a.email ?? `id ${a.mondayUserId}`}</span>
                 </span>
-                <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`${n(a.assignments)} assigned`}</span>
+                <span className={`${chip} ${pillTone('amber')}`}>{`${n(a.assignments)} assigned`}</span>
                 <span className="w-[220px]">
                   <Select
                     value={choice[a.mondayUserId] ?? ''}
@@ -242,7 +243,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
                 <span className="block text-xs text-muted truncate">{a.email ?? 'no email'}</span>
               </span>
 
-              <span className={`${chip} ${a.assignments > 0 ? 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`${chip} ${pillTone(a.assignments > 0 ? 'amber' : 'gray')}`}>
                 {`${n(a.assignments)} assigned`}
               </span>
 

@@ -118,7 +118,7 @@ export function ActivitiesSection({ activities, query, extra }: { activities: Ac
                   <td className="px-3.5 py-2.5 align-top w-[260px] font-(family-name:--font-display) font-bold text-tn-ink">{a.name}</td>
                   <td className="px-3.5 py-2.5 align-top text-foreground leading-[1.5]">{a.covers}</td>
                   <td className="px-3.5 py-2.5 align-top w-[110px]">{a.notesRequired
-                    ? <span className="text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap bg-[#fdf8e7] text-[#8a6d1a]">Required</span>
+                    ? <span className={pillClass('amber')}>Required</span>
                     : <span className="text-[12px] text-muted">Optional</span>}</td>
                 </tr>
               )

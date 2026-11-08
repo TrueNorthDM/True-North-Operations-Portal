@@ -6,6 +6,7 @@
 // "how much does each writer have on their hands" directly.
 
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import {
   barWidth, boardColour, holdingReadout, labelOn, totalHours,
   type PersonHoldings,
@@ -150,9 +151,7 @@ export function EstimateAudit({ rows }: { rows: EffortBasis[] }) {
             {e.perStep}
           </span>
           <span className="flex-none w-[74px] text-right">
-            <span className={`${chip} ${e.measured
-              ? 'bg-[rgba(30,125,127,.12)] text-tn-teal'
-              : 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]'}`}
+            <span className={`${chip} ${pillTone(e.measured ? 'green' : 'amber')}`}
             >
               {e.measured ? 'measured' : 'fallback'}
             </span>

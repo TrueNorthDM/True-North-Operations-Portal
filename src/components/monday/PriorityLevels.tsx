@@ -11,6 +11,7 @@
  */
 
 import { chip, PRIORITY_CHIP } from './tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { n } from './shared'
 
 export const HEAD = 'px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted whitespace-nowrap'
@@ -27,8 +28,8 @@ export interface LevelTotals { boards: number; open: number; late: number }
 function LevelDelta({ by }: { by: number }) {
   if (!by) return <span className="text-[var(--faint)] text-[13px]">-</span>
   return by > 0
-    ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${by}`}</span>
-    : <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>{`down ${-by}`}</span>
+    ? <span className={`${chip} ${pillTone('green')}`}>{`up ${by}`}</span>
+    : <span className={`${chip} ${pillTone('amber')}`}>{`down ${-by}`}</span>
 }
 
 function Late({ count }: { count: number }) {

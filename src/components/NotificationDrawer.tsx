@@ -36,6 +36,7 @@ import { keepGoing as keepGoingAction } from '@/app/(app)/clocky-hours/clock-act
 import { CloseButton, Toast } from '@/components/clocky/entries/ui'
 import { Segmented } from '@/components/ui/Segmented'
 import { TAB_COUNT, TAB_COUNT_OFF, TAB_COUNT_ON, tabClass } from '@/lib/ui/tabs'
+import { pillClass } from '@/components/ui/Pill'
 
 const SHOW = [{ key: 'all', label: 'All' }, { key: 'unread', label: 'Unread' }] as const
 
@@ -278,7 +279,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                   <span className="text-[12.5px] text-foreground leading-normal">{i.what}</span>
                   <span className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">{i.src}</span>
-                    {i.summary && <span className="rounded bg-subtle px-[5px] py-px text-[9.5px] font-bold tracking-[.05em] uppercase text-muted">Daily summary</span>}
+                    {i.summary && <span className={pillClass('gray')}>Daily summary</span>}
                   </span>
                 </span>
               </button>

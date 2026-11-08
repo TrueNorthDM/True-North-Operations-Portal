@@ -34,7 +34,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { langChipStyle } from '@/components/href-links/lang-chip'
 import { PAGE_TITLE, CARD_TITLE, CARD, TH_CELL } from '@/lib/ui/type'
 import { ERROR_BOX } from '@/lib/ui/feedback'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 interface ConfirmationState {
   language_code: string
@@ -170,11 +170,7 @@ export function PageDetail({
 
   const liveCount = languages.filter(l => confirmFor(l)?.confirmed_on_live).length
   const liveDone = languages.length > 0 && liveCount === languages.length
-  const pillStyle = liveDone
-    ? { backgroundColor: '#1E9E6A1f', color: '#1E9E6A' }
-    : liveCount > 0
-      ? { backgroundColor: '#E0940E1f', color: '#c67f0c' }
-      : undefined
+  const liveTone = liveDone ? 'green' : liveCount > 0 ? 'amber' : 'gray'
 
   return (
     <div className="space-y-6">
@@ -189,16 +185,13 @@ export function PageDetail({
             <h1 className={PAGE_TITLE}>{pageName}</h1>
           </div>
           <div className="flex gap-2 flex-wrap items-center">
-            <span
-              className={`inline-flex items-center text-xs font-bold px-3 py-1 rounded-full ${pillStyle ? '' : 'bg-subtle text-muted'}`}
-              style={pillStyle}
-            >
+            <span className={pillClass(liveTone)}>
               {liveDone ? '✓ Live on all languages' : `${liveCount}/${languages.length} confirmed live`}
             </span>
             {done && doneDateLabel && (
               <span
                 title="The day it first got done"
-                className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full bg-subtle text-muted border border-slate-200"
+                className={pillClass('gray')}
               >
                 Done {doneDateLabel}
               </span>
@@ -336,9 +329,7 @@ export function PageDetail({
                     {/* Grey on purpose: the language is no longer active. */}
                     <span className="w-11 inline-flex items-center justify-center text-xs font-bold uppercase rounded px-2 py-0.5 bg-slate-100 text-slate-400" title={languageName(lang)}>{lang}</span>
                     <span className="flex-1 text-slate-500 truncate font-mono text-xs">{url ?? '-'}</span>
-                    <span className="text-[10px] uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-semibold">
-                      discontinued
-                    </span>
+                    <Pill tone="gray">discontinued</Pill>
                     {conf?.confirmed_on_live && (
                       <Pill tone="green">was live</Pill>
                     )}

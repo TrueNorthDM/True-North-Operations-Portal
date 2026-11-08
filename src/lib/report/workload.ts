@@ -14,6 +14,8 @@
 // obvious and is easy to write with the wrong denominator, and a wrong
 // denominator here does not look wrong: it looks like a person who is behind.
 
+import { pillTone } from '@/components/ui/Pill'
+
 export type Reading = 'overloaded' | 'waiting' | 'at-capacity' | 'spare' | 'steady'
 
 export type WorkloadRow = {
@@ -130,12 +132,12 @@ export const READING_LABEL: Record<Reading, string> = {
 }
 
 export const READING_CHIP: Record<Reading, string> = {
-  overloaded: 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]',
+  overloaded: pillTone('red'),
   // A wait, so amber (owner, 8 November 2026).
-  waiting: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]',
-  'at-capacity': 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]',
-  spare: 'bg-[rgba(30,125,127,.12)] text-tn-teal',
-  steady: 'bg-[rgba(133,147,164,.14)] text-[var(--chip-neutral-fg)]',
+  waiting: pillTone('amber'),
+  'at-capacity': pillTone('amber'),
+  spare: pillTone('green'),
+  steady: pillTone('gray'),
 }
 
 /** Full week worked is the good case; well under it and well over it are not. */

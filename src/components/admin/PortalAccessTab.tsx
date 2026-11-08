@@ -18,7 +18,8 @@ import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import { invitePerson } from '@/app/(app)/admin/people/actions'
 import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rule'
-import { PILL_CLASS, formatDate, initialsOf, type Pill, type PersonView } from '@/lib/directory/people-types'
+import { formatDate, initialsOf, type PersonView } from '@/lib/directory/people-types'
+import { pillClass, type PillColor } from '@/components/ui/Pill'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
 import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 import { BTN } from '@/lib/ui/buttons'
@@ -30,12 +31,16 @@ export type TwoStep = 'on' | 'none'
 
 type Filter = 'all' | 'not-invited' | 'invited' | 'signed-in' | 'no-two-step' | 'no-address'
 
-const ACCESS_PILL: Record<PortalAccessState, Pill> = {
-  'signed-in': { kind: 'green', label: 'Has access' },
-  invited: { kind: 'teal', label: 'Invited' },
-  'not-invited': { kind: 'grey', label: 'Not invited' },
-  'no-address': { kind: 'amber', label: 'No GoodNews address' },
-  inactive: { kind: 'grey', label: 'Inactive' },
+/** A status pill: a tone by meaning (Pill.tsx) and its words. */
+type StatePill = { tone: PillColor; label: string }
+
+const ACCESS_PILL: Record<PortalAccessState, StatePill> = {
+  'signed-in': { tone: 'green', label: 'Has access' },
+  // Waiting on the person to sign in for the first time.
+  invited: { tone: 'amber', label: 'Invited' },
+  'not-invited': { tone: 'gray', label: 'Not invited' },
+  'no-address': { tone: 'amber', label: 'No GoodNews address' },
+  inactive: { tone: 'gray', label: 'Inactive' },
 }
 
 // The Two-step column only once two-step sign-in is live (twoStep not null);
@@ -52,10 +57,8 @@ function tableColumns(lastSignIn: boolean, twoStep: boolean) {
   ]
 }
 
-function pill(p: Pill, title?: string) {
-  return (
-    <span title={title} className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-2.5 py-[4px] whitespace-nowrap ${PILL_CLASS[p.kind]}`}>{p.label}</span>
-  )
+function pill(p: StatePill, title?: string) {
+  return <span title={title} className={pillClass(p.tone)}>{p.label}</span>
 }
 
 function ago(iso: string | null): string {
@@ -266,8 +269,8 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
             </span>
             {show.has('lastSignIn') && <span className="text-[12.5px] text-foreground">{r.p.accountId ? ago(r.p.lastAccessAt) : <span className="text-slate-300">-</span>}</span>}
             {show.has('twoStep') && <span>
-              {r.second === 'on' && pill({ kind: 'green', label: 'On' })}
-              {r.second === 'none' && pill({ kind: 'amber', label: 'Not set up' })}
+              {r.second === 'on' && pill({ tone: 'green', label: 'On' })}
+              {r.second === 'none' && pill({ tone: 'amber', label: 'Not set up' })}
               {r.second === null && <span className="text-[13px] text-slate-300">-</span>}
             </span>}
           </div>

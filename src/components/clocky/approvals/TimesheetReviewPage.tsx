@@ -381,7 +381,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                       <div key={i} className={`grid ${ENT_COLS} items-start border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums hover:bg-[var(--row-hover)]`}>
                         <div className="px-3 py-[9px] flex items-center gap-2 whitespace-nowrap"><span className="w-1 h-[18px] rounded-[3px] flex-none" style={{ background: x.color }} /><span className="text-tn-ink font-semibold">{x.time}</span></div>
                         <div className="px-3 py-[9px] text-tn-ink font-(family-name:--font-display) font-extrabold whitespace-nowrap">{x.dur}</div>
-                        <div className="px-3 py-[9px] flex flex-col gap-1 min-w-0"><span className="text-tn-ink font-semibold">{x.job}</span>{x.flag && <span className="self-start text-[11px] font-bold rounded-full px-2 py-0.5" style={{ background: TONE[x.flag.tone].bg, color: TONE[x.flag.tone].fg }}>{x.flag.text}</span>}</div>
+                        <div className="px-3 py-[9px] flex flex-col gap-1 min-w-0"><span className="text-tn-ink font-semibold">{x.job}</span>{x.flag && <span className={`${pillClass(x.flag.tone)} self-start`}>{x.flag.text}</span>}</div>
                         <div className="px-3 py-[9px] text-foreground">{x.act}</div>
                         <div className="px-3 py-[9px] text-foreground">{x.cp}</div>
                         <div className="px-3 py-[9px] text-foreground font-mono text-[12px]">{x.code}</div>
@@ -427,7 +427,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                   {x.note && <span className="text-[12.5px] text-foreground">&quot;{x.note}&quot;</span>}
                   <div className="flex gap-1.5 flex-wrap mt-0.5">
                     <span className={pillClass(x.billable ? 'green' : 'gray')}>{x.billable ? 'Billable' : 'Not billable'}</span>
-                    {x.flag && <span className="text-[10.5px] font-bold rounded-full px-2 py-[3px] whitespace-nowrap" style={{ background: TONE[x.flag.tone].bg, color: TONE[x.flag.tone].fg }}>{x.flag.text}</span>}
+                    {x.flag && <span className={pillClass(x.flag.tone)}>{x.flag.text}</span>}
                   </div>
                 </div>
               </div>

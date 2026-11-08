@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PILL_CLASS, initialsOf, type PillKind } from '@/lib/directory/people-types'
+import { PILL } from '@/components/ui/Pill'
 import { MODAL_BACKDROP, MODAL_PANEL, MODAL_TITLE } from '@/lib/ui/modal'
 import { CloseButton } from '@/components/clocky/entries/ui'
 import { CARD } from '@/lib/ui/type'
@@ -89,7 +90,7 @@ function AuditRow({ entry, isOpen, onToggle }: { entry: AuditEntry; isOpen: bool
             {entry.entityLabel && <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{entry.entityLabel}</span>}
           </div>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 ${PILL_CLASS[c.kind]}`}>{c.badge}</span>
+            <span className={`${PILL} ${PILL_CLASS[c.kind]}`}>{c.badge}</span>
             {c.summary && <span className="text-[12.5px] text-foreground tabular-nums">{c.summary}</span>}
           </div>
         </div>

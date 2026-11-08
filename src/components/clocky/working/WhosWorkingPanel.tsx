@@ -22,7 +22,7 @@ import type { WorkingApi } from './working-api'
 import { SORTS, emptyTitle, groupsOf, scopeText, viewerTime, type WorkingFilter, type WorkingRow, type WorkingSort } from './working-model'
 import { BTN } from '@/lib/ui/buttons'
 import { PAGE_TITLE, SECTION_TITLE, CARD } from '@/lib/ui/type'
-import { PILL } from '@/components/ui/Pill'
+import { pillClass } from '@/components/ui/Pill'
 
 export const WHOS_WORKING_HREF = '/clocky-hours/whos-working'
 /** A person's entries on Time entries. */
@@ -232,8 +232,7 @@ function PersonRow({ row: r, menuOpen, onMenu, onClockOut }: { row: WorkingRow; 
         <div className="flex items-center gap-[7px] flex-wrap">
           <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{p.name}</span>
           {r.tags.map(t => (
-            <span key={t.text} title={t.tip} className={`${PILL} tabular-nums lining-nums`}
-              style={{ background: t.bg, color: t.fg }}>{t.text}</span>
+            <span key={t.text} title={t.tip} className={`${pillClass(t.tone)} tabular-nums lining-nums`}>{t.text}</span>
           ))}
         </div>
         <div className="text-[12px] truncate" style={{ color: r.lineFg }}>{r.line}</div>

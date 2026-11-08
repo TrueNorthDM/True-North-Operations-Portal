@@ -33,6 +33,7 @@ import { PROBLEM_HINT, PROBLEM_LABEL, PROBLEM_ORDER, personProblems, type Transi
 import type { TransitionData, TransitionQuery } from '@/lib/timeclock/transition-data'
 import { DateField } from '@/components/ui/DateField'
 import { PAGE_TITLE, FIELD_LABEL } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 const LABEL = FIELD_LABEL
 const H1 = `${PAGE_TITLE} mt-0.5`
@@ -126,14 +127,14 @@ function ProblemCell({ r }: { r: TransitionRow }) {
   if (!r.problems.length) {
     return (
       <div className="px-3 py-2.5">
-        <span className="text-[11.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap bg-[var(--ok-bg)] text-[var(--ok-fg)]">{r.portal.timeOff ? 'Time off' : 'Reads fine'}</span>
+        <span className={pillClass('green')}>{r.portal.timeOff ? 'Time off' : 'Reads fine'}</span>
       </div>
     )
   }
   return (
     <div className="px-3 py-2.5 flex flex-col items-start gap-1">
       {r.problems.map(p => (
-        <span key={p} title={PROBLEM_HINT[p]} className="text-[11.5px] font-bold rounded-full px-[9px] py-[3px] bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]">{PROBLEM_LABEL[p]}</span>
+        <span key={p} title={PROBLEM_HINT[p]} className={pillClass('red')}>{PROBLEM_LABEL[p]}</span>
       ))}
     </div>
   )

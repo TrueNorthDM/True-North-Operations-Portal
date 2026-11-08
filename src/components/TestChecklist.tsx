@@ -19,7 +19,7 @@ import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { PAGE_TITLE, CARD } from '@/lib/ui/type'
-import { Pill } from '@/components/ui/Pill'
+import { Pill, pillClass } from '@/components/ui/Pill'
 
 type Result = 'pass' | 'fail' | 'skip'
 type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
@@ -203,11 +203,6 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
         <div className="flex flex-col gap-3.5">
           {sections.map(({ area, items, sPass, sFail, sReviewed, allPass }) => {
             const open = filter !== 'all' ? true : !collapsed[area.area]
-            const tallyStyle = sFail > 0
-              ? { background: 'rgba(225,29,42,.12)', color: '#E11D2A' }
-              : allPass
-                ? { background: 'rgba(18,122,62,.14)', color: '#127A3E' }
-                : undefined
             return (
               <section key={area.area} className={`${CARD} overflow-hidden`}>
                 <button
@@ -219,10 +214,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`}><path d="m9 6 6 6-6 6" /></svg>
                   <span className="shrink-0 inline-flex w-[30px] h-[30px] items-center justify-center rounded-[9px] bg-tn-teal-soft text-[15px]">{AREA_ICON[area.area] ?? '📋'}</span>
                   <span className="font-(family-name:--font-display) font-extrabold text-base text-tn-ink">{area.area}</span>
-                  <span
-                    className={`font-(family-name:--font-display) font-extrabold text-[11px] px-2.5 py-[3px] rounded-full ${tallyStyle ? '' : 'bg-tn-teal-soft text-tn-teal'}`}
-                    style={tallyStyle}
-                  >
+                  <span className={pillClass(sFail > 0 ? 'red' : 'green')}>
                     {sFail > 0 ? `${sFail} failing` : allPass ? 'All passing' : `${sPass} passing`}
                   </span>
                   <span className="ml-auto text-[12.5px] font-semibold text-muted">{sReviewed}/{area.cases.length} reviewed</span>

@@ -178,8 +178,8 @@ function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }:
                 <span className={`font-(family-name:--font-display) text-[13.5px] ${r.folder ? 'font-extrabold' : r.depth === 1 ? 'font-semibold' : 'font-bold'} ${r.active ? 'text-tn-ink' : 'text-[#a3aebb]'}`}>{r.name}</span>
                 <span className="text-[12px] text-muted overflow-hidden text-ellipsis whitespace-nowrap">{r.use}</span>
               </span>
-              {!r.folder && <span className={`flex-none text-[10.5px] font-bold rounded-full px-2 py-[3px] ${b.cls}`}>{b.text}</span>}
-              {!r.active && <span className="flex-none text-[10.5px] font-bold rounded-full px-2 py-[3px] bg-[#f1f3f6] text-muted">Inactive</span>}
+              {!r.folder && <span className={`${b.cls} flex-none`}>{b.text}</span>}
+              {!r.active && <span className={`${pillClass('gray')} flex-none`}>Inactive</span>}
             </div>
           )
         })}
@@ -225,7 +225,7 @@ function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }:
                 <span className="font-(family-name:--font-display) font-semibold text-[13.5px] text-tn-ink">{ed.name}</span>
                 {ed.use && <span className="text-[12px] text-foreground leading-[1.45]">{ed.use}</span>}
               </span>
-              {!row.folder && <span className={`flex-none text-[10.5px] font-bold rounded-full px-2 py-[3px] ${billPill(ed.billable).cls}`}>{billPill(ed.billable).text}</span>}
+              {!row.folder && <span className={`${billPill(ed.billable).cls} flex-none`}>{billPill(ed.billable).text}</span>}
             </div>
           </div>
           {canEdit && (

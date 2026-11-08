@@ -26,6 +26,7 @@ import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
 import type { ClockSafetyData, Result, SafetyOccurrence } from '@/lib/timeclock/clocky-types'
 import { STOP_REASON_LABEL } from '@/lib/timeclock/safety-stops'
 import { PAGE_TITLE, SECTION_TITLE, FIELD_LABEL } from '@/lib/ui/type'
+import { pillClass } from '@/components/ui/Pill'
 
 export type SafetyPeriod = 'month' | '3m' | 'all'
 export type SafetyLoad = (input: { period: SafetyPeriod; q: string }) => Promise<Result<{ data: ClockSafetyData }>>
@@ -49,10 +50,7 @@ function ReasonCell({ o }: { o: SafetyOccurrence }) {
   const allowance = o.reason === 'allowance'
   return (
     <div className="px-3 py-2.5 flex flex-col items-start gap-0.5 min-w-0">
-      <span
-        className="text-[11.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap"
-        style={allowance ? { background: '#fdf8e7', color: '#8a6d1a' } : { background: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-fg)' }}
-      >{STOP_REASON_LABEL[o.reason]}</span>
+      <span className={pillClass(allowance ? 'amber' : 'gray')}>{STOP_REASON_LABEL[o.reason]}</span>
       {allowance && o.allowance && <span className="text-[11.5px] text-muted truncate max-w-full" title={o.allowance}>{o.allowance}</span>}
     </div>
   )

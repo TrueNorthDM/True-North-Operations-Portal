@@ -6,13 +6,14 @@
 // 4 hours" stops being true the day the cron changes and nobody notices.
 
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import type { Scope } from '@/lib/report/scope'
 import type { OpenDecision, Source, SourceState } from '@/lib/report/types'
 export type { OpenDecision, Source, SourceState }
 
 const SOURCE_CHIP: Record<SourceState, { label: string; className: string }> = {
-  live: { label: 'live', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  'to-build': { label: 'to build', className: 'bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]' },
+  live: { label: 'live', className: pillTone('green') },
+  'to-build': { label: 'to build', className: pillTone('amber') },
 }
 
 export function ReportMethod(
@@ -87,10 +88,7 @@ function WhoSeesWhat({ yours }: { yours: Scope }) {
       <div className="flex flex-col gap-2.5">
         {SCOPES.map(l => (
           <div key={l.scope} className="flex items-start gap-2.5">
-            <span className={`${chip} flex-none mt-px ${l.scope === yours
-              ? 'bg-[rgba(30,125,127,.12)] text-tn-teal'
-              : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'}`}
-            >
+            <span className={`${chip} flex-none mt-px ${pillTone(l.scope === yours ? 'blue' : 'gray')}`}>
               {l.scope === yours ? 'you' : l.who}
             </span>
             <span className="min-w-0 text-[12.5px] text-foreground leading-[1.55]">

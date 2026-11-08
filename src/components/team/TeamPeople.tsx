@@ -18,7 +18,7 @@ import { initialsOf, roleTypePill } from '@/lib/directory/people-types'
 import Link from 'next/link'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { Tabs } from '@/components/ui/Tabs'
-import { PILL as SHARED_PILL } from '@/components/ui/Pill'
+import { PILL as SHARED_PILL, pillTone } from '@/components/ui/Pill'
 import { CARD } from '@/lib/ui/type'
 
 // The portal's one pill (components/ui/Pill), never allowed to grow with its row.
@@ -58,7 +58,7 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
                 <span className="block text-[13px] font-semibold text-tn-ink truncate">{m.name}</span>
                 <span className="block text-[11.5px] text-muted truncate">{m.title ?? '-'}</span>
               </span>
-              <span className={`${PILL} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>{m.positionLabel}</span>
+              <span className={`${PILL} ${pillTone('gray')}`}>{m.positionLabel}</span>
             </div>
           ))}
         </div>
@@ -75,7 +75,7 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
                 {team.tools.map(t => (
                   <div key={t.label} className="flex items-center justify-between gap-2 text-[12.5px] text-foreground">
                     {t.label}
-                    <span className={`${PILL} bg-[rgba(30,125,127,.12)] text-tn-teal`}>
+                    <span className={`${PILL} ${pillTone('blue')}`}>
                       {t.audience === 'lead' ? 'Lead only' : 'Whole team'}
                     </span>
                   </div>
@@ -172,15 +172,15 @@ export function TeamPeople({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 flex-wrap">
                   <span className="text-[14px] font-semibold text-tn-ink">{p.name}</span>
-                  <span className={`${PILL} bg-[var(--role-bg)] text-[var(--chip-neutral-fg)]`}>{role.label}</span>
-                  {self && <span className={`${PILL} bg-[rgba(30,125,127,.12)] text-tn-teal`}>You</span>}
+                  <span className={`${PILL} ${pillTone('gray')}`}>{role.label}</span>
+                  {self && <span className={`${PILL} ${pillTone('blue')}`}>You</span>}
                 </span>
                 <span className="block text-[12.5px] text-muted mt-0.5">{p.title ?? '-'}</span>
               </span>
 
               <span className="text-[12.5px] text-muted w-40 shrink-0">{p.teamName ?? '-'}</span>
 
-              <span className={`${PILL} ${active ? 'bg-[var(--bdg-green-bg)] text-[var(--bdg-green-fg)]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>
+              <span className={`${PILL} ${pillTone(active ? 'green' : 'gray')}`}>
                 {active ? 'Active' : 'Inactive'}
               </span>
 

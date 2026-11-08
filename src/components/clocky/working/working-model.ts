@@ -10,12 +10,13 @@ import type { WhosWorkingData, WorkingPerson } from '@/lib/timeclock/clocky-type
 import { dayLabel, localDate, timeLabel } from '@/lib/timeclock/format'
 import { formatClock, formatTimer, runningSeconds } from '@/lib/timeclock/rounding'
 import { STOP_AFTER_LABEL, WARN_AFTER_SECONDS } from '@/lib/timeclock/safety'
+import type { PillColor } from '@/components/ui/Pill'
 
 export type WorkingFilter = 'on' | 'all'
 export const SORTS = ['Day total', 'Clock-in time', 'Name', 'Job'] as const
 export type WorkingSort = typeof SORTS[number]
 
-export interface WorkingTag { text: string; bg: string; fg: string; tip: string }
+export interface WorkingTag { text: string; tone: PillColor; tip: string }
 
 export interface WorkingRow {
   person: WorkingPerson
@@ -66,10 +67,10 @@ export function rowOf(p: WorkingPerson, o: { nowMs: number; dataNowMs: number; v
   const day = Math.max(0, p.daySeconds + g)
   const week = Math.max(0, p.weekSeconds + g)
   const tags: WorkingTag[] = []
-  if (p.autoOutToday) tags.push({ text: 'Auto out', bg: '#fdeeef', fg: '#c8323d', tip: `North Time stopped this clock at ${timeLabel(p.autoOutToday.at, o.viewerZone)} after ${STOP_AFTER_LABEL}` })
-  if (p.allowanceOver) tags.push({ text: 'Over', bg: '#fdeeef', fg: '#c8323d', tip: p.allowanceOver })
-  if (p.clockedOutBy) tags.push({ text: `Clocked out by ${p.clockedOutBy.name}`, bg: '#f1f3f6', fg: '#5b6b82', tip: p.clockedOutBy.reason ?? '' })
-  if (warn && p.keptGoingAt) tags.push({ text: 'Kept going', bg: '#f1f3f6', fg: '#5b6b82', tip: `Answered "Still working?" at ${timeLabel(p.keptGoingAt, o.viewerZone)}` })
+  if (p.autoOutToday) tags.push({ text: 'Auto out', tone: 'red', tip: `North Time stopped this clock at ${timeLabel(p.autoOutToday.at, o.viewerZone)} after ${STOP_AFTER_LABEL}` })
+  if (p.allowanceOver) tags.push({ text: 'Over', tone: 'red', tip: p.allowanceOver })
+  if (p.clockedOutBy) tags.push({ text: `Clocked out by ${p.clockedOutBy.name}`, tone: 'gray', tip: p.clockedOutBy.reason ?? '' })
+  if (warn && p.keptGoingAt) tags.push({ text: 'Kept going', tone: 'gray', tip: `Answered "Still working?" at ${timeLabel(p.keptGoingAt, o.viewerZone)}` })
   const status = on ? 'On the clock' : p.autoOutToday || p.clockedOutBy ? 'Auto out' : 'Off'
   return {
     person: p,

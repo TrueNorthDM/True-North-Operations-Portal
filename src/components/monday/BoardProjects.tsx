@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { chip } from '@/components/monday/tokens'
+import { pillTone } from '@/components/ui/Pill'
 import { setBoardJobcode } from '@/app/(app)/admin/settings/monday/actions'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 
@@ -64,7 +65,7 @@ export function BoardProjects(
           {`${linked.toLocaleString('en-US')} of ${boards.length.toLocaleString('en-US')} boards linked to a project`}
         </span>
         {linked === 0 ? (
-          <span className={`${chip} bg-[var(--bdg-orange-bg)] text-[var(--bdg-orange-fg)]`}>
+          <span className={`${chip} ${pillTone('amber')}`}>
             every estimate is the company average
           </span>
         ) : null}

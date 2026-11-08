@@ -13,6 +13,7 @@ import { languageName } from '@/lib/language-display'
 import type { PageListRow as Row } from '@/lib/href-links/data'
 import type { SiteCode } from '@/lib/href-links/rules'
 import { langChipStyle } from '@/components/href-links/lang-chip'
+import { pillClass } from '@/components/ui/Pill'
 import { GROUP_LABEL, formatDoneDate, isDone, urlCountOf, type GroupKey } from './page-list-model'
 
 export function PageListGroupHeader({ groupKey, count, isOpen, onToggle }: {
@@ -106,7 +107,7 @@ export function PageListRow({ r, languages, siteCode, last, linkClass }: {
           </span>
           {r.notRelevant && (
             <span
-              className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-300 shrink-0"
+              className={`${pillClass('gray')} shrink-0`}
               aria-label="Marked not relevant"
             >
               Not relevant

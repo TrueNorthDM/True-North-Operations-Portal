@@ -23,7 +23,7 @@
  * leaves the grid, in Edit too; Save still saves every change.
  */
 
-import { pillClass } from '@/components/ui/Pill'
+import { PILL, pillClass } from '@/components/ui/Pill'
 import { INPUT_SM } from '@/lib/ui/fields'
 import { staleOr } from '@/lib/ui/action-error'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
@@ -639,7 +639,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {show.has('type') && <span>{(() => {
                   const t = typePill(p.employmentType ?? null)
                   return t
-                    ? <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[t.kind]}`}>{t.label}</span>
+                    ? <span className={`${PILL} ${PILL_CLASS[t.kind]}`}>{t.label}</span>
                     : <span className="text-slate-300">-</span>
                 })()}</span>}
 
