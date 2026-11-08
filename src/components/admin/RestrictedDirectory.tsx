@@ -183,7 +183,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
                     <span className="block text-[13px] font-semibold text-foreground truncate">{m.name}</span>
                     {m.title && <span className="block text-[11.5px] text-muted truncate">{m.title}</span>}
                   </span>
-                  <span className="shrink-0 ${PILL} bg-slate-100 text-slate-500">
+                  <span className={`shrink-0 ${PILL} bg-slate-100 text-slate-500`}>
                     {m.positionLabel}
                   </span>
                 </div>
@@ -200,7 +200,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
                     {t.tools.map(tool => (
                       <li key={tool.label} className="flex items-center justify-between gap-2 text-[12.5px]">
                         <span className="text-foreground truncate">{tool.label}</span>
-                        <span className="shrink-0 ${PILL} bg-tn-teal-soft text-tn-teal">
+                        <span className={`shrink-0 ${PILL} bg-tn-teal-soft text-tn-teal`}>
                           {tool.audience === 'lead' ? 'Lead only' : 'Whole team'}
                         </span>
                       </li>
