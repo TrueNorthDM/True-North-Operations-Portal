@@ -26,6 +26,8 @@ export async function GET(request: Request) {
     if (report.updated || report.deleted || report.added) { revalidatePath('/agenda'); revalidatePath('/') }
     return NextResponse.json({ ok: true, ...report, errors: report.errors.slice(0, 5) })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+    // The detail goes to the portal's log, not to the caller (security audit, 8 November 2026).
+    console.error('[cron] agenda-google-sync:', e)
+    return NextResponse.json({ ok: false, error: 'The job failed. The portal log has the details.' }, { status: 500 })
   }
 }

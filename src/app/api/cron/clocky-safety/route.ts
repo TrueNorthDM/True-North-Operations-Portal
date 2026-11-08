@@ -33,6 +33,8 @@ export async function GET(request: Request) {
     const ok = report.errors.length === 0
     return NextResponse.json({ ok, ...report, errors: report.errors.slice(0, 5) }, { status: ok ? 200 : 500 })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+    // The detail goes to the portal's log, not to the caller (security audit, 8 November 2026).
+    console.error('[cron] clocky-safety:', e)
+    return NextResponse.json({ ok: false, error: 'The job failed. The portal log has the details.' }, { status: 500 })
   }
 }

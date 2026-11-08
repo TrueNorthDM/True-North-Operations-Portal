@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, ...(await runReviewNotices()) })
   } catch (e) {
     console.error('[cron] review notices:', e instanceof Error ? e.message : e)
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'failed' }, { status: 500 })
+    // The detail goes to the portal's log above, not to the caller (security audit, 8 November 2026).
+    return NextResponse.json({ ok: false, error: 'The job failed. The portal log has the details.' }, { status: 500 })
   }
 }

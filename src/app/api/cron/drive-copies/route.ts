@@ -27,6 +27,8 @@ export async function GET(request: Request) {
     if (report.copied || report.failed) { revalidatePath('/clocky-hours/invoices'); revalidatePath('/requests/reimbursements'); revalidatePath('/admin/settings') }
     return NextResponse.json({ ok: true, ...report, errors: report.errors.slice(0, 5) })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+    // The detail goes to the portal's log, not to the caller (security audit, 8 November 2026).
+    console.error('[cron] drive-copies:', e)
+    return NextResponse.json({ ok: false, error: 'The job failed. The portal log has the details.' }, { status: 500 })
   }
 }

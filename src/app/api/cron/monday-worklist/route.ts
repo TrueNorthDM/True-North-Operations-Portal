@@ -84,7 +84,10 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const hop = Number(url.searchParams.get('hop') ?? '0')
-  const since = url.searchParams.get('since') ?? new Date().toISOString()
+  // Only a timestamp this route wrote itself: it goes into a database filter
+  // (sync-run.ts), so anything else starts a fresh chain (security audit, 8 November 2026).
+  const asked = url.searchParams.get('since')
+  const since = asked && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(asked) ? asked : new Date().toISOString()
   if (hop >= LINKS) {
     after(async () => {
       await releaseLease(createAdminClient(), since)
