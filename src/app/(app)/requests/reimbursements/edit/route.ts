@@ -32,7 +32,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { announceReimbursementChanged } from '@/lib/timeclock/clocky-notify'
 import { allWaiting, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { changedFields, snapshotOf, type RmbSnapshot } from '@/lib/timeclock/reimbursement-form'
-import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt, uncommitted, type RmbChange } from '@/lib/timeclock/reimbursement-store'
+import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, badReceipt, storeReceipt, uncommitted, type RmbChange } from '@/lib/timeclock/reimbursement-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,12 +88,16 @@ export async function POST(request: Request) {
   const { items } = checked
   const name = String(form.get('name') ?? '').trim().slice(0, 120) || null
 
+  // Each receipt's bytes must be a photo or a PDF, whatever the browser called it.
+  const bad = await badReceipt(items)
+  if (bad) return no(bad)
+
   // New files first: nothing is changed until every one is stored and numbered.
   const stored: string[] = []
   const fileOf: ({ path: string; number: string | null } | null)[] = []
   for (const it of items) {
     if (!it.file) { fileOf.push(null); continue }
-    const path = await storeReceipt(v.personId, it.file, it.ext)
+    const path = await storeReceipt(v.personId, it.file)
     if (!path) { await dropReceipts(stored); return no('The receipts were not saved. Try again in a moment.', 500) }
     stored.push(path)
     fileOf.push({ path, number: null })

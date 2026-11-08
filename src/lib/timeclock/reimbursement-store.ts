@@ -9,6 +9,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
+import { RECEIPT_TYPES, SNIFF_BYTES, sniffReceipt } from '@/lib/invoice-form/rules'
 import { createUploadClient } from '@/lib/supabase/admin'
 import type { Json } from '@/lib/types/database.generated'
 import { db, loadDirectory, type Viewer } from './clocky-context'
@@ -53,10 +54,31 @@ export function readItems(form: FormData, rules: ItemRules, stored: (i: number) 
 /** The receipts bucket (migration 117), through the internal address (upload firewall, 25 October 2026). */
 export const receiptFiles = () => createUploadClient().storage.from('receipts')
 
-/** Stores one receipt file; its path, or null when the bucket refused it. */
-export async function storeReceipt(personId: string, file: File, ext: string): Promise<string | null> {
-  const path = `${personId}/${randomUUID()}.${ext}`
-  const { error } = await receiptFiles().upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false })
+/**
+ * What a receipt file really is, read from its first bytes, or null when it is
+ * not a photo or a PDF (security audit, 6 November 2026). The browser's own
+ * label is not trusted: the public invoice form already reads the bytes, and
+ * reimbursements now do the same.
+ */
+export async function receiptKind(file: File): Promise<{ type: string; ext: string } | null> {
+  const type = sniffReceipt(new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer()))
+  return type ? { type, ext: RECEIPT_TYPES[type] } : null
+}
+
+/** The first receipt whose file is not a photo or a PDF, as the refusal's words, or null when all are. */
+export async function badReceipt(items: readonly { file: File | null }[]): Promise<string | null> {
+  for (const [i, it] of items.entries()) {
+    if (it.file && !(await receiptKind(it.file))) return `Receipt ${i + 1}: the file is not a photo (JPG, PNG, HEIC) or a PDF.`
+  }
+  return null
+}
+
+/** Stores one receipt file, labelled by what its bytes are; its path, or null when the bucket refused it or the file is not a receipt. */
+export async function storeReceipt(personId: string, file: File): Promise<string | null> {
+  const kind = await receiptKind(file)
+  if (!kind) { console.error('[reimbursement] upload: not a photo or a PDF'); return null }
+  const path = `${personId}/${randomUUID()}.${kind.ext}`
+  const { error } = await receiptFiles().upload(path, Buffer.from(await file.arrayBuffer()), { contentType: kind.type, upsert: false })
   if (error) { console.error('[reimbursement] upload:', error.message); return null }
   return path
 }

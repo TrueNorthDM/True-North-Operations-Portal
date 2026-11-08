@@ -40,7 +40,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { announceReimbursementChanged, announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
 import { allWaiting, joinableReport, joinedToast, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { snapshotOf } from '@/lib/timeclock/reimbursement-form'
-import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, storeReceipt } from '@/lib/timeclock/reimbursement-store'
+import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, badReceipt, storeReceipt } from '@/lib/timeclock/reimbursement-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -82,6 +82,10 @@ export async function POST(request: Request) {
     }
   }
 
+  // Each receipt's bytes must be a photo or a PDF, whatever the browser called it.
+  const bad = await badReceipt(items)
+  if (bad) return no(bad)
+
   const paths: string[] = []
   // Each item's stored receipt, or null (a Mileage line sent without one).
   const pathOf: (string | null)[] = []
@@ -91,7 +95,7 @@ export async function POST(request: Request) {
   }
   for (const it of items) {
     if (!it.file) { pathOf.push(null); continue }
-    const path = await storeReceipt(v.personId, it.file, it.ext)
+    const path = await storeReceipt(v.personId, it.file)
     if (!path) { await undo(null); return no('The receipts were not saved. Try again in a moment.', 500) }
     paths.push(path)
     pathOf.push(path)

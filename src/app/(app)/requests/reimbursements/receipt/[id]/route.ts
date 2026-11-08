@@ -31,5 +31,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { data, error } = await c.storage.from('receipts').download(r.receipt_path)
   if (error || !data) return new NextResponse('The receipt could not be opened. Try again in a moment.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
   const name = await receiptFileName(r)
-  return new NextResponse(data, { headers: { 'Content-Type': data.type || 'application/octet-stream', 'Content-Disposition': contentDisposition(name, 'inline'), 'Cache-Control': 'private, no-store' } })
+  return new NextResponse(data, { headers: { 'Content-Type': data.type || 'application/octet-stream', 'Content-Disposition': contentDisposition(name, 'inline'), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } })
 }
