@@ -8,6 +8,7 @@
  * choice when another one was open in between.
  */
 
+import { pillClass } from '@/components/ui/Pill'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { personHref } from '@/lib/directory/page-rights'
@@ -132,7 +133,7 @@ export function DirectoryTabs({
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">
                       Start onboarding
-                      <span className="font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase text-muted bg-subtle rounded-full px-[7px] py-0.5">Soon</span>
+                      <span className={pillClass('gray')}>Soon</span>
                     </span>
                     <span className="block text-[11.5px] text-muted leading-snug mt-0.5">Guided flow, email setup, access &amp; first-week steps.</span>
                   </span>
