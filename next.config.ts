@@ -5,6 +5,10 @@ import type { NextConfig } from "next";
 // resolved to `never`) was removed during the 2026-07 audit once the
 // hand-written database types were completed and every module passed `tsc`.
 const nextConfig: NextConfig = {
+  // The build type-checks with tsconfig.build.json: the app without the tests
+  // and the design-check pages, which are not in the server image (Next 16.4
+  // checks every file its tsconfig includes; security update, 8 November 2026).
+  typescript: { tsconfigPath: 'tsconfig.build.json' },
   // puppeteer-core drives the server's Chromium for the PDF and image exports
   // (lib/pdf/browser.ts); it stays out of the bundler.
   serverExternalPackages: ['puppeteer-core'],

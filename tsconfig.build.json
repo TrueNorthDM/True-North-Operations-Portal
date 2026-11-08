@@ -1,0 +1,5 @@
+{
+  "//": "What next build type-checks (next.config.ts, typescript.tsconfigPath). Since Next 16.4 the build runs tsc over every file its tsconfig includes; the tests and the design-check pages are not in the server image (.dockerignore), so they are left out here. npx tsc --noEmit and the test suite still check them with tsconfig.json.",
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "vitest.config.mts", "**/*.test.ts", "**/*.test.tsx", "src/app/design-check", "src/test"]
+}
