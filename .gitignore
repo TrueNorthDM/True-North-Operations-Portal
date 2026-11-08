@@ -59,3 +59,8 @@ Monthly i7 pdfs/
 # original lives in Design/; a second 750KB copy does not belong in git.
 public/design-check/
 public/__design/
+
+# Client data kept on this Mac only, never in the repository (security audit, 8 November 2026):
+# the Topic Studio exports (client topics, xlsx) and the Annual Review design files (staff data).
+/Topic Studio/
+/Design/Annual Review/
