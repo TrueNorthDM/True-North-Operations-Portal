@@ -25,7 +25,7 @@ import { findSender, formToday, mailSender, monthFor, sentBefore } from '@/lib/i
 import { CODE_LIFE_MS, CODE_PENDING, MAX_TRIES, codeLimit, codeLimitText, codeOf, codeVerdict, emailOf, firstDuplicate, isDeliverable, itemKey, itemName, monthBounds, monthOk, monthTakenText } from '@/lib/invoice-form/rules'
 import { DEVICE_COOKIE, DEVICE_MAX_AGE, DEVICE_PATH, codeHash, codeMatches, devicePass } from '@/lib/invoice-form/secrets'
 import { provedEmail } from '@/lib/invoice-form/device'
-import { visitorOf } from '@/lib/auth/send-limit'
+import { visitorFrom } from '@/lib/auth/send-limit'
 
 type Fail = { ok: false; error: string }
 const no = (error: string): Fail => ({ ok: false, error })
@@ -36,7 +36,7 @@ const sha = (s: string) => createHash('sha256').update(s).digest('hex')
 /** The visitor as our own proxy saw them (the LAST x-forwarded-for entry): the browser cannot pick its own. */
 async function clientKey(): Promise<string> {
   const h = await headers()
-  return sha(`invoice-form:${visitorOf(h.get('x-forwarded-for'))}`)
+  return sha(`invoice-form:${visitorFrom(h)}`)
 }
 
 /** The lock, before anything else. */

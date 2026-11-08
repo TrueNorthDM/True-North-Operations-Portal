@@ -28,7 +28,7 @@ import type { SignedInIdentity } from '@/lib/directory/current-person'
 import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
-import { SEND_PER_ADDRESS, SEND_PER_VISITOR, TRY_PER_ADDRESS, sendLimiter, visitorOf } from '@/lib/auth/send-limit'
+import { SEND_PER_ADDRESS, SEND_PER_VISITOR, TRY_PER_ADDRESS, sendLimiter, visitorFrom } from '@/lib/auth/send-limit'
 
 /**
  * Where the person was going when the sign-in started, kept for an hour. The code
@@ -47,7 +47,7 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   // in the client UI; layer 3 is the DB trigger on auth.users (migration 089).
   if (!isAllowedEmail(email)) return { ok: false, error: SHAPE_MESSAGE }
   // Before anything is looked up or sent (lib/auth/send-limit.ts).
-  const visitor = visitorOf((await headers()).get('x-forwarded-for'))
+  const visitor = visitorFrom(await headers())
   // Per visitor only when we know who they are: an unknown address shared by
   // everybody would turn the per-visitor limit into one for the whole company.
   const visitorOk = visitor === 'unknown' || sendLimiter.take(`visitor:${visitor}`, SEND_PER_VISITOR)
