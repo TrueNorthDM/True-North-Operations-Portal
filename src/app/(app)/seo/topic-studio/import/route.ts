@@ -21,6 +21,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ROUTES } from '@/lib/nav/routes'
 import { MAX_FILE_BYTES, MAX_FILES, fileSummary, importStatus, parseTopicFile, withKeptDraft, type ImportStatus, type ImportTopic } from '@/lib/topic-studio/import-file'
 import { existingByArtifact, writeTopic } from '@/lib/topic-studio/store'
+import { FORM_SLACK, bodyTooBig } from '@/lib/http/body-size'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
   if (!access.personId) return no('Your login is not linked to anyone in the Directory.', 403)
 
   let form: FormData
+  if (bodyTooBig(request, MAX_FILES * MAX_FILE_BYTES + FORM_SLACK)) return no(`Import up to ${MAX_FILES} files of up to 5 MB each.`)
   try { form = await request.formData() } catch { return no('The files could not be read. Try again.') }
   const mode = form.get('mode') === 'commit' ? 'commit' : 'preview'
   const files = form.getAll('files').filter((f): f is File => f instanceof File)

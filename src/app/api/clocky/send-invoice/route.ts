@@ -26,6 +26,7 @@ import { loadDirectory, db } from '@/lib/timeclock/clocky-context'
 import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, invoiceApprover, type TimesheetState } from '@/lib/timeclock/routing'
 import { usd } from '@/lib/timeclock/invoice-doc'
+import { FORM_SLACK, bodyTooBig } from '@/lib/http/body-size'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
   const me = access.personId
 
   let form: FormData
+  if (bodyTooBig(req, MAX_PDF + FORM_SLACK)) return no('Your invoice must be a PDF of up to 10 MB.')
   try { form = await req.formData() } catch { return no('That could not be read. Try again.') }
   let b: Body
   try { b = JSON.parse(String(form.get('data') ?? '')) as Body } catch { return no('That could not be read. Try again.') }

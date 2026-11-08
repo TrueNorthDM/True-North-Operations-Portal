@@ -33,6 +33,8 @@ import { announceReimbursementChanged } from '@/lib/timeclock/clocky-notify'
 import { allWaiting, reportTitle, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { changedFields, snapshotOf, type RmbSnapshot } from '@/lib/timeclock/reimbursement-form'
 import { dropReceipts, itemRules, logRmbChanges, nextReceiptNumber, no, readItems, rmbDeciderNames, badReceipt, storeReceipt, uncommitted, type RmbChange } from '@/lib/timeclock/reimbursement-store'
+import { FORM_SLACK, bodyTooBig } from '@/lib/http/body-size'
+import { MAX_TOTAL } from '@/lib/timeclock/reimbursement-form'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
   const v = await writer()
   if (v instanceof NextResponse) return v
   let form: FormData
+  if (bodyTooBig(request, MAX_TOTAL + FORM_SLACK)) return no('The receipts are over 45 MB together. Send smaller photos, or split the request.')
   try { form = await request.formData() } catch { return no('The request could not be read. Try again.') }
 
   const target = /^(report|item):(\d+)$/.exec(String(form.get('target') ?? ''))

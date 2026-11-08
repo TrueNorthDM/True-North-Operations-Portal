@@ -24,6 +24,7 @@
  * firewall refuses binary uploads on the public database address).
  */
 
+import { FORM_SLACK, bodyTooBig } from '@/lib/http/body-size'
 import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createUploadClient } from '@/lib/supabase/admin'
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
   if (!email) return no('Confirm your email first: your device no longer remembers it.', 401)
 
   let form: FormData
+  if (bodyTooBig(request, MAX_TOTAL_FILES + FORM_SLACK)) return no('The files are over 45 MB together. Send smaller photos or PDFs.')
   try { form = await request.formData() } catch { return no('The invoice could not be read. Try again.') }
   const dataRaw = form.get('data')
   if (typeof dataRaw !== 'string' || dataRaw.length > 300_000) return no('The invoice could not be read. Try again.')
