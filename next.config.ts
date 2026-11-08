@@ -5,6 +5,8 @@ import type { NextConfig } from "next";
 // resolved to `never`) was removed during the 2026-07 audit once the
 // hand-written database types were completed and every module passed `tsc`.
 const nextConfig: NextConfig = {
+  // The response does not announce the framework (security audit, 6 November 2026).
+  poweredByHeader: false,
   // The build type-checks with tsconfig.build.json: the app without the tests
   // and the design-check pages, which are not in the server image (Next 16.4
   // checks every file its tsconfig includes; security update, 8 November 2026).
@@ -37,8 +39,17 @@ const nextConfig: NextConfig = {
     return [{
       source: '/:path*',
       headers: [
-        { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+        // object-src and base-uri close two ways to slip code in without
+        // touching how the app's own scripts load (security audit, 6 November
+        // 2026; a full script-src policy needs nonces and is a separate step).
+        { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" },
         { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        // A file is what its Content-Type says, never guessed from its bytes.
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        // Other sites see only the portal's address, never the page or its query.
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        // Device features the portal never uses stay off, for any page or frame.
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()' },
       ],
     }]
   },
