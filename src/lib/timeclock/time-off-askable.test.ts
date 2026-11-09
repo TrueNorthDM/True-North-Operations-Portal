@@ -7,7 +7,10 @@ describe('the kinds of time off a person asks for (Tina, 29 October 2026)', () =
     expect(askable('Rwanda-Incidental')).toBe(false)
     expect(askable(' holiday ')).toBe(false)
   })
-  it('keeps the kinds people ask for', () => {
-    for (const k of ['Vacation', 'Sick', 'Jury duty']) expect(askable(k)).toBe(true)
+  it('keeps the three kinds Rippling has (owner, 9 November 2026)', () => {
+    for (const k of ['Vacation', 'Sick', 'Unpaid Time Off']) expect(askable(k)).toBe(true)
+  })
+  it('no longer offers Jury duty nor Other', () => {
+    for (const k of ['Jury duty', 'Other', ' other ']) expect(askable(k)).toBe(false)
   })
 })

@@ -84,7 +84,7 @@ function offRow(o: Off): TimeOffRow {
 export function timeOffSample(asking = false): TimeOffPage {
   return {
     employee: true, canAll: false, me: { personId: 'Maria Gomez', name: 'Maria Gomez', team: 'Social Media' }, today: TODAY,
-    types: [['Jury duty', true], ['Sick', true], ['Unpaid', false], ['Vacation', true]].map(([label, paid], i) => ({ id: i + 1, label: label as string, paid: paid as boolean })),
+    types: [['Sick', true], ['Unpaid Time Off', false], ['Vacation', true]].map(([label, paid], i) => ({ id: i + 1, label: label as string, paid: paid as boolean })),
     mine: OFFS.filter(o => !asking || o.id !== 1).map(offRow),
     everyone: [],
     holidays: HOL,

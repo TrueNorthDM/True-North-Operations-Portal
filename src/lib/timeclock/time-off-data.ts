@@ -18,10 +18,13 @@ import { checksOf, countText, daysText, historyOf, holidaysBetween, offDays, pil
 
 /**
  * Time off nobody asks for here (Tina, 29 October 2026): company holidays are
- * off for everyone, and the Rwanda-only kind is not used. TSheets keeps both
- * jobs; the portal only leaves them out of Request time off.
+ * off for everyone, and the Rwanda-only kind is not used. Since 9 November 2026
+ * (owner) only the three kinds Rippling has are asked: Vacation, Sick and
+ * Unpaid Time Off, so Jury duty and Other are left out too. The job codes stay
+ * (TSheets keeps Jury duty, and requests already made keep their kind); the
+ * portal only leaves them out of Request time off, here and on the server.
  */
-const NOT_ASKED = /^(holiday|rwanda\b.*)$/i
+const NOT_ASKED = /^(holiday|rwanda\b.*|jury duty|other)$/i
 export const askable = (label: string): boolean => !NOT_ASKED.test(label.trim())
 
 export interface TimeOffRow {

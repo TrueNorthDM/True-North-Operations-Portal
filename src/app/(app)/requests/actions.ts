@@ -31,6 +31,7 @@ import { loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { orList } from '@/lib/timeclock/routing'
 import { IS_STAGING } from '@/lib/environment'
 import { daysText, holidaysBetween, offDays } from '@/lib/timeclock/time-off'
+import { askable } from '@/lib/timeclock/time-off-data'
 import { allowanceRange } from '@/lib/timeclock/allowance'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { announceExtraRequested, announceRmbPaid } from '@/lib/timeclock/clocky-notify'
@@ -73,8 +74,8 @@ async function actor(key: string): Promise<Viewer | Fail> {
 // ── Time off ────────────────────────────────────────────────────────────────
 
 /**
- * 7A: ask for days off. US employees only; a kind of time off (Vacation, Sick,
- * Holiday, Jury duty, Unpaid); full days (8h) or a number of hours a day; the
+ * 7A: ask for days off. US employees only; a kind of time off (Vacation, Sick
+ * or Unpaid Time Off, the three Rippling has, owner 9 November 2026); full days (8h) or a number of hours a day; the
  * weekends and company holidays are not counted; never a day already asked.
  */
 export async function askTimeOff(input: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>> {
@@ -86,7 +87,7 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     // The staging copy lets contractors ask, for training (owner, 5 November 2026); the live portal never does.
     if (!route || (route.isContractor && !IS_STAGING)) return fail('Time off is for employees. Contractors are not paid for days off, so there is nothing to ask.')
     const code = (await loadCatalog()).jobs.get(Number(input.jobcodeId))
-    if (!code || !code.active || (code.kind !== 'pto' && code.kind !== 'unpaid')) return fail('Pick a kind of time off.')
+    if (!code || !code.active || (code.kind !== 'pto' && code.kind !== 'unpaid') || !askable(code.short || code.path)) return fail('Pick a kind of time off.')
     const start = String(input.start ?? ''), end = String(input.end || input.start || '')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) return fail('Pick the days: one day, or the first and the last.')
     if (start < localDate(new Date(), v.zone)) return fail('Time off is asked before it starts. For days already gone, tell a Super Admin.')
