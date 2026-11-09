@@ -13,7 +13,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
-import { allowanceRange } from './allowance'
+import { allowanceFor, allowanceRange, windowName, type AllowancePeriod } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
 import { INVOICE_STATE, stateKey } from './invoices-view'
@@ -313,16 +313,30 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'can'>, id: nu
 // ── Extra hours (10E) ───────────────────────────────────────────────────────
 
 export interface ExtraPage {
-  /** The person's allowance this period, or null when they have none. */
-  allowance: { period: string; used: string; cap: string; share: number; note: string } | null
+  /** The person's allowance this period, or null when they have none. `per`: "a week", "a month", "a pay period". */
+  allowance: { period: string; used: string; cap: string; share: number; note: string; per?: string } | null
   rows: { id: number; hours: string; when: string; client: string; why: string; st: { label: string; tone: ReqTone }; by: string; who: string | null }[]
   /** Team Leaders ask for someone on their teams; the others for themselves. */
   forOthers: boolean
-  people: { id: string; name: string; context: string; cap: number | null; period: 'week' | 'month' | null }[]
-  whens: { value: string; label: string; period: 'week' | 'month'; start: string; end: string }[]
+  /** `whens`: the windows asked for this person, their own (owner, 9 November 2026); `cap` the hours of the current one. */
+  people: { id: string; name: string; context: string; cap: number | null; period: AllowancePeriod | null; whens?: ExtraWhen[] }[]
+  /** The viewer's own windows (each person's are on `people`). */
+  whens: ExtraWhen[]
   clients: string[]
   me: string
 }
+
+/** A window extra hours can be asked for, with the hours the allowance gives it (null: no allowance). */
+export interface ExtraWhen { value: string; label: string; period: AllowancePeriod; start: string; end: string; hours?: number | null }
+
+/** "Week of Nov 8", "November 2026", "Pay period Nov 8 to 21": a window as the requests list it. */
+export const extraWhenLabel = (period: string, start: string, end?: string): string =>
+  period === 'month' ? monthYear(start)
+    : period === 'pay_period' ? `Pay period ${windowName('pay_period', start, end).replace(/^the pay period /, '')}`
+      : `Week of ${dateLabel(start).replace(/, \d{4}$/, '')}`
+
+/** "a week", "a month", "a pay period". */
+export const perWindow = (period: AllowancePeriod): string => (period === 'pay_period' ? 'a pay period' : `a ${period}`)
 
 export async function loadExtraHours(v: Pick<Access, 'personId' | 'can'> & { ledTeamIds: ReadonlySet<string> }, zone: string, now = new Date()): Promise<ExtraPage | null> {
   if (!v.personId) return null
@@ -333,28 +347,36 @@ export async function loadExtraHours(v: Pick<Access, 'personId' | 'can'> & { led
   const ids = [v.personId, ...team]
   const today = localDate(now, zone)
   const terms = await loadPayTerms(ids)
-  const range = (p: 'week' | 'month') => allowanceRange(today, p, settings.weekStart)
   const extra = await loadApprovedExtra(ids, addDays(today, -40), addDays(today, 40))
   const use = await loadAllowanceUse(terms, now, extra)
   const { data, error } = await c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
     .in('person_id', ids).order('asked_at', { ascending: false }).limit(100)
   if (error) throw new Error(`Extra hours could not be read: ${error.message}`)
-  const whenLabel = (r: { period: string; period_start: string }) => (r.period === 'month' ? monthYear(r.period_start) : `Week of ${dateLabel(r.period_start).replace(/, \d{4}$/, '')}`)
+  const whenLabel = (r: { period: string; period_start: string; period_end: string }) => extraWhenLabel(r.period, r.period_start, r.period_end)
   const mine = use.get(v.personId)
   const contextOf = (id: string) => {
     const u = use.get(id)
     if (!u) return 'No allowance: hours are never flagged as over.'
-    return `Allowance: ${u.hours}h a ${u.period}. ${u.period === 'month' ? monthYear(u.from).split(' ')[0] : 'This week'} so far: ${formatDuration(u.used)}, so ${formatDuration(u.left)} left before extra hours.`
+    const cur = u.period === 'month' ? monthYear(u.from).split(' ')[0] : u.period === 'pay_period' ? 'This pay period' : 'This week'
+    return `Allowance: ${u.hours}h ${perWindow(u.period)}. ${cur} so far: ${formatDuration(u.used)}, so ${formatDuration(u.left)} left before extra hours.`
   }
-  // Every allowance is a week (Weekly hours, owner 5 November 2026), so extra hours are asked for a week: this one and the next three.
-  const whens: ExtraPage['whens'] = []
-  for (let i = 0; i < 4; i++) {
-    const r = allowanceRange(addDays(range('week').from, i * 7), 'week', settings.weekStart)
-    whens.push({ value: `week:${r.from}`, label: `Week of ${dateLabel(r.from).replace(/, \d{4}$/, '')}`, period: 'week', start: r.from, end: r.to })
+  // Extra hours are asked for the person's own window (owner, 9 November 2026): a week, a month or a pay
+  // period, the current one and the next three. Without an allowance, weeks, as before.
+  const whensFor = (id: string): ExtraWhen[] => {
+    const a = terms.get(id)?.allowance ?? null
+    const out: ExtraWhen[] = []
+    let day = today
+    for (let i = 0; i < 4; i++) {
+      const r = a ? allowanceFor(a, day, settings.weekStart) : { period: 'week' as const, ...allowanceRange(day, 'week', settings.weekStart), hours: null }
+      out.push({ value: `${r.period}:${r.from}`, label: extraWhenLabel(r.period, r.from, r.to), period: r.period, start: r.from, end: r.to, hours: r.hours })
+      day = addDays(r.to, 1)
+    }
+    return out
   }
+  const whens = whensFor(v.personId)
   return {
     allowance: mine ? {
-      period: mine.period === 'month' ? monthYear(mine.from) : `Week of ${dateLabel(mine.from).replace(/, \d{4}$/, '')}`,
+      period: extraWhenLabel(mine.period, mine.from, mine.to), per: perWindow(mine.period),
       used: formatDuration(mine.used), cap: `${mine.hours}h${mine.limit > mine.hours * 3600 ? ` + ${formatDuration(mine.limit - mine.hours * 3600)} approved` : ''}`,
       share: Math.min(1, mine.used / Math.max(1, mine.limit)),
       note: mine.over > 0 ? `${formatDuration(mine.over)} over the allowance without approval. They are flagged on the timesheet.` : `${formatDuration(mine.left)} left before extra hours. Going over needs approval before, not a surprise on the invoice.`,
@@ -367,7 +389,11 @@ export async function loadExtraHours(v: Pick<Access, 'personId' | 'can'> & { led
       who: r.person_id === v.personId ? null : dir.nameOf(r.person_id),
     })),
     forOthers: team.length > 0,
-    people: ids.map(id => ({ id, name: dir.nameOf(id), context: contextOf(id), cap: terms.get(id)?.allowance?.hours ?? null, period: terms.get(id)?.allowance?.period ?? null })),
+    people: ids.map(id => {
+      const a = terms.get(id)?.allowance ?? null
+      const w = a ? allowanceFor(a, today, settings.weekStart) : null
+      return { id, name: dir.nameOf(id), context: contextOf(id), cap: w?.hours ?? null, period: w?.period ?? null, whens: whensFor(id) }
+    }),
     whens, clients, me: v.personId,
   }
 }

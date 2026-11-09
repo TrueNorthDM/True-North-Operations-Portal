@@ -31,7 +31,7 @@ export function reportFrame(frame: string): ReportPage {
   const rows: ReportRow[] = names.flatMap(n => F.flatMap(([date, f]) => OCT[n].map(([client, min]) => ({ personId: n, client, billable: client !== '1 - True North', seconds: Math.round(min * f) * 60, date }))))
   const people: ReportPerson[] = names.map(n => ({
     id: n, name: n, teamId: P[n][0], teamName: P[n][0], teamColor: TEAMC[P[n][0]], contractor: P[n][1] === 'con',
-    allowance: ALLOW[n] ? { hours: ALLOW[n][0] / 60, period: 'month' } : null, extraSeconds: (ALLOW[n]?.[1] ?? 0) * 60,
+    allowance: ALLOW[n] ? { hours: ALLOW[n][0] / 60, per: 'month' as const, cadence: [], anchors: [] } : null, extraSeconds: (ALLOW[n]?.[1] ?? 0) * 60,
     invoice: lead ? null : INVT[n] ?? null, timesheet: lead ? TSST[n]?.[0] ?? '-' : null, timesheetApproved: !!TSST[n]?.[1],
   }))
   const scope = lead ? 'team' as const : user ? 'own' as const : 'all' as const

@@ -16,7 +16,7 @@ import { SEG_ON, SEG_OFF } from '@/lib/ui/segmented'
 
 export interface SegmentedOption<K> { key: K; label: string; glyph?: ReactNode }
 
-export function Segmented<K extends string | number>({ options, value, onChange, label, disabled, compact, warn, display }: {
+export function Segmented<K extends string | number>({ options, value, onChange, label, disabled, disabledKeys, compact, warn, display }: {
   options: readonly SegmentedOption<K>[]
   /** Null: nothing picked yet (a required choice not made). */
   value: K | null
@@ -24,6 +24,8 @@ export function Segmented<K extends string | number>({ options, value, onChange,
   /** Names the group for a screen reader. */
   label: string
   disabled?: boolean
+  /** Options shown but not pickable (Edit work's Hours limit: Per month for someone paid every 2 weeks, 9 November 2026). */
+  disabledKeys?: readonly K[]
   /** The small one inside a table row (Rates & Costs' Timesheet column, 16 October 2026). */
   compact?: boolean
   /** An amber edge: a changed value not saved yet. */
@@ -39,7 +41,9 @@ export function Segmented<K extends string | number>({ options, value, onChange,
     if (!step || disabled) return
     e.preventDefault()
     const at = Math.max(0, options.findIndex(o => o.key === value))
-    const next = (at + step + options.length) % options.length
+    let next = (at + step + options.length) % options.length
+    for (let i = 0; i < options.length && disabledKeys?.includes(options[next].key); i++) next = (next + step + options.length) % options.length
+    if (disabledKeys?.includes(options[next].key)) return
     onChange(options[next].key)
     box.current?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus()
   }
@@ -48,10 +52,11 @@ export function Segmented<K extends string | number>({ options, value, onChange,
       className={`inline-flex items-center gap-0.5 bg-white border ${warn ? 'border-[#e9d48a]' : 'border-[var(--panel-border)]'} ${compact ? 'rounded-[9px] p-0.5' : 'rounded-[10px] p-[3px]'} flex-wrap ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {options.map(o => {
         const on = o.key === value
+        const off = !!disabledKeys?.includes(o.key)
         return (
-          <button key={String(o.key)} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} disabled={disabled}
+          <button key={String(o.key)} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} disabled={disabled || off}
             onClick={() => onChange(o.key)}
-            className={`inline-flex items-center gap-1.5 border-0 cursor-pointer leading-[normal] font-(family-name:--font-display) font-bold whitespace-nowrap transition-colors ${compact ? 'rounded-[7px]' : 'rounded-[8px]'} ${display ?? (compact ? 'px-2.5 py-[5px] text-[12px]' : 'px-3.5 py-[7px] text-[12.5px]')} ${on ? SEG_ON : SEG_OFF}`}>
+            className={`${off ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'} inline-flex items-center gap-1.5 border-0 leading-[normal] font-(family-name:--font-display) font-bold whitespace-nowrap transition-colors ${compact ? 'rounded-[7px]' : 'rounded-[8px]'} ${display ?? (compact ? 'px-2.5 py-[5px] text-[12px]' : 'px-3.5 py-[7px] text-[12.5px]')} ${on ? SEG_ON : SEG_OFF}`}>
             {o.glyph}{o.label}
           </button>
         )

@@ -16,7 +16,8 @@
  *                  someone with d-rates who cannot edit the Work tab.
  *
  * The hours allowance is never typed here (owner, 5 November 2026): it is a
- * contractor's Weekly hours, a week; US employees have none.
+ * contractor's Hours limit, per week or per month (9 November 2026), set in
+ * Edit work's Job section; US employees have none.
  */
 
 import { INPUT as FIELD } from '@/lib/ui/fields'
@@ -30,7 +31,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { PaysAs } from '@/lib/timeclock/routing'
 import { Section } from './PersonParts'
 import { FIELD_LABEL } from '@/lib/ui/type'
-import { allowanceFromWeeklyHours } from '@/lib/timeclock/allowance'
+import { allowanceFromLimit, limitAsTyped, type HoursLimitPer } from '@/lib/timeclock/allowance'
 
 export interface ApprovalsView {
   rows: { k: string; v: string; sub: string }[]
@@ -42,8 +43,11 @@ export interface PayView {
   paysAs: PaysAs | null
   hourlyRate: number | null
   fixedAmount: number | null
-  /** Derived from Weekly hours (lib/timeclock/pay-terms.ts): a contractor's, a week; null for employees and for no Weekly hours. */
-  allowance: { hours: number; period: 'week' | 'month' } | null
+  /**
+   * Derived from Hours limit (lib/timeclock/pay-terms.ts): a contractor's, per week or per month; null for
+   * employees and for no number. `text`: with its window when that differs ("30 h / week · 126h 00m in Nov").
+   */
+  allowance: { hours: number; per: HoursLimitPer; text?: string } | null
   /** A contractor's "Time off" line (10A-3, 10A-4): "Contractors do not ask PTO", or from when they will. */
   timeOff?: string | null
   /** The change to employee scheduled (10A-4): the last day as a contractor, "Nov 30". */
@@ -58,25 +62,24 @@ export type SavePay = (input: {
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const PAYS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
-const UNIT = { week: 'a week', month: 'a month' } as const
 const LABEL = FIELD_LABEL
 const INPUT = `${FIELD} tabular-nums lining-nums`
 const PAYS_OPTIONS = [{ key: 'hourly' as const, label: 'Hourly' }, { key: 'fixed_monthly' as const, label: 'Fixed monthly' }, { key: 'fixed_no_timesheet' as const, label: 'Fixed, no timesheet' }]
 
-/** The Hours allowance line: "40h a week (Weekly hours)", "None", or "Exempt (salaried)" for a US employee. */
+/** The Hours allowance line: "30 h / week (Hours limit)", "None", or "Exempt (salaried)" for a US employee. */
 export function allowanceText(isContractor: boolean, allowance: PayView['allowance']): string {
   if (!isContractor) return 'Exempt (salaried)'
-  return allowance ? `${allowance.hours}h ${UNIT[allowance.period]} (Weekly hours)` : 'None'
+  return allowance ? `${allowance.text ?? limitAsTyped(allowance)} (Hours limit)` : 'None'
 }
 
-/** The same line from the Work tab's draft: its Type and Weekly hours as typed. */
-export function draftAllowanceText(employmentType: string, weeklyHours: string): string {
+/** The same line from the Work tab's draft: its Type and Hours limit as typed. */
+export function draftAllowanceText(employmentType: string, hours: string, per: HoursLimitPer = 'week'): string {
   const contractor = employmentType === 'contractor'
-  const h = weeklyHours.trim() === '' ? null : Number(weeklyHours)
-  return allowanceText(contractor, allowanceFromWeeklyHours(contractor, h))
+  const h = hours.trim() === '' ? null : Number(hours)
+  return allowanceText(contractor, allowanceFromLimit(contractor, h, per))
 }
 
-const ALLOWANCE_SUB = 'A contractor\'s Weekly hours. US employees have none.'
+const ALLOWANCE_SUB = 'A contractor\'s Hours limit. US employees have none.'
 
 export function Row({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (
@@ -254,7 +257,7 @@ export function PayHoursSection({ view, save, startEditing = false, editLink = t
         <div className="flex flex-col gap-3.5 pt-3">
           {view.isContractor && <PayFields view={view} draft={draft} onDraft={setDraft} />}
           <dl className="m-0">
-            <Row label="Hours allowance" value={allowanceText(view.isContractor, view.allowance)} sub={`${ALLOWANCE_SUB} Change it with Weekly hours in Edit work.`} />
+            <Row label="Hours allowance" value={allowanceText(view.isContractor, view.allowance)} sub={`${ALLOWANCE_SUB} Change it with Hours limit in Edit work.`} />
           </dl>
           {error && <p role="alert" className="m-0 text-[12.5px] font-bold text-[#c8323d]">{error}</p>}
           <div className="flex justify-end gap-2">

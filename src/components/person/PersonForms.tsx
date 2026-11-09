@@ -25,6 +25,8 @@ import { DateField } from '@/components/ui/DateField'
 import { FIELD_LABEL } from '@/lib/ui/type'
 import { CHECKBOX } from '@/lib/ui/fields'
 import { Pill } from '@/components/ui/Pill'
+import { Segmented } from '@/components/ui/Segmented'
+import { limitPreview, type HoursLimitPer } from '@/lib/timeclock/allowance'
 
 /** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
 export interface CadenceActions {
@@ -166,8 +168,11 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
       .catch(() => {})
     return () => { live = false }
   }, [changed, cadence, cadenceActions, data.id])
-  const save = (input: Parameters<typeof saveWork>[1]) => {
+  const save = (raw: Parameters<typeof saveWork>[1]) => {
     setLocalError(null)
+    // Only a contractor has a limit per month; anyone else's number is hours a week (owner, 9 November 2026).
+    const input = raw.employmentType === 'contractor' ? raw : { ...raw, hoursLimitPer: 'week' }
+    if (input.hoursLimitPer === 'month' && changed && cadence === 'biweekly') { setLocalError('Per month is for people paid monthly. Choose Per week, or keep them monthly.'); return }
     const p = pay && payDraft && pay.canEdit ? payDraftInput(pay, payDraft) : null
     if (p && 'error' in p) { setLocalError(p.error); return }
     if (onSaveAll) onSaveAll(input, cadence, p)
@@ -177,13 +182,18 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
   const teams = data.options?.teams ?? []
   const [d, setD] = useState({
     fullName: w.fullName, title: w.title ?? '', employmentType: w.employmentType ?? '', schedule: w.schedule ?? '',
-    weeklyHours: w.weeklyHours != null ? String(w.weeklyHours) : '', status: w.status,
+    weeklyHours: w.weeklyHours != null ? String(w.weeklyHours) : '', hoursLimitPer: (w.hoursLimitPer ?? 'week') as HoursLimitPer, status: w.status,
     emails: { trueNorth: w.emails.trueNorth ?? '', goodnews: w.emails.goodnews ?? '', coe: w.emails.coe ?? '' },
     teams: w.teams.map(t => ({ teamId: t.teamId, position: t.position, primary: t.primary })),
     managerId: w.managerId ?? '', alsoReportsToId: w.alsoReportsToId ?? '', hireDate: w.hireDate ?? '', leftOn: w.leftOn ?? '',
     milestones: toMilestoneForms(w.milestones) as MilestoneForm[], history: w.history ?? '',
   })
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(x => ({ ...x, [k]: v }))
+  // How they submit for the Hours limit (owner, 9 November 2026): the cadence being picked, else today's when set.
+  const limitCadence = changed ? cadence : timesheet?.limit?.cadence ?? null
+  const biweekly = limitCadence === 'biweekly'
+  const limitLines = limitPreview(d.hoursLimitPer, d.weeklyHours.trim() === '' ? null : Number(d.weeklyHours), limitCadence,
+    timesheet?.limit?.anchors ?? [], timesheet?.limit?.today ?? new Date().toISOString().slice(0, 10))
   const personSelect = (value: string, onChange: (v: string) => void, label: string) => (
     <Select fullWidth searchable value={value} onChange={onChange} options={[{ value: '', label: 'None' }, ...people]} className={selectFieldCls} ariaLabel={label} />
   )
@@ -204,10 +214,29 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
               <Field label="Job title"><input id="pw-title" value={d.title} onChange={e => set('title', e.target.value)} className={fieldCls} /></Field>
               <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
               <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
-              <Field label="Weekly hours">
-                <input id="pw-hours" type="number" min="0" max="168" step="any" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} />
-                {d.employmentType === 'contractor' && <span className="text-[11.5px] text-muted">The clock stops at these hours each week; more needs approved extra hours.</span>}
-              </Field>
+              {d.employmentType === 'contractor' ? (
+                // Hours limit (owner, 9 November 2026, mockup "Hours Limit by Pay Period"): per week or per month, and what it gives each pay period.
+                <div className="flex flex-col gap-1.5">
+                  <span className={FIELD_LABEL}>Hours limit</span>
+                  <Segmented label="Hours limit per" value={d.hoursLimitPer} onChange={k => set('hoursLimitPer', k)}
+                    options={[{ key: 'week', label: 'Per week' }, { key: 'month', label: 'Per month' }]} disabledKeys={biweekly && d.hoursLimitPer !== 'month' ? ['month'] : []} />
+                  <div className="flex items-center gap-2">
+                    <input id="pw-hours" type="number" min="0" max={d.hoursLimitPer === 'month' ? 744 : 168} step="any" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} aria-label={d.hoursLimitPer === 'month' ? 'Hours a month' : 'Hours a week'} />
+                    <span className="shrink-0 text-[13px] text-muted">{d.hoursLimitPer === 'month' ? 'hours a month' : 'hours a week'}</span>
+                  </div>
+                  {biweekly && <span className="text-[11.5px] text-muted">Per month is for people paid monthly.</span>}
+                  {limitLines.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-[12px] text-tn-teal font-semibold leading-[1.5] bg-tn-teal-soft rounded-[10px] px-[11px] py-[8px] tabular-nums lining-nums">
+                      {limitLines.map(l => <span key={l}>{l}</span>)}
+                    </div>
+                  )}
+                  <span className="text-[11.5px] text-muted">The clock stops at the limit; more needs approved extra hours.</span>
+                </div>
+              ) : (
+                <Field label="Weekly hours">
+                  <input id="pw-hours" type="number" min="0" max="168" step="any" value={d.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} />
+                </Field>
+              )}
               <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Status</span><Seg value={d.status} options={[{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }]} onPick={v => set('status', v as 'active' | 'inactive')} /></div>
             </div>
             <dl className="m-0 mt-1">
@@ -233,7 +262,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
           {approvals
             ? <ApprovalsSection view={approvals} reporting={reporting} />
             : <Section title="Reporting">{reporting}</Section>}
-          {pay && payDraft && <PayHoursEdit view={pay} draft={payDraft} onDraft={setPayDraft} allowance={draftAllowanceText(d.employmentType, d.weeklyHours)} />}
+          {pay && payDraft && <PayHoursEdit view={pay} draft={payDraft} onDraft={setPayDraft} allowance={draftAllowanceText(d.employmentType, d.weeklyHours, d.hoursLimitPer)} />}
           <Section title="Teams">
             {!data.rights.teamsEdit ? (
               <>

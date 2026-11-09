@@ -609,7 +609,8 @@ const hrs = (seconds: number) => (seconds % 3600 === 0 ? `${seconds / 3600}h` : 
  * the pill also says when the clock stops by itself at the allowance (owner, 25 October 2026).
  */
 export function AllowanceLine({ a, zone }: { a: NonNullable<ClockPanelData['allowance']>; zone: string }) {
-  const period = a.period === 'month' ? 'this month' : 'this week'
+  // A pay period since 9 November 2026 (owner): "this pay period", "This pay period".
+  const period = a.period === 'month' ? 'this month' : a.period === 'pay_period' ? 'this pay period' : 'this week'
   if (a.state === 'over') {
     return (
       <div role="alert" className="w-full box-border flex items-center gap-2.5 justify-between flex-wrap text-[12.5px] text-[#c8323d] bg-[#fdeeef] border border-[#f3c6ca] rounded-[11px] px-3 py-[9px] tabular-nums lining-nums">
@@ -628,5 +629,5 @@ export function AllowanceLine({ a, zone }: { a: NonNullable<ClockPanelData['allo
       </span>
     )
   }
-  return <span className="text-[12.5px] text-muted tabular-nums lining-nums">{period === 'this month' ? 'This month' : 'This week'} <b className="text-foreground">{hrs(a.used)}</b> of {hrs(a.limit)}</span>
+  return <span className="text-[12.5px] text-muted tabular-nums lining-nums">{period.charAt(0).toUpperCase() + period.slice(1)} <b className="text-foreground">{hrs(a.used)}</b> of {hrs(a.limit)}</span>
 }

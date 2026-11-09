@@ -41,7 +41,7 @@ function src(o: Partial<Src> & { me?: string; level?: Src['viewer']['level']; st
     prev: [], rmb: 0,
     settings: { invoiceApprovers: ['ao', 'dave'], defaultApprover: 'ao', deputyDirector: 'dave', finance: ['tina'] },
     terms: {
-      paysAs: o.contractor === false ? null : 'hourly', hourlyRate: 20, fixedAmount: null, allowance: o.allowance ? { hours: o.allowance, period: 'month' } : null,
+      paysAs: o.contractor === false ? null : 'hourly', hourlyRate: 20, fixedAmount: null, allowance: o.allowance ? { hours: o.allowance, per: 'month', cadence: [], anchors: [] } : null,
       route: { personId: 'p', reportsTo: o.reportsTo ?? 'ao', isContractor: o.contractor !== false, paysAs: o.contractor === false ? null : 'hourly' },
     },
     person: { name: 'Pat Doe', teamId: 'web', team: { name: 'Web', color: '#A99BD4' }, zone: NY },

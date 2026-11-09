@@ -41,6 +41,7 @@ import { formatDuration } from './rounding'
 import { holidaysBetween } from './time-off'
 import { dueTimesheet } from './home-timesheet'
 import { loadNoWave } from './waves-data'
+import { weeklyEquivalent } from './allowance'
 
 type Span = { start: string; end: string }
 
@@ -313,7 +314,7 @@ async function readPayPeriod(personId: string, now: Date): Promise<PayPeriodResu
   const [dir, settings, changes, subs, routes, routeSettings, person, noWave] = await Promise.all([
     loadDirectory(), loadClockySettings(), loadCadenceChanges(c, [personId]), loadSubmissions(c, [personId]),
     loadRoutes([personId]), loadRouteSettings(),
-    c.from('people').select('weekly_hours').eq('id', personId).maybeSingle(),
+    c.from('people').select('weekly_hours, hours_limit_per').eq('id', personId).maybeSingle(),
     loadNoWave(c, [personId]),
   ])
   if (person.error) throw new Error(`Your schedule could not be read: ${person.error.message}`)
@@ -374,7 +375,8 @@ async function readPayPeriod(personId: string, now: Date): Promise<PayPeriodResu
     today,
     employee: !route.isContractor,
     fixedNoTimesheet: fixed,
-    dailySeconds: dailyFrom(person.data?.weekly_hours == null ? null : Number(person.data.weekly_hours)),
+    // A limit per month is read as its weekly equivalent here (owner, 9 November 2026).
+    dailySeconds: dailyFrom(weeklyEquivalent(person.data?.weekly_hours, person.data?.hours_limit_per)),
     current, next,
     prev: {
       ...prev, state: prevState, withName: prevOwner ? dir.nameOf(prevOwner) : null,

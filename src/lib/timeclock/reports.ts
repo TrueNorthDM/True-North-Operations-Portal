@@ -11,6 +11,7 @@
 
 import { addDays, payPeriodStart, PAY_PERIOD_DAYS } from './periods'
 import { formatDuration } from './rounding'
+import { hoursForPeriod, limitAsTyped, type Allowance } from './allowance'
 
 export type PeriodKind = 'month' | 'pp' | 'quarter' | 'custom'
 export type BillFilter = 'all' | 'yes' | 'no'
@@ -89,8 +90,11 @@ export function reportSearch(q: ReportQuery): string {
 export interface ReportRow { personId: string; client: string; billable: boolean; seconds: number; date: string }
 export interface ReportPerson {
   id: string; name: string; teamId: string | null; teamName: string; teamColor: string; contractor: boolean
-  /** A monthly allowance in hours (weekly ones show as such and count no overrun here). */
-  allowance: { hours: number; period: 'week' | 'month' } | null
+  /**
+   * The Hours limit (allowance.ts): it counts an overrun only where the report's
+   * period is one of its windows (owner, 9 November 2026: a month, or a pay period).
+   */
+  allowance: Allowance | null
   /** Extra hours approved for the period, seconds. */
   extraSeconds: number
   /** The period's invoice total, for those who see money. */
@@ -150,7 +154,8 @@ export function buildReport(i: ReportInput): ReportView {
   const T = people.reduce((a, p) => a + totalOf(p.id), 0)
   const B = people.reduce((a, p) => a + r15(per.get(p.id)?.billable ?? 0), 0)
   const monthly = i.kind === 'month'
-  const overOf = (p: ReportPerson) => (monthly && p.allowance?.period === 'month' ? Math.max(0, totalOf(p.id) - p.allowance.hours * 3600) : 0)
+  const capOf = (p: ReportPerson) => (p.allowance ? hoursForPeriod(p.allowance, i.from, i.to) : null)
+  const overOf = (p: ReportPerson) => { const cap = capOf(p); return cap != null ? Math.max(0, totalOf(p.id) - cap * 3600) : 0 }
   const over = people.reduce((a, p) => a + overOf(p), 0)
   const overNot = people.reduce((a, p) => a + Math.max(0, overOf(p) - p.extraSeconds), 0)
   const invoiced = people.filter(p => p.invoice != null)
@@ -161,7 +166,7 @@ export function buildReport(i: ReportInput): ReportView {
   const cards: ReportView['cards'] = [
     { label: 'Total hours', val: hm(T), sub: `${people.length} ${people.length === 1 ? 'person' : 'people'}`, tone: 'ink' },
     { label: 'Billable', val: T ? `${Math.round(B / T * 100)}%` : '-', sub: hm(B), tone: 'ok' },
-    { label: 'Over the allowance', val: hm(over), sub: !monthly ? 'Shown by month' : overNot ? `${hm(overNot)} not approved in advance` : 'All approved in advance', tone: overNot ? 'bad' : 'ink' },
+    { label: 'Over the allowance', val: hm(over), sub: !monthly && i.kind !== 'pp' ? 'Shown by month or pay period' : overNot ? `${hm(overNot)} not approved in advance` : 'All approved in advance', tone: overNot ? 'bad' : 'ink' },
     lead
       ? { label: `Timesheets, ${month}`, val: `${people.filter(p => p.timesheetApproved).length} of ${people.length}`, sub: 'Hours approved', tone: 'ink' }
       : { label: monthly ? `Invoices, ${month}` : 'Invoices', val: i.kind === 'pp' || !i.money ? '-' : usd(invT), sub: i.kind === 'pp' ? 'Contractors invoice monthly' : `${invoiced.length} contractor${invoiced.length === 1 ? '' : 's'}`, tone: 'ink' },
@@ -209,7 +214,7 @@ export function buildReport(i: ReportInput): ReportView {
       return {
         id: p.id, name: p.name, ini: ini(p.name), team: p.teamName, teamColor: p.teamColor,
         hours: hm(t), billPct: t ? `${Math.round(bl / t * 100)}%` : '-',
-        allowance: p.allowance ? (p.allowance.period === 'month' ? `${p.allowance.hours}h` : `${p.allowance.hours}h a week`) : '-',
+        allowance: p.allowance ? (capOf(p) != null ? `${capOf(p)}h` : limitAsTyped(p.allowance)) : '-',
         over: o ? hm(o) : '-', overTone: !o ? 'none' : o > p.extraSeconds ? 'bad' : 'warn',
         last: lead ? (p.timesheet ?? '-') : p.invoice != null && monthly && i.money ? usd(p.invoice) : p.contractor ? '-' : 'Employee',
       }

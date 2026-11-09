@@ -32,11 +32,11 @@ import { orList } from '@/lib/timeclock/routing'
 import { IS_STAGING } from '@/lib/environment'
 import { daysText, holidaysBetween, offDays } from '@/lib/timeclock/time-off'
 import { askable } from '@/lib/timeclock/time-off-data'
-import { allowanceRange } from '@/lib/timeclock/allowance'
+import { allowanceFor, allowanceRange, windowName } from '@/lib/timeclock/allowance'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { announceExtraRequested, announceRmbPaid } from '@/lib/timeclock/clocky-notify'
 import { dateLabel, monthYear } from '@/lib/timeclock/format'
-import { isFinance, loadInvoiceSettings } from '@/lib/timeclock/pay-terms'
+import { isFinance, loadInvoiceSettings, loadPayTerms } from '@/lib/timeclock/pay-terms'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { loadClients } from '@/lib/timeclock/requests-data'
 import type { Fail, Result } from '@/lib/timeclock/clocky-types'
@@ -164,10 +164,14 @@ export async function askCancelTimeOff(input: { id: number; reason: string }): P
 
 /**
  * Ask for extra hours before going over the allowance: for themselves, or a
- * Team Leader for someone on the teams they lead. A week (every allowance is
- * Weekly hours since 5 November 2026), how many
- * hours, the client and why. Whoever the routing names for that person (not
- * who asked) decides on Approvals.
+ * Team Leader for someone on the teams they lead. The window is the person's
+ * own (owner, 9 November 2026): the one their Hours limit counts in, a week, a
+ * month or a pay period (allowance.ts allowanceFor); a window that is not one
+ * of theirs is refused. A pay period is kept as period 'pay_period' with its
+ * 14 days (migration 163 allows it), so it counts in that pay period's window
+ * and nowhere else that counts by kind. Without an allowance, a week, as
+ * before. Then how many hours, the client and why. Whoever the routing names
+ * for that person (not who asked) decides on Approvals.
  */
 export async function askExtraHours(input: { personId: string; hours: number; when: string; client: string; why: string }): Promise<Result<{ toast: string }>> {
   const v = await actor('rq-extra-hours')
@@ -180,10 +184,14 @@ export async function askExtraHours(input: { personId: string; hours: number; wh
     if (!mine && !(v.can('rq-xh-team') && (dir.people.get(target)?.teamIds ?? []).some(t => v.ledTeamIds.has(t)))) return fail('You can ask for extra hours for yourself, or for someone on a team you lead.')
     const hours = Number(String(input.hours ?? '').replace(',', '.'))
     if (!(hours > 0 && hours <= 200)) return fail('Write how many hours, like 8.')
-    const m = /^(week):(\d{4}-\d{2}-\d{2})$/.exec(String(input.when ?? ''))
-    if (!m) return fail('Pick the week.')
-    const period = m[1] as 'week' | 'month'
-    const range = allowanceRange(m[2], period, (await loadClockySettings()).weekStart)
+    const m = /^(week|month|pay_period):(\d{4}-\d{2}-\d{2})$/.exec(String(input.when ?? ''))
+    if (!m) return fail('Pick the week, month or pay period.')
+    const weekStart = (await loadClockySettings()).weekStart
+    const allowance = (await loadPayTerms([target])).get(target)?.allowance ?? null
+    const window = allowance ? allowanceFor(allowance, m[2], weekStart) : { period: 'week' as const, ...allowanceRange(m[2], 'week', weekStart) }
+    if (window.period !== m[1] || window.from !== m[2]) return fail('Pick one of the windows offered: the allowance counts in another one now. Reload the page and try again.')
+    const period = window.period
+    const range = { from: window.from, to: window.to }
     const client = String(input.client ?? '').trim()
     if (!client || !(await loadClients()).includes(client)) return fail('Pick the client or project.')
     const why = String(input.why ?? '').trim().slice(0, 1000)
@@ -192,7 +200,7 @@ export async function askExtraHours(input: { personId: string; hours: number; wh
       person_id: target, asked_by: v.personId, hours: Math.round(hours * 100) / 100, period, period_start: range.from, period_end: range.to, client, reason: why, state: 'pending',
     }).select('id').single()
     if (error) return notSaved(error)
-    const when = period === 'month' ? monthYear(range.from) : `the week of ${dateLabel(range.from).replace(/, \d{4}$/, '')}`
+    const when = period === 'month' ? monthYear(range.from) : windowName(period, range.from, range.to)
     await announceExtraRequested({ id: data.id, personId: target, askedBy: v.personId, hours: formatDuration(hours * 3600), when, client })
     refresh()
     const who = await whoDecides('xh', target)

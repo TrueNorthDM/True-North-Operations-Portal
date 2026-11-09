@@ -108,7 +108,7 @@ export interface CadenceColumn {
  * period (before approved extra hours). Null leaves the three columns out.
  */
 export interface PayColumn {
-  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; salaried?: boolean; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate?: number | null; assetRate?: number | null }>
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; salaried?: boolean; allowance: { text: string } | null; overSeconds: number | null; pageRate?: number | null; assetRate?: number | null }>
   canEdit: boolean
 }
 
@@ -187,15 +187,18 @@ function tableColumns(withCadence: boolean, withPay: boolean) {
     { key: 'costRate', label: 'Rate / cost', ...rate(150) },
     { key: 'beRate', label: 'Rate / break-even', ...rate(160) },
     { key: 'salary', label: 'Month / salary', ...rate(150) },
-    ...(withPay ? [{ key: 'allowance', label: 'Allowance', ...fixedTrack(160) }, { key: 'over', label: 'Over', ...fixedTrack(90) }] : []),
+    ...(withPay ? [{ key: 'allowance', label: 'Allowance', ...fixedTrack(220) }, { key: 'over', label: 'Over', ...fixedTrack(90) }] : []),
     // A person's own rates for the invoice form (migration 147); empty uses the company's.
     ...(withPay ? [{ key: 'pageRate', label: 'Rate / page', ...rate(150) }, { key: 'assetRate', label: 'Rate / design asset', ...rate(160) }] : []),
   ]
 }
 
 const PAYS_AS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
-/** The allowance is the contractor's Weekly hours (owner, 5 November 2026): shown, never chosen here. */
-const alText = (a: { hours: number; period: 'week' | 'month' } | null) => (a ? `${a.hours}h ${a.period === 'week' ? 'a week' : 'a month'}` : 'None')
+/**
+ * The allowance is the contractor's Hours limit (owner, 5 November 2026): shown, never chosen here. Since
+ * 9 November 2026 per week or per month, with its window when that differs: "30 h / week · 126h 00m in Nov".
+ */
+const alText = (a: { text: string } | null) => (a ? a.text : 'None')
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
 /** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
@@ -208,7 +211,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   const layout = layoutColumns(allColumns, choice.hidden, fixedOf('rates'), { gap: GAP, padX: PAD_X })
   const show = new Set(layout.visible.map(c => c.key))
   const gridStyle = { gridTemplateColumns: layout.template }
-  // Pays as being changed (Clocky part 2): "hourly" etc. The allowance is Weekly hours, set in the Work tab.
+  // Pays as being changed (Clocky part 2): "hourly" etc. The allowance is the Hours limit, set in the Work tab.
   const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; pageRate?: string; assetRate?: string }>>({})
   const payOf = (id: string) => pay?.byPerson[id] ?? null
   const payChanged = (id: string) => {
@@ -688,12 +691,12 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {/* Month / salary (green focus) */}
                 {show.has('salary') && (isEmployee(p) ? <span aria-hidden="true" /> : rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d'))}
 
-                {/* Allowance and Over (Clocky part 2): the allowance is the contractor's Weekly hours (5 November 2026), read only */}
+                {/* Allowance and Over (Clocky part 2): the allowance is the contractor's Hours limit (5 November 2026), read only */}
                 {pay && show.has('allowance') && (() => {
                   const now = payOf(p.id)
                   // Employees are salaried and have no limit (5 November 2026).
                   if (now && !now.isContractor) return <span className="text-[13px] text-muted" title="US employees are salaried and outside the hours allowance.">Exempt (salaried)</span>
-                  return <span className="text-[13px] text-foreground" title="A contractor's allowance is their Weekly hours, set in their Work tab.">{now?.allowance ? `${alText(now.allowance)} (Weekly hours)` : alText(null)}</span>
+                  return <span className="text-[13px] text-foreground" title="A contractor's allowance is their Hours limit, set in their Work tab.">{alText(now?.allowance ?? null)}</span>
                 })()}
                 {pay && show.has('over') && (() => {
                   const over = payOf(p.id)?.overSeconds ?? null

@@ -32,7 +32,7 @@ import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { readInvoiceCheck } from '@/lib/timeclock/invoice-check-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
-import { allowanceStatus } from '@/lib/timeclock/allowance'
+import { allowanceStatus, hoursForPeriod, windowName } from '@/lib/timeclock/allowance'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import { loadConnections } from '@/lib/integrations/connections'
 import { NOTE_TO_APPROVE, REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
@@ -506,15 +506,15 @@ export async function decideReimbursementReport(input: { reportId: number; decis
 
 /**
  * Extra hours (10D), by whoever the routing names for the person the hours are
- * for (not who asked), never their own. Approved, the allowance of that week or
- * month grows by them.
+ * for (not who asked), never their own. Approved, the allowance of that week,
+ * month or pay period grows by them.
  */
 export async function decideExtraHours(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
   const v = await decider()
   if (isFail(v)) return v
   try {
     const c = db()
-    const { data: r, error } = await c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, client, state').eq('id', Number(input.id)).maybeSingle()
+    const { data: r, error } = await c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, state').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
     if (!r || r.state !== 'pending' || !(await routedTo(v, 'xh', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
@@ -525,7 +525,7 @@ export async function decideExtraHours(input: { id: number; decision: 'approve' 
     if (e2) return notSaved(e2)
     if (!moved?.length) return fail(NOT_WAITING)
     const hours = formatDuration(Number(r.hours) * 3600)
-    const when = r.period === 'month' ? monthYear(r.period_start) : `the week of ${dayLabel(r.period_start)}`
+    const when = r.period === 'month' ? monthYear(r.period_start) : r.period === 'pay_period' ? windowName('pay_period', r.period_start, r.period_end) : `the week of ${dayLabel(r.period_start)}`
     await announceExtraDecided({ id: r.id, personId: r.person_id, askedBy: r.asked_by, deciderId: v.personId, hours, when, client: r.client, approved: approve, note })
     refresh()
     const who = first((await loadDirectory()).nameOf(r.person_id))
@@ -570,9 +570,11 @@ async function decider(): Promise<Viewer | Fail> {
 /** Hours over the allowance in a timesheet, after the extra hours approved for it. */
 async function overFor(personId: string, start: string, end: string): Promise<number> {
   const t = (await loadPayTerms([personId])).get(personId)
-  if (!t?.allowance || t.allowance.period !== 'month') return 0
+  // Only where the timesheet is one window of the limit: its month or its pay period (owner, 9 November 2026).
+  const cap = t?.allowance ? hoursForPeriod(t.allowance, start, end) : null
+  if (cap == null) return 0
   const [byClient, extra] = await Promise.all([hoursByClient(personId, start, end), loadApprovedExtra([personId], start, end)])
-  return allowanceStatus(byClient.reduce((n, x) => n + x.seconds, 0), t.allowance.hours, extra(personId, start, end)).over
+  return allowanceStatus(byClient.reduce((n, x) => n + x.seconds, 0), cap, extra(personId, start, end)).over
 }
 
 /**

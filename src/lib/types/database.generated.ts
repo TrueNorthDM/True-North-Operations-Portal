@@ -2732,6 +2732,7 @@ export type Database = {
           employment_type: string | null
           full_name: string
           hire_date: string | null
+          hours_limit_per: string
           i7_projects: string[]
           id: string
           internal_rate: number | null
@@ -2779,6 +2780,7 @@ export type Database = {
           employment_type?: string | null
           full_name: string
           hire_date?: string | null
+          hours_limit_per?: string
           i7_projects?: string[]
           id?: string
           internal_rate?: number | null
@@ -2826,6 +2828,7 @@ export type Database = {
           employment_type?: string | null
           full_name?: string
           hire_date?: string | null
+          hours_limit_per?: string
           i7_projects?: string[]
           id?: string
           internal_rate?: number | null

@@ -1,8 +1,9 @@
 /**
  * How far each person is into their hours allowance right now (Clocky part 2,
  * 10A-2 "Over", 10B the clock panel lines, Who's working "Over"): the hours
- * worked in their current week or month, in their own time zone, against the
- * allowance plus the extra hours approved for that period.
+ * worked in their current window (a week, a month or a pay period: allowance.ts
+ * allowanceFor), in their own time zone, against the window's hours plus the
+ * extra hours approved for it.
  *
  * Not a "use server" file; the callers decide who may see it.
  */
@@ -10,32 +11,34 @@
 import { allRows, db, loadClockySettings, loadDirectory } from './clocky-context'
 import { entrySeconds } from './rounding'
 import { localDate } from './format'
-import { allowanceRange, allowanceStatus, type AllowanceStatus } from './allowance'
+import { allowanceFor, allowanceStatus, type AllowancePeriod, type AllowanceStatus } from './allowance'
 import type { EntryRow } from './clocky-store'
 import type { PayTerms } from './pay-terms'
 
 export interface AllowanceUse extends AllowanceStatus {
+  /** The window's hours (before extra hours): 126 for 30 h a week in a 21-weekday month. */
   hours: number
-  period: 'week' | 'month'
+  period: AllowancePeriod
   from: string
   to: string
 }
 
 /**
  * Extra hours approved for a person in a period (extra hours requests, Clocky
- * part 2 step 4). With `period`, only requests asked for that kind of period
- * count: the allowance window passes 'week', so a request approved for a
- * whole month (before 5 November 2026, when allowances could be monthly)
- * never raises every week of that month by its full hours.
+ * part 2 step 4). With `period`, only requests asked for that kind of window
+ * count: a week window passes 'week', so a request approved for a whole month
+ * never raises every week of that month by its full hours. Requests are asked
+ * for the person's own window (a week, a month or a pay period: owner,
+ * 9 November 2026), so a window counts the requests of its own kind.
  */
-export type ExtraHours = (personId: string, from: string, to: string, period?: 'week' | 'month') => number
+export type ExtraHours = (personId: string, from: string, to: string, period?: AllowancePeriod) => number
 
 export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms, 'personId' | 'allowance'>>, now = new Date(), extra: ExtraHours = () => 0): Promise<Map<string, AllowanceUse>> {
   const withAllowance = [...terms.values()].filter(t => t.allowance)
   const out = new Map<string, AllowanceUse>()
   if (!withAllowance.length) return out
   const [dir, settings] = await Promise.all([loadDirectory(), loadClockySettings()])
-  const ranges = new Map(withAllowance.map(t => [t.personId, allowanceRange(localDate(now, dir.zoneOf(t.personId)), t.allowance!.period, settings.weekStart)]))
+  const ranges = new Map(withAllowance.map(t => [t.personId, allowanceFor(t.allowance!, localDate(now, dir.zoneOf(t.personId)), settings.weekStart)]))
   const from = [...ranges.values()].reduce((m, r) => (r.from < m ? r.from : m), '9999-12-31')
   const to = [...ranges.values()].reduce((m, r) => (r.to > m ? r.to : m), '0000-01-01')
   const rows = await allRows<Pick<EntryRow, 'person_id' | 'entry_date' | 'started_at' | 'ended_at' | 'duration_seconds' | 'kind'>>((a, b) =>
@@ -44,7 +47,7 @@ export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms,
   for (const t of withAllowance) {
     const r = ranges.get(t.personId)!
     const used = rows.filter(e => e.person_id === t.personId && e.entry_date >= r.from && e.entry_date <= r.to).reduce((s, e) => s + entrySeconds(e, now), 0)
-    out.set(t.personId, { ...allowanceStatus(used, t.allowance!.hours, extra(t.personId, r.from, r.to, t.allowance!.period)), hours: t.allowance!.hours, period: t.allowance!.period, ...r })
+    out.set(t.personId, { ...allowanceStatus(used, r.hours, extra(t.personId, r.from, r.to, r.period)), hours: r.hours, period: r.period, from: r.from, to: r.to })
   }
   return out
 }

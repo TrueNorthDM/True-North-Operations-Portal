@@ -27,6 +27,7 @@ import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-term
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
 import { loadWindows, statusOf } from './allowance-limit'
+import { windowName } from './allowance'
 import { STOP_AFTER_LABEL } from './safety'
 
 /** The longest range one read covers: a month and a bit, so a month view always fits. */
@@ -41,6 +42,8 @@ export interface EntriesQuery {
   personId?: string
   /** Narrow 'all' to one team (the team chips in the picker). */
   teamId?: string
+  /** The day the view is on: the hours limit shown is the window that holds it (owner, 9 November 2026). */
+  anchor?: string
 }
 
 /** Whose hours a query covers, decided by scope (lib/timeclock/scope.ts). Null: everyone. */
@@ -295,12 +298,28 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
   const myRules = rulesFor(v.personId, changes, settings)
   const period = await submitTarget(c, v.personId, today, myRules, subs.get(v.personId) ?? [])
   const mine = (subs.get(v.personId) ?? []).find(s => s.start === period.start && s.end === period.end)
-  // The viewer's own hours allowance this week (a contractor's Weekly hours, plus extra hours approved): "This week: 12h 00m of 40h".
+  // The viewer's own hours allowance around today (a contractor's Hours limit, plus extra hours approved): "This week: 12h 00m of 40h".
   const myTerms = (await loadPayTerms([v.personId])).get(v.personId)
   let myAllowance: EntriesData['viewer']['allowance'] = null
   if (myTerms?.allowance) {
     const w = (await loadWindows(v.personId, myTerms.allowance, [today], now)).get(today)
     if (w) myAllowance = { from: w.from, to: w.to, limit: statusOf(w).limit }
+  }
+  // The limit of whose hours are shown (owner, 9 November 2026): their own in My, or the team member picked in
+  // All, only when the scope above lets the viewer see that person's entries (Super Admins, Admins, their Team
+  // Leaders). Its window holds the day the view is on; hours only, never money.
+  const subject = q.who === 'my' ? v.personId : q.personId && ids?.length === 1 && ids[0] === q.personId ? q.personId : null
+  let shownLimit: EntriesData['limit'] = null
+  if (subject) {
+    const st = subject === v.personId ? myTerms : (await loadPayTerms([subject])).get(subject)
+    if (st?.allowance) {
+      const day = q.anchor && /^\d{4}-\d{2}-\d{2}$/.test(q.anchor) && q.anchor >= q.from && q.anchor <= q.to ? q.anchor : q.from
+      const w = (await loadWindows(subject, st.allowance, [day], now)).get(day)
+      if (w) {
+        const s = statusOf(w)
+        shownLimit = { personId: subject, period: w.period, from: w.from, to: w.to, used: s.used, limit: s.limit, name: windowName(w.period, w.from, w.to) }
+      }
+    }
   }
 
   const peopleList = [...dir.people.values()]
@@ -315,6 +334,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       cadence: cadenceOn(today, myRules).cadence, canSubmit: v.can('clocky-hours'), allowance: myAllowance,
     },
     range: { from: q.from, to: q.to },
+    limit: shownLimit,
     rows,
     days,
     totals: {

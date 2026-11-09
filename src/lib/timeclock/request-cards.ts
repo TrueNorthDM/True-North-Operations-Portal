@@ -19,8 +19,9 @@
  */
 
 import type { Directory, Viewer } from './clocky-context'
-import { allRows, db, loadCatalog, must } from './clocky-context'
-import { dateLabel, dayLabel, initials, localDate, monthYear, timeLabel } from './format'
+import { allRows, db, loadCatalog, loadClockySettings, must } from './clocky-context'
+import { dateLabel, dayLabel, initials, localDate, monthYear, rangeLabel, timeLabel } from './format'
+import { allowanceFor, limitAsTyped, windowName } from './allowance'
 import { formatDuration } from './rounding'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { loadPayTerms, loadRequestDeciders, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
@@ -390,6 +391,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
     const ids = [...new Set(xhRows.map(r => r.person_id))]
     const terms = await loadPayTerms(ids)
     const use = await loadAllowanceUse(terms, now, await loadApprovedExtra(ids, addDays(localDate(now, v.zone), -40), addDays(localDate(now, v.zone), 40)))
+    const { weekStart } = await loadClockySettings()
     for (const r of xhRows) {
       const who = person(r.person_id)
       if (!showsXh(v, r.person_id, who.teamId)) continue
@@ -397,24 +399,29 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const pending = r.state === 'pending'
       const { canDecide, decides, owner, ownerName } = routed('xh', r.person_id, pending)
       const hours = formatDuration(Number(r.hours) * 3600)
-      const when = r.period === 'month' ? monthYear(r.period_start) : `the week of ${dayLabel(r.period_start)}`
+      // A pay period too since 9 November 2026 (owner): "the pay period Nov 8 to 21".
+      const pp = r.period === 'pay_period'
+      const when = r.period === 'month' ? monthYear(r.period_start) : pp ? windowName('pay_period', r.period_start, r.period_end) : `the week of ${dayLabel(r.period_start)}`
+      const whenFact = r.period === 'month' ? monthYear(r.period_start) : pp ? `Pay period ${rangeLabel(r.period_start, r.period_end)}` : `Week of ${dayLabel(r.period_start)}`
       const t = terms.get(r.person_id)
       const u = use.get(r.person_id)
-      const cap = t?.allowance?.hours
+      // The hours of the window asked for, when it is one of the person's windows now.
+      const win = t?.allowance ? allowanceFor(t.allowance, r.period_start, weekStart) : null
+      const cap = win && win.period === r.period && win.from === r.period_start ? win.hours : null
       out.push({
         key: `x${r.id}`, type: 'xh', id: r.id, personId: r.person_id, ...who,
-        main: `Extra hours · ${hours}`, sub: `${r.period === 'month' ? monthYear(r.period_start) : `Week of ${dayLabel(r.period_start)}`}${r.client ? ` · ${r.client}` : ''}`,
+        main: `Extra hours · ${hours}`, sub: `${whenFact}${r.client ? ` · ${r.client}` : ''}`,
         flag: null, why: `"${r.reason}"`, asked: `${asked(r.asked_at, v.zone)}${r.asked_by && r.asked_by !== r.person_id ? ` by ${dir.nameOf(r.asked_by)}` : ''}`, askedAt: r.asked_at,
         ownerName, owner, decides, own,
         done: pending ? null : { label: r.state === 'approved' ? 'Approved' : 'Denied', tone: r.state === 'approved' ? 'ok' : 'bad', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}${r.state === 'denied' && r.decision_note ? `: "${r.decision_note}"` : ''}` },
         href: null,
         request: {
           kind: 'xh', id: r.id, type: 'Extra hours', title: `${hours} in ${r.period === 'month' ? monthYear(r.period_start).split(' ')[0] : when}`, width: 620, twoCols: false, receipt: null,
-          facts: [{ k: 'When', v: r.period === 'month' ? monthYear(r.period_start) : `Week of ${dayLabel(r.period_start)}` }, { k: 'Client or project', v: r.client ?? 'None' }, { k: 'Why', v: `"${r.reason}"` }],
-          allow: t?.allowance ? `Allowance: ${t.allowance.hours}h a ${t.allowance.period}.${u ? ` ${u.period === 'month' ? monthYear(u.from).split(' ')[0] : 'This week'} so far: ${formatDuration(u.used)}.${u.over ? ` ${formatDuration(u.over)} over without approval.` : ''}` : ''}` : 'No allowance set: the hours are never flagged as over.',
+          facts: [{ k: 'When', v: whenFact }, { k: 'Client or project', v: r.client ?? 'None' }, { k: 'Why', v: `"${r.reason}"` }],
+          allow: t?.allowance ? `Allowance: ${limitAsTyped(t.allowance)}${u && u.hours !== t.allowance.hours ? `, ${u.hours}h ${u.period === 'pay_period' ? 'this pay period' : `in ${monthYear(u.from).split(' ')[0]}`}` : ''}.${u ? ` ${u.period === 'month' ? monthYear(u.from).split(' ')[0] : u.period === 'pay_period' ? 'This pay period' : 'This week'} so far: ${formatDuration(u.used)}.${u.over ? ` ${formatDuration(u.over)} over without approval.` : ''}` : ''}` : 'No allowance set: the hours are never flagged as over.',
           cal: null,
-          after: cap != null && t?.allowance?.period === r.period
-            ? `Approved, their allowance for ${when} becomes ${cap + Number(r.hours)}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
+          after: cap != null
+            ? `Approved, their allowance for ${when} becomes ${Math.round((cap + Number(r.hours)) * 100) / 100}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
             : 'Approved, these hours are added to the allowance of that period. Hours past it are flagged again.',
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: 'Approve', denyLabel: 'Deny',

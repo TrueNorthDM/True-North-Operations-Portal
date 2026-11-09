@@ -15,6 +15,7 @@ import type { TypeChangeView } from '@/components/person/TypeChange'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { dateLabel, localDate, monthLong, monthYear } from '@/lib/timeclock/format'
 import { addDays, anchorOn } from '@/lib/timeclock/periods'
+import { limitSummary } from '@/lib/timeclock/allowance'
 import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
 import { loadConnections } from '@/lib/integrations/connections'
 
@@ -87,7 +88,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       typeChange,
       approvals: { rows, note },
       pay: money ? {
-        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff, contractorUntil: lastDay,
+        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance ? { hours: t.allowance.hours, per: t.allowance.per, text: limitSummary(t.allowance, localDate(new Date(), 'America/New_York'), (await loadClockySettings()).weekStart) } : null, timeOff, contractorUntil: lastDay,
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
       // Since 4 November 2026 the portal makes no invoices: every contractor makes and sends their own.

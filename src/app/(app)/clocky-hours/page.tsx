@@ -34,7 +34,8 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
   const panel = await getClockPanel()
   const today = panel.ok ? panel.data.today : null
   const from = today ? addDays(today, -new Date(`${today}T00:00:00Z`).getUTCDay()) : null
-  const week = from ? { from, to: addDays(from, 6) } : null
+  // anchor: the hours limit shown is the window holding today (owner, 9 November 2026).
+  const week = from && today ? { from, to: addDays(from, 6), anchor: today } : null
 
   // A person asked for: their week, if the viewer may see it (the picker's own list says so).
   const person = typeof params.person === 'string' && params.person ? params.person : null

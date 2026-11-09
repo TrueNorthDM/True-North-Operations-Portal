@@ -22,7 +22,7 @@ const CHEYENNE: PaySample = {
     ],
     note: 'Same person: one step, Approve both.',
   },
-  pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 30, period: 'week' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
+  pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 30, per: 'week' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
   invoicesLine: 'They send their own',
 }
 

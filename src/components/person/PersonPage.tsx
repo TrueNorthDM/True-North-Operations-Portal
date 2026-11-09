@@ -388,7 +388,10 @@ function WorkView({ data, timesheet, pay }: {
               <Row label="Job title">{val(w.title)}</Row>
               <Row label="Type">{typePill(w.employmentType) ? <PillBadge pill={typePill(w.employmentType)!} /> : none}</Row>
               <Row label="Time">{timePill(w.schedule) ? <PillBadge pill={timePill(w.schedule)!} /> : none}</Row>
-              <Row label="Weekly hours">{w.weeklyHours != null ? `${w.weeklyHours} h / week` : none}</Row>
+              {/* Hours limit per week or per month for a contractor (owner, 9 November 2026). */}
+              {w.employmentType === 'contractor'
+                ? <Row label="Hours limit">{w.weeklyHours != null ? `${w.weeklyHours} h / ${w.hoursLimitPer ?? 'week'}` : none}</Row>
+                : <Row label="Weekly hours">{w.weeklyHours != null ? `${w.weeklyHours} h / week` : none}</Row>}
               <Row label="Status"><PillBadge pill={statusPill(w.status === 'active')} /></Row>
               <Row label="Access level"><PillBadge pill={roleTypePill(w.accessLevel)} /></Row>
             </dl>

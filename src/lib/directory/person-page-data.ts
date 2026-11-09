@@ -81,6 +81,8 @@ export interface PersonPageData {
     employmentType: string | null
     schedule: string | null
     weeklyHours: number | null
+    /** What weeklyHours is per (people.hours_limit_per, owner 9 November 2026): hours a week or hours a month. Missing: a week. */
+    hoursLimitPer?: 'week' | 'month'
     status: 'active' | 'inactive'
     accessLevel: string
     emails: { trueNorth: string | null; goodnews: string | null; coe: string | null }
@@ -156,7 +158,7 @@ export async function loadPersonPage(
   if (!rights) return null
 
   const { data: row } = await db.from('people')
-    .select('id, full_name, last_name, title, avatar_url, status, hire_date, left_on, location, whatsapp_same_number, employment_type, schedule, weekly_hours, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
+    .select('id, full_name, last_name, title, avatar_url, status, hire_date, left_on, location, whatsapp_same_number, employment_type, schedule, weekly_hours, hours_limit_per, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
     .eq('id', personId).maybeSingle()
   if (!row) return null
   const p = row as Record<string, unknown> & { id: string; full_name: string }
@@ -207,6 +209,7 @@ export async function loadPersonPage(
     work = {
       fullName: p.full_name, title: str(p.title), employmentType: str(p.employment_type), schedule: str(p.schedule),
       weeklyHours: p.weekly_hours == null ? null : Number(p.weekly_hours),
+      hoursLimitPer: p.hours_limit_per === 'month' ? 'month' : 'week',
       status: p.status === 'inactive' ? 'inactive' : 'active',
       accessLevel: str(p.role_type) ?? 'user',
       emails: { trueNorth: str(p.email_true_north), goodnews: str(p.email_goodnews), coe: str(p.email_coe) },

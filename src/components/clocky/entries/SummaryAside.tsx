@@ -14,14 +14,19 @@ import { LABEL } from './ui'
 
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[14px] p-4 flex flex-col'
 
-export function SummaryAside({ totals, attention, onAttention, title, limit = null, attnOnly = false, onAttnOnly }: {
+export function SummaryAside({ totals, attention, onAttention, title, limit = null, limitWindow = null, attnOnly = false, onAttnOnly }: {
   totals: Totals
   attention: readonly AttentionItem[]
   onAttention: (a: AttentionItem) => void
   /** "This week", "Today", "November". */
   title: string
-  /** Seconds allowed this week, when the period is the person's own allowance week. */
+  /** Seconds allowed, when the period shown is the person's own limit window (a week, a month or a pay period). */
   limit?: number | null
+  /**
+   * The person's limit window holding the day the view is on (owner, 9 November 2026): named in the "left"
+   * line, and its own line when the period shown is another one ("November: 32h 45m of 120h 00m").
+   */
+  limitWindow?: { from: string; to: string; used: number; limit: number; name: string } | null
   attnOnly?: boolean
   onAttnOnly?: () => void
 }) {
@@ -29,6 +34,8 @@ export function SummaryAside({ totals, attention, onAttention, title, limit = nu
   const billPct = totals.seconds ? (totals.billable / totals.seconds) * 100 : 0
   const usedPct = limit ? Math.min(100, (totals.seconds / limit) * 100) : 0
   const left = limit ? limit - totals.seconds : 0
+  const where = limitWindow?.name ?? 'this week'
+  const capital = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
   return (
     <aside className="w-[280px] flex-none flex flex-col gap-3">
       <div className={`${CARD} gap-2.5`}>
@@ -36,12 +43,17 @@ export function SummaryAside({ totals, attention, onAttention, title, limit = nu
         <div className="font-(family-name:--font-display) font-black text-[24px] leading-none text-tn-ink tabular-nums lining-nums">
           {formatDuration(totals.seconds)}{limit != null && <span className="font-sans font-bold text-[13px] text-muted"> of {formatDuration(limit)}</span>}
         </div>
+        {limit == null && limitWindow && (
+          <div className="text-[12px] text-muted leading-[1.4] tabular-nums lining-nums">
+            {capital(limitWindow.name)}: <b className="text-foreground">{formatDuration(limitWindow.used)}</b> of {formatDuration(limitWindow.limit)}
+          </div>
+        )}
         {limit != null && <>
           <div className="h-2 rounded-[4px] overflow-hidden bg-[var(--row-rule)]" role="img" aria-label={`${formatDuration(totals.seconds)} of ${formatDuration(limit)} used`}>
             <div className={`h-full rounded-[4px] ${left < 0 ? 'bg-[#c8323d]' : 'bg-[#33497a]'}`} style={{ width: `${usedPct}%` }} />
           </div>
           <div className="text-[12px] text-muted leading-[1.4] tabular-nums lining-nums">
-            {left >= 0 ? `${formatDuration(left)} left this week; extra hours need approval first.` : `${formatDuration(-left)} over this week's allowance.`}
+            {left >= 0 ? `${formatDuration(left)} left in ${where}; extra hours need approval first.` : `${formatDuration(-left)} over the allowance for ${where}.`}
           </div>
         </>}
         <div className="grid grid-cols-2 gap-2">

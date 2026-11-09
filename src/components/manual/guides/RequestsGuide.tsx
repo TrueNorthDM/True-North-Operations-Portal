@@ -113,20 +113,20 @@ export function ExtraHoursGuide() {
   return (
     <div className="flex flex-col gap-7">
       <GuideHeader eyebrow="Requests" title="Extra hours" minutes={3}>
-        If you have an hours allowance and need more, ask here before you go over it, not after: overtime needs approval first. A contractor&apos;s allowance is their Weekly hours (Work tab), a week. US employees are salaried and have no allowance. Team Leaders can also ask for someone on the teams they lead.
+        If you have an hours allowance and need more, ask here before you go over it, not after: overtime needs approval first. A contractor&apos;s allowance is their Hours limit (Work tab), counted over a week, a month or their pay period. US employees are salaried and have no allowance. Team Leaders can also ask for someone on the teams they lead.
       </GuideHeader>
 
       <Step n={1} title="Open Extra hours" picture={<Picture caption="Extra hours, with one request waiting."><ExtraHoursPicture show="page" /></Picture>}>
-        <p className="m-0">On the left rail, click the Requests icon, then <strong>Extra hours</strong>. The card at the top shows your allowance for this week and how much of it is used. Below, <strong>Your requests</strong> lists what you asked and what was decided.</p>
+        <p className="m-0">On the left rail, click the Requests icon, then <strong>Extra hours</strong>. The card at the top shows your allowance for this week, month or pay period and how much of it is used. Below, <strong>Your requests</strong> lists what you asked and what was decided.</p>
       </Step>
 
       <Step n={2} title="Ask for extra hours" picture={<Picture caption="Ask for extra hours, filled in."><ExtraHoursPicture show="ask" /></Picture>}>
-        <p className="m-0">Click <strong>Ask for extra hours</strong>. Write <strong>How many hours</strong>, pick <strong>Which week</strong> and the <strong>Client or project</strong>, and say under <strong>Why</strong> what the hours are for and who asked. The line at the bottom shows what your allowance becomes if it is approved. Click <strong>Send request</strong>.</p>
+        <p className="m-0">Click <strong>Ask for extra hours</strong>. Write <strong>How many hours</strong>, pick the week, month or pay period (the one your allowance counts in) and the <strong>Client or project</strong>, and say under <strong>Why</strong> what the hours are for and who asked. The line at the bottom shows what your allowance becomes if it is approved. Click <strong>Send request</strong>.</p>
         <p className="m-0">Team Leaders pick the person under <strong>For</strong> first.</p>
       </Step>
 
       <Step n={3} title="What happens next">
-        <p className="m-0">The approver set in Company settings decides it in <Link href="/manual/guides/approvals" className={LINK}>Approvals</Link>, and you hear back in the bell. Approved, the hours are added to the allowance for that week. Denied, the bell tells you why.</p>
+        <p className="m-0">The approver set in Company settings decides it in <Link href="/manual/guides/approvals" className={LINK}>Approvals</Link>, and you hear back in the bell. Approved, the hours are added to the allowance for that week, month or pay period. Denied, the bell tells you why.</p>
       </Step>
 
       <Tip title="Ask early.">A request sent before the work starts gives the approver time to decide before you reach your allowance.</Tip>

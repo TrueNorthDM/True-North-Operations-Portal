@@ -17,7 +17,7 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 import type { Viewer } from './clocky-context'
 import { db, loadDirectory, oneOf, rowsOf } from './clocky-context'
 import { loadPeriodViews } from './clocky-entries'
-import { allowanceStatus } from './allowance'
+import { allowanceStatus, hoursForPeriod } from './allowance'
 import { loadApprovedExtra } from './allowance-data'
 import { clientFolder } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type PayTerms } from './pay-terms'
@@ -337,7 +337,9 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const tot = work.reduce((n, e) => n + e.seconds, 0)
   const bill = work.filter(e => e.billable === 'yes').reduce((n, e) => n + e.seconds, 0)
   const pre = src.extraHours
-  const over = t.allowance && t.allowance.period === 'month' ? allowanceStatus(tot, t.allowance.hours, pre).over : 0
+  // Only where the timesheet is one window of the limit, its month or its pay period (owner, 9 November 2026).
+  const capHours = t.allowance ? hoursForPeriod(t.allowance, start, end) : null
+  const over = capHours != null ? allowanceStatus(tot, capHours, pre).over : 0
 
   // By day, Monday first, the weeks around the period.
   const byDay = new Map<string, number>()
@@ -494,8 +496,8 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       { label: 'Billable', val: `${hm(bill)} (${tot ? Math.round((bill / tot) * 100) : 0}%)`, tone: 'ink', size: 16 },
       { label: 'Weekdays with no time', val: skip.length ? skip.map(dayLabel).join(', ') : 'None', tone: skip.length ? 'warn' : 'ok', size: 14 },
     ],
-    allowance: t.allowance && t.allowance.period === 'month' && tot > t.allowance.hours * 3600 ? (() => {
-      const cap = t.allowance!.hours * 3600
+    allowance: capHours != null && tot > capHours * 3600 ? (() => {
+      const cap = capHours * 3600
       const preS = Math.round(pre * 3600)
       return {
         line: `${hmShort(cap)} allowance · ${hm(tot)} worked · ${hm(tot - cap)} over, ${hmShort(preS)} approved in advance`,

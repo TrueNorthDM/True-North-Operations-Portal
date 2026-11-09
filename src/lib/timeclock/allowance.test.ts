@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  allowanceFromWeeklyHours, allowanceRange, allowanceStatus, limitAheadText, limitCheck, limitName, limitStopPoint, limitStoppedText, limitText, roomLeft, windowName,
+  allowanceFor, allowanceFromLimit, allowanceRange, allowanceStatus, hoursForPeriod, knownCadence, limitAheadText, limitAsTyped, limitCheck, limitName,
+  limitPreview, limitStopPoint, limitStoppedText, limitSummary, limitText, roomLeft, weekdaysBetween, weeklyEquivalent, windowName,
 } from './allowance'
 
 const H = (h: number) => h * 3600
@@ -104,19 +105,105 @@ describe('the limit', () => {
   })
 })
 
-// One field (owner, 5 November 2026): a contractor's Weekly hours is their allowance, a week.
-describe('allowanceFromWeeklyHours', () => {
-  it('a contractor with Weekly hours has that allowance a week', () => {
-    expect(allowanceFromWeeklyHours(true, 30)).toEqual({ hours: 30, period: 'week' })
-    expect(allowanceFromWeeklyHours(true, 37.5)).toEqual({ hours: 37.5, period: 'week' })
+// One field (owner, 5 November 2026): a contractor's Hours limit is their allowance (per week or per month since 9 November 2026).
+describe('allowanceFromLimit', () => {
+  it('a contractor with a number has that limit, per week unless it says month', () => {
+    expect(allowanceFromLimit(true, 30)).toEqual({ hours: 30, per: 'week', cadence: [], anchors: [] })
+    expect(allowanceFromLimit(true, 37.5, null)?.per).toBe('week')
+    expect(allowanceFromLimit(true, 120, 'month')?.per).toBe('month')
   })
-  it('a contractor without Weekly hours has no limit', () => {
-    expect(allowanceFromWeeklyHours(true, null)).toBeNull()
-    expect(allowanceFromWeeklyHours(true, undefined)).toBeNull()
-    expect(allowanceFromWeeklyHours(true, 0)).toBeNull()
+  it('a contractor without a number has no limit', () => {
+    expect(allowanceFromLimit(true, null)).toBeNull()
+    expect(allowanceFromLimit(true, undefined)).toBeNull()
+    expect(allowanceFromLimit(true, 0)).toBeNull()
   })
-  it('a US employee has none, whatever their Weekly hours', () => {
-    expect(allowanceFromWeeklyHours(false, 40)).toBeNull()
-    expect(allowanceFromWeeklyHours(false, null)).toBeNull()
+  it('a US employee has none, whatever their number', () => {
+    expect(allowanceFromLimit(false, 40)).toBeNull()
+    expect(allowanceFromLimit(false, 120, 'month')).toBeNull()
+  })
+})
+
+// The hours limit covers the pay period (owner, 9 November 2026, mockup "Hours Limit by Pay Period").
+describe('allowanceFor: the window and its hours', () => {
+  const anchors = [{ anchor: '2026-11-08', effectiveFrom: null }]
+  const biweekly = [{ cadence: 'biweekly' as const, effectiveFrom: '2026-01-01' }]
+  const monthly = [{ cadence: 'monthly' as const, effectiveFrom: '2026-01-01' }]
+  const al = (hours: number, per: 'week' | 'month', cadence: typeof biweekly | typeof monthly | [] = [], a = anchors) => ({ hours, per, cadence, anchors: a })
+
+  it('counts weekdays, Monday to Friday', () => {
+    expect(weekdaysBetween('2026-11-01', '2026-11-30')).toBe(21)
+    expect(weekdaysBetween('2026-12-01', '2026-12-31')).toBe(23)
+    expect(weekdaysBetween('2027-01-01', '2027-01-31')).toBe(21)
+  })
+
+  it('knows a cadence only when it was set for the person', () => {
+    expect(knownCadence('2026-11-10', [])).toBeNull()
+    expect(knownCadence('2026-11-10', biweekly)).toBe('biweekly')
+    // Set from a later day: not known yet.
+    expect(knownCadence('2026-11-10', [{ cadence: 'monthly', effectiveFrom: '2026-12-01' }])).toBeNull()
+  })
+
+  it('every 2 weeks, per week: the pay period, twice the weekly number', () => {
+    expect(allowanceFor(al(30, 'week', biweekly), '2026-11-17')).toEqual({ period: 'pay_period', from: '2026-11-08', to: '2026-11-21', hours: 60 })
+    // Counting backwards from the start date too.
+    expect(allowanceFor(al(30, 'week', biweekly), '2026-11-07')).toEqual({ period: 'pay_period', from: '2026-10-25', to: '2026-11-07', hours: 60 })
+  })
+
+  it('every 2 weeks with no pay period start set: the week and the weekly number, as before', () => {
+    expect(allowanceFor(al(30, 'week', biweekly, []), '2026-11-17')).toEqual({ period: 'week', from: '2026-11-15', to: '2026-11-21', hours: 30 })
+  })
+
+  it('monthly, per week: the month, the weekly number / 5 x its weekdays', () => {
+    expect(allowanceFor(al(30, 'week', monthly), '2026-11-17')).toEqual({ period: 'month', from: '2026-11-01', to: '2026-11-30', hours: 126 })
+    expect(allowanceFor(al(30, 'week', monthly), '2026-12-03').hours).toBe(138)
+  })
+
+  it('monthly, per month: the month, the number every month', () => {
+    expect(allowanceFor(al(120, 'month', monthly), '2026-11-17')).toEqual({ period: 'month', from: '2026-11-01', to: '2026-11-30', hours: 120 })
+    expect(allowanceFor(al(120, 'month', monthly), '2027-02-10')).toEqual({ period: 'month', from: '2027-02-01', to: '2027-02-28', hours: 120 })
+  })
+
+  it('no cadence set: per week is the week (as before), per month the month', () => {
+    expect(allowanceFor(al(30, 'week'), '2026-11-17')).toEqual({ period: 'week', from: '2026-11-15', to: '2026-11-21', hours: 30 })
+    expect(allowanceFor(al(30, 'week'), '2026-11-17', 1).from).toBe('2026-11-16')
+    expect(allowanceFor(al(120, 'month'), '2026-11-17')).toEqual({ period: 'month', from: '2026-11-01', to: '2026-11-30', hours: 120 })
+  })
+
+  it('every 2 weeks, per month (Edit work does not offer it): the month, the number', () => {
+    expect(allowanceFor(al(120, 'month', biweekly), '2026-11-17')).toEqual({ period: 'month', from: '2026-11-01', to: '2026-11-30', hours: 120 })
+  })
+
+  it('a timesheet is over only when it is one of the windows', () => {
+    expect(hoursForPeriod(al(30, 'week', monthly), '2026-11-01', '2026-11-30')).toBe(126)
+    expect(hoursForPeriod(al(30, 'week', biweekly), '2026-11-08', '2026-11-21')).toBe(60)
+    expect(hoursForPeriod(al(30, 'week'), '2026-11-01', '2026-11-30')).toBeNull()
+  })
+
+  it('names the windows and writes the limit', () => {
+    expect(windowName('pay_period', '2026-11-08', '2026-11-21')).toBe('the pay period Nov 8 to 21')
+    expect(windowName('pay_period', '2026-11-22')).toBe('the pay period Nov 22 to Dec 5')
+    expect(limitName({ period: 'pay_period', from: '2026-11-08', to: '2026-11-21', limit: H(60), extraHours: 0 })).toBe('60h 00m allowance for the pay period Nov 8 to 21')
+    expect(limitAsTyped({ hours: 30, per: 'week' })).toBe('30 h / week')
+    expect(limitAsTyped({ hours: 120, per: 'month' })).toBe('120 h / month')
+    expect(limitSummary(al(30, 'week'), '2026-11-17')).toBe('30 h / week')
+    expect(limitSummary(al(30, 'week', monthly), '2026-11-17')).toBe('30 h / week · 126h 00m in Nov')
+    expect(limitSummary(al(30, 'week', biweekly), '2026-11-17')).toBe('30 h / week · 60h 00m a pay period')
+    expect(limitSummary(al(120, 'month', monthly), '2026-11-17')).toBe('120 h / month')
+  })
+
+  it('the lines under Hours limit in Edit work', () => {
+    expect(limitPreview('week', 30, 'biweekly', anchors, '2026-11-17')).toEqual(['Limit each pay period: 60h 00m (2 weeks)'])
+    expect(limitPreview('week', 30, 'monthly', anchors, '2026-11-17')).toEqual([
+      'November 2026: 21 weekdays → 126h 00m', 'December 2026: 23 weekdays → 138h 00m', 'January 2027: 21 weekdays → 126h 00m',
+    ])
+    expect(limitPreview('month', 120, 'monthly', anchors, '2026-11-17')).toEqual(['Every month: 120h 00m, however many days it has'])
+    expect(limitPreview('week', 30, null, anchors, '2026-11-17')).toEqual(['Limit each week: 30h 00m'])
+    expect(limitPreview('week', null, 'monthly', anchors, '2026-11-17')).toEqual([])
+  })
+
+  it('a number per month reads as its weekly equivalent elsewhere', () => {
+    expect(weeklyEquivalent(30, 'week')).toBe(30)
+    expect(weeklyEquivalent(130, 'month')).toBe(30)
+    expect(weeklyEquivalent(null, 'month')).toBeNull()
   })
 })

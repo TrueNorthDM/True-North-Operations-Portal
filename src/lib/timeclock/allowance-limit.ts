@@ -1,7 +1,8 @@
 /**
  * The hours allowance as a real limit (owner, 25 October 2026: "coloque um
- * limite de verdade"): nobody logs time past their allowance for the week or
- * month plus the extra hours approved for it. To work more, they ask for extra
+ * limite de verdade"): nobody logs time past their allowance for the window
+ * (a week, a month or, since 9 November 2026, a pay period: allowance.ts
+ * allowanceFor) plus the extra hours approved for it. To work more, they ask for extra
  * hours first. People with no allowance have no limit.
  *
  * One reading for everyone who asks (the clock panel, the clock, Time
@@ -25,7 +26,7 @@ import { loadPayTerms, type PayTerms } from './pay-terms'
 import { entrySeconds } from './rounding'
 import { safetyState, stopPoint, windowStart } from './safety'
 import {
-  allowanceRange, limitCheck, limitName, limitStopPoint, limitText, type AllowancePeriod, type AllowanceStatus, type CountedEntry,
+  allowanceFor, limitCheck, limitName, limitStopPoint, limitText, type AllowancePeriod, type AllowanceStatus, type CountedEntry,
 } from './allowance'
 
 export type Allowance = NonNullable<PayTerms['allowance']>
@@ -38,6 +39,7 @@ export async function allowanceOf(personId: string): Promise<Allowance | null> {
 /** One allowance window of a person, with what counts in it. */
 export interface LimitWindow {
   period: AllowancePeriod
+  /** The window's hours (allowanceFor), before extra hours. */
   hours: number
   /** Extra hours approved for periods that meet the window. */
   extraHours: number
@@ -51,7 +53,7 @@ export async function loadWindows(personId: string, allowance: Allowance, days: 
   const out = new Map<string, LimitWindow>()
   if (!days.length) return out
   const { weekStart } = await loadClockySettings()
-  const ranges = new Map(days.map(d => [d, allowanceRange(d, allowance.period, weekStart)]))
+  const ranges = new Map(days.map(d => [d, allowanceFor(allowance, d, weekStart)]))
   const from = [...ranges.values()].reduce((m, r) => (r.from < m ? r.from : m), '9999-12-31')
   const to = [...ranges.values()].reduce((m, r) => (r.to > m ? r.to : m), '0000-01-01')
   const [rows, extra] = await Promise.all([
@@ -63,7 +65,7 @@ export async function loadWindows(personId: string, allowance: Allowance, days: 
   ])
   for (const [day, r] of ranges) {
     out.set(day, {
-      period: allowance.period, hours: allowance.hours, extraHours: extra(personId, r.from, r.to, allowance.period), ...r,
+      period: r.period, hours: r.hours, extraHours: extra(personId, r.from, r.to, r.period), from: r.from, to: r.to,
       counted: rows.filter(e => e.entry_date >= r.from && e.entry_date <= r.to).map(e => ({ id: e.id, seconds: entrySeconds(e, now) })),
     })
   }
@@ -74,7 +76,7 @@ export async function loadWindows(personId: string, allowance: Allowance, days: 
 export const statusOf = (w: LimitWindow, exclude: readonly number[] = []): AllowanceStatus =>
   limitCheck({ counted: w.counted, exclude, adding: 0, hours: w.hours, extraHours: w.extraHours }).status
 
-const wordsOf = (w: LimitWindow, s: AllowanceStatus) => ({ period: w.period, from: w.from, limit: s.limit, extraHours: w.extraHours })
+const wordsOf = (w: LimitWindow, s: AllowanceStatus) => ({ period: w.period, from: w.from, to: w.to, limit: s.limit, extraHours: w.extraHours })
 
 /**
  * A change of someone's hours against their limit: what it adds, by day, and
@@ -108,7 +110,7 @@ export function limitStopIn(w: LimitWindow, e: Pick<EntryRow, 'id' | 'started_at
 
 export type ClockStop =
   | { kind: 'safety'; stop: AutoStop }
-  | { kind: 'limit'; stop: LimitStop; words: { period: AllowancePeriod; from: string; limit: number; extraHours: number }; text: string }
+  | { kind: 'limit'; stop: LimitStop; words: { period: AllowancePeriod; from: string; to: string; limit: number; extraHours: number }; text: string }
 
 /**
  * Stop a running clock if its 5-hour window ran out or it reached the

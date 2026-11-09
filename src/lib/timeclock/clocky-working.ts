@@ -12,10 +12,11 @@
 import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, shownActivity, type Viewer } from './clocky-context'
 import type { EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
-import { dayLabel, initials, localDate, monthLong, timeLabel, weekdayShort, zoneAbbr } from './format'
+import { dayLabel, initials, localDate, timeLabel, weekdayShort, zoneAbbr } from './format'
 import { formatDuration } from './rounding'
 import { loadPayTerms } from './pay-terms'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
+import { windowIn } from './allowance'
 import { weekBounds } from './clock'
 import { addDays, daysBetween } from './periods'
 import { WARN_AFTER_SECONDS, sessionStart } from './safety'
@@ -111,7 +112,7 @@ export async function loadWhosWorking(v: Viewer, now: Date): Promise<WhosWorking
         const u = allowance.get(id)
         if (!u || u.over <= 0) return null
         const extra = u.limit - u.hours * 3600
-        return `Over the allowance without approval: ${formatDuration(u.used)} of ${u.hours}h ${u.period === 'month' ? `in ${monthLong(u.from)}` : 'this week'}${extra > 0 ? ` (${formatDuration(extra)} approved in advance)` : ''}`
+        return `Over the allowance without approval: ${formatDuration(u.used)} of ${u.hours}h ${windowIn(u.period, u.from, u.to)}${extra > 0 ? ` (${formatDuration(extra)} approved in advance)` : ''}`
       })(),
       keptGoingAt: keptAt,
       canClockOut: !!run && canClockOutFor(v, dir.target(id)),

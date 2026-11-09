@@ -161,7 +161,7 @@ function source(k: string, me: Who, state: SubRow['state'], x: { hoursAt?: strin
     prev: (PREV[k] ?? []).map(([ym, m, amt, paid], i) => ({ id: 800 + i, total: amt, state: 'paid', period_start: `${ym}-01`, period_end: `${ym}-${ym.endsWith('09') ? '30' : '31'}`, paid_on: paid, seconds: m * 60, rmb: 0 })),
     rmb: iv?.rmb ?? 0,
     settings: { invoiceApprovers: ['ao', 'dave'], defaultApprover: 'ao', deputyDirector: 'dave', finance: ['tina'] },
-    terms: { paysAs, hourlyRate: rate, fixedAmount: t.fixed ?? null, allowance: t.al ? { hours: t.al[0] / 60, period: 'month' } : null, route: { personId: pid, reportsTo: REP[k], isContractor: t.con, paysAs } },
+    terms: { paysAs, hourlyRate: rate, fixedAmount: t.fixed ?? null, allowance: t.al ? { hours: t.al[0] / 60, per: 'month', cadence: [], anchors: [] } : null, route: { personId: pid, reportsTo: REP[k], isContractor: t.con, paysAs } },
     person: { name: t.who, teamId: TEAM[k], team: { name: TEAM[k], color: TEAMC[TEAM[k]] ?? null }, zone: t.zone ?? NY },
     names: NAMES, views: t.noTs ? [] : entries(k), extraHours: t.al ? t.al[1] / 60 : 0, job: x.job ?? null, now: NOW,
   }

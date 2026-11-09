@@ -34,6 +34,7 @@
 import { allRows, db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor } from './clocky-context'
 import { loadSubmissions } from './clocky-store'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
+import { windowName, windowNow } from './allowance'
 import { loadReminders } from './company-settings'
 import { localDate, localMinutes, monthLong } from './format'
 import { loadPayTerms } from './pay-terms'
@@ -132,15 +133,15 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
     for (const [pid, u] of use) {
       const p = dir.people.get(pid)
       if (!p) continue
-      const period = u.period === 'month' ? `${monthLong(u.from)} allowance` : 'allowance this week'
+      const period = u.period === 'month' ? `${monthLong(u.from)} allowance` : u.period === 'pay_period' ? `allowance for ${windowName(u.period, u.from, u.to)}` : 'allowance this week'
       const extra = u.limit - u.hours * 3600
       if (u.state === 'near') {
-        allowance.push({ personId: pid, key: `90:${u.from}`, text: `You have used 90% of your allowance: ${hrs(u.used)} of ${u.hours}h ${u.period === 'month' ? 'this month' : 'this week'}.` })
+        allowance.push({ personId: pid, key: `90:${u.from}`, text: `You have used 90% of your allowance: ${hrs(u.used)} of ${u.hours}h ${windowNow(u.period)}.` })
       }
       if (u.state === 'over') {
         allowance.push({ personId: pid, key: `over:${u.from}`, text: `You are over your ${period} (${u.hours}h${extra > 0 ? `, plus ${hrs(extra)} approved in advance` : ''}). Ask before adding more hours.` })
         const leaders = [...dir.led.entries()].filter(([, teams]) => p.teamIds.some(t => teams.has(t))).map(([id]) => id)
-        over.push({ personId: pid, key: `over:${pid}:${u.from}`, to: [...leaders, ...supers], text: `${p.name} is over the ${u.period === 'month' ? `${monthLong(u.from)} ` : ''}allowance without approval: ${formatDuration(u.used)} of ${u.hours}h.` })
+        over.push({ personId: pid, key: `over:${pid}:${u.from}`, to: [...leaders, ...supers], text: `${p.name} is over the ${u.period === 'month' ? `${monthLong(u.from)} ` : ''}allowance${u.period === 'pay_period' ? ` for ${windowName(u.period, u.from, u.to)}` : ''} without approval: ${formatDuration(u.used)} of ${u.hours}h.` })
       }
     }
   }

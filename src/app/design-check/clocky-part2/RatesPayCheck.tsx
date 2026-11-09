@@ -15,7 +15,7 @@ import { idOf, previewCadenceChange, ratesPeople, SEED, setCadence } from '../cl
 const ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 const BY_PERSON = Object.fromEntries(SEED.map(r => [idOf(r[0]), r[9]]))
 
-const M = (hours: number) => ({ hours, period: 'month' as const })
+const M = (hours: number) => ({ text: `${hours} h / month` })
 const PAY: Record<string, Partial<PayColumn['byPerson'][string]>> = {
   'Cheyenne Wilson': { allowance: M(140), overSeconds: 11.25 * 3600 },
   'Justus Tsofa': { allowance: M(170) },
@@ -24,7 +24,7 @@ const PAY: Record<string, Partial<PayColumn['byPerson'][string]>> = {
   'Olivia Hale': { paysAs: 'fixed_monthly', allowance: M(120) },
   'Amy Prindle': { allowance: M(140) },
   'Samuel Manzi': { allowance: M(160) },
-  'Wendy Cacka': { isContractor: false, paysAs: null, allowance: { hours: 40, period: 'week' } },
+  'Wendy Cacka': { isContractor: false, paysAs: null, allowance: { text: '40 h / week' } },
   // Fixed, no timesheet: Timesheet says None.
   'Tina Gennette': { paysAs: 'fixed_no_timesheet' },
 }

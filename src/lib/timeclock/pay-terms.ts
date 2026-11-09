@@ -23,7 +23,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAudience } from '@/lib/notifications/audience'
 import { requestDeciders, type PaysAs, type RequestKind, type RoutePerson, type RouteSettings } from './routing'
 import { loadAllowanceUse } from './allowance-data'
-import { allowanceFromWeeklyHours } from './allowance'
+import { allowanceFromLimit, limitSummary, type Allowance } from './allowance'
+import { localDate } from './format'
+import { loadCadenceChanges, loadClockySettings } from './clocky-context'
 import { DEFAULT_MILEAGE_RATE } from './reimbursement-rules'
 
 export interface PayTerms {
@@ -36,13 +38,14 @@ export interface PayTerms {
   fixedAmount: number | null
   /**
    * The allowance that applies (owner, 5 November 2026): a contractor's
-   * Weekly hours (people.weekly_hours, the Work tab), a week. Null for every
-   * US employee (all are salaried, so exempt) and for a contractor with no
-   * Weekly hours (no limit). pay_terms.allowance_hours / allowance_period are
-   * no longer read or written. The type keeps 'month' for old approved extra
-   * hours and the helpers that still accept it.
+   * Hours limit (people.weekly_hours, the Work tab), per week or, since
+   * 9 November 2026, per month (people.hours_limit_per), with the person's
+   * cadence and the company's pay period starts its window is worked out
+   * from (allowance.ts allowanceFor). Null for every US employee (all are
+   * salaried, so exempt) and for a contractor with no number (no limit).
+   * pay_terms.allowance_hours / allowance_period are no longer read or written.
    */
-  allowance: { hours: number; period: 'week' | 'month' } | null
+  allowance: Allowance | null
   /** A US employee: all are salaried (owner, 5 November 2026). Never a contractor. pay_terms.salaried (migration 151) is no longer read. */
   salaried: boolean
 }
@@ -151,19 +154,20 @@ export function paysWhat(access: Pick<Access, 'personId' | 'can'>, settings: Pic
 }
 
 
-type PersonRow = { id: string; manager_id: string | null; employment_type: string | null; internal_rate: number | null; monthly_salary: number | null; weekly_hours: number | null }
+type PersonRow = { id: string; manager_id: string | null; employment_type: string | null; internal_rate: number | null; monthly_salary: number | null; weekly_hours: number | null; hours_limit_per: string | null }
 type TermsRow = { person_id: string; pays_as: PaysAs | null }
 
 /** Pay terms and routing input for some people (all when no ids). Money included: call after seesMoney. */
 export async function loadPayTerms(personIds?: readonly string[]): Promise<Map<string, PayTerms & { route: RoutePerson }>> {
   const c = createAdminClient()
-  let pq = c.from('people').select('id, manager_id, employment_type, internal_rate, monthly_salary, weekly_hours')
+  let pq = c.from('people').select('id, manager_id, employment_type, internal_rate, monthly_salary, weekly_hours, hours_limit_per')
   let tq = c.from('pay_terms').select('person_id, pays_as')
   if (personIds) {
     pq = pq.in('id', [...personIds])
     tq = tq.in('person_id', [...personIds])
   }
-  const [{ data: people, error: e1 }, { data: terms, error: e2 }] = await Promise.all([pq, tq])
+  // The window of the limit follows how each person submits (owner, 9 November 2026).
+  const [{ data: people, error: e1 }, { data: terms, error: e2 }, cadence, settings] = await Promise.all([pq, tq, loadCadenceChanges(c, personIds), loadClockySettings()])
   if (e1) throw new Error(`People could not be read: ${e1.message}`)
   if (e2) throw new Error(`Pay terms could not be read: ${e2.message}`)
   const byPerson = new Map(((terms ?? []) as unknown as TermsRow[]).map(t => [t.person_id, t]))
@@ -180,7 +184,7 @@ export async function loadPayTerms(personIds?: readonly string[]): Promise<Map<s
       paysAs,
       hourlyRate: num(p.internal_rate),
       fixedAmount: num(p.monthly_salary),
-      allowance: allowanceFromWeeklyHours(isContractor, p.weekly_hours),
+      allowance: allowanceFromLimit(isContractor, p.weekly_hours, p.hours_limit_per, cadence.get(p.id) ?? [], settings.anchors),
       salaried,
       route: { personId: p.id, reportsTo: p.manager_id, isContractor, paysAs },
     })
@@ -210,19 +214,21 @@ export async function loadRequestDeciders(personIds: readonly string[], given?: 
  * Money-free by itself, but it sits in a money tab: call it only with d-rates.
  */
 export async function loadRatesPay(personIds: readonly string[], canEdit: boolean): Promise<{
-  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; salaried: boolean; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null; pageRate: number | null; assetRate: number | null }>
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; salaried: boolean; allowance: { text: string } | null; overSeconds: number | null; pageRate: number | null; assetRate: number | null }>
   canEdit: boolean
 } | null> {
   try {
-    const terms = await loadPayTerms(personIds)
+    const [terms, settings] = await Promise.all([loadPayTerms(personIds), loadClockySettings()])
     const use = await loadAllowanceUse(terms)
+    // "30 h / week · 126h 00m in Nov" (owner, 9 November 2026): the limit as typed, and its window when that differs.
+    const today = localDate(new Date(), settings.companyZone)
     // Their own rates for the invoice form (migration 147); empty uses the company's.
     const { data: own, error: oErr } = await createAdminClient().from('pay_terms').select('person_id, page_rate, asset_rate').in('person_id', [...personIds])
     if (oErr) console.error('[rates pay] deliverable rates:', oErr.message)
     const ownOf = new Map((own ?? []).map(r => [r.person_id, r]))
     return {
       byPerson: Object.fromEntries([...terms.values()].map(t => [t.personId, {
-        isContractor: t.route.isContractor, paysAs: t.paysAs, salaried: t.salaried, allowance: t.allowance, overSeconds: use.get(t.personId)?.over ?? null,
+        isContractor: t.route.isContractor, paysAs: t.paysAs, salaried: t.salaried, allowance: t.allowance ? { text: limitSummary(t.allowance, today, settings.weekStart) } : null, overSeconds: use.get(t.personId)?.over ?? null,
         pageRate: num(ownOf.get(t.personId)?.page_rate), assetRate: num(ownOf.get(t.personId)?.asset_rate),
       }])),
       canEdit,

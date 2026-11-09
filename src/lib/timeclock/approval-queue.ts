@@ -29,7 +29,7 @@ import { allRows, db, loadDirectory, must } from './clocky-context'
 import { loadApprovals } from './clocky-approvals'
 import { initials, localDate, timeLabel, dateLabel, rangeLabel } from './format'
 import { formatDuration } from './rounding'
-import { allowanceStatus } from './allowance'
+import { allowanceStatus, hoursForPeriod } from './allowance'
 import { loadApprovedExtra } from './allowance-data'
 import { hoursByClient } from './invoices-data'
 import { loadPayTerms, loadRouteSettings, seesMoney, type InvoiceSettings } from './pay-terms'
@@ -165,9 +165,9 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     const inv = invBySub.get(s.id) ?? null
     const worked = workedOf.get(s.id) ?? 0
     const label = periodLabel({ start: p.start_date, end: p.end_date })
-    const over = t.allowance && t.allowance.period === 'month'
-      ? allowanceStatus(worked, t.allowance.hours, extra(s.person_id, p.start_date, p.end_date)).over
-      : 0
+    // Only where the timesheet is one window of the limit, its month or its pay period (owner, 9 November 2026).
+    const cap = t.allowance ? hoursForPeriod(t.allowance, p.start_date, p.end_date) : null
+    const over = cap != null ? allowanceStatus(worked, cap, extra(s.person_id, p.start_date, p.end_date)).over : 0
     // The contractor's own invoice (4 November 2026): until it is sent, only the hours wait.
     const sent = isSentInvoice(inv?.state)
     const step = currentStep(route, settings, s.state, sent)

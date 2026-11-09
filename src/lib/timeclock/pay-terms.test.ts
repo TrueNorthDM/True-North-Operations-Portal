@@ -9,6 +9,10 @@ vi.mock('@/lib/supabase/admin', () => ({
       const q = {
         select: (cols: string) => { selected[table] = cols; return q },
         in: () => q,
+        eq: () => q,
+        order: () => q,
+        range: () => q,
+        maybeSingle: () => Promise.resolve({ data: null, error: null }),
         then: (ok: (r: { data: unknown; error: null }) => unknown) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(ok),
       }
       return q
@@ -42,18 +46,19 @@ describe('what Finance pays', () => {
 // One field (owner, 5 November 2026): the allowance is a contractor's Weekly hours, a week.
 describe('loadPayTerms: the allowance from Weekly hours', () => {
   const person = (id: string, employment_type: string, weekly_hours: number | null) =>
-    ({ id, manager_id: null, employment_type, internal_rate: 20, monthly_salary: null, weekly_hours })
+    ({ id, manager_id: null, employment_type, internal_rate: 20, monthly_salary: null, weekly_hours, hours_limit_per: 'week' })
 
   it('a contractor with Weekly hours: that many hours a week; without: none; an employee: none', async () => {
     tables.people = [person('con', 'contractor', 30), person('free', 'contractor', null), person('emp', 'us', 40)]
     // An old allowance stored in pay_terms is no longer read.
     tables.pay_terms = [{ person_id: 'con', pays_as: 'hourly', allowance_hours: 120, allowance_period: 'month' }]
     const terms = await loadPayTerms(['con', 'free', 'emp'])
-    expect(terms.get('con')?.allowance).toEqual({ hours: 30, period: 'week' })
+    expect(terms.get('con')?.allowance).toEqual({ hours: 30, per: 'week', cadence: [], anchors: [] })
     expect(terms.get('free')?.allowance).toBeNull()
     expect(terms.get('emp')?.allowance).toBeNull()
     expect(terms.get('emp')?.salaried).toBe(true)
     expect(selected.pay_terms).not.toMatch(/allowance/)
     expect(selected.people).toMatch(/weekly_hours/)
+    expect(selected.people).toMatch(/hours_limit_per/)
   })
 })

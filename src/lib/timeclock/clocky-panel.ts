@@ -200,7 +200,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     .sort((a, b) => a.start.localeCompare(b.start))
   const weekSeconds = work.filter(e => e.entry_date >= week.start && e.entry_date <= week.end).reduce((s, e) => s + counted(e), 0)
 
-  // The hours allowance (Clocky part 2, 10B): this week or month against the allowance plus the extra hours approved,
+  // The hours allowance (Clocky part 2, 10B): its window (week, month or pay period) against it plus the extra hours approved,
   // read as the limit reads it (allowance-limit.ts), with where the running clock will stop at it.
   let allowance: ClockPanelData['allowance'] = null
   const terms = (await loadPayTerms([me])).get(me)
@@ -208,7 +208,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     const w = (await loadWindows(me, terms.allowance, [today], now)).get(today)!
     const inWindow = running && w.counted.some(x => x.id === running!.id)
     const stop = inWindow ? limitStopIn(w, running!, now) : null
-    allowance = { ...statusOf(w), period: terms.allowance.period, hours: terms.allowance.hours, stopAt: stop?.at.real ?? null }
+    allowance = { ...statusOf(w), period: w.period, from: w.from, to: w.to, hours: w.hours, stopAt: stop?.at.real ?? null }
   }
 
   // The running entry.

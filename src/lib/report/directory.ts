@@ -12,6 +12,7 @@ import { primaryTeamByPerson } from '@/lib/directory/primary-team'
 import { peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { teamColoursFrom, type TeamColours } from '@/lib/directory/team-colour'
 import { failed, reportDb } from './data'
+import { weeklyEquivalent } from '@/lib/timeclock/allowance'
 
 export type ActivePerson = { id: string; full_name: string; weekly_hours: number | null }
 export type ScopedPerson = ActivePerson & { active: boolean }
@@ -24,12 +25,13 @@ export async function peopleInScope(f: PeopleFilter): Promise<ScopedPerson[]> {
 
   const out: ScopedPerson[] = []
   const read = async (slice: string[] | null) => {
-    let q = db.from('people').select('id, full_name, weekly_hours, status')
+    let q = db.from('people').select('id, full_name, weekly_hours, hours_limit_per, status')
     if (slice) q = q.in('id', slice)
     const { data, error } = await q.order('full_name')
     failed('the directory', error)
-    for (const p of (data ?? []) as (ActivePerson & { status: string })[]) {
-      out.push({ id: p.id, full_name: p.full_name, weekly_hours: p.weekly_hours, active: p.status === 'active' })
+    for (const p of (data ?? []) as (ActivePerson & { status: string; hours_limit_per?: string | null })[]) {
+      // An Hours limit per month counts as its weekly equivalent here (owner, 9 November 2026).
+      out.push({ id: p.id, full_name: p.full_name, weekly_hours: weeklyEquivalent(p.weekly_hours, p.hours_limit_per), active: p.status === 'active' })
     }
   }
   if (ids === null) await read(null)

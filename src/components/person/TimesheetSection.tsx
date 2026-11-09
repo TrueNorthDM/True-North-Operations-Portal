@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import { Segmented } from '@/components/ui/Segmented'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { NewTag } from '@/components/clocky/periods/ui'
-import type { Cadence } from '@/lib/timeclock/periods'
+import type { AnchorChange, Cadence } from '@/lib/timeclock/periods'
 import { dateLabel } from '@/lib/timeclock/format'
 import { PillBadge, Section } from './PersonParts'
 
@@ -29,6 +29,8 @@ export interface PersonTimesheetView {
   canEdit: boolean
   /** The two places the line points to, as links only for whoever opens them. */
   links: { rates: boolean; settings: boolean }
+  /** For Edit work's Hours limit lines (owner, 9 November 2026): today, how they submit today when set, the pay period starts. */
+  limit?: { today: string; cadence: Cadence | null; anchors: AnchorChange[] }
 }
 
 const CADENCE: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }

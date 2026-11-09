@@ -12,7 +12,8 @@
 
 import { db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor } from '@/lib/timeclock/clocky-context'
 import { cadenceNow } from '@/lib/timeclock/clocky-periods-data'
-import { gridPeriod, periodContaining, periodLabel, type Cadence } from '@/lib/timeclock/periods'
+import { gridPeriod, periodContaining, periodLabel, type AnchorChange, type Cadence } from '@/lib/timeclock/periods'
+import { knownCadence } from '@/lib/timeclock/allowance'
 import { localDate, monthYear } from '@/lib/timeclock/format'
 
 export interface PersonTimesheet {
@@ -25,6 +26,11 @@ export interface PersonTimesheet {
   /** A change of cadence waiting (10A-4): how they submit until then, and the day it starts. */
   until: { cadence: Cadence; from: string } | null
   canEdit: boolean
+  /**
+   * What Edit work's Hours limit works its lines out from (owner, 9 November 2026): today in their zone, how
+   * they submit today when it was set for them (null: not set), and the company's pay period starts.
+   */
+  limit: { today: string; cadence: Cadence | null; anchors: AnchorChange[] }
 }
 
 export async function loadPersonTimesheet(personId: string, canEdit: boolean, now = new Date()): Promise<PersonTimesheet | null> {
@@ -41,6 +47,7 @@ export async function loadPersonTimesheet(personId: string, canEdit: boolean, no
       periodIf: { monthly: monthYear(today), biweekly: pay ? periodLabel(pay).full : '-' },
       until: cn.scheduled ? { cadence: cn.now, from: cn.scheduled.from } : null,
       canEdit,
+      limit: { today, cadence: knownCadence(today, rules.changes), anchors: [...rules.anchors] },
     }
   } catch (e) {
     // The section is left out rather than the page failing (migration 112 not run yet).

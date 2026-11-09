@@ -17,6 +17,8 @@ export interface WorkInput {
   employmentType: string
   schedule: string
   weeklyHours: string
+  /** Hours limit per week or per month (owner, 9 November 2026). Left out: the column keeps what it holds. */
+  hoursLimitPer?: string
   status: 'active' | 'inactive'
   emails: { trueNorth: string; goodnews: string; coe: string }
   teams: { teamId: string; position: string; primary: boolean }[]
@@ -35,6 +37,8 @@ export interface WorkColumns {
   employment_type: string | null
   schedule: string | null
   weekly_hours: number | null
+  /** Only when the input names it. */
+  hours_limit_per?: 'week' | 'month'
   status: 'active' | 'inactive'
   email_true_north: string | null
   email_goodnews: string | null
@@ -74,8 +78,14 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
   if (schedule && schedule !== 'full' && schedule !== 'part') return fail('Choose Full-Time or Part-Time.')
   const hoursText = text(input.weeklyHours)
   const weeklyHours = hoursText == null ? null : Number(hoursText)
-  // A contractor's Weekly hours is their hours allowance a week (owner, 5 November 2026): more than 0, or empty for none.
-  if (weeklyHours != null && (!Number.isFinite(weeklyHours) || weeklyHours <= 0 || weeklyHours > 168)) return fail('Weekly hours must be more than 0 and at most 168, or empty.')
+  // A contractor's Hours limit is their hours allowance (owner, 5 November 2026): more than 0, or empty for none.
+  // Per week or per month since 9 November 2026: at most 168 hours a week, 744 a month (31 days).
+  const per = input.hoursLimitPer == null || input.hoursLimitPer === '' ? undefined : input.hoursLimitPer
+  if (per !== undefined && per !== 'week' && per !== 'month') return fail('Choose Per week or Per month.')
+  const max = per === 'month' ? 744 : 168
+  if (weeklyHours != null && (!Number.isFinite(weeklyHours) || weeklyHours <= 0 || weeklyHours > max)) {
+    return fail(per === 'month' ? 'Hours a month must be more than 0 and at most 744, or empty.' : 'Weekly hours must be more than 0 and at most 168, or empty.')
+  }
   if (input.status !== 'active' && input.status !== 'inactive') return fail('Choose Active or Inactive.')
   const emails = { trueNorth: email(input.emails?.trueNorth), goodnews: email(input.emails?.goodnews), coe: email(input.emails?.coe) }
   if (emails.trueNorth === false || emails.goodnews === false || emails.coe === false) return fail('One of the company emails does not look right.')
@@ -98,6 +108,7 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
       employment_type: employmentType,
       schedule,
       weekly_hours: weeklyHours,
+      ...(per ? { hours_limit_per: per } : {}),
       status: input.status,
       email_true_north: emails.trueNorth,
       email_goodnews: emails.goodnews,

@@ -90,7 +90,7 @@ export interface EntriesUi {
 
 const queryOf = (ui: Pick<EntriesUi, 'period' | 'anchor' | 'who' | 'member'>, anchors: EntriesData['anchors']) => {
   const r = periodRange(ui.period, ui.anchor, anchors)
-  return { from: r.from, to: r.to, who: ui.who, ...(ui.who === 'all' && ui.member ? { personId: ui.member } : {}) }
+  return { from: r.from, to: r.to, who: ui.who, anchor: ui.anchor, ...(ui.who === 'all' && ui.member ? { personId: ui.member } : {}) }
 }
 const keyOf = (q: ReturnType<typeof queryOf>) => `${q.from}|${q.to}|${q.who}|${q.personId ?? ''}`
 const daySeconds = (iso: string, zone: string) => localMinutes(iso, zone) * 60
@@ -196,6 +196,9 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const today = localDate(new Date(nowMs), viewer.zone)
   const range = periodRange(ui.period, ui.anchor, data.anchors)
   const all = ui.who === 'all' && viewer.who !== null
+  // Whose limit the side block shows: the one the server read for this view (theirs in My, the member picked in All).
+  const subjectId = ui.who === 'my' ? viewer.personId : ui.member
+  const shownLimit = data.limit && data.limit.personId === subjectId ? data.limit : null
   /** "Add time" here: in My, for whoever adds to their own hours (everyone since 4 November 2026). */
   const addHere = all ? leader : data.canAddOwn
   const rows = data.rows
@@ -621,8 +624,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         {/* The totals line is the first side block (owner, 9 November 2026). */}
         <SummaryAside totals={totals} attention={attention} onAttention={a => void openAttention(a)}
           title={totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}
-          // Their own week, the same week as the allowance: "of 40h" and a bar (a contractor's Weekly hours, plus extra hours approved).
-          limit={ui.who === 'my' && viewer.allowance && range.from === viewer.allowance.from && range.to === viewer.allowance.to ? viewer.allowance.limit : null}
+          // The hours limit of whose hours are shown (owner, 9 November 2026): their own in My, or the team member
+          // picked in All. The period shown is the limit's window (a week, a month or a pay period): "of 120h" and a bar;
+          // another period: a line with the window that holds the day, "November: 32h 45m of 120h 00m".
+          limit={shownLimit && range.from === shownLimit.from && range.to === shownLimit.to ? shownLimit.limit : null}
+          limitWindow={shownLimit}
           attnOnly={ui.attnOnly} onAttnOnly={() => setUi(u => ({ ...u, attnOnly: !u.attnOnly, tab: 'list' }))} />
       </div>
 

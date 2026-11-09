@@ -175,10 +175,11 @@ export interface ClockPanelData {
   todaySpans: { start: string; end: string | null }[]
   weekSeconds: number
   /**
-   * The hours allowance this week or month (Clocky part 2, 10B); null without one.
+   * The hours allowance in the window around today (Clocky part 2, 10B): a week, a month, or a pay period
+   * (owner, 9 November 2026), with its days and hours; null without one.
    * `stopAt`: where the running clock stops by itself at the limit (owner, 25 October 2026); null when not running.
    */
-  allowance: (import('./allowance').AllowanceStatus & { period: 'week' | 'month'; hours: number; stopAt: string | null }) | null
+  allowance: (import('./allowance').AllowanceStatus & { period: import('./allowance').AllowancePeriod; from: string; to: string; hours: number; stopAt: string | null }) | null
   running: RunningEntry | null
   safety: SafetyView | null
   toConfirm: ToConfirm[]
@@ -301,6 +302,13 @@ export interface EntriesData {
     /** The viewer's own hours allowance for the window around today (seconds, extra hours included); null without one. */
     allowance: { from: string; to: string; limit: number } | null
   }
+  /**
+   * The hours limit of whose hours are shown (owner, 9 November 2026): the viewer's own in My, or the one team
+   * member picked in All when the viewer may see their entries. Their window (a week, a month or a pay period)
+   * that holds the day the view is on, with the hours used in it and the limit (seconds, extra hours included).
+   * `name`: "November", "the week of Nov 8", "the pay period Nov 8 to 21". No money. Null without a limit.
+   */
+  limit?: { personId: string; period: import('./allowance').AllowancePeriod; from: string; to: string; used: number; limit: number; name: string } | null
   range: { from: string; to: string }
   rows: EntryView[]
   days: { date: string; label: string; seconds: number; people: number }[]

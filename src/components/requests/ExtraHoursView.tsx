@@ -5,9 +5,10 @@
  *
  *   10E   the allowance this week and how much is used; the requests
  *         (a Team Leader's include the people of their teams)
- *   10C   Ask for extra hours: for whom (Team Leaders), how many, which week,
- *         the client and why; what the allowance becomes. Every allowance is
- *         a contractor's Weekly hours (owner, 5 November 2026).
+ *   10C   Ask for extra hours: for whom (Team Leaders), how many, for which
+ *         window, the client and why; what the allowance becomes. The window
+ *         is the person's own (owner, 9 November 2026): a week, a month or a
+ *         pay period, as their Hours limit counts.
  */
 
 import { INPUT as FIELD } from '@/lib/ui/fields'
@@ -34,8 +35,8 @@ export function ExtraHoursView({ data, api, initial }: { data: ExtraPage; api: E
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const a = data.allowance
   const sub = data.forOthers ? 'Ask before someone on your team goes over their allowance. It goes to whoever Company settings names under Who approves what.'
-    : a ? `Your allowance is ${a.cap.split(' ')[0]} a ${a.period.startsWith('Week') ? 'week' : 'month'}. Going over needs approval before, not a surprise on the invoice.`
-      : 'You have no hours allowance: your hours are never flagged as over. A contractor\'s allowance is their Weekly hours.'
+    : a ? `Your allowance is ${a.cap.split(' ')[0]} ${a.per ?? (a.period.startsWith('Week') ? 'a week' : 'a month')}. Going over needs approval before, not a surprise on the invoice.`
+      : 'You have no hours allowance: your hours are never flagged as over. A contractor\'s allowance is their Hours limit.'
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-max content-start gap-4 leading-[normal]">
@@ -93,17 +94,22 @@ interface Draft { personId: string; hours: string; when: string; client: string;
 
 function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Partial<Draft>; onClose: () => void; send: ExtraApi['askExtraHours'] }) {
   const firstWith = data.people.find(p => p.cap != null) ?? data.people[0]
-  const [d, setD] = useState<Draft>({ personId: data.forOthers ? firstWith.id : data.me, hours: '8', when: data.whens[0]?.value ?? '', client: data.clients[0] ?? '', why: '', ...draft })
+  const whensOf = (id: string) => data.people.find(p => p.id === id)?.whens ?? data.whens
+  const startId = draft?.personId ?? (data.forOthers ? firstWith.id : data.me)
+  const [d, setD] = useState<Draft>({ personId: startId, hours: '8', when: whensOf(startId)[0]?.value ?? '', client: data.clients[0] ?? '', why: '', ...draft })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (p: Partial<Draft>) => setD(x => ({ ...x, ...p }))
   const person = data.people.find(p => p.id === d.personId) ?? data.people[0]
-  const when = data.whens.find(w => w.value === d.when)
+  // Each person's own windows (owner, 9 November 2026): a week, a month or a pay period.
+  const whens = whensOf(person.id)
+  const when = whens.find(w => w.value === d.when)
   const hours = parseFloat(d.hours.replace(',', '.'))
   const ok = hours > 0 && !!d.why.trim() && !!d.client && !!when
-  const after = person.cap != null && when && when.period === person.period
-    ? `Approved, the allowance for ${when.label} becomes ${person.cap + (hours > 0 ? hours : 0)}h. Hours past that are flagged again.`
-    : 'Approved, these hours are added to the allowance for that week. Hours past it are flagged again.'
+  const cap = when?.hours ?? (when && when.period === person.period ? person.cap : null)
+  const after = cap != null && when
+    ? `Approved, the allowance for ${when.label} becomes ${Math.round((cap + (hours > 0 ? hours : 0)) * 100) / 100}h. Hours past that are flagged again.`
+    : 'Approved, these hours are added to the allowance for that window. Hours past it are flagged again.'
 
   const submit = async () => {
     if (!ok) return
@@ -125,11 +131,11 @@ function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Par
         <h2 className={MODAL_TITLE}>Ask for extra hours</h2>
         <CloseButton onClick={onClose} />
       </div>
-      {data.forOthers && <LabeledSelect label="For" value={d.personId} onChange={v => set({ personId: v })} options={data.people.map(p => ({ value: p.id, label: p.id === data.me ? `${p.name} (you)` : p.name }))} />}
+      {data.forOthers && <LabeledSelect label="For" value={d.personId} onChange={v => set({ personId: v, when: whensOf(v)[0]?.value ?? '' })} options={data.people.map(p => ({ value: p.id, label: p.id === data.me ? `${p.name} (you)` : p.name }))} />}
       <div className="text-[12.5px] text-[#5b6b82] bg-[var(--chip-neutral-bg)] rounded-[9px] px-3 py-[9px] leading-[1.5] tabular-nums lining-nums">{person.context}</div>
       <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-3">
         <label className="flex flex-col gap-[5px]"><FieldLabel>How many hours</FieldLabel><input value={d.hours} onChange={e => set({ hours: e.target.value })} inputMode="decimal" className={INPUT} /></label>
-        <LabeledSelect label="Which week" value={d.when} onChange={v => set({ when: v })} options={data.whens.map(w => ({ value: w.value, label: w.label }))} />
+        <LabeledSelect label={when?.period === 'month' ? 'Which month' : when?.period === 'pay_period' ? 'Which pay period' : 'Which week'} value={d.when} onChange={v => set({ when: v })} options={whens.map(w => ({ value: w.value, label: w.label }))} />
       </div>
       <LabeledSelect label="Client or project" value={d.client} search onChange={v => set({ client: v })} options={data.clients.map(c => ({ value: c, label: c }))} />
       <label className="flex flex-col gap-[5px]"><FieldLabel>Why</FieldLabel><textarea value={d.why} onChange={e => set({ why: e.target.value })} rows={3} placeholder="What the extra hours are for, and who asked" className={TEXTAREA_PLAIN} /></label>
