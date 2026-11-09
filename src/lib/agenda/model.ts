@@ -282,6 +282,7 @@ const TYPE_ICON: Record<EventType, string> = {
   milestone: 'M4 22V4M4 4h13l-2 4 2 4H4',
   company: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
   celebration: 'M5.8 11.3L2 22l10.7-3.8M11 13c1.9 1.9 2.8 4.2 2 5s-3.1-.1-5-2-2.8-4.2-2-5 3.1.1 5 2zM15 2h.01M22 8h.01M22 20h.01M4 3h.01',
+  reminder: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
 }
 const TYPE_LOOK: Record<EventType, { bg: string; fg: string; c: string }> = {
   meeting: { bg: '#e8edf6', fg: '#012358', c: '#012358' },
@@ -290,6 +291,7 @@ const TYPE_LOOK: Record<EventType, { bg: string; fg: string; c: string }> = {
   milestone: { bg: '#e6f6ee', fg: '#0d7a4f', c: '#1E9E6A' },
   company: { bg: '#012358', fg: '#ffffff', c: '#012358' },
   celebration: { bg: '#fdf3c4', fg: '#7a5c00', c: '#c99a00' },
+  reminder: { bg: '#eaf4f4', fg: '#1E7D7F', c: '#1E7D7F' },
 }
 
 export function look(x: AgendaItem): Look {

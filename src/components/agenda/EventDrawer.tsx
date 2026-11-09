@@ -50,10 +50,12 @@ export const TYPE_ICON: Record<EventType, string> = {
   milestone: 'M4 22V4M4 4h13l-2 4 2 4H4',
   company: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
   celebration: 'M5.8 11.3L2 22l10.7-3.8M11 13c1.9 1.9 2.8 4.2 2 5s-3.1-.1-5-2-2.8-4.2-2-5 3.1.1 5 2zM15 2h.01M22 8h.01M22 20h.01M4 3h.01',
+  reminder: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
 }
 const TYPE_TILE: Record<EventType, [string, string]> = {
   meeting: ['#e8edf6', '#012358'], training: ['#efe9fb', '#5b3fb0'], deadline: ['#fdecea', '#b2412f'],
   milestone: ['#e6f6ee', '#0d7a4f'], company: ['#012358', '#ffffff'], celebration: ['#fdf3c4', '#7a5c00'],
+  reminder: ['#eaf4f4', '#1E7D7F'],
 }
 
 const LBL = FIELD_LABEL
@@ -136,6 +138,8 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
   const bothFree = preset?.guests?.length === 1 ? (setup.people.find(p => p.personId === preset.guests![0].personId)?.name.split(' ')[0] ?? null) : null
   const t = typeOf(type)
   const word = t.label.toLowerCase()
+  // A Reminder (owner, 8 November 2026): a note on the calendar, no time, nobody invited, no account to send from.
+  const reminder = type === 'reminder'
   const setType = (x: EventType) => { setTypeRaw(x); setWhen(typeOf(x).when); setTypeOpen(false) }
   const nameOf = useMemo(() => new Map([...setup.people.map(p => [p.personId, p.name] as const), [setup.me.id, `${setup.me.name} (you)`] as const]), [setup.people, setup.me])
   const teamPeople = (ids: string[]) => setup.people.filter(p => p.teamIds.some(x => ids.includes(x)))
@@ -189,11 +193,11 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
 
   const input = (): DrawerInput => ({
     type, when, title, date, end: when === 'range' ? end : undefined, from: when === 'time' ? from : undefined, to: when === 'time' ? to : undefined,
-    how, place, audience, teams: audience === 'teams' ? teams : [], guests, client, description: desc, accountId: account,
+    how, place, audience, teams: audience === 'teams' ? teams : [], guests: reminder ? [] : guests, client, description: desc, accountId: reminder ? null : account,
     repeat: when === 'range' ? null : repeat,
   })
   const save = async (scope?: Scope) => {
-    if (!account) { setFromErr(true); return }
+    if (!account && !reminder) { setFromErr(true); return }
     if (start?.occurrence && !scope) { setScopeFor('save'); return }
     setBusy(true); setError(null)
     try {
@@ -270,7 +274,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
             </div>
             <div className="flex flex-col gap-2">
               <span className={LBL}>When</span>
-              <Segmented label="When" options={[{ key: 'time', label: 'At a time' }, { key: 'day', label: 'All day' }, { key: 'range', label: 'A few days' }] as const} value={when} onChange={k => setWhen(k)} />
+              <Segmented label="When" options={reminder ? [{ key: 'day', label: 'All day' }, { key: 'range', label: 'A few days' }] as const : [{ key: 'time', label: 'At a time' }, { key: 'day', label: 'All day' }, { key: 'range', label: 'A few days' }] as const} value={when} onChange={k => setWhen(k)} />
             </div>
           </div>
 
@@ -339,11 +343,11 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
 
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center"><span className={LBL}>Who it&apos;s for</span>
-              {count > 0 && <span className="ml-auto text-[12px] font-bold text-tn-teal">{count} invitation{count === 1 ? '' : 's'}</span>}</div>
+              {count > 0 && !reminder && <span className="ml-auto text-[12px] font-bold text-tn-teal">{count} invitation{count === 1 ? '' : 's'}</span>}</div>
             {setup.audiences.length > 1 && !note && (
               <div className="self-start">
                 <Segmented label="Who it's for" value={audience} onChange={a => { setAudience(a); setAlso(false); setTeamOpen(a === 'teams' && !teams.length) }}
-                  options={(['guests', 'teams', 'all'] as const).filter(a => setup.audiences.includes(a)).map(a => ({ key: a, label: a === 'guests' ? 'Guests' : a === 'teams' ? 'Teams' : 'True North' }))} />
+                  options={(['guests', 'teams', 'all'] as const).filter(a => setup.audiences.includes(a)).map(a => ({ key: a, label: a === 'guests' ? (reminder ? 'Only me' : 'Guests') : a === 'teams' ? 'Teams' : (reminder ? 'Everyone' : 'True North') }))} />
               </div>
             )}
             {audience !== 'guests' && (
@@ -369,8 +373,15 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
                 )}
               </div>
             )}
-            {(typing || shownGuests.length > 0) && <span className={`${LBL} mt-1`}>{audience === 'guests' ? 'Guests' : <>Also invite <span className={OPT}>(optional)</span></>}</span>}
-            {(typing || shownGuests.length > 0) && (
+            {reminder && (
+              <p className="m-0 text-[13px] leading-[1.5] text-foreground">
+                {audience === 'all' ? 'On everyone\'s Agenda, and on the team calendar (office@) with nobody invited: no one gets an email.'
+                  : audience === 'teams' ? 'On the Agenda of the people in these teams. Nobody is invited and no email is sent.'
+                  : 'Only on your own Agenda. Nobody else sees it.'}
+              </p>
+            )}
+            {!reminder && (typing || shownGuests.length > 0) && <span className={`${LBL} mt-1`}>{audience === 'guests' ? 'Guests' : <>Also invite <span className={OPT}>(optional)</span></>}</span>}
+            {!reminder && (typing || shownGuests.length > 0) && (
               <div className={`flex flex-wrap gap-1.5 items-center ${typing ? 'border border-[var(--panel-border)] rounded-[10px] p-1.5 min-h-10 focus-within:border-tn-teal focus-within:shadow-[0_0_0_3px_rgba(30,125,127,.15)]' : ''}`}>
                 {shownGuests.map(g => (
                   <button key={g.email} type="button" title={g.email} onClick={() => setGuests(gs => gs.filter(x => x.email !== g.email))}
@@ -384,7 +395,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
                 )}
               </div>
             )}
-            {typing && suggestions.length > 0 && (
+            {!reminder && typing && suggestions.length > 0 && (
               <div className="border border-[var(--panel-border)] rounded-[12px] shadow-[0_10px_26px_rgba(1,35,88,.12)] p-1.5 flex flex-col gap-0.5">
                 {suggestions.map(x => (
                   <button key={x.key} type="button" disabled={x.disabled} onClick={() => pick(x)}
@@ -396,7 +407,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
               </div>
             )}
             {gErr && <span className="text-[12.5px] font-bold text-[#a85d00]">{gErr}</span>}
-            {!typing && <button type="button" className={`${LINK} self-start`} onClick={() => setAlso(true)}>+ Also invite people</button>}
+            {!typing && !reminder && <button type="button" className={`${LINK} self-start`} onClick={() => setAlso(true)}>+ Also invite people</button>}
           </div>
 
           {t.client && (
@@ -410,7 +421,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
                 className={`w-full ${TEXTAREA}`} /></label>
           ) : <button type="button" className={`${LINK} self-start`} onClick={() => setShowDesc(true)}>+ Add a description</button>}
 
-          <div className="flex flex-col gap-2">
+          {!reminder && <div className="flex flex-col gap-2">
             <span className={LBL}>Send from</span>
             {setup.accounts.length === 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 border border-dashed border-[#c9d0da] rounded-[12px] px-3.5 py-3 text-[13px] text-foreground">
@@ -423,7 +434,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
                 className={`${SELECT} ${fromErr ? '!border-[#d98c1f] shadow-[0_0_0_3px_rgba(217,140,31,.15)]' : ''}`} />
             )}
             {fromErr && <span className="text-[12.5px] font-bold text-[#a85d00]">Select the account to send the invitations from.</span>}
-          </div>
+          </div>}
           {error && <p role="alert" className="m-0 text-[13px] font-bold text-[#c8323d]">{error}</p>}
         </div>
 
@@ -431,8 +442,8 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
           {start && <button type="button" disabled={busy} onClick={() => (start.occurrence ? setScopeFor('delete') : setAsking(true))} className={BTN.whiteDanger}>Delete</button>}
           <span className="flex gap-2.5 ml-auto">
             <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
-            <button type="button" disabled={busy || setup.accounts.length === 0} onClick={() => void save()}
-              className={`inline-flex items-center gap-2 border-0 rounded-[12px] px-5 py-2.5 font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] cursor-pointer disabled:opacity-50 ${account ? 'bg-tn-primary hover:bg-[#0a2f6b]' : 'bg-[#97a3b8]'}`}>
+            <button type="button" disabled={busy || (setup.accounts.length === 0 && !reminder)} onClick={() => void save()}
+              className={`inline-flex items-center gap-2 border-0 rounded-[12px] px-5 py-2.5 font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] cursor-pointer disabled:opacity-50 ${account || reminder ? 'bg-tn-primary hover:bg-[#0a2f6b]' : 'bg-[#97a3b8]'}`}>
               <span className="text-[#F2C40A]">{start ? '✓' : '+'}</span>{start ? 'Save changes' : `Create ${word}`}
             </button>
           </span>
@@ -445,7 +456,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
       {asking && start && (
         <Modal label="Delete the event" width={420} alert onClose={() => setAsking(false)}>
           <h2 className={MODAL_TITLE}>Delete {title || 'this event'}?</h2>
-          <p className="m-0 text-[13px] text-foreground leading-[1.5]">It leaves the Agenda, and everyone invited gets Google&apos;s cancellation.</p>
+          <p className="m-0 text-[13px] text-foreground leading-[1.5]">{reminder ? 'It leaves the Agenda, and the team calendar if it is there.' : <>It leaves the Agenda, and everyone invited gets Google&apos;s cancellation.</>}</p>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setAsking(false)} className={BTN.white}>Cancel</button>
             <button type="button" disabled={busy} onClick={() => void remove()} className={BTN.danger}>Delete</button>

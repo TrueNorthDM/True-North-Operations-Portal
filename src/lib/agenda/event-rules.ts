@@ -4,8 +4,13 @@
  * decide with these.
  *
  *   Type       Members a Meeting; Team Leaders also Training, Deadline and
- *              Milestone; Admins and Super Admins also Company event and
- *              Celebration.
+ *              Milestone; Admins and Super Admins also Company event,
+ *              Celebration and Reminder.
+ *   Reminder   A note on the calendar (owner, 8 November 2026): all day or a
+ *              few days, no time, no Online or In person, nobody invited.
+ *              Seen by the creator only (Guests with nobody on it), the chosen
+ *              teams, or everyone (True North); for everyone it also goes to
+ *              the team calendar (office@) with no attendees, so no email.
  *   Who        Guests (people one by one), Teams (Team Leaders their own,
  *              Admins any) or True North (the levels a Super Admin chooses),
  *              and guests on top. Everyone listed is invited for real.
@@ -24,7 +29,7 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 import { DC, instantOf } from './time'
 import { cleanRepeat, lastDay, toRRule, type Repeat } from './recurrence'
 
-export type EventType = 'meeting' | 'training' | 'deadline' | 'milestone' | 'company' | 'celebration'
+export type EventType = 'meeting' | 'training' | 'deadline' | 'milestone' | 'company' | 'celebration' | 'reminder'
 export type Audience = 'guests' | 'teams' | 'all'
 export type When = 'time' | 'day' | 'range'
 
@@ -35,6 +40,7 @@ export const TYPES: readonly { id: EventType; label: string; sub: string; guests
   { id: 'milestone', label: 'Milestone', sub: 'A launch, a goal met', guests: true, meet: false, client: true, when: 'day' },
   { id: 'company', label: 'Company event', sub: 'All-hands, webinars', guests: true, meet: true, client: false, when: 'time' },
   { id: 'celebration', label: 'Celebration', sub: 'Parties, big moments', guests: true, meet: true, client: false, when: 'time' },
+  { id: 'reminder', label: 'Reminder', sub: 'A note on the calendar, no invitations', guests: false, meet: false, client: false, when: 'day' },
 ]
 export const typeOf = (t: EventType) => TYPES.find(x => x.id === t) ?? TYPES[0]
 
@@ -101,6 +107,7 @@ export interface DrawerInput {
   guests: GuestIn[]
   client?: string
   description?: string
+  /** The account it is sent from; a Reminder takes none (the server picks the team calendar for everyone). */
   accountId: number | null
   /** Repeats (owner, 30 October 2026): null or absent for a single event. */
   repeat?: Repeat | null
@@ -123,7 +130,8 @@ export interface DrawerRow {
   audience_team_ids: string[] | null
   client: string | null
   description: string | null
-  sent_from_account_id: number
+  /** Null for a Reminder: the server sets the team calendar when it goes to everyone. */
+  sent_from_account_id: number | null
   /** A series: its rule in Google's words, and its last day (null: never ends). */
   recurrence: string | null
   recur_until: string | null
@@ -139,7 +147,9 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
   const title = clean(input.title, 160)
   if (!title) return { ok: false, error: 'Give it a title.' }
   if (!ISO.test(input.date ?? '')) return { ok: false, error: 'Pick a date.' }
-  if (input.accountId == null || !Number.isSafeInteger(input.accountId)) return { ok: false, error: 'Select the account to send from.' }
+  const reminder = t.id === 'reminder'
+  if (!reminder && (input.accountId == null || !Number.isSafeInteger(input.accountId))) return { ok: false, error: 'Select the account to send from.' }
+  if (reminder && input.when === 'time') return { ok: false, error: 'A reminder is all day or a few days, never at a time.' }
   const audiences = audiencesFor(r.level, r.led.size, r.allLevels)
   if (!audiences.includes(input.audience)) return { ok: false, error: input.audience === 'all' ? 'Inviting all of True North is not open to your access.' : 'Sending to teams is not open to your access.' }
   const teams = input.audience === 'teams' ? [...new Set(input.teams ?? [])] : []
@@ -148,10 +158,11 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
     const allowed = teamsFor(r.level, r.led, r.teamIds)
     if (teams.some(x => !allowed.includes(x))) return { ok: false, error: 'You can only send to teams you lead.' }
   }
-  const guests = (input.guests ?? []).map(g => ({ personId: g.personId ?? null, email: clean(g.email, 254).toLowerCase() }))
+  // A Reminder invites nobody: whoever sees it comes from Who it's for alone.
+  const guests = reminder ? [] : (input.guests ?? []).map(g => ({ personId: g.personId ?? null, email: clean(g.email, 254).toLowerCase() }))
   if (guests.some(g => !EMAIL.test(g.email))) return { ok: false, error: 'One of the guests is not an email address.' }
   if (guests.length > MAX_GUESTS) return { ok: false, error: `Up to ${MAX_GUESTS} guests.` }
-  if (input.audience === 'guests' && !guests.length && !t.client) return { ok: false, error: 'Add at least one guest.' }
+  if (input.audience === 'guests' && !guests.length && !t.client && !reminder) return { ok: false, error: 'Add at least one guest.' }
 
   const start_date = input.date
   let end_date = input.date, starts_at: string | null = null, ends_at: string | null = null
@@ -185,7 +196,7 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
       audience_team_ids: teams.length ? teams : null,
       client: t.client ? clean(input.client, 160) || null : null,
       description: clean(input.description, 2000) || null,
-      sent_from_account_id: input.accountId,
+      sent_from_account_id: reminder ? null : input.accountId,
       recurrence, recur_until,
     },
   }

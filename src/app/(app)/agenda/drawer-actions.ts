@@ -57,11 +57,25 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
   const dir = await loadDirectory()
   const r = checkDrawer(input, { level: viewer.level, led: viewer.led, allLevels: await allLevels(), teamIds: [...dir.teams.keys()] })
   if (!r.ok) return no(r.error)
-  // Their own account, or the team calendar (office@), which anyone may send from.
-  const { data: acct } = await c.from('agenda_accounts').select('id, source').eq('id', r.row.sent_from_account_id).or(`person_id.eq.${access.personId},team_calendar.eq.true`).maybeSingle()
-  if (!acct) return no('That account is no longer connected. Select another one to send from.')
-
-  const google = acct.source === 'google'
+  // A Reminder (owner, 8 November 2026) invites nobody and picks no account: for
+  // everyone it goes to the team calendar (office@) with no attendees, so nobody
+  // gets an email; for teams or only the creator it stays in the portal.
+  const reminder = r.row.type === 'reminder'
+  let google: boolean
+  if (reminder) {
+    if (r.row.audience === 'all') {
+      const { data: team } = await c.from('agenda_accounts').select('id').eq('team_calendar', true).eq('source', 'google').eq('status', 'connected').maybeSingle()
+      r.row.sent_from_account_id = (team?.id as number | undefined) ?? null
+    }
+    google = r.row.sent_from_account_id != null
+  } else {
+    // Their own account, or the team calendar (office@), which anyone may send from.
+    const { data: acct } = await c.from('agenda_accounts').select('id, source').eq('id', r.row.sent_from_account_id as number).or(`person_id.eq.${access.personId},team_calendar.eq.true`).maybeSingle()
+    if (!acct) return no('That account is no longer connected. Select another one to send from.')
+    google = acct.source === 'google'
+  }
+  // Where the row came from: Google, the portal alone (a Reminder kept here), or a sample account.
+  const source = google ? 'google' : reminder ? 'portal' : 'sample'
   let eventId = id
   let before: { accountId: number | null; googleEventId: string | null } | undefined
   if (id != null) {
@@ -73,17 +87,18 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
     if (old.series_id) { r.row.recurrence = null; r.row.recur_until = null }
     // On Google the link is Google's own (sendToGoogle sets it); a sample account keeps a sample one.
     const meet = r.row.how !== 'online' ? null : google ? old.meet_link : (old.meet_link || sampleMeet(`${id}`))
-    const { error } = await c.from('agenda_events').update({ ...r.row, meet_link: meet, source: google ? 'google' : 'sample' }).eq('id', id)
+    const { error } = await c.from('agenda_events').update({ ...r.row, meet_link: meet, source }).eq('id', id)
     if (error) { console.error('[agenda drawer] update:', error.message); return no(NOT_SAVED) }
     const { error: delErr } = await c.from('agenda_event_guests').delete().eq('event_id', id)
     if (delErr) { console.error('[agenda drawer] guests:', delErr.message); return no(NOT_SAVED) }
   } else {
-    const { data, error } = await c.from('agenda_events').insert({ ...r.row, created_by: access.personId, add_to_google: false, source: google ? 'google' : 'sample', ...extra }).select('id').single()
+    const { data, error } = await c.from('agenda_events').insert({ ...r.row, created_by: access.personId, add_to_google: false, source, ...extra }).select('id').single()
     if (error || !data) { console.error('[agenda drawer] create:', error?.message); return no(NOT_SAVED) }
     eventId = data.id as number
     if (r.row.how === 'online' && !google) await c.from('agenda_events').update({ meet_link: sampleMeet(`${eventId}`) }).eq('id', eventId)
   }
-  const list = invitees(r.row.audience, r.row.audience_team_ids ?? [], r.guests, await invitablePeople(), access.personId)
+  // A Reminder is seen through Who it's for (lib/agenda/event-rules.ts seesEvent), never sent to anyone.
+  const list = reminder ? [] : invitees(r.row.audience, r.row.audience_team_ids ?? [], r.guests, await invitablePeople(), access.personId)
   if (list.length) {
     const { error } = await c.from('agenda_event_guests').insert(list.map(g => ({ ...g, event_id: eventId as number })))
     if (error) { console.error('[agenda drawer] guests:', error.message); return no(NOT_SAVED) }
@@ -97,6 +112,10 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
   revalidatePath('/agenda')
   revalidatePath('/')
   const n = list.length
+  if (reminder) {
+    if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but the team calendar did not take it. Open it and save again, or reconnect office@ in Agenda settings.` }
+    return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${google ? ' and on the team calendar, with no invitations' : ''}.` }
+  }
   if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but Google did not take it, so no invitation went out. Open it and save again, or reconnect the account in Agenda settings.` }
   return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${n ? `. Google invitation sent to ${n} ${n === 1 ? 'person' : 'people'}` : ''}.` }
 }
@@ -105,8 +124,8 @@ export async function createDrawerEvent(input: DrawerInput): Promise<Done> {
   return save(input, null)
 }
 
-const SERIES_COLS = 'id, title, audience, audience_team_ids, created_by, team_id, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, sent_from_account_id, google_event_id, meet_link'
-type SeriesOld = { id: number; title: string; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; team_id: string | null; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; time_zone: string | null; recurrence: string | null; skip_days: string[] | null; sent_from_account_id: number | null; google_event_id: string | null; meet_link: string | null }
+const SERIES_COLS = 'id, title, type, audience, audience_team_ids, created_by, team_id, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, sent_from_account_id, google_event_id, meet_link'
+type SeriesOld = { id: number; title: string; type: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; team_id: string | null; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; time_zone: string | null; recurrence: string | null; skip_days: string[] | null; sent_from_account_id: number | null; google_event_id: string | null; meet_link: string | null }
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 864e5)
 const plusDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
 
@@ -203,7 +222,7 @@ export async function deleteDrawerEvent(input: { id: number; occurrence?: { day:
     }
     revalidatePath('/agenda')
     revalidatePath('/')
-    return { ok: true, toast: occ.scope === 'one' ? `${old.title} on that day was deleted. The guests get Google's cancellation.` : `${old.title} was deleted from that day on.` }
+    return { ok: true, toast: occ.scope === 'one' ? `${old.title} on that day was deleted.${old.type === 'reminder' ? '' : " The guests get Google's cancellation."}` : `${old.title} was deleted from that day on.` }
   }
   if (old.google_event_id && old.sent_from_account_id != null && !(await removeFromGoogle(old.sent_from_account_id, old.google_event_id))) {
     return no('Google did not delete it, so the guests were not told. Try again in a moment, or reconnect the account in Agenda settings.')
@@ -212,7 +231,7 @@ export async function deleteDrawerEvent(input: { id: number; occurrence?: { day:
   if (error) { console.error('[agenda drawer] delete:', error.message); return no(NOT_SAVED) }
   revalidatePath('/agenda')
   revalidatePath('/')
-  return { ok: true, toast: `${old.title} was deleted. The guests get Google's cancellation.` }
+  return { ok: true, toast: `${old.title} was deleted.${old.type === 'reminder' ? '' : " The guests get Google's cancellation."}` }
 }
 
 /** Find a time: the working and busy times of these people, from a Washington day for four weeks. */

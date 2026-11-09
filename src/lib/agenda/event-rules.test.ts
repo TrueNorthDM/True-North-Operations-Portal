@@ -7,10 +7,12 @@ const lead = { level: 'team_leader' as const, led: new Set(['mk']), allLevels: [
 const member = { level: 'user' as const, led: new Set<string>(), allLevels: ['super_admin', 'admin'], teamIds: ['mk', 'gr'] }
 
 describe('who may create what', () => {
-  it('gives members meetings, Team Leaders four types, Admins all six', () => {
+  it('gives members meetings, Team Leaders four types, Admins all seven, Reminder among them', () => {
     expect(typesFor('user')).toEqual(['meeting'])
     expect(typesFor('team_leader')).toEqual(['meeting', 'training', 'deadline', 'milestone'])
-    expect(typesFor('admin')).toHaveLength(6)
+    expect(typesFor('admin')).toHaveLength(7)
+    expect(typesFor('admin')).toContain('reminder')
+    expect(typesFor('super_admin')).toContain('reminder')
   })
   it('opens True North to the levels the Super Admin chose, and Teams to whoever has teams', () => {
     expect(audiencesFor('user', 0, ['super_admin', 'admin'])).toEqual(['guests'])
@@ -81,5 +83,31 @@ describe('who sees and who changes an event', () => {
     expect(legacyType('milestone', null)).toBe('milestone')
     expect(legacyType('event', 't')).toBe('meeting')
     expect(legacyType('event', null)).toBe('company')
+  })
+})
+
+describe('a Reminder (owner, 8 November 2026)', () => {
+  const r0: DrawerInput = { ...base, type: 'reminder', when: 'day', title: 'US Employees Timesheets Due', guests: [], accountId: null, repeat: { freq: 'weekly', interval: 2, days: [1], monthBy: 'day', ends: 'never' } }
+  it('saves with no account, no guest, no Meet and no time, every 2 weeks', () => {
+    const r = checkDrawer(r0, admin)
+    expect(r.ok && r.row).toMatchObject({ type: 'reminder', kind: 'event', how: null, place: null, starts_at: null, sent_from_account_id: null, recurrence: 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO;WKST=SU' })
+    expect(r.ok && r.guests).toEqual([])
+  })
+  it('invites nobody even when guests or an account are sent', () => {
+    const r = checkDrawer({ ...r0, guests: [{ email: 'someone@example.com' }], accountId: 7, audience: 'all' }, admin)
+    expect(r.ok && r.guests).toEqual([])
+    expect(r.ok && r.row.sent_from_account_id).toBeNull()
+  })
+  it('is never at a time, and is not open to Team Leaders or members', () => {
+    expect(checkDrawer({ ...r0, when: 'time' }, admin)).toEqual({ ok: false, error: 'A reminder is all day or a few days, never at a time.' })
+    expect(checkDrawer(r0, lead)).toEqual({ ok: false, error: 'That type is not open to your access.' })
+    expect(checkDrawer(r0, member)).toEqual({ ok: false, error: 'That type is not open to your access.' })
+  })
+  it('"Only me" (Guests with nobody) is seen by the creator alone; Everyone by all', () => {
+    const v = (id: string) => ({ id, level: 'user' as const, teamIds: ['mk'], led: new Set<string>() })
+    const mine = { audience: 'guests' as const, audience_team_ids: null, created_by: 'arnaldo', team_id: null }
+    expect(seesEvent(mine, v('arnaldo'), new Set())).toBe(true)
+    expect(seesEvent(mine, v('tina'), new Set())).toBe(false)
+    expect(seesEvent({ ...mine, audience: 'all' }, v('tina'), new Set())).toBe(true)
   })
 })
