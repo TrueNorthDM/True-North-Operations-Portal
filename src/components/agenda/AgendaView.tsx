@@ -505,7 +505,8 @@ function WeekPhone({ items, anchor, today, seesType, onOpen }: { items: AgendaIt
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-/** The small month: the week shown and today marked; arrows move the month, a day opens its week. */
+/** The small month: the week shown and today marked; arrows move the month, a day opens its week.
+ * Each row starts with its week number, as the big month's W column (owner, 8 November 2026). */
 function MiniMonth({ anchor, today, onPick }: { anchor: string; today: string; onPick: (day: string) => void }) {
   const [month, setMonth] = useState(anchor.slice(0, 7) + '-01')
   const [seen, setSeen] = useState(anchor)
@@ -522,12 +523,15 @@ function MiniMonth({ anchor, today, onPick }: { anchor: string; today: string; o
           <button type="button" aria-label="Next month" onClick={() => step(1)} className="w-7 h-7 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle"><Icon d="M9 6l6 6-6 6" size={15} width={2.2} /></button>
         </div>
       </div>
-      <div className="grid grid-cols-7 text-center">
+      <div className="grid grid-cols-[22px_repeat(7,minmax(0,1fr))] text-center">
+        <span className={`${LABEL} py-1`}>W</span>
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className={`${LABEL} py-1`}>{d}</span>)}
       </div>
       <div className="flex flex-col gap-0.5">
         {weeks.map(w => (
-          <div key={w.start} className={`grid grid-cols-7 rounded-[9px] ${w.shown ? 'bg-tn-teal-soft' : 'hover:bg-subtle'}`}>
+          <div key={w.start} className={`grid grid-cols-[22px_repeat(7,minmax(0,1fr))] rounded-[9px] ${w.shown ? 'bg-tn-teal-soft' : 'hover:bg-subtle'}`}>
+            <button type="button" onClick={() => onPick(w.start)} aria-label={`Week ${weekNumber(w.start)}`}
+              className="h-8 border-0 bg-transparent cursor-pointer flex items-center justify-center p-0 text-[11px] font-bold leading-[normal] text-tn-teal tabular-nums lining-nums">{weekNumber(w.start)}</button>
             {w.days.map(d => (
               <button key={d.day} type="button" onClick={() => onPick(d.day)} aria-label={d.day} aria-current={d.today ? 'date' : undefined}
                 className="h-8 border-0 bg-transparent cursor-pointer flex items-center justify-center p-0">
