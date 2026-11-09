@@ -20,10 +20,18 @@ on:
         type: boolean
         default: false
 
+# No repository permissions are needed: the job only opens two addresses and,
+# on a failure, calls Resend.
+permissions: {}
+
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 6
+    # The Resend key lives in this environment (Settings > Environments), which
+    # only main may use, so a workflow on another branch cannot read it
+    # (security audit, 8 November 2026). It is a sending-only key of its own.
+    environment: monitoring
     steps:
       - name: Open the portal from outside
         env:
