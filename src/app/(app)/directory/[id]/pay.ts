@@ -92,7 +92,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
       // Since 4 November 2026 the portal makes no invoices: every contractor makes and sends their own.
-      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : 'They send their own') : null,
+      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : 'Sent by them each pay period: their own file or the invoice builder') : null,
     }
   } catch (e) {
     // The sections are left out rather than the page failing (migration 115 not run yet).

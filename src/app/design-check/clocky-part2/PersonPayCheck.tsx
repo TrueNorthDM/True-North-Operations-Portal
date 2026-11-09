@@ -23,7 +23,7 @@ const CHEYENNE: PaySample = {
     note: 'Same person: one step, Approve both.',
   },
   pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 30, per: 'week' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
-  invoicesLine: 'They send their own',
+  invoicesLine: 'Sent by them each pay period: their own file or the invoice builder',
 }
 
 export function PersonPayCheck({ data, editing, typeChange = null, sample = CHEYENNE }: { data: PersonPageData; editing: boolean; typeChange?: TypeChangeView | null; sample?: PaySample }) {

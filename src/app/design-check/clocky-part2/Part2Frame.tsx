@@ -96,7 +96,7 @@ export function Part2Frame({ frame }: { frame: string }) {
         note: sched ? 'From Dec 1 no invoice: Dave Sharpe approves the hours and they go to Rippling.' : 'Same person: one step, Approve both.',
       },
       pay: { isContractor: true, paysAs: 'hourly' as const, hourlyRate: 20, fixedAmount: null, allowance: null, timeOff: sched ? 'From Dec 1, in Requests' : 'Contractors do not ask PTO', contractorUntil: sched ? 'Nov 30' : null, canEdit: true },
-      invoicesLine: sched ? 'Last one: November 2026' : 'They send their own',
+      invoicesLine: sched ? 'Last one: November 2026' : 'Sent by them each pay period: their own file or the invoice builder',
       scheduled: sched,
     }
     const options = typeChangeOptions('2026-11-03', '2026-10-04', 'Dave Sharpe')
