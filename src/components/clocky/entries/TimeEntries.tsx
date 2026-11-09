@@ -410,7 +410,6 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   })
   const fixDropped = () => { if (dropped) fixOverlap(dropped.moved, dropped.other, dropped.moved.start!, dropped.moved.end!) }
   const attention = [...droppedItems, ...data.attention.filter(a => !droppedItems.some(d => d.key === a.key))]
-  const attnN = attention.length
 
   // ── The open modal ────────────────────────────────────────────────────────
 
@@ -571,21 +570,6 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         <Tabs label="Views" className="-mb-px shadow-none" value={tabShown}
           items={([{ key: 'list', label: 'List' }, { key: 'grid', label: 'Week grid' }, { key: 'timeline', label: 'Day timeline' }] as const).filter(t => t.key === 'list' || views[t.key])}
           onChange={k => go({ tab: k, period: k === 'timeline' ? 'day' : k === 'grid' ? 'week' : ui.period, drag: null })} />
-        <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums lining-nums whitespace-nowrap">
-          <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}
-            {/* Their own week, the same week as the allowance: "of 40h" (a contractor's Weekly hours, plus extra hours approved). */}
-            {ui.who === 'my' && viewer.allowance && range.from === viewer.allowance.from && range.to === viewer.allowance.to && <> of {formatDuration(viewer.allowance.limit)}</>}</span>
-          <span className="text-[var(--faint)]">·</span>
-          <span>Billable {formatDuration(totals.billable)}</span>
-          <span className="text-[var(--faint)]">·</span>
-          <span>Entries {totals.entries}</span>
-          <span className="text-[var(--faint)]">·</span>
-          <button type="button" title="Show only the entries that need attention" aria-pressed={ui.attnOnly}
-            onClick={() => setUi(u => ({ ...u, attnOnly: !u.attnOnly, tab: 'list' }))}
-            className={`border rounded-full px-2.5 py-[3px] text-[12px] font-bold whitespace-nowrap ${ui.attnOnly ? 'bg-[var(--warn-fg)] text-[#ffffff] border-[#e9d48a]' : attnN ? 'bg-[var(--warn-bg)] text-[var(--warn-fg)] border-[#e9d48a]' : 'bg-white text-muted border-[var(--panel-border)]'}`}>
-            Needs attention {attnN}
-          </button>
-        </div>
       </div>
 
       <div className="flex gap-5 items-start flex-wrap">
@@ -634,7 +618,12 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               onFix={fixOverlap} />
           )}
         </div>
-        <SummaryAside totals={totals} attention={attention} onAttention={a => void openAttention(a)} />
+        {/* The totals line is the first side block (owner, 9 November 2026). */}
+        <SummaryAside totals={totals} attention={attention} onAttention={a => void openAttention(a)}
+          title={totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}
+          // Their own week, the same week as the allowance: "of 40h" and a bar (a contractor's Weekly hours, plus extra hours approved).
+          limit={ui.who === 'my' && viewer.allowance && range.from === viewer.allowance.from && range.to === viewer.allowance.to ? viewer.allowance.limit : null}
+          attnOnly={ui.attnOnly} onAttnOnly={() => setUi(u => ({ ...u, attnOnly: !u.attnOnly, tab: 'list' }))} />
       </div>
 
       {modalView}

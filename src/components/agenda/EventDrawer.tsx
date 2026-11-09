@@ -10,6 +10,7 @@
  * opens the panel beside it (FindTimePanel).
  */
 
+import { TimeField } from '@/components/ui/TimeField'
 import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD, TEXTAREA, CHECKBOX } from '@/lib/ui/fields'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -63,9 +64,6 @@ const OPT = 'normal-case tracking-normal font-sans font-semibold'
 const LINK = 'border-0 bg-transparent p-0 cursor-pointer font-bold text-[13.5px] text-tn-teal hover:underline'
 const SELECT = `${SELECT_FIELD} font-semibold tabular-nums`
 const TIMES = Array.from({ length: 48 }, (_, i) => i * 30).map(m => ({ value: String(m), label: clockLabel(m) }))
-/** The half hours, plus a time between them when one is set (a 45-minute review meeting ends at 10:15). */
-const timesWith = (list: { value: string; label: string }[], m: number) =>
-  list.some(o => o.value === String(m)) ? list : [...list, { value: String(m), label: clockLabel(m) }].sort((a, b) => Number(a.value) - Number(b.value))
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const fdate = (iso: string, year = false) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' })
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
@@ -284,11 +282,12 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
               {when === 'range' && <DayField label="Last day" value={end} min={date} onChange={setEnd} />}
               {when === 'time' && <>
                 <label className="flex flex-col gap-2 flex-1 basis-[150px] min-w-0"><span className={LBL}>From · Washington DC</span>
-                  <Select value={String(from)} options={timesWith(TIMES, from)} fullWidth ariaLabel="From" className={SELECT}
-                    onChange={v => { const n = Number(v), len = Math.max(to - from, 30); setFrom(n); setTo(Math.min(n + len, 1440)) }} /></label>
+                  {/* Typed or picked (owner, 9 November 2026). */}
+                  <TimeField value={from} options={TIMES.map(t => ({ value: Number(t.value), label: t.label }))} ariaLabel="From" className={SELECT}
+                    onChange={n => { const len = Math.max(to - from, 30); setFrom(n); setTo(Math.min(n + len, 1440)) }} /></label>
                 <label className="flex flex-col gap-2 flex-1 basis-[150px] min-w-0"><span className={LBL}>To · Washington DC</span>
-                  <Select value={String(to)} options={timesWith([...TIMES.slice(1), { value: '1440', label: '12:00 AM (midnight)' }], to)} fullWidth ariaLabel="To" className={SELECT}
-                    onChange={v => { const n = Number(v); setTo(n); if (n <= from) setFrom(Math.max(n - 60, 0)) }} /></label>
+                  <TimeField value={to} allowMidnightEnd options={[...TIMES.slice(1), { value: '1440', label: '12:00 AM (midnight)' }].map(t => ({ value: Number(t.value), label: t.label }))} ariaLabel="To" className={SELECT}
+                    onChange={n => { setTo(n); if (n <= from) setFrom(Math.max(n - 60, 0)) }} /></label>
               </>}
             </div>
             {when !== 'range' && <RepeatField date={date} value={repeat} onChange={setRepeat} />}
