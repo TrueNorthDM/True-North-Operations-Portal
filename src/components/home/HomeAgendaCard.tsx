@@ -20,7 +20,7 @@ export function HomeAgendaCard({ agenda, linked = true }: { agenda: HomeAgenda |
       <span className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">Agenda</span>
       {agenda === 'unavailable'
         ? <p role="status" className="m-0 text-[13.5px] text-muted">The Agenda could not be read just now. Open the Agenda to try again.</p>
-        : <Body agenda={agenda} />}
+        : <Body agenda={agenda} linked={linked} />}
       {linked && (
         <Link href="/agenda" className="inline-flex items-center gap-1.5 text-[13px] font-bold self-start text-tn-teal hover:text-tn-ink">
           Open Agenda<Icon d="M9 6l6 6-6 6" size={14} width={2.2} />
@@ -30,7 +30,7 @@ export function HomeAgendaCard({ agenda, linked = true }: { agenda: HomeAgenda |
   )
 }
 
-function Body({ agenda }: { agenda: HomeAgenda }) {
+function Body({ agenda, linked }: { agenda: HomeAgenda; linked: boolean }) {
   const { out, events } = agenda
   return (
     <>
@@ -57,7 +57,9 @@ function Body({ agenda }: { agenda: HomeAgenda }) {
             {(i === 0 || events[i - 1].section !== e.section) && (
               <span className={`${HEAD} px-0.5 pt-2 pb-1`}>{e.section === 'today' ? 'Today' : 'Coming up'}</span>
             )}
-            <div className={`flex gap-3 items-center rounded-[12px] px-3 py-2.5 ${e.section === 'today' ? 'bg-subtle' : ''}`}>
+            {/* A click opens the Agenda on its day with its card open (owner, 9 November 2026). */}
+            <Row href={linked ? `/agenda?view=week&d=${e.day}&e=${encodeURIComponent(e.id)}` : null}
+              className={`flex gap-3 items-center rounded-[12px] px-3 py-2.5 ${e.section === 'today' ? 'bg-subtle' : ''} ${linked ? 'transition-colors hover:bg-[#ebe8df] focus-visible:outline-2 focus-visible:outline-tn-teal' : ''}`}>
               <span className="w-11 flex-none flex flex-col items-center leading-[1.1]">
                 <span className={`font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase ${e.time ? 'text-[#c8323d]' : 'text-muted'}`}>{e.top}</span>
                 <span className={`font-(family-name:--font-display) font-black text-tn-ink tabular-nums ${e.time ? 'text-[17px]' : 'text-[22px]'}`}>{e.big}</span>
@@ -67,13 +69,17 @@ function Body({ agenda }: { agenda: HomeAgenda }) {
                 <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{e.title}</span>
                 <span className="text-[12px] text-foreground">{e.sub}</span>
               </span>
-            </div>
+            </Row>
           </div>
         ))}
         {!events.length && <span className="text-[13px] text-muted">Nothing on the Agenda in the next month.</span>}
       </div>
     </>
   )
+}
+
+function Row({ href, className, children }: { href: string | null; className: string; children: React.ReactNode }) {
+  return href ? <Link href={href} className={className}>{children}</Link> : <div className={className}>{children}</div>
 }
 
 /** The Agenda's tile for the item's kind, as its List view draws it: the tenure badge for an anniversary, else the icon or flag. */

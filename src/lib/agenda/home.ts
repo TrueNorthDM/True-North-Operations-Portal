@@ -20,6 +20,8 @@ import { WD, dow, hourLabel, look, type AgendaItem, type Look } from './model'
 export interface HomeOut { id: string; personId: string; name: string; avatarUrl: string | null; reason: string; until: string }
 export interface HomeEvent {
   id: string
+  /** Its first day, so a click opens the Agenda on it (owner, 9 November 2026). */
+  day: string
   section: 'today' | 'later'
   /** Above the figure: AM / PM on a timed event today, else the weekday ("Tue"). */
   top: string
@@ -97,11 +99,11 @@ export function homeAgenda(items: readonly AgendaItem[], today: string, now: num
 
   const events: HomeEvent[] = [
     ...todays.map((x): HomeEvent => {
-      if (x.s == null) return { id: x.id, section: 'today', top: WD[dow(today)], big: String(Number(today.slice(8))), time: false, title: titleOf(x), sub: `Today, ${kindSub(x).replace(/^\w/, c => c.toLowerCase())}`, look: look(x) }
+      if (x.s == null) return { id: x.id, day: today, section: 'today', top: WD[dow(today)], big: String(Number(today.slice(8))), time: false, title: titleOf(x), sub: `Today, ${kindSub(x).replace(/^\w/, c => c.toLowerCase())}`, look: look(x) }
       const [clock, ap] = hourLabel(x.s).split(' ')
-      return { id: x.id, section: 'today', top: ap, big: clock, time: true, title: titleOf(x), sub: `Today, ${Math.round(((x.e ?? x.s + 1) - x.s) * 60)} min`, look: look(x) }
+      return { id: x.id, day: today, section: 'today', top: ap, big: clock, time: true, title: titleOf(x), sub: `Today, ${Math.round(((x.e ?? x.s + 1) - x.s) * 60)} min`, look: look(x) }
     }),
-    ...later.map((x): HomeEvent => ({ id: x.id, section: 'later', top: WD[dow(x.a)], big: String(Number(x.a.slice(8))), time: false, title: titleOf(x), sub: kindSub(x), look: look(x) })),
+    ...later.map((x): HomeEvent => ({ id: x.id, day: x.a, section: 'later', top: WD[dow(x.a)], big: String(Number(x.a.slice(8))), time: false, title: titleOf(x), sub: kindSub(x), look: look(x) })),
   ].slice(0, HOME_EVENTS)
 
   return { out, events }
