@@ -34,14 +34,59 @@ async function logChange(setting: string, action: string): Promise<void> {
 
 export async function saveRipplingToken(input: { token: string }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  // Staging's data is a copy and Rippling is the real payroll: the token is only ever saved in production.
+  const { IS_STAGING } = await import('@/lib/environment')
+  if (IS_STAGING) return no('The staging copy never connects to Rippling. Paste the token in the live portal.')
   const token = String(input.token ?? '').trim()
   if (token.length < 16 || /\s/.test(token)) return no('Paste the whole Rippling API token.')
+  const { companyName, RipplingError } = await import('@/lib/integrations/rippling')
+  // Tested before it is kept: a wrong or short-permission token is refused here, not job by job.
+  let company: string
+  try {
+    company = await companyName(token)
+  } catch (e) {
+    return no(e instanceof RipplingError ? e.message : 'Rippling could not be reached. Try again in a moment.')
+  }
   const me = await getRealPerson()
-  const { error } = await createAdminClient().from('app_settings').update({ rippling_api_token: token, rippling_connected_by: me?.id ?? null, rippling_connected_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  const at = new Date().toISOString()
+  const { error } = await createAdminClient().from('app_settings').update({ rippling_api_token: token, rippling_connected_by: me?.id ?? null, rippling_connected_at: at, rippling_connected_as: company, rippling_checked_at: at, updated_at: at }).eq('singleton_id', 1)
   if (error) { console.error('[settings] rippling:', error.message); return no(NOT_SAVED) }
   await logChange('rippling_api_token', 'saved')
+  // The people matched, then what waited (time off approved and pay periods approved since 8 November) goes.
+  let note = ''
+  try {
+    const { matchPeople, queueSinceStart } = await import('@/lib/integrations/rippling-send')
+    const { releaseWaiting } = await import('@/lib/integrations/outbox')
+    const m = await matchPeople(token)
+    await queueSinceStart()
+    await releaseWaiting('rippling')
+    note = ` ${m.matched} of ${m.employees} employees matched${m.missing.length ? `; not found in Rippling: ${m.missing.join(', ')}` : ''}.`
+  } catch (e) {
+    console.error('[settings] rippling after saving:', e instanceof Error ? e.message : e)
+    note = ' The people could not be matched yet: press Match people.'
+  }
   refresh()
-  return { ok: true, toast: 'Saved. Rippling gets what waits once the portal\'s Rippling calls are written.' }
+  return { ok: true, toast: `Connected to ${company}.${note}` }
+}
+
+/** Match people: every US employee to their Rippling worker by email, again (after an email changes). */
+export async function matchRipplingPeople(): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  try {
+    const { matchPeople, ripplingToken } = await import('@/lib/integrations/rippling-send')
+    const { RipplingError } = await import('@/lib/integrations/rippling')
+    try {
+      const m = await matchPeople(await ripplingToken())
+      refresh()
+      return { ok: true, toast: `${m.matched} of ${m.employees} employees matched to ${m.company}.${m.missing.length ? ` Not found in Rippling: ${m.missing.join(', ')}. Their work email must be the same in both.` : ''}` }
+    } catch (e) {
+      if (e instanceof RipplingError) return no(e.message)
+      throw e
+    }
+  } catch (e) {
+    console.error('[settings] rippling match:', e instanceof Error ? e.message : e)
+    return no('The people could not be matched. Try again in a moment.')
+  }
 }
 
 export async function removeRipplingToken(): Promise<Done> {

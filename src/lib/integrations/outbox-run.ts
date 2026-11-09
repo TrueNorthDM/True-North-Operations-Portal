@@ -9,10 +9,10 @@
  *                              sign-in (Agenda settings, since 31 October
  *                              2026), the old service account only if office@
  *                              is not connected
- *   rippling_*                 not sent yet: what the portal must call in
- *                              Rippling is an open question for the owner, so
- *                              these fail with that sentence instead of
- *                              guessing an API
+ *   rippling_*                 Rippling's API (rippling-send.ts, owner 9
+ *                              November 2026): approved time off as approved
+ *                              leave, a cancellation, an employee's approved
+ *                              hours one total a day
  *
  * A slow or failing service never blocks a decision: a job that fails for a
  * passing reason is tried again later (5 minutes, then longer), up to 5 times.
@@ -23,12 +23,13 @@ import { accessToken, deleteEvent, insertAllDay, insertTimed, parseServiceAccoun
 import { accessTokenFor } from '@/lib/agenda/google-app'
 import { notifyClockyTimeOffRefused } from '@/lib/notifications/run'
 import { dayLabel } from '@/lib/timeclock/format'
+import { RipplingError } from './rippling'
+import { ripplingToken, sendRipplingJob } from './rippling-send'
 
 export interface OutboxReport { sent: number; failed: number; retried: number; errors: string[] }
 
 const BATCH = 25
 const MAX_ATTEMPTS = 5
-const RIPPLING_NOT_BUILT = 'Not sent: the portal does not call Rippling yet. What it must send there is still an open question.'
 
 type Job = { id: number; kind: string; ref_table: string; ref_id: number; payload: Record<string, unknown>; attempts: number }
 
@@ -60,6 +61,8 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
     if (!s.google_team_calendar_id) throw new Final('No team calendar is set in Company settings, Integrations.')
     return (target = { token: await accessToken(parseServiceAccount(s.google_service_account)), calendar: s.google_team_calendar_id })
   }
+
+  let rippling: string | null = null
 
   for (const j of jobs) {
     try {
@@ -94,15 +97,18 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
         // Time off cancelled, or an Agenda event edited or deleted (its old copy).
         if (eventId) await deleteEvent(g.token, g.calendar, eventId)
         if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_event_id: null }).eq('id', j.ref_id)
+      } else if (j.kind.startsWith('rippling_')) {
+        rippling ??= await ripplingToken(c)
+        await sendRipplingJob(j, rippling, c)
       } else {
-        throw new Final(RIPPLING_NOT_BUILT)
+        throw new Final(`Unknown job: ${j.kind}.`)
       }
       await c.from('integration_jobs').update({ state: 'done', done_at: new Date().toISOString(), last_error: null, attempts: j.attempts + 1 }).eq('id', j.id)
       report.sent++
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const attempts = j.attempts + 1
-      if (e instanceof Final || attempts >= MAX_ATTEMPTS) {
+      if (e instanceof Final || (e instanceof RipplingError && e.final) || attempts >= MAX_ATTEMPTS) {
         await c.from('integration_jobs').update({ state: 'failed', last_error: msg, attempts }).eq('id', j.id)
         await markRefused(j, msg)
         report.failed++

@@ -60,6 +60,7 @@ function ReadOnly() {
 export interface IntegrationsApi {
   saveRipplingToken(i: { token: string }): Promise<Done>
   removeRipplingToken(): Promise<Done>
+  matchRipplingPeople?(): Promise<Done>
   saveGoogle(i: { serviceAccount?: string; teamCalendarId: string }): Promise<Done>
   removeGoogle(): Promise<Done>
   testGoogle(): Promise<Done>
@@ -112,6 +113,11 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
             {g.key === 'google' && !data.google.viaOffice && data.google.saved && (
               <button type="button" disabled={busy} onClick={() => void run(api.testGoogle())} className={BTN_W}>
                 <Icon d={REFRESH} size={14} color={BTN_ICON.white} width={2.2} />Test connection
+              </button>
+            )}
+            {canEdit && g.key === 'rippling' && data.rippling.tokenSaved && api.matchRipplingPeople && (
+              <button type="button" disabled={busy} onClick={() => void run(api.matchRipplingPeople!())} className={BTN_W}>
+                <Icon d={REFRESH} size={14} color={BTN_ICON.white} width={2.2} />Match people
               </button>
             )}
             {canEdit && (g.key === 'rippling' || data.google.saved) && (
@@ -170,7 +176,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
         api={api.drivePicker && api.saveDriveFolder && api.testDrive ? { drivePicker: api.drivePicker, saveDriveFolder: api.saveDriveFolder, testDrive: api.testDrive, retryDriveCopy: api.retryDriveCopy, copyDriveNow: api.copyDriveNow } : undefined} />
       {modal === 'app' && <GoogleAppDialog app={data.googleApp} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveGoogleApp(v), () => setModal(null))} onRemove={() => void run(api.removeGoogleApp(), () => setModal(null))} />}
-      {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Settings, API access). Only its last four characters are shown again."
+      {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Developer, API credentials). It is tested before it is kept; then the people are matched and what waited is sent. Only its last four characters are shown again."
         placeholder="Paste the token" multiline={false} canRemove={data.rippling.tokenSaved} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveRipplingToken({ token: v }), () => setModal(null))} onRemove={() => void run(api.removeRipplingToken(), () => setModal(null))} />}
       {modal === 'google' && <SecretDialog title="Google service account key" hint="The JSON key of a Google Cloud service account. Share the team calendar with its address, so the portal can change events on it."

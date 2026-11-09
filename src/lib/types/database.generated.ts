@@ -2752,6 +2752,7 @@ export type Database = {
           profile_id: string | null
           reports_to_manager: string | null
           role_type: string
+          rippling_worker_id: string | null
           schedule: string | null
           sort_order: number
           status: string
@@ -2798,6 +2799,7 @@ export type Database = {
           profile_id?: string | null
           reports_to_manager?: string | null
           role_type?: string
+          rippling_worker_id?: string | null
           schedule?: string | null
           sort_order?: number
           status?: string
@@ -2844,6 +2846,7 @@ export type Database = {
           profile_id?: string | null
           reports_to_manager?: string | null
           role_type?: string
+          rippling_worker_id?: string | null
           schedule?: string | null
           sort_order?: number
           status?: string
@@ -3609,6 +3612,7 @@ export type Database = {
           reason: string | null
           requested_at: string
           rippling_error: string | null
+          rippling_request_ids: string[] | null
           rippling_sent_at: string | null
           rippling_state: string | null
           start_date: string
@@ -3633,6 +3637,7 @@ export type Database = {
           reason?: string | null
           requested_at?: string
           rippling_error?: string | null
+          rippling_request_ids?: string[] | null
           rippling_sent_at?: string | null
           rippling_state?: string | null
           start_date: string
@@ -3657,6 +3662,7 @@ export type Database = {
           reason?: string | null
           requested_at?: string
           rippling_error?: string | null
+          rippling_request_ids?: string[] | null
           rippling_sent_at?: string | null
           rippling_state?: string | null
           start_date?: string
@@ -4836,6 +4842,7 @@ export type Database = {
           id: number
           note: string | null
           period_id: number
+          rippling_entries: Json | null
           person_id: string
           state: string
           submitted_at: string | null
@@ -4848,6 +4855,7 @@ export type Database = {
           id?: number
           note?: string | null
           period_id: number
+          rippling_entries?: Json | null
           person_id: string
           state?: string
           submitted_at?: string | null
@@ -4860,6 +4868,7 @@ export type Database = {
           id?: number
           note?: string | null
           period_id?: number
+          rippling_entries?: Json | null
           person_id?: string
           state?: string
           submitted_at?: string | null

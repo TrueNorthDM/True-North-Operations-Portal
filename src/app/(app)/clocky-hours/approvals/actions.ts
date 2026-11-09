@@ -241,7 +241,7 @@ export async function decideTimeOffCancel(input: { id: number; decision: 'approv
   try {
     const c = db()
     const dir = await loadDirectory()
-    const { data: r, error } = await c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, state, cancel_asked_at, rippling_state, calendar_event_id').eq('id', Number(input.id)).maybeSingle()
+    const { data: r, error } = await c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, state, cancel_asked_at, rippling_state, rippling_request_ids, calendar_event_id').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
     if (!r || r.state !== 'approved' || !r.cancel_asked_at || !(await routedTo(v, 'off', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
@@ -267,7 +267,8 @@ export async function decideTimeOffCancel(input: { id: number; decision: 'approv
     await c.from('tc_entries').delete().eq('person_id', r.person_id).eq('kind', 'absence').eq('source', 'portal').eq('notes', `Time off request #${r.id}`)
     const payload = { person_id: r.person_id, kind, start: r.start_date, end: r.end_date, event_id: r.calendar_event_id }
     // Only what went out comes back off: Rippling if it was sent, the calendar if it is on it.
-    if (r.rippling_state === 'sent') await enqueue({ kind: 'rippling_pto_cancel', refTable: 'tc_absence_requests', refId: r.id, payload, key: `rippling_pto_cancel:${r.id}` })
+    // Sent, or partly sent before a failure (some days already in Rippling): those days are cancelled there.
+    if (r.rippling_state === 'sent' || (r.rippling_request_ids ?? []).length) await enqueue({ kind: 'rippling_pto_cancel', refTable: 'tc_absence_requests', refId: r.id, payload, key: `rippling_pto_cancel:${r.id}` })
     else await c.from('integration_jobs').delete().eq('ref_table', 'tc_absence_requests').eq('ref_id', r.id).eq('kind', 'rippling_pto').in('state', ['waiting_connection', 'queued', 'failed'])
     if (r.calendar_event_id) await enqueue({ kind: 'gcal_delete', refTable: 'tc_absence_requests', refId: r.id, payload, key: `gcal_delete:${r.id}` })
     else await c.from('integration_jobs').delete().eq('ref_table', 'tc_absence_requests').eq('ref_id', r.id).eq('kind', 'gcal_upsert').in('state', ['waiting_connection', 'queued', 'failed'])
@@ -629,7 +630,7 @@ export async function approveTimesheet(input: { id: number; note?: string; hours
       await c.from('tc_entries').update({ state: 'approved', updated_at: at })
         .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
       // Employees: the hours and the time off go to Rippling (the outbox sends them, or waits for the connection).
-      if (!route.isContractor) await queueRipplingHours(t.id, t.personId, t.start, t.end)
+      if (!route.isContractor) await queueRipplingHours(t.id, t.personId, t.start, t.end, at)
     }
     await c.from('tc_approval_events').insert({ submission_id: t.id, invoice_id: inv?.id ?? null, step: step.step, action: 'approve', by_person: v.personId, at, note })
     const dir = await loadDirectory()
@@ -823,9 +824,10 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
 }
 
 /** Queues an employee's approved hours for Rippling (the outbox sends them, or waits for the connection). */
-async function queueRipplingHours(submissionId: number, personId: string, start: string, end: string): Promise<void> {
+async function queueRipplingHours(submissionId: number, personId: string, start: string, end: string, approvedAt: string): Promise<void> {
   try {
-    await enqueue({ kind: 'rippling_hours', refTable: 'tc_submissions', refId: submissionId, payload: { person_id: personId, start, end }, key: `rippling_hours:${submissionId}:${start}` })
+    // One job per approval: a pay period opened again and approved again is sent again (rippling-send.ts changes the days already there).
+    await enqueue({ kind: 'rippling_hours', refTable: 'tc_submissions', refId: submissionId, payload: { person_id: personId, start, end }, key: `rippling_hours:${submissionId}:${approvedAt}` })
   } catch (e) {
     console.error('[clocky approvals] rippling queue:', e instanceof Error ? e.message : e)
   }

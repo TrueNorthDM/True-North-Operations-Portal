@@ -2,7 +2,7 @@
  * A small in-memory stand-in for the Supabase client, for the reimbursement
  * tests (approvals/actions.test.ts, requests/reimbursements/*.test.ts). Only
  * what those code paths use: select / update / insert / delete with eq, in,
- * is, not-is-null, order, limit, single and maybeSingle. `or()` filters
+ * is, gte, lte (string compare: dates), not-is-null, order, limit, single and maybeSingle. `or()` filters
  * nothing. `before` runs before each query (a concurrent edit, a failure).
  * Test support only: never imported by the app.
  */
@@ -31,6 +31,8 @@ class Q implements PromiseLike<{ data: unknown; error: { message: string } | nul
   neq(c: string, v: unknown) { this.filters.push(r => !same(r[c], v)); return this }
   in(c: string, vs: unknown[]) { this.filters.push(r => vs.some(v => same(r[c], v))); return this }
   is(c: string, v: null) { this.filters.push(r => r[c] == v); return this }
+  gte(c: string, v: string | number) { this.filters.push(r => r[c] != null && String(r[c]) >= String(v)); return this }
+  lte(c: string, v: string | number) { this.filters.push(r => r[c] != null && String(r[c]) <= String(v)); return this }
   not(c: string, _op: string, _v: null) { this.filters.push(r => r[c] != null); return this }
   or() { return this }
   order() { return this }

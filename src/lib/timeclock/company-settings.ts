@@ -115,10 +115,13 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
   return {
     rippling: {
       tokenSaved: conn.rippling.tokenSaved, tokenEnd: conn.rippling.tokenEnd,
-      who: conn.rippling.tokenSaved ? `Token saved${by(conn.rippling.connectedBy, conn.rippling.connectedAt)}. Nothing is sent until the portal's Rippling calls are written.` : 'Not connected. Paste the company API token to connect it.',
+      // Staging never sends: its data is a copy, and Rippling is the real payroll (owner, 9 November 2026).
+      who: conn.rippling.staging ? 'The staging copy never connects to Rippling: only the live portal sends to it.'
+        : conn.rippling.tokenSaved ? `Connected${conn.rippling.connectedAs ? ` to ${conn.rippling.connectedAs}` : ''}${by(conn.rippling.connectedBy, conn.rippling.connectedAt)}. Approved time off and employees' approved hours go by themselves.`
+          : 'Not connected. Paste the company API token (Rippling, Developer, API credentials) to connect it.',
       facts: [
-        { k: 'Sends', v: 'Approved PTO, and approved employee hours by day' },
-        { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' },
+        { k: 'Sends', v: 'Approved time off (Vacation, Sick, Unpaid Time Off), and employees\' approved hours, one total a day, from Nov 8' },
+        { k: 'People', v: conn.rippling.tokenSaved ? `${conn.rippling.matched} matched to Rippling by work email` : 'Matched by work email once connected' },
         { k: 'Waiting to send', v: waitingRippling ? `${waitingRippling} item${waitingRippling === 1 ? '' : 's'}, sent by themselves once it works` : 'Nothing' },
       ],
       errors: errorsOf(RIPPLING_KINDS),
