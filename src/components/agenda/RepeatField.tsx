@@ -7,6 +7,7 @@
  * when it ends (never, on a day, after a number of times).
  */
 
+import { useState } from 'react'
 import { DATE_FIELD_CLASS, INPUT, SELECT_FIELD } from '@/lib/ui/fields'
 import { Select } from '@/components/ui/Select'
 import { describe, nthOf, type Freq, type Repeat } from '@/lib/agenda/recurrence'
@@ -41,7 +42,11 @@ function presetOf(r: Repeat | null, date: string): Preset {
 export function RepeatField({ date, value, onChange }: { date: string; value: Repeat | null; onChange: (r: Repeat | null) => void }) {
   const d = new Date(`${date}T00:00:00Z`), wd = dowOf(date)
   const { n, last } = nthOf(date)
-  const preset = presetOf(value, date)
+  // Custom chosen from the list stays Custom even while its rule still reads like
+  // one of the usual choices (every 1 week on this day), so its panel opens and
+  // "every 2 weeks" can be set (owner, 8 November 2026).
+  const [customOpen, setCustomOpen] = useState(false)
+  const preset: Preset = value && customOpen ? 'custom' : presetOf(value, date)
   const ends = value ? { ends: value.ends, until: value.until, count: value.count } : { ends: 'never' as const }
   const make = (p: Preset): Repeat | null => {
     const base = { interval: 1, days: [] as number[], monthBy: 'day' as const, ...ends }
@@ -72,7 +77,7 @@ export function RepeatField({ date, value, onChange }: { date: string; value: Re
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-2 w-full sm:w-[360px]">
           <span className={LBL}>Repeat</span>
-          <Select value={preset} options={options} fullWidth ariaLabel="Repeat" className={SELECT} onChange={v => onChange(make(v as Preset))} />
+          <Select value={preset} options={options} fullWidth ariaLabel="Repeat" className={SELECT} onChange={v => { setCustomOpen(v === 'custom'); onChange(make(v as Preset)) }} />
         </label>
         {value && (
           <>
