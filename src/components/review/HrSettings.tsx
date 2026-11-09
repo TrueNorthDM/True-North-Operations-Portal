@@ -114,7 +114,7 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
   return (
     <div className="flex flex-col gap-4" style={APR_COLORS}>
       <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3`}>
-        <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Roles</span><span className="text-[12.5px] text-muted">Chosen here, never by name in the code. All three see every review.</span></div>
+        <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Roles</span><span className="text-[12.5px] text-muted">Chosen here, never by name in the code. HR sees every review; the VP of Operations and the CISO see their own reports'. The CISO reviews the VP of Operations, and nobody reviews the CISO.</span></div>
         {ROLES.map(r => (
           <div key={r.key} className="grid gap-x-6 gap-y-2 items-center border-t border-[var(--row-rule)] pt-3 sm:grid-cols-[170px_1fr_300px]">
             <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{r.label}</span>
@@ -126,7 +126,7 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
       </div>
 
       <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3`}>
-        <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Who takes part</span><span className="text-[12.5px] text-muted">Every employee in the Directory has a review, {data.employees} people today. Add anyone else who should have one, like a contractor.</span></div>
+        <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Who takes part</span><span className="text-[12.5px] text-muted">Every employee in the Directory but the CISO has a review, {data.employees} people today. Add anyone else who should have one, like a contractor.</span></div>
         <span className={FIELD_LABEL}>Also in the review</span>
         {data.extra.map(p => (
           <div key={p.id} className="flex items-center gap-3 text-[13px]"><span className="w-7 h-7 rounded-full bg-subtle flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10px] text-muted">{initials(p.name)}</span><span className="flex-1 font-bold text-tn-ink">{p.name}</span>
