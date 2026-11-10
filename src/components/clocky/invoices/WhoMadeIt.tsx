@@ -9,7 +9,7 @@
  */
 
 import type { RecordWho } from '@/lib/timeclock/invoice-record'
-import { withViewAs } from '@/components/ViewAsKeeper'
+import { FileButton } from '@/components/ui/FileViewer'
 import { BTN } from '@/lib/ui/buttons'
 import { CARD, CARD_TITLE } from '@/lib/ui/type'
 
@@ -34,7 +34,7 @@ export function WhoMadeIt({ who, ownPdf }: { who: RecordWho; ownPdf?: { href: st
         </div>
       )}
       {ownPdf && (
-        <a href={withViewAs(ownPdf.href)} target="_blank" rel="noreferrer" className={`${BTN.navy} justify-center`}>Open their PDF</a>
+        <FileButton file={{ href: ownPdf.href, title: 'Their own invoice', name: ownPdf.name }} className={`${BTN.navy} justify-center`}>Open their PDF</FileButton>
       )}
     </div>
   )

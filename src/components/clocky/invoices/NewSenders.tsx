@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { withViewAs } from '@/components/ViewAsKeeper'
+import { FileButton } from '@/components/ui/FileViewer'
 import { Select, type SelectOption } from '@/components/ui/Select'
 import { Pill } from '@/components/ui/Pill'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
@@ -57,7 +57,7 @@ function One({ s, people, link, say }: { s: WaitingSender; people: SelectOption[
         </div>
         {s.files.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {s.files.map(f => <a key={f.key} href={withViewAs(`/clocky-hours/invoices/new-sender/${s.id}/${f.key}`)} target="_blank" rel="noreferrer" className={`${BTN.link} break-all`}>{f.label}</a>)}
+            {s.files.map(f => <FileButton key={f.key} file={{ href: `/clocky-hours/invoices/new-sender/${s.id}/${f.key}`, title: f.label, name: f.label }} className={`${BTN.link} break-all text-left`}>{f.label}</FileButton>)}
           </div>
         )}
       </div>

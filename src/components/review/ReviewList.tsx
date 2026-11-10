@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { withViewAs } from '@/components/ViewAsKeeper'
+import { FileButton } from '@/components/ui/FileViewer'
 import { CARD, FIELD_LABEL, PAGE_TITLE, TH } from '@/lib/ui/type'
 import { Pill, type PillToneName } from '@/components/ui/Pill'
 import { Segmented } from '@/components/ui/Segmented'
@@ -153,7 +154,7 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, s
                   <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{r.name}</td>
                   <td className="px-4 py-3 text-[13px] text-[#435066]">{r.file}</td>
                   <td className="px-4 py-3 text-[13px] text-muted">{r.when ? fmtDay(r.when.slice(0, 10)) : ''}</td>
-                  <td className="px-4 py-3 text-right"><a href={`/human-resources/imports/${r.id}/file`} target="_blank" rel="noopener noreferrer" className={BTN.smallWhite}>Open the PDF</a></td>
+                  <td className="px-4 py-3 text-right"><FileButton file={{ href: `/human-resources/imports/${r.id}/file`, title: 'Imported review', name: 'review.pdf' }} className={BTN.smallWhite}>Open the PDF</FileButton></td>
                 </tr>
               ))}
               {!imports.length && <tr><td colSpan={4} className="px-4 py-6 text-[13px] text-muted">No {year} reviews imported yet. Import them in Company settings › Human Resources.</td></tr>}

@@ -8,11 +8,13 @@
  * with a reason. Read only for whoever does not decide it.
  *
  * A reimbursement with several receipts (migration 122) lists them, each with
- * Approve or Deny (and its reason); "Deny all" takes one reason for all.
+ * Approve or Decline (and its reason); "Decline all" takes one reason for all.
+ * A receipt opens in the file window over the card, never a new tab (owner,
+ * 10 November 2026).
  */
 
 import { useState } from 'react'
-import { withViewAs } from '@/components/ViewAsKeeper'
+import { FileViewer, receiptFile, type ViewFile } from '@/components/ui/FileViewer'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-cards'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
@@ -52,7 +54,11 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
   const itemsReady = toDeny.every(i => pick(i.id).note.trim())
   const report = !!card.items
   const [reason, setReason] = useState('')
+  const [viewing, setViewing] = useState<{ files: ViewFile[]; at: number } | null>(null)
   const t = TYPE[card.kind]
+  // Every receipt of the request, in order, so the window steps from one to the next.
+  const itemFiles = (card.items ?? []).flatMap(i => (i.receipt ? [{ id: i.id, file: receiptFile(i.receipt, i.purpose, `${i.date} · ${i.category} · ${i.amount}`) }] : []))
+  const openItem = (id: number) => setViewing({ files: itemFiles.map(f => f.file), at: Math.max(0, itemFiles.findIndex(f => f.id === id)) })
   return (
     <Modal label={card.type} width={card.width - 44} onClose={onClose} gap={16}>
       <div className="flex items-center justify-between gap-2.5">
@@ -72,7 +78,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       </div>
       {card.items && (
         <div className="flex flex-col gap-1.5">
-          {card.items.map(it => <ItemRow key={it.id} it={it} canDecide={card.canDecide} pick={pick(it.id)} onPick={p => setPick(it.id, p)} disabled={deny} />)}
+          {card.items.map(it => <ItemRow key={it.id} it={it} canDecide={card.canDecide} pick={pick(it.id)} onPick={p => setPick(it.id, p)} disabled={deny} onOpen={() => openItem(it.id)} />)}
         </div>
       )}
       <div className={`grid gap-[18px] items-start ${card.twoCols ? 'grid-cols-1 md:grid-cols-[minmax(0,.9fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}>
@@ -83,9 +89,9 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
               <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink break-all">{card.receipt.file}</span>
               <span className="text-[12px] text-muted">{card.receipt.sub}</span>
             </div>
-            <a href={withViewAs(`/requests/reimbursements/receipt/${card.receipt.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-tn-teal">
+            <button type="button" onClick={() => setViewing({ files: [receiptFile(card.receipt!, card.title, card.receipt!.sub)], at: 0 })} className="self-start inline-flex items-center gap-1.5 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
               <Icon d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" size={13} width={2.2} />Open the receipt full size
-            </a>
+            </button>
           </div>
         )}
         <div className="flex flex-col gap-2.5 min-w-0">
@@ -138,7 +144,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
                   className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed`}>
                   <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />
                   {report && toDeny.length
-                    ? (toApprove.length ? `Approve ${toApprove.length}, deny ${toDeny.length} (${totalsText(toApprove.map(i => i.value))})` : `Deny ${toDeny.length}`)
+                    ? (toApprove.length ? `Approve ${toApprove.length}, decline ${toDeny.length} (${totalsText(toApprove.map(i => i.value))})` : `Decline ${toDeny.length}`)
                     : card.approveLabel}
                 </button>
               </>
@@ -153,6 +159,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
         </>
       )}
       {card.roText && <div className="text-[12.5px] text-[#5b6b82] bg-[var(--chip-neutral-bg)] rounded-[10px] px-3 py-2.5">{card.roText}</div>}
+      {viewing && <FileViewer files={viewing.files} start={viewing.at} onClose={() => setViewing(null)} />}
     </Modal>
   )
 }
@@ -163,18 +170,18 @@ const DONE: Record<string, { label: string; tone: 'green' | 'red' }> = {
   paid: { label: 'Paid', tone: 'green' }, denied: { label: 'Denied', tone: 'red' },
 }
 
-/** One receipt of the request: open it, see it, and (while waiting) approve or deny it. */
-function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; canDecide: boolean; pick: { deny: boolean; note: string }; onPick: (p: Partial<{ deny: boolean; note: string }>) => void; disabled: boolean }) {
+/** One receipt of the request: open it, see it, and (while waiting) approve or decline it. */
+function ItemRow({ it, canDecide, pick, onPick, disabled, onOpen }: { it: ReportItem; canDecide: boolean; pick: { deny: boolean; note: string }; onPick: (p: Partial<{ deny: boolean; note: string }>) => void; disabled: boolean; onOpen: () => void }) {
   const waiting = it.state === 'pending'
   const done = DONE[it.state]
   return (
     <div className="border border-[var(--panel-border)] rounded-[12px] px-2.5 py-2 flex flex-col gap-2">
       <div className="flex items-center gap-2.5 flex-wrap">
         {it.receipt ? (
-          <a href={withViewAs(`/requests/reimbursements/receipt/${it.receipt.id}`)} target="_blank" rel="noreferrer" title={`Open ${it.receipt.file}`} aria-label={`Open the receipt ${it.receipt.file}`}
-            className="w-11 h-11 flex-none rounded-[8px] bg-subtle border border-[var(--panel-border)] flex items-center justify-center text-muted hover:border-tn-teal">
+          <button type="button" onClick={onOpen} title={`Open ${it.receipt.file}`} aria-label={`Open the receipt ${it.receipt.file}`}
+            className="w-11 h-11 flex-none rounded-[8px] bg-subtle border border-[var(--panel-border)] flex items-center justify-center text-muted hover:border-tn-teal hover:text-tn-teal">
             <Icon d={RECEIPT} size={18} width={1.7} />
-          </a>
+          </button>
         ) : (
           // A Mileage line may come without a receipt: the miles and the rate are in what it was for.
           <span title="No receipt: mileage" className="w-11 h-11 flex-none rounded-[8px] bg-[#f8f7f3] border border-dashed border-[#cbd2da] flex items-center justify-center text-[10px] font-bold text-muted">mi</span>
@@ -187,7 +194,7 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
         <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{it.amount}</span>
         {waiting && canDecide ? (
           <div className={SEG_BOX} role="group" aria-label={`Decide ${it.purpose}`}>
-            {([[false, 'Approve'], [true, 'Deny']] as const).map(([d, label]) => (
+            {([[false, 'Approve'], [true, 'Decline']] as const).map(([d, label]) => (
               <button key={label} type="button" disabled={disabled} aria-pressed={pick.deny === d} onClick={() => onPick({ deny: d })}
                 className={`${SEG_OPT} ${pick.deny === d ? (d ? 'bg-[#c8323d] text-[#ffffff]' : SEG_ON) : SEG_OFF}`}>{label}</button>
             ))}
@@ -197,7 +204,7 @@ function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; ca
         ) : null}
       </div>
       {waiting && canDecide && pick.deny && !disabled && (
-        <textarea value={pick.note} onChange={e => onPick({ note: e.target.value })} rows={1} placeholder="Why this receipt is denied (required)" aria-label={`Reason for ${it.purpose}`} className={TEXTAREA_WARN} autoFocus />
+        <textarea value={pick.note} onChange={e => onPick({ note: e.target.value })} rows={1} placeholder="Why this receipt is declined (required)" aria-label={`Reason for ${it.purpose}`} className={TEXTAREA_WARN} autoFocus />
       )}
       {it.state === 'denied' && it.note && <span className="text-[12px] text-[#c8323d]">&quot;{it.note}&quot;</span>}
     </div>

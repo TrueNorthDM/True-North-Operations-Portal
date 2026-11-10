@@ -9,8 +9,8 @@
 
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { FileViewer, receiptFile } from '@/components/ui/FileViewer'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { RmbDocPage } from '@/lib/timeclock/requests-data'
 import type { DocSheetData } from '@/lib/timeclock/pay-docs'
@@ -34,6 +34,9 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
   const [pdf, setPdf] = useState<DocSheetData | null>(initial?.pdf ?? null)
   const [pay, setPay] = useState(!!initial?.pay && d.canPay)
   const [toast, setToast] = useState<ToastState | null>(null)
+  // A receipt opens in the file window, stepping through the document's receipts (owner, 10 November 2026).
+  const [viewing, setViewing] = useState<number | null>(null)
+  const receipts = d.items.map(i => receiptFile(i, i.what, `${i.date} · ${i.category} · ${i.amount}`))
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const openPdf = async () => {
     try {
@@ -80,11 +83,11 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
               <div className="md:hidden flex flex-col gap-1 py-3 border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums">
                 <div className="flex items-baseline justify-between gap-3"><span className="text-tn-ink font-semibold">{i.what}</span><span className="text-tn-ink font-bold whitespace-nowrap">{i.amount}</span></div>
                 <span className="text-[12px] text-muted">{i.date} · {i.category}</span>
-                <a href={withViewAs(`/requests/reimbursements/receipt/${i.id}`)} target="_blank" rel="noreferrer" className="self-start inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></a>
+                <button type="button" onClick={() => setViewing(d.items.indexOf(i))} className="self-start inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0 text-left hover:text-tn-ink"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></button>
               </div>
               <div className={`hidden md:grid ${COLS} py-[11px] border-b border-[var(--row-rule)] text-[13px] items-center tabular-nums lining-nums text-foreground`}>
                 <span className="text-tn-ink font-semibold">{i.date}</span><span>{i.category}</span><span className="text-tn-ink font-semibold">{i.what}</span>
-                <a href={withViewAs(`/requests/reimbursements/receipt/${i.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></a>
+                <button type="button" onClick={() => setViewing(d.items.indexOf(i))} className="inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0 text-left hover:text-tn-ink"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></button>
                 <span className="text-right text-tn-ink font-bold">{i.amount}</span>
               </div>
               </Fragment>
@@ -114,6 +117,7 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
         refPlaceholder="e.g. ACH-20261103" notePlaceholder="" note={null}
         onSaved={t => { setPay(false); say({ text: t }); router.refresh() }} />}
       <Toast toast={toast} />
+      {viewing !== null && <FileViewer files={receipts} start={viewing} onClose={() => setViewing(null)} />}
     </div>
   )
 }

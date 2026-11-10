@@ -9,6 +9,11 @@
  * action; one that needs a reason (send back, decline) asks for it here, as
  * the page does, before it runs.
  *
+ * A reimbursement lists its receipts, each what it was for beside its amount,
+ * with View receipt opening the file in the window over the panel, never a
+ * new tab; Open in Approvals is a button over the two, and Decline is red
+ * (owner, 10 November 2026).
+ *
  * The one text box is either the Reason (send back, decline) or the Note an
  * approval needs; the navy button sends it only as a Note (audit, 25 October
  * 2026: a reason typed for Send back went out as the approval's note). When
@@ -36,10 +41,14 @@ import { asksForNote, panelText, type HomeRow, type PanelButton, type PanelField
 import { DUE_FG, TypeChip, typeOf } from './needs-you-ui'
 import type { Runner } from './needs-you-actions'
 import { BTN } from '@/lib/ui/buttons'
+import { CLIP, FileViewer, receiptFile } from '@/components/ui/FileViewer'
 
 const SYMBOL = { check: 'M5 12l5 5 9-10', arrow: 'M9 6l6 6-6 6' }
 const PRIMARY = `${BTN.navy} flex-1 justify-center disabled:opacity-60 disabled:cursor-wait`
 const SECONDARY = `${BTN.white} justify-center disabled:opacity-60 disabled:cursor-wait`
+const SECONDARY_RED = `${BTN.whiteDanger} justify-center disabled:opacity-60 disabled:cursor-wait`
+/** Declining is the red one, as on Approvals. */
+const declines = (b: PanelButton) => !!b.op && 'decision' in b.op && b.op.decision === 'deny'
 
 export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   row: HomeRow
@@ -61,6 +70,8 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   const [ref, setRef] = useState('')
   const [pending, setPending] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [viewing, setViewing] = useState<number | null>(null)
+  const files = (p.receipts?.items ?? []).flatMap(r => (r.file ? [receiptFile(r.file, r.what, `${r.line} · ${r.amount}`)] : []))
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const asking = field === 'reason'
   const focusField = () => requestAnimationFrame(() => noteRef.current?.focus())
@@ -100,7 +111,7 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   }
 
   const button = (b: PanelButton, isSecondary: boolean) => {
-    const cls = isSecondary ? SECONDARY : PRIMARY
+    const cls = !isSecondary ? PRIMARY : declines(b) ? SECONDARY_RED : SECONDARY
     const inner = (
       <>
         {!isSecondary && (
@@ -135,14 +146,43 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
         </div>
 
         <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-[18px]">
-          <div className="border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+          {p.receipts && (
+            <div className="flex flex-col gap-2.5">
+              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Receipts</span>
+              <div className="border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+                {p.receipts.items.map((r, i) => (
+                  <div key={i} className="px-4 py-3.5 border-b border-[var(--row-rule)] flex flex-col gap-2">
+                    <div className="flex items-start gap-4">
+                      <span className="flex-1 min-w-0 text-[14px] font-semibold text-tn-ink leading-[1.4] [overflow-wrap:anywhere]">{r.what}</span>
+                      <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{r.amount}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex-1 text-[12.5px] text-muted tabular-nums lining-nums">{r.line}</span>
+                      {r.file ? (
+                        <button type="button" onClick={() => setViewing(files.findIndex(f => f.href.endsWith(`/${r.file!.id}`)))}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#d6e9e6] bg-tn-teal-soft text-[12px] font-bold text-tn-teal hover:border-tn-teal">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={CLIP} /></svg>
+                          View receipt
+                        </button>
+                      ) : <span className="text-[12px] text-muted">No receipt: mileage</span>}
+                    </div>
+                  </div>
+                ))}
+                <div className="px-4 py-3 flex items-center bg-[#faf8f3]">
+                  <span className="flex-1 text-[13.5px] font-bold text-foreground">Total, {p.receipts.items.length === 1 ? '1 receipt' : `${p.receipts.items.length} receipts`}</span>
+                  <span className="font-(family-name:--font-display) font-black text-[16px] text-tn-ink tabular-nums lining-nums">{p.receipts.total}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {p.facts.length > 0 && <div className="border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
             {p.facts.map(f => (
               <div key={f.k} className="flex justify-between gap-4 px-4 py-3 border-b border-[#f1f3f6]">
                 <span className="text-[13px] text-muted">{f.k}</span>
                 <span className="text-[13.5px] font-bold text-tn-ink text-right tabular-nums">{f.v}</span>
               </div>
             ))}
-          </div>
+          </div>}
           {p.note && <div className="bg-[#f4f2ec] rounded-[12px] px-4 py-[14px] text-[13.5px] text-foreground leading-[1.55]">{p.note}</div>}
           {p.payForm && (
             <div className="flex flex-col gap-3">
@@ -166,20 +206,21 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
               />
             </label>
           )}
-          <Link href={p.link.href} onClick={onClose} className="text-[13px] font-bold inline-flex items-center gap-1.5 self-start text-tn-teal hover:text-tn-ink">
-            {p.link.label}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
-          </Link>
         </div>
 
         <div className="px-6 py-4 border-t border-[var(--row-rule)] flex flex-col gap-2.5">
           {msg && <p aria-live="polite" className={`m-0 text-[12.5px] font-semibold ${msg.ok ? 'text-[#0d7a4f]' : 'text-[#c8323d]'}`}>{msg.text}</p>}
+          <Link href={p.link.href} onClick={onClose} className={`${BTN.white} justify-center`}>
+            {p.link.label}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-tn-teal)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+          </Link>
           <div className="flex gap-2.5">
             {button(p.primary, false)}
             {p.secondary && button(p.secondary, true)}
           </div>
         </div>
       </div>
+      {viewing !== null && viewing >= 0 && <FileViewer files={files} start={viewing} onClose={() => setViewing(null)} />}
     </>
   )
 }

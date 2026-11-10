@@ -195,7 +195,7 @@ const OFF_CARD: RequestCard = {
     { name: 'Day after Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, null, 'hol'] },
   ] },
   after: 'On approval, by itself: Rippling gets 24h 00m of Vacation, the team calendar gets "Maria Gomez, out" on Mon, Nov 23 to Wed, Nov 25, and North Time writes 8h a day into their time entries.',
-  canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Deny',
+  canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Decline',
 }
 
 const RMB_ITEMS: NonNullable<RequestCard['items']> = [
@@ -207,7 +207,7 @@ const RMB_CARD: RequestCard = {
   kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'Northwind Foods visit, Nov 3 to 4, 3 receipts, $340.82', width: 760, twoCols: false, receipt: null, items: RMB_ITEMS,
   facts: [{ k: 'Client or project', v: 'Northwind Foods' }], allow: null, cal: null,
   after: 'Jordan Lee is a contractor. They add each receipt you approve to their next invoice, as its own line.',
-  canDecide: true, roText: null, approveLabel: 'Approve all 3', denyLabel: 'Deny all',
+  canDecide: true, roText: null, approveLabel: 'Approve all 3', denyLabel: 'Decline all',
 }
 
 const XH_CARD: RequestCard = {
@@ -215,7 +215,7 @@ const XH_CARD: RequestCard = {
   facts: [{ k: 'When', v: 'Week of Nov 15' }, { k: 'Client or project', v: 'Northwind Foods' }, { k: 'Why', v: '"Site audit and fixes before their holiday sale, asked by the client."' }],
   allow: 'Allowance: 30h a week. This week so far: 12h 30m.', cal: null,
   after: "Approved, their allowance for the week of Nov 15 becomes 36h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
-  canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Deny',
+  canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Decline',
 }
 
 function qrow(key: string, type: QueueRow['type'], who: string, x: Partial<QueueRow>): QueueRow {

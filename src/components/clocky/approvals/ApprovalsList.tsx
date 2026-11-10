@@ -137,7 +137,7 @@ export function ApprovalsList({ initialData, api, initial }: {
     setBusy(true)
     try {
       const body = { id: r.id, decision, note }
-      // Several receipts: each one's decision, or all of them one way (the row's Approve, the card's Deny all).
+      // Several receipts: each one's decision, or all of them one way (the row's Approve, the card's Decline all).
       const res = k === 'rmb-report'
         ? await api.decideReimbursementReport({ reportId: r.id, decisions: items ?? (r.request?.items ?? []).filter(i => i.state === 'pending').map(i => ({ id: i.id, decision, note })), version: r.request?.version })
         : k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement({ ...body, version: r.request?.version }) : await api.decideExtraHours(body)
@@ -254,7 +254,7 @@ export function ApprovalsList({ initialData, api, initial }: {
                     {tab === 'wait' && r.type !== 'ts' && r.card && (
                       <>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setCard({ row: r.card!, deny: true }) }}
-                          className={BTN.smallWhiteDanger}>Deny</button>
+                          className={BTN.smallWhiteDanger}>Decline</button>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); if (r.card!.overlap) setCard({ row: r.card!, deny: false }); else void decide(r.card!, 'approve') }}
                           className={BTN.smallNavy}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Approve

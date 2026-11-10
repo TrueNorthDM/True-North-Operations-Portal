@@ -19,10 +19,10 @@ import { InvoicePdfModal } from './InvoicePdfModal'
 import { InvoiceHistory, MarkPaidDialog, STATE_PILL } from './InvoiceParts'
 import type { InvoicesApi } from './InvoicesList'
 import { PAGE_TITLE, CARD, FIELD_LABEL } from '@/lib/ui/type'
-import { withViewAs } from '@/components/ViewAsKeeper'
 import { Pill } from '@/components/ui/Pill'
 import { DriveBox } from './DriveParts'
 import { WhoMadeIt } from './WhoMadeIt'
+import { FileButton } from '@/components/ui/FileViewer'
 
 const EYE = STATUS_ICON.info
 
@@ -91,7 +91,7 @@ export function InvoiceDetailView({ d, api, initial }: {
             <div className={`${CARD} p-[18px] flex flex-col gap-1.5`}>
               <span className={FIELD_LABEL}>Came from</span>
               <span className="text-[13.5px] text-tn-ink font-semibold">{d.cameFrom}</span>
-              {d.ownPdf && <a href={withViewAs(d.ownPdf.href)} target="_blank" rel="noreferrer" className={`${BTN.link} break-all`}>Their own invoice: {d.ownPdf.name}</a>}
+              {d.ownPdf && <FileButton file={{ href: d.ownPdf.href, title: 'Their own invoice', name: d.ownPdf.name }} className={`${BTN.link} break-all text-left`}>Their own invoice: {d.ownPdf.name}</FileButton>}
             </div>
           )}
           {d.doc.record && <WhoMadeIt who={d.doc.record.who} ownPdf={d.doc.record.madeBy === 'own_file' && !d.cameFrom ? d.ownPdf : null} />}

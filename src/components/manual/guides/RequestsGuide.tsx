@@ -156,12 +156,12 @@ export function ApprovalsGuide() {
 
       <Step n={4} title="Approve" picture={<Picture caption="A trip with three receipts, each decided on its own."><ApprovalsPicture open="rmb" /></Picture>}>
         <p className="m-0">Click <strong>Approve</strong>, on the row or on the card. The person hears it in the bell, and the rest happens by itself: time off goes to the calendar and the time entries, a reimbursement to the next invoice or the reimbursement document, extra hours to the allowance.</p>
-        <p className="m-0">A reimbursement with several receipts lists each one, with its receipt to open. Each has <strong>Approve</strong> and <strong>Deny</strong>; switch the ones to deny and give each its reason. The button then says what it will do, for example <strong>Approve 2, deny 1</strong>, with the total approved. <strong>Approve all 3</strong> approves every one.</p>
+        <p className="m-0">A reimbursement with several receipts lists each one, with its receipt to open. Each has <strong>Approve</strong> and <strong>Decline</strong>; switch the ones to decline and give each its reason. The button then says what it will do, for example <strong>Approve 2, decline 1</strong>, with the total approved. <strong>Approve all 3</strong> approves every one.</p>
         <p className="m-0">When someone asks to cancel approved time off, the buttons are <strong>Approve cancellation</strong> and <strong>Keep it</strong>.</p>
       </Step>
 
-      <Step n={5} title="Deny, with a reason">
-        <p className="m-0">Click <strong>Deny</strong>, write the <strong>Reason (required)</strong>, and click <strong>Deny</strong> again. <strong>Cancel</strong> goes back without deciding. The person gets the reason in the bell, and can send a new request. For several receipts, <strong>Deny all</strong> takes one reason for all of them.</p>
+      <Step n={5} title="Decline, with a reason">
+        <p className="m-0">Click <strong>Decline</strong>, write the <strong>Reason (required)</strong>, and click <strong>Decline</strong> again. <strong>Cancel</strong> goes back without deciding. The person gets the reason in the bell, and can send a new request. For several receipts, <strong>Decline all</strong> takes one reason for all of them.</p>
       </Step>
 
       <Tip title="Not yours to decide?">Rows in With others, and cards you open there, are read only: the card says who decides it.</Tip>

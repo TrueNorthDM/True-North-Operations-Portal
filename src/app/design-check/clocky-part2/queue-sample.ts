@@ -63,28 +63,28 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
       { name: 'Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, 'hol', 'hol'] },
     ] },
     after: 'On approval, by itself: Rippling gets 24h of Vacation, the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and North Time writes 8h a day into her time entries.',
-    approveLabel: 'Approve', denyLabel: 'Deny',
+    approveLabel: 'Approve', denyLabel: 'Decline',
   },
   r7: {
     kind: 'rmb', id: 7, type: 'Reimbursement', title: 'Software, $45.00', width: 760, twoCols: true, receipt: { id: 7, file: 'figma-receipt-oct.pdf', sub: 'PDF, 1 page, 84 KB' },
     facts: [{ k: 'Date of the expense', v: 'Fri, Oct 30, 2026' }, { k: 'Amount', v: '$45.00 (USD)' }, { k: 'Description of expense', v: 'Figma Professional for Oct to Dec, for the web team mockups.' }, { k: 'Client or project', v: 'None, not billable to a client' }],
     allow: null, cal: null,
     after: 'Wendy Cacka is an employee. Approving puts it on reimbursement document RMB-2026-0031 for Finance to pay, with her approved USB-C hub ($12.99).',
-    approveLabel: 'Approve', denyLabel: 'Deny',
+    approveLabel: 'Approve', denyLabel: 'Decline',
   },
   r8: {
     kind: 'rmb', id: 8, type: 'Reimbursement', title: 'Equipment, $48.00', width: 760, twoCols: true, receipt: { id: 8, file: 'headset-receipt.jpg', sub: 'Photo from the phone camera, 1.2 MB' },
     facts: [{ k: 'Date of the expense', v: 'Thu, Oct 29, 2026' }, { k: 'Amount', v: '$48.00 (USD)' }, { k: 'Description of expense', v: 'USB headset for client calls (the old one broke).' }, { k: 'Client or project', v: 'Adventist Messengers/HFA, billable to the client' }],
     allow: null, cal: null,
     after: 'Joy Inyele is a contractor. Her October invoice is already approved, so approving puts it on her November invoice by itself.',
-    approveLabel: 'Approve', denyLabel: 'Deny',
+    approveLabel: 'Approve', denyLabel: 'Decline',
   },
   r9: {
     kind: 'xh', id: 9, type: 'Extra hours', title: '8h 00m in November', width: 620, twoCols: false, receipt: null,
     facts: [{ k: 'When', v: 'November 2026' }, { k: 'Client or project', v: '2 - i7 Marketing' }, { k: 'Why', v: '"Six extra i7 blog posts for the Q4 push, asked by the i7 team."' }],
     allow: 'Allowance: 140h a month. November so far: 18h 30m. October: 151h 15m, with 8h approved in advance and 3h 15m over without approval.', cal: null,
     after: "Approved, their November allowance becomes 148h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
-    approveLabel: 'Approve', denyLabel: 'Deny',
+    approveLabel: 'Approve', denyLabel: 'Decline',
   },
 }
 
@@ -108,7 +108,7 @@ function tripRow(sup: boolean): QueueRow {
       kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'São Paulo trip, Oct 12 to 15, 4 receipts, $873.00', width: 760, twoCols: false, receipt: null, items: TRIP_ITEMS,
       facts: [{ k: 'Client or project', v: '2 - i7 Marketing' }], allow: null, cal: null,
       after: 'Justus Tsofa is a contractor. They add each receipt you approve to their next invoice, as its own line.',
-      canDecide: sup, roText: sup ? null : 'Read only. Arnaldo Oliveira decides it.', approveLabel: 'Approve all 4', denyLabel: 'Deny all',
+      canDecide: sup, roText: sup ? null : 'Read only. Arnaldo Oliveira decides it.', approveLabel: 'Approve all 4', denyLabel: 'Decline all',
     },
   }
 }

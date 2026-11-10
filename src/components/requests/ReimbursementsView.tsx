@@ -26,6 +26,7 @@ import { Fragment, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { FileViewer, receiptFile, type ViewFile } from '@/components/ui/FileViewer'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { DAY_HINT, MON, parsePaidOn } from '@/lib/timeclock/paid-on'
 import type { ReimbursementsPage, WaitingRequest } from '@/lib/timeclock/requests-data'
@@ -88,6 +89,9 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
   const [editing, setEditing] = useState<WaitingRequest | null>(null)
   const [leaving, setLeaving] = useState<WaitingRequest | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
+  // A receipt opens in the file window over the list, never a new tab (owner, 10 November 2026).
+  const [viewing, setViewing] = useState<ViewFile | null>(null)
+  const openReceipt = (r: { id: number; what: string; date: string; category: string; amount: string }) => setViewing(receiptFile({ id: r.id, file: 'receipt' }, r.what, `${r.date} · ${r.category} · ${r.amount}`))
   const phone = usePhone()
   // Super Admins and Finance also see everyone's (owner, 2026-10-23), as Time off does.
   // Documents (owner, 25 October 2026): the same people, every reimbursement document, as the Invoices list.
@@ -177,7 +181,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
                   <span className="flex items-center gap-2 min-w-0 text-[13.5px] text-tn-ink font-semibold">
                     {r.what}
                     {r.hasReceipt && (
-                      <a href={withViewAs(`/requests/reimbursements/receipt/${r.id}`)} target="_blank" rel="noreferrer" aria-label="Open the receipt" className="inline-flex text-tn-teal flex-none"><Icon d={RECEIPT} size={13} width={2.2} /></a>
+                      <button type="button" onClick={() => openReceipt(r)} aria-label="Open the receipt" className="inline-flex text-tn-teal flex-none hover:text-tn-ink"><Icon d={RECEIPT} size={13} width={2.2} /></button>
                     )}
                   </span>
                   <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{r.amount}</span>
@@ -220,9 +224,9 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
                   <span className="text-tn-ink font-semibold">{r.what}</span>
                   {r.over && overPill}
                   {r.hasReceipt && (
-                    <a href={withViewAs(`/requests/reimbursements/receipt/${r.id}`)} target="_blank" rel="noreferrer" title="Receipt attached" aria-label="Open the receipt" className="inline-flex text-tn-teal">
+                    <button type="button" onClick={() => openReceipt(r)} title="Receipt attached" aria-label="Open the receipt" className="inline-flex text-tn-teal hover:text-tn-ink">
                       <Icon d={RECEIPT} size={13} width={2.2} />
-                    </a>
+                    </button>
                   )}
                 </div>
                 <div className="px-3.5 py-3 text-right font-(family-name:--font-display) font-extrabold text-tn-ink">{r.amount}</div>
@@ -245,6 +249,7 @@ export function ReimbursementsView({ data, send, markRmbPaid, withdraw, initial 
       {leaving && withdraw && <WithdrawDialog w={leaving} withdraw={withdraw} onClose={() => setLeaving(null)}
         onDone={t => { setLeaving(null); say({ text: t }); router.refresh() }} />}
       <Toast toast={toast} />
+      {viewing && <FileViewer files={[viewing]} onClose={() => setViewing(null)} />}
     </div>
   )
 }

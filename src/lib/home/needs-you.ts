@@ -55,7 +55,7 @@ import { goesToLabel, teamLeadNames } from '@/lib/timeclock/clocky-requests'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel } from '@/lib/timeclock/format'
 import { moneyTotal, usd } from '@/lib/timeclock/invoice-doc'
 import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
-import { totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { receiptsText, totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { currentStep, invoiceApprover, orList, type TimesheetState } from '@/lib/timeclock/routing'
@@ -296,7 +296,27 @@ async function decisionRows(v: Viewer, today: string, now: Date): Promise<HomeRo
   return rows.map(r => decisionRow(r, today))
 }
 
-const declineLabel = (l: string) => (l === 'Deny' ? 'Decline' : l === 'Deny all' ? 'Decline all' : l)
+/** A reimbursement's receipts still waiting, for the panel; null for the other kinds. */
+export function rmbReceipts(r: CardRow): Panel['receipts'] | null {
+  const card = r.request
+  if (card.kind === 'rmb-report') {
+    const waiting = (card.items ?? []).filter(i => i.state === 'pending')
+    return {
+      items: waiting.map(i => ({ what: i.purpose, line: `${i.date} · ${i.category}`, amount: i.amount, file: i.receipt ? { id: i.id, file: i.receipt.file } : null })),
+      total: totalsText(waiting.map(i => i.value)),
+    }
+  }
+  if (card.kind === 'rmb') {
+    // One receipt: its day is the card's "Date of the expense" without the year; its category and amount are the row's.
+    const day = (card.facts.find(f => f.k === 'Date of the expense')?.v ?? '').replace(/^[A-Z][a-z]{2}, /, '').replace(/, \d{4}$/, '')
+    const amount = afterDot(r.main)
+    return {
+      items: [{ what: r.sub, line: [day, beforeDot(r.main)].filter(Boolean).join(' · '), amount, file: card.receipt ? { id: card.receipt.id, file: card.receipt.file } : null }],
+      total: amount,
+    }
+  }
+  return null
+}
 
 function decisionRow(r: CardRow, today: string): HomeRow {
   const card = r.request
@@ -311,7 +331,7 @@ function decisionRow(r: CardRow, today: string): HomeRow {
     sub = `${amount}, ${r.sub}.${r.why ? ` ${r.why}` : ''}`
   } else {
     title = `Reimbursement: ${r.name}`
-    sub = `${amount}, ${r.sub}.${r.why ? ` ${r.why}` : ''}`
+    sub = ''
   }
   const decide = (decision: 'approve' | 'deny') => {
     switch (card.kind) {
@@ -321,17 +341,20 @@ function decisionRow(r: CardRow, today: string): HomeRow {
       case 'rmb-report': return { do: 'reimbursement-report' as const, id: card.id, ids: (card.items ?? []).filter(i => i.state === 'pending').map(i => i.id), decision, version: card.version }
     }
   }
+  // A reimbursement lists its receipts, each what it was for beside its amount (owner, 10 November 2026).
+  const receipts = rmbReceipts(r)
+  if (receipts) sub = `${receipts.total} · ${receiptsText(receipts.items.length)}`
   const panel: Panel = {
     title, sub,
     facts: [
-      ...card.facts,
-      ...(card.items ?? []).filter(i => i.state === 'pending').map(i => ({ k: `${i.date}, ${i.category}`, v: i.amount })),
+      ...(receipts ? card.facts.filter(f => f.k === 'Client or project') : card.facts),
       ...(card.allow ? [{ k: 'Allowance', v: card.allow }] : []),
     ],
+    ...(receipts ? { receipts } : {}),
     note: card.after,
     link: { label: 'Open in Approvals', href: APPROVALS },
     primary: { label: card.approveLabel, op: decide('approve'), icon: 'check' },
-    secondary: { label: declineLabel(card.denyLabel), op: decide('deny'), needsReason: true },
+    secondary: { label: card.denyLabel, op: decide('deny'), needsReason: true },
   }
   return { key: `d-${r.key}`, kind: 'request', title, sub, due: dueToday(today), button: 'Decide', panel }
 }

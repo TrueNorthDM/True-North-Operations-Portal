@@ -52,12 +52,26 @@ export interface PanelButton {
   icon?: 'check' | 'arrow'
 }
 
+export interface PanelReceipt {
+  what: string
+  /** "Nov 9 · Other". */
+  line: string
+  amount: string
+  /** Null: a Mileage line sent without a receipt. */
+  file: { id: number; file: string } | null
+}
+
 export interface Panel {
   title: string
   sub: string
   facts: { k: string; v: string }[]
+  /**
+   * A reimbursement's receipts, each what it was for beside its amount, with
+   * its file to open in the window (owner, 10 November 2026), and their total.
+   */
+  receipts?: { items: PanelReceipt[]; total: string }
   note: string | null
-  /** "Open in Approvals", with the page the row belongs to. */
+  /** "Open in Approvals", with the page the row belongs to: a button over the two (owner, 10 November 2026). */
   link: { label: string; href: string }
   primary: PanelButton
   secondary: PanelButton | null

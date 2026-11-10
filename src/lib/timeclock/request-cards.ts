@@ -270,7 +270,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day into their time entries.`,
           canDecide,
           roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
-          approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Deny',
+          approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Decline',
         },
       })
     }
@@ -337,7 +337,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ? `${who.name} is a contractor. They add each receipt you approve to their next invoice, as its own line.`
             : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
-          approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Deny all' : 'Deny',
+          approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Decline all' : 'Decline',
           ...(pending ? { version: rmbVersion(waiting) } : {}),
         },
       })
@@ -378,7 +378,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ? `${who.name} is a contractor. Approved, they add it to their next invoice.`
             : `${who.name} is an employee. Approving puts it on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
-          approveLabel: 'Approve', denyLabel: 'Deny',
+          approveLabel: 'Approve', denyLabel: 'Decline',
           ...(pending ? { version: rmbVersion([r]) } : {}),
         },
       })
@@ -424,7 +424,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ? `Approved, their allowance for ${when} becomes ${Math.round((cap + Number(r.hours)) * 100) / 100}h. Hours past that are flagged again, in the clock panel, Who's working and this queue.`
             : 'Approved, these hours are added to the allowance of that period. Hours past it are flagged again.',
           canDecide, roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
-          approveLabel: 'Approve', denyLabel: 'Deny',
+          approveLabel: 'Approve', denyLabel: 'Decline',
         },
       })
     }

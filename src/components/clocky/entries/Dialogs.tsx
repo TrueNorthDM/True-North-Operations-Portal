@@ -219,7 +219,7 @@ export function CorrectionReview({ who, goesTo, state, date, time, job, reason, 
         {canDecide && (
           <>
             <button type="button" disabled={busy} onClick={() => { if (!deny) setDeny(true); else if (note.trim()) onDeny(note.trim()) }}
-              style={{ opacity: deny && !note.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Deny</button>
+              style={{ opacity: deny && !note.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Decline</button>
             <button type="button" disabled={busy || !!overlap} onClick={onApprove} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
             </button>
@@ -273,7 +273,7 @@ export function TimeOffCard({ who, state, type, dates, hours, note, canDecide, d
         {canDecide && (
           <>
             <button type="button" disabled={busy} onClick={() => { if (!deny) setDeny(true); else if (reason.trim()) onDeny(reason.trim()) }}
-              style={{ opacity: deny && !reason.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Deny</button>
+              style={{ opacity: deny && !reason.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Decline</button>
             <button type="button" disabled={busy} onClick={onApprove} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
             </button>
