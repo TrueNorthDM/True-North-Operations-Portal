@@ -18,7 +18,15 @@ export function publicOrigin(requestUrl: string): string {
   return app ? new URL(app).origin : new URL(requestUrl).origin
 }
 
+/**
+ * In production the address always comes from INTERNAL_ORIGIN, never from the
+ * request: the request's host is whatever the caller wrote, and these calls carry
+ * the session cookie or the cron secret (security audit, 10 November 2026; the
+ * image sets it, so this only refuses a server started without it).
+ */
 export function internalOrigin(requestUrl: string): string {
   const internal = process.env.INTERNAL_ORIGIN
-  return internal ? new URL(internal).origin : new URL(requestUrl).origin
+  if (internal) return new URL(internal).origin
+  if (process.env.NODE_ENV === 'production') throw new Error('INTERNAL_ORIGIN is not set: the portal will not call itself at an address taken from the request.')
+  return new URL(requestUrl).origin
 }

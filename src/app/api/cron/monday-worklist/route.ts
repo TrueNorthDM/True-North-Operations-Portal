@@ -37,6 +37,7 @@ import { ingestSlice } from '@/lib/monday/worklist/ingest'
 import { applyStaleRule } from '@/lib/monday/worklist/stale-rule'
 import { notifyAfterSync, notifyUnlinked } from '@/lib/notifications/run'
 import { acquireLease, releaseLease, startRun, finishRun, failedThisRun } from '@/lib/monday/worklist/sync-run'
+import { internalOrigin } from '@/lib/auth/public-origin'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -112,14 +113,9 @@ export async function GET(request: Request) {
  * only the first hop ran. Locally the request's own origin is used.
  */
 function nextHopUrl(url: URL): URL {
-  const next = new URL(url.toString())
-  const internal = process.env.INTERNAL_ORIGIN
-  if (internal) {
-    const base = new URL(internal)
-    next.protocol = base.protocol
-    next.host = base.host
-  }
-  return next
+  // The next hop always goes to the portal itself (internalOrigin), never to the
+  // host the request named: it carries the cron secret.
+  return new URL(`${url.pathname}${url.search}`, internalOrigin(url.toString()))
 }
 
 async function runHop(url: URL, hop: number, since: string, secret: string | undefined): Promise<Record<string, unknown>> {
