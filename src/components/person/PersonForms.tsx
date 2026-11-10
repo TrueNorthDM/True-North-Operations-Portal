@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Select } from '@/components/ui/Select'
+import { PhoneField } from '@/components/ui/PhoneField'
 import type { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/actions'
 import { addressZoneText, normalizeAddress, toAddressForm, type AddressForm } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
@@ -93,8 +94,8 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
             <Field label="Last name"><input id="pp-last" value={d.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} /></Field>
             <Field label="Personal email"><input id="pp-mail" type="email" value={d.personalEmail} onChange={e => set('personalEmail', e.target.value)} className={fieldCls} placeholder="name@email.com" /></Field>
             <Field label="Phone / WhatsApp">
-              <input id="pp-phone" value={d.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+1 407 555 0142" />
-              <span className="text-[11px] text-muted">Include the country code so the flag shows.</span>
+              {/* International, with the country's flag (owner, 10 November 2026). */}
+              <PhoneField id="pp-phone" value={d.phone} onChange={v => set('phone', v)} defaultCountry={d.address.country || 'US'} className={fieldCls} selectClassName={fieldCls} />
             </Field>
             <div className="flex flex-col gap-1.5">
               <span className={FIELD_LABEL}>WhatsApp, same number?</span>
