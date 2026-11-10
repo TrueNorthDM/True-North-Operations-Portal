@@ -125,7 +125,7 @@ function Cover({ data }: { data: PersonPageData }) {
       <div className="relative h-[96px] bg-[radial-gradient(circle_at_88%_0%,rgba(242,196,10,.35),transparent_38%),linear-gradient(120deg,#012358,#0a2f6b)]">
         {medal && (
           <div className="absolute right-6 top-[18px] flex items-center gap-2.5 text-right">
-            {cover.tenure?.next && <p className="hidden sm:block m-0 text-[12px] font-semibold text-[#dfe8f5] leading-snug">{cover.tenure.next.replace(/^Next: /, 'Next: ').split(' in ')[0]}<br />{cover.tenure.next.includes(' in ') ? `in ${cover.tenure.next.split(' in ')[1]}` : ''}</p>}
+            {cover.tenure?.next && <p className="hidden sm:block m-0 text-[12px] font-semibold text-[#dfe8f5] leading-snug">{cover.tenure.next.split(' in ')[0]}<br />{cover.tenure.next.includes(' in ') ? `in ${cover.tenure.next.split(' in ')[1]}` : ''}</p>}
             <div className="w-[58px] h-[58px] rounded-full border-4 border-[#F2C40A] grid place-content-center text-center text-[#ffffff] font-(family-name:--font-display) font-black text-[19px] leading-none" title={cover.tenure?.text}>
               {medalValue}<small className="block text-[7px] tracking-[.1em] mt-0.5">{medalUnit}</small>
             </div>

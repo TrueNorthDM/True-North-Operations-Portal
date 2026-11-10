@@ -312,7 +312,7 @@ async function fetchBoardActivity(
         }
       } catch (e) {
         failed++
-        console.error(`[snapshot ${label}] chunk ${c.idx} FAILED:`, e instanceof Error ? e.message : e)
+        console.error('[snapshot %s] chunk %d FAILED:', label, c.idx, e instanceof Error ? e.message : e)
       }
       myIdx = nextIdx++
     }
