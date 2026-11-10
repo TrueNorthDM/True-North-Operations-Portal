@@ -20,11 +20,19 @@ concurrency:
   group: deploy-server
   cancel-in-progress: false
 
-# No repository permissions are needed: the job only opens an SSH connection.
+# No repository permissions by default: the deploy job only opens an SSH
+# connection; the checks job reads the code (contents: read, below).
 permissions: {}
 
 jobs:
+  # Types, lint and tests first (checks.yml): a commit that fails them is not deployed.
+  verify:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/checks.yml
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     # The deploy key lives in this environment (Settings > Environments), which
     # only main may use.
