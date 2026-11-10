@@ -31,7 +31,6 @@ describe('checkDrawer', () => {
   })
   it('refuses without an account to send from, a guest, or a right', () => {
     expect(checkDrawer({ ...base, accountId: null }, member)).toEqual({ ok: false, error: 'Select the account to send from.' })
-    expect(checkDrawer({ ...base, guests: [] }, member)).toEqual({ ok: false, error: 'Add at least one guest.' })
     expect(checkDrawer({ ...base, type: 'training' }, member)).toEqual({ ok: false, error: 'That type is not open to your access.' })
     expect(checkDrawer({ ...base, audience: 'all' }, member)).toEqual({ ok: false, error: 'Inviting all of True North is not open to your access.' })
     expect(checkDrawer({ ...base, audience: 'teams', teams: ['gr'] }, lead)).toEqual({ ok: false, error: 'You can only send to teams you lead.' })
@@ -109,5 +108,17 @@ describe('a Reminder (owner, 8 November 2026)', () => {
     expect(seesEvent(mine, v('arnaldo'), new Set())).toBe(true)
     expect(seesEvent(mine, v('tina'), new Set())).toBe(false)
     expect(seesEvent({ ...mine, audience: 'all' }, v('tina'), new Set())).toBe(true)
+  })
+})
+
+describe('nobody invited (owner, 10 November 2026)', () => {
+  it('saves any type with no guest, seen by the creator alone', () => {
+    for (const type of ['meeting', 'training', 'company', 'celebration'] as const) {
+      const r = checkDrawer({ ...base, type, guests: [] }, admin)
+      expect(r.ok && r.guests).toEqual([])
+    }
+    const mine = { audience: 'guests' as const, audience_team_ids: null, created_by: 'me', team_id: null }
+    expect(seesEvent(mine, { id: 'me', level: 'user', teamIds: [], led: new Set() }, new Set())).toBe(true)
+    expect(seesEvent(mine, { id: 'other', level: 'super_admin', teamIds: [], led: new Set() }, new Set())).toBe(false)
   })
 })

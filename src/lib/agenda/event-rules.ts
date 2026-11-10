@@ -162,7 +162,7 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
   const guests = reminder ? [] : (input.guests ?? []).map(g => ({ personId: g.personId ?? null, email: clean(g.email, 254).toLowerCase() }))
   if (guests.some(g => !EMAIL.test(g.email))) return { ok: false, error: 'One of the guests is not an email address.' }
   if (guests.length > MAX_GUESTS) return { ok: false, error: `Up to ${MAX_GUESTS} guests.` }
-  if (input.audience === 'guests' && !guests.length && !t.client && !reminder) return { ok: false, error: 'Add at least one guest.' }
+  // Any type may have nobody invited (owner, 10 November 2026): on Guests with nobody it stays on the creator's own Agenda.
 
   const start_date = input.date
   let end_date = input.date, starts_at: string | null = null, ends_at: string | null = null
