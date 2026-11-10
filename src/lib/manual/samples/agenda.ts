@@ -58,7 +58,7 @@ export function agendaSettingsSample(): AgendaSettingsData {
     workEmail: `alex.rivera@${TN}`,
     inviteAccountId: 2,
     hours: DEFAULT_HOURS,
-    zone: { name: 'Eastern Time (New York)', versus: 'Same as Washington DC', isDc: true },
+    zone: { name: 'Eastern Time (New York)', versus: 'Same as Washington DC', isDc: true, profileHref: '#' },
     country: null,
     allLevels: [],
     link: { url: 'https://truenorthportal.online/meet/alex-rivera', slug: 'alex-rivera', on: true, lengths: [30, 60], gap: 15, noticeMin: 1440, windowDays: 30, accountId: 2 },

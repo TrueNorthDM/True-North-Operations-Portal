@@ -45,7 +45,7 @@ const linesOf = (invoiceId: unknown) => fake.tables.invoice_lines.filter(l => l.
 
 beforeEach(() => {
   fake = fakeDb({
-    people: [{ id: ME, full_name: 'Jo Lee', location: 'Austin', email_personal: 'jo@example.com', email_true_north: null, internal_rate: 50, monthly_salary: null }],
+    people: [{ id: ME, full_name: 'Jo Lee', address: { country: 'US', state: 'TX', city: 'Austin' }, email_personal: 'jo@example.com', email_true_north: null, internal_rate: 50, monthly_salary: null }],
     invoices: [], invoice_lines: [], invoice_sends: [],
     reimbursements: [rmb(5), rmb(6, { amount: 20 })],
   }, { rpc: { next_document_number: () => 'INV-0100' } })

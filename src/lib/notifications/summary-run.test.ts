@@ -80,12 +80,13 @@ describe('the daily summary run (audit, 9 October 2026)', () => {
     expect(sent).toHaveLength(0)
   })
 
-  it('goes by each person\'s own calendar: Monday in Sydney is still Sunday in New York', async () => {
-    // Monday 19 October 9:30 in Sydney is Sunday 18 October 18:30 in New York.
+  it('goes by each person\'s own calendar: Monday in Auckland is still Sunday in New York', async () => {
+    // Monday 19 October 11:30 in Auckland is Sunday 18 October 18:30 in New York.
+    // The zone comes from the address on their profile (owner, 9 November 2026).
     // (Not the week before: Monday 12 October is Columbus Day, a US holiday.)
     const sunday = new Date('2026-10-18T22:30:00Z')
     seed([row('syd', 'step-late', { deliver_at: '2026-10-18T22:00:00Z' }), row('ny', 'step-late', { deliver_at: '2026-10-18T22:00:00Z' })],
-      { person_settings: [{ person_id: 'syd', time_zone: 'Australia/Sydney' }] })
+      { people: [{ id: 'syd', address: { country: 'NZ', city: 'Auckland' } }, { id: 'ny', address: { country: 'US', state: 'NY' } }] })
     audience = () => makeAudience([person('syd'), person('ny')])
     const r = await run(sunday)
     expect(sent.map(s => s.to)).toEqual(['syd@goodnewsadvocates.org'])

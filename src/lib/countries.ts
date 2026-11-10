@@ -37,3 +37,29 @@ export function countryName(code: string | null | undefined): string | null {
   if (!code) return null
   return regionNames()?.of(code) ?? code
 }
+
+// The usual short forms people type for a country, lower case.
+const ALIASES: Record<string, string> = {
+  usa: 'US', us: 'US', 'u.s.': 'US', 'u.s.a.': 'US', 'united states of america': 'US', america: 'US',
+  uk: 'GB', 'u.k.': 'GB', england: 'GB', scotland: 'GB', wales: 'GB', 'great britain': 'GB',
+  brasil: 'BR',
+}
+
+let byName: Map<string, string> | null = null
+
+/**
+ * The ISO code of a country typed as a code ("br") or as a name ("Brazil",
+ * "USA", "United Kingdom"). Null when it cannot be read (owner, 9 November
+ * 2026: the address is where someone lives, and some were typed by name).
+ */
+export function countryCode(value: string | null | undefined): string | null {
+  const v = value?.trim()
+  if (!v) return null
+  const known = new Set(allCountries().map(c => c.code))
+  if (/^[a-z]{2}$/i.test(v) && known.has(v.toUpperCase())) return v.toUpperCase()
+  if (!byName) {
+    byName = new Map(allCountries().map(c => [c.name.toLowerCase(), c.code]))
+    for (const [k, code] of Object.entries(ALIASES)) byName.set(k, code)
+  }
+  return byName.get(v.toLowerCase()) ?? null
+}

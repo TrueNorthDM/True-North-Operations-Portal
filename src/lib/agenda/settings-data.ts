@@ -18,6 +18,7 @@ import { readHours, type WorkingHours } from './working-hours'
 import { ensureLink } from './booking-data'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
 import { loadGoogleApp } from './google-app'
+import { personHref } from '@/lib/directory/page-rights'
 
 export interface AgendaAccount { id: number; email: string; sample: boolean; needsReconnect: boolean; connectedAt: string }
 
@@ -31,7 +32,8 @@ export interface AgendaSettingsData {
   workEmail: string | null
   inviteAccountId: number | null
   hours: WorkingHours
-  zone: { name: string; versus: string; isDc: boolean }
+  /** Their zone, from the address on their profile (owner, 9 November 2026); `profileHref` is where to change it. */
+  zone: { name: string; versus: string; isDc: boolean; profileHref: string }
   /** The person's own country when it is not the US, for the Holidays card. */
   country: { code: string; name: string; flag: string } | null
   /** Who may invite all of True North (a Super Admin chooses). */
@@ -49,7 +51,7 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     loadDirectory(),
     c.from('agenda_accounts').select('id, person_id, email, source, status, connected_at, connected_by').or(`person_id.eq.${personId},team_calendar.eq.true`).order('connected_at'),
     c.from('agenda_person_settings').select('working_hours, invite_account_id').eq('person_id', personId).maybeSingle(),
-    c.from('people').select('email_true_north, address, location').eq('id', personId).maybeSingle(),
+    c.from('people').select('email_true_north, address').eq('id', personId).maybeSingle(),
     c.from('app_settings').select('agenda_all_levels').eq('singleton_id', 1).maybeSingle(),
     ensureLink(personId),
     portalOrigin(),
@@ -60,8 +62,8 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
   const team = rows.find(r => r.person_id === null) ?? null
   const mine = rows.filter(r => r.person_id === personId).map(account)
   const zone = dir.zoneOf(personId)
-  const p = personRes.data as { email_true_north: string | null; address: { country?: string } | null; location: string | null } | null
-  const cc = countryOf(p?.address ?? null, p?.location ?? null)
+  const p = personRes.data as { email_true_north: string | null; address: { country?: string } | null } | null
+  const cc = countryOf(p?.address ?? null)
   const invite = (setRes.data?.invite_account_id as number | null) ?? null
   return {
     superAdmin,
@@ -71,7 +73,7 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     workEmail: p?.email_true_north ?? null,
     inviteAccountId: mine.some(a => a.id === invite) ? invite : null,
     hours: setRes.data ? readHours(setRes.data.working_hours) : readHours(null),
-    zone: { name: zoneLabel(zone), versus: dcVersus(zone, now), isDc: zone === DC },
+    zone: { name: zoneLabel(zone), versus: dcVersus(zone, now), isDc: zone === DC, profileHref: personHref(personId, 'personal') },
     country: cc && cc !== 'US' ? { code: cc, name: countryName(cc), flag: flagOf(cc) } : null,
     allLevels: (appRes.data?.agenda_all_levels as string[] | null) ?? ['super_admin', 'admin'],
     link: {

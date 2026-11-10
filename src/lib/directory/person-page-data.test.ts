@@ -7,7 +7,6 @@ const contact = vi.fn()
 const twoStep = vi.fn()
 vi.mock('@/lib/hr/contact', () => ({ loadContactByPerson: (...a: unknown[]) => contact(...a) }))
 vi.mock('@/lib/auth/two-step', () => ({ loadTwoStepByAccount: (...a: unknown[]) => twoStep(...a) }))
-vi.mock('@/lib/settings/person', () => ({ loadSettings: async () => null }))
 
 const { loadPersonPage, loadLedMemberIds } = await import('./person-page-data')
 
@@ -47,7 +46,7 @@ describe("what a person's page reads and returns, per viewer (P13)", () => {
     expect(page?.work?.history).toBe('Joined as a writer.')
     expect(page?.personal).toBeNull()
     expect(page?.hr).toBeNull()
-    expect(page?.cover.location).toBeNull()
+    expect(page?.cover.place).toBeNull()
     expect(page?.cover.whatsapp).toBeNull()
     expect(contact).not.toHaveBeenCalled()
     expect(twoStep).not.toHaveBeenCalled()

@@ -12,6 +12,7 @@ import { dueOn } from './invoice-lines'
 import { loadInvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
 import { builderProblem, lineAmount, linesAtFileRate, payOnFile, type BuilderLine, type MadeBy, type SentFrom } from './contractor-invoice-rules'
+import { placeOf, type PersonAddress } from '@/lib/address'
 
 export * from './contractor-invoice-rules'
 
@@ -103,7 +104,7 @@ export async function writeSentInvoice(x: {
   const q = c.from('invoices').select('*').eq('person_id', x.personId)
   const [settings, personRes, rmbRes, exRes, formRes] = await Promise.all([
     loadInvoiceSettings(),
-    c.from('people').select('full_name, location, email_personal, email_true_north, internal_rate, monthly_salary').eq('id', x.personId).maybeSingle(),
+    c.from('people').select('full_name, address, email_personal, email_true_north, internal_rate, monthly_salary').eq('id', x.personId).maybeSingle(),
     ids.length
       ? c.from('reimbursements').select('id, category, purpose, amount, state, invoice_id, person_id').in('id', ids)
       : Promise.resolve({ data: [], error: null }),
@@ -153,7 +154,7 @@ export async function writeSentInvoice(x: {
   const fields = {
     person_id: x.personId, submission_id: x.submissionId, period_start: x.start, period_end: x.end, kind: x.kind,
     state: 'waiting', issued_on: issued, due_on: dueOn(issued, settings.paymentDays), total: record.total,
-    from_snapshot: { name: person?.full_name ?? '', location: person?.location ?? '', email: person?.email_personal ?? person?.email_true_north ?? '' },
+    from_snapshot: { name: person?.full_name ?? '', location: placeOf(person?.address as PersonAddress | null | undefined) ?? '', email: person?.email_personal ?? person?.email_true_north ?? '' },
     to_snapshot: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '', email: settings.billingEmail ?? '' },
     approved_by: null, approved_at: null, paid_note: null, updated_at: now.toISOString(),
     ...sendFields(record, now),

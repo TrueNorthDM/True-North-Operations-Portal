@@ -65,7 +65,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
       .not('recurrence', 'is', null).lte('start_date', addDays(to, 1)).or(`recur_until.is.null,recur_until.gte.${addDays(from, -1)}`).limit(500),
     // Where people live, for the national holidays.
-    c.from('people').select('id, address, location').limit(5000),
+    c.from('people').select('id, address').limit(5000),
   ])
   for (const r of [offRes, evRes, seriesRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
   const items: AgendaItem[] = []
@@ -139,7 +139,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   for (const [d, name] of holidaysIn(from, to)) items.push({ id: `hol:${d}`, k: 'hol', a: d, b: d, title: name, country: 'US' })
 
   // Other countries' national holidays, shown only (owner, 2026-10-23).
-  const home = new Map((homeRes.data ?? []).map(r => [r.id as string, countryOf(r.address as { country?: string } | null, r.location as string | null)]))
+  const home = new Map((homeRes.data ?? []).map(r => [r.id as string, countryOf(r.address as { country?: string } | null)]))
   const wanted = new Set<string>()
   if (v.superAdmin || v.admin) { for (const [id, cc] of home) if (cc && dir.people.get(id)?.active) wanted.add(cc) }
   else { const mine = home.get(v.id); if (mine) wanted.add(mine) }

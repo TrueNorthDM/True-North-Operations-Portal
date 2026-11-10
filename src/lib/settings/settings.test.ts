@@ -5,14 +5,15 @@ import { buildRail } from '@/lib/access/nav'
 
 describe('what a browser may send to Settings', () => {
   it('reads each setting and maps it to its column', () => {
-    expect(cleanSettings({ timeZone: 'America/Sao_Paulo' })).toEqual({ time_zone: 'America/Sao_Paulo' })
-    expect(cleanSettings({ timeZone: null })).toEqual({ time_zone: null })
     expect(cleanSettings({ summaryHour: 7, startPage: 'my-work' })).toEqual({ summary_hour: 7, start_page: 'my-work' })
     expect(cleanSettings({ showBirthday: false, showAnniversary: true })).toEqual({ show_birthday: false, show_anniversary: true })
   })
 
   it('refuses what it does not know', () => {
     expect(cleanSettings({ timeZone: 'Mars/Olympus' })).toBeNull()
+    // The zone comes from the address (owner, 9 November 2026): nobody may set it.
+    expect(cleanSettings({ timeZone: 'America/Sao_Paulo' })).toBeNull()
+    expect(cleanSettings({ timeZone: null })).toBeNull()
     expect(cleanSettings({ summaryHour: 3 })).toBeNull()
     expect(cleanSettings({ startPage: '/admin' })).toBeNull()
     expect(cleanSettings({ showBirthday: 'no' })).toBeNull()

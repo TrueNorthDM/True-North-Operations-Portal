@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 
 export default function SettingsCheck() {
   if (process.env.NODE_ENV === 'production') notFound()
-  const settings = { ...DEFAULT_SETTINGS, timeZone: 'America/Sao_Paulo', ownZone: true, summaryHour: 7, favourites: ['i7', 'publishing', 'my-team'] }
+  const settings = { ...DEFAULT_SETTINGS, timeZone: 'America/Sao_Paulo', summaryHour: 7, favourites: ['i7', 'publishing', 'my-team'] }
   return (
     <div className="min-h-screen bg-background p-8 space-y-8">
       <div className="space-y-5">
@@ -25,6 +25,7 @@ export default function SettingsCheck() {
         </div>
         <PersonalSettings
           settings={settings}
+          zone={{ text: 'Brasília time (BRT), Sao Paulo', profileHref: '#' }}
           email="arnaldo.oliveira@me.com"
           save={null}
           signOutEverywhere={null}

@@ -1,9 +1,11 @@
 /**
  * A person's own settings (person_settings, migrations 092 and 093), behind the
- * personal Settings page (7 October 2026): their time zone and the hour of
- * their daily summary, the page they land on after signing in, their
+ * personal Settings page (7 October 2026): the hour of their daily summary, the page they land on after signing in, their
  * favourite pages on Home, and whether Home shows their birthday and work
- * anniversary.
+ * anniversary. Their time zone is here too, but it is not a setting any more
+ * (owner, 9 November 2026): it comes from the address on their Directory
+ * profile alone (zoneOfAddress in lib/address.ts). person_settings.time_zone
+ * stays in the database and is neither read nor written.
  *
  * Read and written with the privileged client for the person the server has
  * already identified (like the notification tables). Every reader degrades to
@@ -13,17 +15,16 @@
 
 import type { Db } from '@/lib/supabase/types'
 import { DAILY_HOUR, DAILY_ZONE } from '@/lib/notifications/catalogue'
-import { validZone } from '@/lib/notifications/schedule'
 import { missingTable } from '@/lib/supabase/errors'
+import { zoneOfAddress, type PersonAddress } from '@/lib/address'
 
 type Client = Db
 
 export type StartPage = 'home' | 'my-work'
 
 export interface PersonSettings {
+  /** From the address on their profile; New York when it cannot tell. */
   timeZone: string
-  /** Whether they chose a zone, or follow the company's. */
-  ownZone: boolean
   summaryHour: number
   startPage: StartPage
   /** Navigation keys, in order, at most FAVOURITES_MAX. */
@@ -41,20 +42,19 @@ export const START_PAGES: readonly { key: StartPage; label: string; href: string
 ]
 
 export const DEFAULT_SETTINGS: PersonSettings = {
-  timeZone: DAILY_ZONE, ownZone: false, summaryHour: DAILY_HOUR, startPage: 'home',
+  timeZone: DAILY_ZONE, summaryHour: DAILY_HOUR, startPage: 'home',
   favourites: [], showBirthday: true, showAnniversary: true,
 }
 
 type Row = {
-  person_id: string; time_zone: string | null; summary_hour: number | null; start_page: string | null
+  person_id: string; summary_hour: number | null; start_page: string | null
   favourites: string[] | null; show_birthday: boolean | null; show_anniversary: boolean | null
 }
 
 function fromRow(r: Partial<Row> | null | undefined): PersonSettings {
   if (!r) return { ...DEFAULT_SETTINGS }
   return {
-    timeZone: validZone(r.time_zone),
-    ownZone: !!r.time_zone,
+    timeZone: DAILY_ZONE,
     summaryHour: r.summary_hour != null && SUMMARY_HOURS.includes(r.summary_hour) ? r.summary_hour : DAILY_HOUR,
     startPage: r.start_page === 'my-work' ? 'my-work' : 'home',
     favourites: (r.favourites ?? []).slice(0, FAVOURITES_MAX),
@@ -73,7 +73,7 @@ export async function loadSettingsFor(db: Client, personIds: readonly string[], 
   for (let i = 0; i < personIds.length; i += 200) {
     // Typed loosely: the fallback reads fewer columns when a migration has not run.
     let res: { data: unknown[] | null; error: unknown } = await db.from('person_settings').select('*').in('person_id', personIds.slice(i, i + 200))
-    if (res.error) res = await db.from('person_settings').select('person_id, time_zone').in('person_id', personIds.slice(i, i + 200))
+    if (res.error) res = await db.from('person_settings').select('person_id').in('person_id', personIds.slice(i, i + 200))
     if (res.error) {
       if (opts.strict && !missingTable(res.error as { code?: string; message?: string })) {
         throw new Error(`Personal settings could not be read: ${(res.error as { message?: string }).message ?? 'unknown error'}`)
@@ -82,26 +82,21 @@ export async function loadSettingsFor(db: Client, personIds: readonly string[], 
     }
     for (const r of (res.data ?? []) as Row[]) out.set(r.person_id, fromRow(r))
   }
-  await zonesFromPlaces(db, personIds, out)
+  await zonesFromAddresses(db, personIds, out)
   return out
 }
 
 /**
- * Anyone who has not picked a time zone gets the one where they live, from the
- * Directory's address or location (owner, 6 November 2026), instead of New
- * York's. A failed read, or a place not recognised, keeps New York.
+ * Everyone's time zone is the one where they live, from the address on their
+ * Directory profile (owner, 6 and 9 November 2026). A failed read, or an
+ * address that cannot tell, keeps New York.
  */
-async function zonesFromPlaces(db: Client, personIds: readonly string[], out: Map<string, PersonSettings>): Promise<void> {
-  const open = personIds.filter(id => !out.get(id)?.ownZone)
-  if (!open.length) return
-  // Loaded here, on the server only: the Settings screen imports this file's constants.
-  const [{ countryOf }, { zoneFromPlace }] = await Promise.all([import('@/lib/agenda/holidays'), import('./zone-from-place')])
-  for (let i = 0; i < open.length; i += 200) {
-    const { data, error } = await db.from('people').select('id, location, address').in('id', open.slice(i, i + 200))
+async function zonesFromAddresses(db: Client, personIds: readonly string[], out: Map<string, PersonSettings>): Promise<void> {
+  for (let i = 0; i < personIds.length; i += 200) {
+    const { data, error } = await db.from('people').select('id, address').in('id', personIds.slice(i, i + 200))
     if (error) return
-    for (const p of (data ?? []) as { id: string; location: string | null; address: { country?: string | null; state?: string | null } | null }[]) {
-      const zone = zoneFromPlace(countryOf(p.address, p.location), [p.location, p.address?.state].filter(Boolean).join(', '))
-      if (zone) out.set(p.id, { ...(out.get(p.id) ?? DEFAULT_SETTINGS), timeZone: zone })
+    for (const p of (data ?? []) as { id: string; address: PersonAddress | null }[]) {
+      out.set(p.id, { ...(out.get(p.id) ?? DEFAULT_SETTINGS), timeZone: zoneOfAddress(p.address).zone })
     }
   }
 }
@@ -125,7 +120,6 @@ export async function loadCelebrationOptOuts(db: Client): Promise<{ birthday: Se
 
 /** A change a browser may send: any subset of the settings. */
 export interface SettingsPatch {
-  timeZone?: string | null
   summaryHour?: number
   startPage?: StartPage
   favourites?: string[]
@@ -142,11 +136,8 @@ export function cleanSettings(v: unknown): Record<string, unknown> | null {
   if (!v || typeof v !== 'object') return null
   const o = v as Record<string, unknown>
   const out: Record<string, unknown> = {}
-  if ('timeZone' in o) {
-    if (o.timeZone === null) out.time_zone = null
-    else if (typeof o.timeZone === 'string' && validZone(o.timeZone) === o.timeZone) out.time_zone = o.timeZone
-    else return null
-  }
+  // The time zone is not a setting any more (owner, 9 November 2026): it comes from the address.
+  if ('timeZone' in o) return null
   if ('summaryHour' in o) {
     if (typeof o.summaryHour !== 'number' || !SUMMARY_HOURS.includes(o.summaryHour)) return null
     out.summary_hour = o.summaryHour

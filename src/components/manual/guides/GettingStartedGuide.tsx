@@ -120,7 +120,8 @@ const WHERE: { what: string; where: React.ReactNode }[] = [
   { what: 'My own page', where: <>The avatar, <b>My profile</b></> },
   { what: 'My review, my goals, the org chart, anniversaries', where: <><b>People</b>, <b>Human Resources</b></> },
   { what: 'What changed in the portal', where: <><b>People</b>, <b>History</b></> },
-  { what: 'My notifications, time zone, two-step sign-in', where: <>The avatar, <b>Settings</b></> },
+  { what: 'My notifications, two-step sign-in', where: <>The avatar, <b>Settings</b></> },
+  { what: 'My time zone', where: <>The address on <b>My profile</b>, Personal</> },
   { what: 'This manual', where: <>The book icon on the rail, <b>System manual</b></> },
   { what: 'Access levels, View Stage, Monday accounts, Automations', where: <><b>Admin</b> (Admins and Super Admins)</> },
   { what: 'Company settings and notification rules for everyone', where: <><b>Admin</b>, under Configuration</> },
@@ -171,7 +172,7 @@ export function ProfileSettingsGuide() {
       <Step n={2} title="Keep your profile up to date" picture={<Picture caption="Your page, on its Personal tab." height={620}><ProfilePicture /></Picture>}>
         <p className="m-0"><strong>My profile</strong> opens the same page everyone else opens for you, cut into tabs by who keeps the information:</p>
         <ul className="m-0 pl-5 flex flex-col gap-1">
-          <li><strong>Personal</strong>: you keep it. Click <strong>Edit personal data</strong> to change your phone, address, date of birth and location, then <strong>Save changes</strong>.</li>
+          <li><strong>Personal</strong>: you keep it. Click <strong>Edit personal data</strong> to change your phone, address and date of birth, then <strong>Save changes</strong>. Start the address with the country, then the state: it sets your time zone, shown under it.</li>
           <li><strong>Work</strong>: the company keeps it (title, teams, who you report to). If something is wrong, tell an Admin.</li>
           <li><strong>Reports</strong>: who reports to you.</li>
         </ul>
@@ -188,7 +189,7 @@ export function ProfileSettingsGuide() {
       </Step>
 
       <Step n={5} title="Your time zone and start page" picture={<Picture caption="Settings, Time and region."><SettingsPicture only={['time']} /></Picture>}>
-        <p className="m-0">Pick <strong>Your time zone</strong> and when the <strong>Daily summary</strong> arrives: the bell and the summary follow it. Until you choose, it is the time where your Directory profile says you live, or New York time when it does not say.</p>
+        <p className="m-0"><strong>Your time zone</strong> is shown here, read only: it comes from the address on your profile (New York time when the address cannot tell), and the bell and the summary follow it. To change it, change the address. Pick when the <strong>Daily summary</strong> arrives.</p>
         <p className="m-0">Under <strong>Home and start</strong>, <strong>After you sign in, open</strong> chooses the page you land on (Home or My Work).</p>
         <p className="m-0">Below it, a <strong>Show ... on Home</strong> switch for each card you can have (Needs you, Pay period, Agenda, My goals, i7 budget, Publishing goals) chooses what Home shows you. The day banner with the clock and the annual review card always show.</p>
       </Step>

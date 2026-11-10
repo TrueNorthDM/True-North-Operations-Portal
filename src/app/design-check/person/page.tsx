@@ -31,13 +31,13 @@ export default async function PersonCheck({ searchParams }: { searchParams: Prom
     cover: {
       teams: TEAMS, hireDate: hire,
       tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: nextMilestone(t) },
-      location: rights.personal ? 'Orlando, Florida, USA' : null, localTime: rights.personal ? '3:12 PM' : null,
+      place: rights.personal ? 'Orlando, FL, United States' : null, localTime: rights.personal ? '3:12 PM' : null,
       email: !rights.own && rights.work ? 'maya@goodnewsadvocates.org' : null,
       whatsapp: !rights.own && rights.personal ? '14075550142' : null,
     },
     personal: rights.personal ? {
       lastName: 'Torres', personalEmail: 'maya.torres@example.com', phone: '+1 407 555 0142', whatsappSame: 'yes',
-      dateOfBirth: '1994-03-14', location: 'Orlando, Florida, USA',
+      dateOfBirth: '1994-03-14',
       address: { country: 'US', zip: '32801', city: 'Orlando', line1: '1200 Example Ave', line2: null, state: 'FL' },
     } : null,
     work: rights.work ? {

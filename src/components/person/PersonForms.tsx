@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Select } from '@/components/ui/Select'
 import type { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/actions'
-import { toAddressForm, type AddressForm } from '@/lib/address'
+import { addressZoneText, normalizeAddress, toAddressForm, type AddressForm } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
 import { MILESTONE_KINDS, MILESTONE_LABEL, toMilestoneForms, type MilestoneForm } from '@/lib/milestones'
 import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS, roleTypePill } from '@/lib/directory/people-types'
@@ -80,7 +80,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
   const p = data.personal!
   const [d, setD] = useState({
     lastName: p.lastName ?? '', personalEmail: p.personalEmail ?? '', phone: p.phone ?? '', whatsappSame: p.whatsappSame ?? '',
-    dateOfBirth: p.dateOfBirth ?? '', location: p.location ?? '', address: toAddressForm(p.address),
+    dateOfBirth: p.dateOfBirth ?? '', address: toAddressForm(p.address),
   })
   const countries = useMemo(() => allCountries().map(c => ({ value: c.code, label: `${c.flag ? `${c.flag}  ` : ''}${c.name}` })), [])
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(x => ({ ...x, [k]: v }))
@@ -105,19 +105,20 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
         <Section title="About">
           <div className="flex flex-col gap-3.5 pt-2">
             <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={dateFieldCls} clearable /></Field>
-            <Field label="Location"><input id="pp-loc" value={d.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Field>
+            {/* The address is where they live and sets their time zone (owner, 9 November 2026): the country first, then the rest. */}
             <div className="flex flex-col gap-1.5">
-              <span className={FIELD_LABEL}>Full address</span>
+              <span className={FIELD_LABEL}>Address</span>
               <Select fullWidth searchable value={d.address.country} onChange={v => setAddr('country', v)} options={countries} placeholder="Select a country…" className={selectFieldCls} ariaLabel="Country" />
               {d.address.country && (
                 <div className="flex flex-col gap-2">
-                  <input value={d.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" aria-label="ZIP" />
+                  <input value={d.address.state} onChange={e => setAddr('state', e.target.value)} className={fieldCls} placeholder="State / Province / Region" aria-label="State" />
                   <input value={d.address.city} onChange={e => setAddr('city', e.target.value)} className={fieldCls} placeholder="City" aria-label="City" />
+                  <input value={d.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" aria-label="ZIP" />
                   <input value={d.address.line1} onChange={e => setAddr('line1', e.target.value)} className={fieldCls} placeholder="Address line 1 (street, number)" aria-label="Address line 1" />
                   <input value={d.address.line2} onChange={e => setAddr('line2', e.target.value)} className={fieldCls} placeholder="Address line 2 (apt, suite)" aria-label="Address line 2" />
-                  <input value={d.address.state} onChange={e => setAddr('state', e.target.value)} className={fieldCls} placeholder="State / Province / Region" aria-label="State" />
                 </div>
               )}
+              <span className="text-[12px] text-muted" aria-live="polite">Time zone: {addressZoneText(normalizeAddress(d.address))}</span>
             </div>
           </div>
         </Section>

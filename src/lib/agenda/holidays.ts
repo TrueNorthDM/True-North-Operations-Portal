@@ -9,31 +9,23 @@
  */
 
 import Holidays from 'date-holidays'
-
-const ALIASES: Record<string, string> = {
-  usa: 'US', 'u.s.': 'US', 'u.s.a.': 'US', 'united states of america': 'US', america: 'US',
-  uk: 'GB', 'u.k.': 'GB', england: 'GB', scotland: 'GB', wales: 'GB', 'great britain': 'GB',
-}
+import { countryCode } from '@/lib/countries'
 
 let names: Map<string, string> | null = null
-/** Country name (and the usual short forms) -> ISO code, lower case. */
+/** Country name, as the holiday package says it -> ISO code, lower case. */
 function nameIndex(): Map<string, string> {
   if (names) return names
-  const m = new Map<string, string>()
-  for (const [code, name] of Object.entries(new Holidays().getCountries('en'))) m.set(name.toLowerCase(), code)
-  for (const [k, v] of Object.entries(ALIASES)) m.set(k, v)
-  names = m
-  return m
+  names = new Map(Object.entries(new Holidays().getCountries('en')).map(([code, name]) => [name.toLowerCase(), code]))
+  return names
 }
 
-/** Where a person lives: the address country, else the last part of the location ("Nairobi, Kenya"). */
-export function countryOf(address: { country?: string | null } | null | undefined, location: string | null | undefined): string | null {
-  const code = address?.country?.trim().toUpperCase()
-  if (code && /^[A-Z]{2}$/.test(code)) return code
-  const last = location?.split(',').at(-1)?.trim().toLowerCase()
-  if (!last) return null
-  if (/^[a-z]{2}$/.test(last) && last !== 'us' && new Holidays().getCountries('en')[last.toUpperCase()]) return last.toUpperCase()
-  return nameIndex().get(last) ?? (last === 'us' ? 'US' : null)
+/**
+ * Where a person lives: the country of their address (owner, 9 November 2026:
+ * the address is the only source; the old location is not read). The form
+ * stores the ISO code; one typed by hand as a name ("Brazil", "USA") is read too.
+ */
+export function countryOf(address: { country?: string | null } | null | undefined): string | null {
+  return countryCode(address?.country) ?? nameIndex().get(address?.country?.trim().toLowerCase() ?? '') ?? null
 }
 
 /** A country's public holidays between two days: day -> name. */

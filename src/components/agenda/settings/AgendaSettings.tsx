@@ -477,14 +477,14 @@ function HolidaysCard({ country }: { country: AgendaSettingsData['country'] }) {
 
 function YourTimeCard({ zone }: { zone: AgendaSettingsData['zone'] }) {
   return (
-    <section className={CARD} aria-label="Your time">
+    <section className={CARD} aria-label="Your time zone">
       <div>
-        <div className={TITLE}>Your time</div>
+        <div className={TITLE}>Your time zone</div>
         <p className={`${SUB} m-0 mt-1`}>Every event is set in Washington DC time (ET). The portal shows your local time beside it.</p>
       </div>
       <div className={`${BEIGE} flex items-start gap-2.5 text-[13.5px] text-foreground leading-[1.45]`}>
         <Icon d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2" size={17} color="#1E7D7F" width={2} />
-        <span><b className="text-tn-ink">{zone.name}</b>{zone.isDc ? ', the same as Washington.' : `. Right now Washington is ${zone.versus}.`} You can change it in <Link href="/settings" className="font-bold text-tn-teal hover:underline">your Settings</Link>.</span>
+        <span><b className="text-tn-ink">{zone.name}</b>{zone.isDc ? ', the same as Washington.' : `. Right now Washington is ${zone.versus}.`} It comes from the address on <Link href={zone.profileHref} className="font-bold text-tn-teal hover:underline">your profile</Link>: change the address there to change it.</span>
       </div>
     </section>
   )

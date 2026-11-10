@@ -27,6 +27,8 @@ import { hiddenFor, loadHiddenColumns } from '@/lib/settings/columns'
 import { homeCardsFor } from '@/lib/home/cards'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { addressZoneText, type PersonAddress } from '@/lib/address'
+import { personHref } from '@/lib/directory/page-rights'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Settings' }
@@ -35,13 +37,15 @@ export default async function SettingsPage() {
   const access = await requireSurface('home')
   const [me, user, viewAs, twoStep] = await Promise.all([getCurrentPerson(), getSessionUser(), getViewAs(), checkTwoStep()])
   const db = createAdminClient()
-  const [settings, { rules, ready }, prefs, { data: memberships }, hiddenCols, ntOpen] = await Promise.all([
+  const [settings, { rules, ready }, prefs, { data: memberships }, hiddenCols, ntOpen, { data: addressRow }] = await Promise.all([
     me ? loadSettings(db, me.id) : Promise.resolve({ ...DEFAULT_SETTINGS }),
     loadRules(db),
     me ? loadPrefs(db, [me.id]) : Promise.resolve(new Map()),
     me ? db.from('team_members').select('position').eq('person_id', me.id) : Promise.resolve({ data: [] }),
     loadHiddenColumns(db, me?.id),
     northTimeOpen().catch(() => false),
+    // Their time zone comes from the address on their profile (owner, 9 November 2026).
+    me ? db.from('people').select('address').eq('id', me.id).maybeSingle() : Promise.resolve({ data: null }),
   ])
   // Home's cards this person can have (the same gates as Home), for the switches.
   const homeCards = homeCardsFor({
@@ -67,6 +71,7 @@ export default async function SettingsPage() {
       </div>
       <PersonalSettings
         settings={settings}
+        zone={{ text: addressZoneText((addressRow?.address as PersonAddress | null | undefined) ?? null), profileHref: me ? personHref(me.id, 'personal') : null }}
         // The person on screen: in View Stage, theirs, not the session's.
         email={me?.email ?? user?.email ?? null}
         blocked={blocked}

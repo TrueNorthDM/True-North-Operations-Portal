@@ -127,6 +127,7 @@ export function SettingsPicture({ only }: { only: readonly SettingsSection[] }) 
   return (
     <PersonalSettings
       settings={SETTINGS_SAMPLE}
+      zone={{ text: 'Central time (CT), Chicago', profileHref: null }}
       email={EMAIL}
       save={null}
       signOutEverywhere={null}

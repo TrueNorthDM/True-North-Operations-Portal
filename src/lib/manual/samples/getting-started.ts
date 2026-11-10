@@ -165,7 +165,7 @@ export const PUBLISHING_SAMPLE = {
 // ── Settings and the profile ────────────────────────────────────────────────
 
 /** Jordan's choices: Chicago time, the summary at 8:00, three favourites. */
-export const SETTINGS_SAMPLE: PersonSettings = { ...DEFAULT_SETTINGS, timeZone: 'America/Chicago', ownZone: true, summaryHour: 8, favourites: ['publishing', 'my-team', 'directory'] }
+export const SETTINGS_SAMPLE: PersonSettings = { ...DEFAULT_SETTINGS, timeZone: 'America/Chicago', summaryHour: 8, favourites: ['publishing', 'my-team', 'directory'] }
 
 const TEAMS = [{ teamId: 't-web', teamName: 'Web', color: '#A99BD4', position: 'lead' as const, primary: true }]
 
@@ -179,11 +179,11 @@ export function profileSample(): PersonPageData {
     cover: {
       teams: TEAMS, hireDate: hire,
       tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: null },
-      location: 'Austin, Texas, USA', localTime: '9:20 AM', email: null, whatsapp: null,
+      place: 'Austin, TX, United States', localTime: '9:20 AM', email: null, whatsapp: null,
     },
     personal: {
       lastName: 'Lee', personalEmail: 'jordan.lee@example.com', phone: '+1 512 555 0147', whatsappSame: 'yes',
-      dateOfBirth: '1990-07-21', location: 'Austin, Texas, USA',
+      dateOfBirth: '1990-07-21',
       address: { country: 'US', zip: '78701', city: 'Austin', line1: '400 Example St', line2: null, state: 'TX' },
     },
     work: null, hr: null, reports: null, options: null, rates: null,

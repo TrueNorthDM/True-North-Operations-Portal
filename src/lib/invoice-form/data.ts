@@ -27,7 +27,6 @@ import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
 import type { Json } from '@/lib/types/database.generated'
 import { sendEmail } from '@/lib/email/resend'
 import { formatAddressLines, normalizeAddress, type PersonAddress } from '@/lib/address'
-import { countryName } from '@/lib/countries'
 import { dueOn } from '@/lib/timeclock/invoice-lines'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { dateLabel, localDate } from '@/lib/timeclock/format'
@@ -56,7 +55,6 @@ export interface FoundSender {
   personId: string
   name: string
   address: PersonAddress | null
-  location: string | null
 }
 
 const MAILBOXES = ['email_true_north', 'email_goodnews', 'email_personal', 'email_coe'] as const
@@ -68,13 +66,13 @@ const MAILBOXES = ['email_true_north', 'email_goodnews', 'email_personal', 'emai
  */
 export async function findSender(email: string): Promise<FoundSender | null> {
   const like = email.replace(/[\\%_]/g, m => `\\${m}`)
-  const { data, error } = await c().from('people').select('id, full_name, status, address, location, email_true_north, email_goodnews, email_personal, email_coe')
+  const { data, error } = await c().from('people').select('id, full_name, status, address, email_true_north, email_goodnews, email_personal, email_coe')
     .or(MAILBOXES.map(m => `${m}.ilike.${like}`).join(',')).limit(20)
   if (error) throw new Error(`The Directory could not be read: ${error.message}`)
   const found = (data ?? []).filter(p => MAILBOXES.some(m => (p[m] ?? '').trim().toLowerCase() === email))
     .sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active') || (a.full_name ?? '').localeCompare(b.full_name ?? ''))
   const p = found[0]
-  return p ? { personId: p.id, name: p.full_name ?? '', address: (p.address as PersonAddress | null) ?? null, location: p.location ?? null } : null
+  return p ? { personId: p.id, name: p.full_name ?? '', address: (p.address as PersonAddress | null) ?? null } : null
 }
 
 /** A person's own deliverable rates (Rates & Costs), each null when not set. */
@@ -349,13 +347,11 @@ function rmbRow(personId: string, r: FormReimbursement, file: StoredFile | null,
   }
 }
 
-/** "Use these" (decision B): what they changed goes on their own record too: the address, and the location when it was empty. */
+/** "Use these" (decision B): what they changed goes on their own record too: the address (people.location is no longer written, owner 9 November 2026). */
 export async function writeBackAddress(personId: string, s: SenderInput): Promise<void> {
   const address = senderAddress(s)
   if (!address) return
-  const { data: p } = await c().from('people').select('location').eq('id', personId).maybeSingle()
-  const location = p?.location ? undefined : [s.city, countryName(s.country)].filter(Boolean).join(', ') || undefined
-  const { error } = await c().from('people').update({ address: address as Json, ...(location ? { location } : {}) }).eq('id', personId)
+  const { error } = await c().from('people').update({ address: address as Json }).eq('id', personId)
   if (error) console.error('[invoice form] the address was not saved on the record:', error.message)
 }
 

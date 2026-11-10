@@ -82,13 +82,13 @@ export function personPageSample(viewer: PageViewer): PersonPageData {
     cover: {
       teams, hireDate: p.hire,
       tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: 'Next: 2 years this month' },
-      location: rights.personal ? 'Austin, Texas, USA' : null, localTime: rights.personal ? '9:00 AM' : null,
+      place: rights.personal ? 'Austin, TX, United States' : null, localTime: rights.personal ? '9:00 AM' : null,
       email: !rights.own && rights.work ? email(p, GN) : null,
       whatsapp: !rights.own && rights.personal ? '15125550147' : null,
     },
     personal: rights.personal ? {
       lastName: 'Rivera', personalEmail: 'alex.rivera@example.com', phone: '+1 512 555 0147', whatsappSame: 'yes',
-      dateOfBirth: '1995-04-21', location: 'Austin, Texas, USA',
+      dateOfBirth: '1995-04-21',
       address: { country: 'US', zip: '78701', city: 'Austin', line1: '100 Example Street', line2: null, state: 'TX' },
     } : null,
     work: rights.work ? {

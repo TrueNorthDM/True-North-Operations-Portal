@@ -1,12 +1,12 @@
 /**
- * A person's time zone worked out from where they live, for anyone who has not
- * picked one in Settings (owner, 6 November 2026: someone in Fortaleza saw New
- * York's time on Home). Settings still wins; this only replaces the New York
- * default. Pure and tested.
+ * A person's time zone worked out from where they live (owner, 6 November
+ * 2026: someone in Fortaleza saw New York's time on Home). Since 9 November
+ * 2026 the address on their Directory profile is the only source: nobody picks
+ * a zone in Settings any more (zoneOfAddress in lib/address.ts). Pure and tested.
  *
  * A country with one time zone has it; the US, Brazil, Canada and Mexico are
- * read by their state or province in the address or the location; anything
- * not recognised stays null, and the caller keeps New York.
+ * read by their state or province (and city); anything not recognised stays
+ * null, and the caller keeps New York.
  */
 
 const ONE_ZONE: Record<string, string> = {
@@ -19,6 +19,7 @@ const ONE_ZONE: Record<string, string> = {
   NL: 'Europe/Amsterdam', JM: 'America/Jamaica', DO: 'America/Santo_Domingo', GT: 'America/Guatemala',
   HN: 'America/Tegucigalpa', SV: 'America/El_Salvador', NI: 'America/Managua', CR: 'America/Costa_Rica',
   PA: 'America/Panama', PR: 'America/Puerto_Rico', PY: 'America/Asuncion', UY: 'America/Montevideo', BO: 'America/La_Paz',
+  NZ: 'Pacific/Auckland', JP: 'Asia/Tokyo',
 }
 
 // US states by name and by code: Eastern, Central, Mountain, Pacific, and the ones that keep their own.
@@ -63,21 +64,36 @@ const MX: [RegExp, string][] = [
 
 // A word's edges that know accented letters (\b does not: "Ceará" has none after the "á").
 const word = (re: RegExp) => new RegExp(re.source.replace(/^\\b/, '(?<!\\p{L})').replace(/\\b$/, '(?!\\p{L})'), 'u')
-const pick = (rules: [RegExp, string][], text: string, fallback: string) => rules.find(([re]) => word(re).test(text))?.[1] ?? fallback
+const matchOf = (rules: [RegExp, string][], text: string) => rules.find(([re]) => word(re).test(text))?.[1] ?? null
+
+/** The countries with more than one zone: their rules, and the zone when no rule matches. */
+const MULTI: Record<string, { rules: [RegExp, string][]; fallback: string }> = {
+  US: { rules: US, fallback: 'America/New_York' },
+  BR: { rules: BR, fallback: 'America/Sao_Paulo' },
+  CA: { rules: CA, fallback: 'America/Toronto' },
+  MX: { rules: MX, fallback: 'America/Mexico_City' },
+}
 
 /**
- * `country` is the ISO code (countryOf in lib/agenda/holidays.ts); `place` is
- * the location and any state from the address, in one string.
+ * The zone and how it was found: `multi` when the country has several zones,
+ * `byRule` when the place named one of them (otherwise the country's main one
+ * was taken).
+ */
+export function zoneMatch(country: string | null, place: string | null | undefined): { zone: string | null; multi: boolean; byRule: boolean } {
+  if (!country) return { zone: null, multi: false, byRule: false }
+  let text = ` ${(place ?? '').toLowerCase()} `
+  const m = MULTI[country]
+  if (!m) return { zone: ONE_ZONE[country] ?? null, multi: false, byRule: false }
+  // The state is the part before the country: "Beaverton, OR, USA" reads OR, not the "us".
+  if (country === 'US') text = text.replace(/,\s*(usa|us|united states)\s*$/, ' ')
+  const hit = matchOf(m.rules, text)
+  return { zone: hit ?? m.fallback, multi: true, byRule: !!hit }
+}
+
+/**
+ * `country` is the ISO code (countryCode in lib/countries.ts); `place` is the
+ * city and state of the address, in one string.
  */
 export function zoneFromPlace(country: string | null, place: string | null | undefined): string | null {
-  if (!country) return null
-  const text = ` ${(place ?? '').toLowerCase()} `
-  switch (country) {
-    // The state is the part before the country: "Beaverton, OR, USA" reads OR, not the "us".
-    case 'US': return pick(US, text.replace(/,\s*(usa|us|united states)\s*$/, ' '), 'America/New_York')
-    case 'BR': return pick(BR, text, 'America/Sao_Paulo')
-    case 'CA': return pick(CA, text, 'America/Toronto')
-    case 'MX': return pick(MX, text, 'America/Mexico_City')
-    default: return ONE_ZONE[country] ?? null
-  }
+  return zoneMatch(country, place).zone
 }

@@ -19,7 +19,7 @@ import { TwoStepControl } from '@/components/admin/TwoStepControl'
 import { deletePerson, resetTwoStep } from '@/app/(app)/admin/people/actions'
 import { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/actions'
 import { formatPhone } from '@/lib/phone'
-import { addressFlag, formatAddressLines } from '@/lib/address'
+import { addressFlag, addressZoneText, formatAddressLines } from '@/lib/address'
 import { deviceLabel } from '@/lib/user-agent'
 import { milestoneColor, milestoneLabel, sortMilestones } from '@/lib/milestones'
 import { formatDate, lifecyclePill, roleTypePill, statusPill, timePill, typePill } from '@/lib/directory/people-types'
@@ -113,7 +113,7 @@ function Cover({ data }: { data: PersonPageData }) {
   const medal = cover.tenure && cover.tenure.milestone.kind !== 'none' ? cover.tenure.milestone : null
   const medalValue = medal ? (medal.kind === 'quarter' ? medal.value * 3 : medal.value) : null
   const medalUnit = medal ? (medal.kind === 'quarter' ? 'MONTHS' : medal.value === 1 ? 'YEAR' : 'YEARS') : ''
-  const line = [data.title, cover.location, cover.localTime ? `${cover.localTime} there` : null].filter(Boolean).join(' · ')
+  const line = [data.title, cover.place, cover.localTime ? `${cover.localTime} there` : null].filter(Boolean).join(' · ')
 
   async function copyEmail() {
     if (!cover.email) return
@@ -359,7 +359,6 @@ function PersonalView({ p }: { p: NonNullable<PersonPageData['personal']> }) {
       <Section title="About">
         <dl className="m-0">
           <Row label="Date of birth">{val(formatDate(p.dateOfBirth))}</Row>
-          <Row label="Location">{val(p.location)}</Row>
           <Row label="Full address">
             {lines.length ? (
               <span className="inline-flex flex-col items-end leading-snug">
@@ -367,6 +366,7 @@ function PersonalView({ p }: { p: NonNullable<PersonPageData['personal']> }) {
               </span>
             ) : none}
           </Row>
+          <Row label="Time zone">{addressZoneText(p.address)}</Row>
         </dl>
       </Section>
     </div>

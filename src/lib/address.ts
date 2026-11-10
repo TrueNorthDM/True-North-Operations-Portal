@@ -2,8 +2,10 @@
 // (migration 042). Generic field names (line1/line2/city/state/zip) so the same
 // shape holds an address from any country; `country` is an ISO 3166-1 alpha-2 code.
 
-import { countryName } from './countries'
+import { countryCode, countryName } from './countries'
 import { flagEmoji } from './phone'
+import { zoneMatch } from './settings/zone-from-place'
+import { zoneLabel } from './agenda/time'
 
 export interface PersonAddress {
   country?: string | null
@@ -66,4 +68,57 @@ export function formatAddressLines(a: PersonAddress | null | undefined): string[
 /** Flag emoji for the address' country, if any. */
 export function addressFlag(a: PersonAddress | null | undefined): string | null {
   return flagEmoji(a?.country)
+}
+
+/**
+ * Where someone lives, short: "Fortaleza, CE, Brazil" (city, state, country
+ * name; empty parts skipped). Since 9 November 2026 the address is the only
+ * record of where a person lives: the old free-text location is not shown.
+ * The country may be stored as a code or, typed by hand, as a name.
+ */
+export function placeOf(a: PersonAddress | null | undefined): string | null {
+  if (!a) return null
+  const code = countryCode(a.country)
+  const country = code ? countryName(code) : a.country?.trim() || null
+  const parts = [a.city?.trim(), a.state?.trim(), country].filter(Boolean)
+  return parts.length ? parts.join(', ') : null
+}
+
+/** The zone used when the address cannot tell: the company's, New York. */
+export const DEFAULT_PERSON_ZONE = 'America/New_York'
+
+export interface AddressZone {
+  /** IANA zone; New York when the address cannot tell. */
+  zone: string
+  /** The country's ISO code, when the address has one that can be read. */
+  country: string | null
+  /** The address settles the zone: no guess was needed. */
+  decided: boolean
+  /** What is missing when not decided. */
+  missing: 'country' | 'state' | 'known-zone' | null
+}
+
+/**
+ * A person's time zone, from their address alone (owner, 9 November 2026):
+ * the country, then the state and city for the countries with several zones.
+ * New York when it cannot tell. Pure.
+ */
+export function zoneOfAddress(a: PersonAddress | null | undefined): AddressZone {
+  const country = countryCode(a?.country)
+  if (!country) return { zone: DEFAULT_PERSON_ZONE, country: null, decided: false, missing: 'country' }
+  const m = zoneMatch(country, [a?.city, a?.state].filter(Boolean).join(', '))
+  if (!m.zone) return { zone: DEFAULT_PERSON_ZONE, country, decided: false, missing: 'known-zone' }
+  // A state that names no rule is the country's main zone (Virginia: Eastern); no state at all is a guess.
+  const decided = !m.multi || m.byRule || !!a?.state?.trim()
+  return { zone: m.zone, country, decided, missing: decided ? null : 'state' }
+}
+
+/** "Brasília time (BRT), Fortaleza", or "Eastern time (ET), New York (add the state to set it)". */
+export function addressZoneText(a: PersonAddress | null | undefined): string {
+  const z = zoneOfAddress(a)
+  const label = zoneLabel(z.zone)
+  if (z.missing === 'country') return `${label} (add the country to set it)`
+  if (z.missing === 'state') return `${label} (add the state to set it)`
+  if (z.missing === 'known-zone') return `${label} (the zone of ${countryName(z.country) ?? 'this country'} is not known yet)`
+  return label
 }

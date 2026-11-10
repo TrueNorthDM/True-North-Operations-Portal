@@ -9,14 +9,13 @@ import type { Db } from '@/lib/supabase/types'
 import { isLeadPosition } from '@/lib/access/catalogue'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
-import { loadSettings } from '@/lib/settings/person'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { normalPosition } from '@/lib/directory/people-types'
 import { teamTie, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
 import { primaryTeamByPerson } from '@/lib/directory/primary-team'
 import { formatPhone } from '@/lib/phone'
 import { formatTenure, milestoneOf, tenureSince, type Milestone, type Tenure } from '@/lib/tenure'
-import type { PersonAddress } from '@/lib/address'
+import { placeOf, zoneOfAddress, type PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import { pageRights, personHref, relationTo, type PageRights } from './page-rights'
 import { loadPersonCompensation } from '@/lib/hr/compensation'
@@ -59,8 +58,8 @@ export interface PersonPageData {
     teams: PageTeam[]
     hireDate: string | null
     tenure: { text: string; milestone: Milestone; next: string | null } | null
-    /** Personal: only when the viewer opens it. */
-    location: string | null
+    /** Personal: only when the viewer opens it. Where they live, from the address: "Fortaleza, CE, Brazil". */
+    place: string | null
     localTime: string | null
     /** Someone else's page only: the GoodNews address (Work) and WhatsApp (Personal). */
     email: string | null
@@ -72,7 +71,6 @@ export interface PersonPageData {
     phone: string | null
     whatsappSame: string | null
     dateOfBirth: string | null
-    location: string | null
     address: PersonAddress | null
   }
   work: null | {
@@ -158,7 +156,7 @@ export async function loadPersonPage(
   if (!rights) return null
 
   const { data: row } = await db.from('people')
-    .select('id, full_name, last_name, title, avatar_url, status, hire_date, left_on, location, whatsapp_same_number, employment_type, schedule, weekly_hours, hours_limit_per, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
+    .select('id, full_name, last_name, title, avatar_url, status, hire_date, left_on, whatsapp_same_number, employment_type, schedule, weekly_hours, hours_limit_per, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
     .eq('id', personId).maybeSingle()
   if (!row) return null
   const p = row as Record<string, unknown> & { id: string; full_name: string }
@@ -191,12 +189,12 @@ export async function loadPersonPage(
     personal = {
       lastName: str(p.last_name), personalEmail: contact?.emailPersonal ?? null, phone: contact?.phone ?? null,
       whatsappSame: str(p.whatsapp_same_number), dateOfBirth: contact?.dateOfBirth ?? null,
-      location: str(p.location), address: contact?.address ?? null,
+      address: contact?.address ?? null,
     }
-    // Their local time: only from a zone they chose themselves.
-    const settings = await loadSettings(db, personId).catch(() => null)
-    if (settings?.ownZone) {
-      try { localTime = new Intl.DateTimeFormat('en-US', { timeZone: settings.timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date()) } catch { localTime = null }
+    // Their local time: from the zone their address settles (owner, 9 November 2026), never a guess.
+    const z = zoneOfAddress(personal.address)
+    if (z.decided) {
+      try { localTime = new Intl.DateTimeFormat('en-US', { timeZone: z.zone, hour: 'numeric', minute: '2-digit' }).format(new Date()) } catch { localTime = null }
     }
   }
 
@@ -311,7 +309,7 @@ export async function loadPersonPage(
     cover: {
       teams: rights.work ? teams : [], hireDate: rights.work ? str(p.hire_date) : null,
       tenure: rights.work && tenure ? { text: formatTenure(tenure), milestone: milestoneOf(tenure), next: str(p.left_on) ? null : nextMilestone(tenure) } : null,
-      location: personal?.location ?? null, localTime,
+      place: placeOf(personal?.address), localTime,
       email: !rights.own && rights.work ? str(p.email_goodnews) : null,
       whatsapp: !rights.own && phone?.valid ? phone.digits : null,
     },

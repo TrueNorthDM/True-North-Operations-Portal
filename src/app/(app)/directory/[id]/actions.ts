@@ -67,7 +67,7 @@ export interface PersonalInput {
   phone: string
   whatsappSame: string
   dateOfBirth: string
-  location: string
+  /** Where they live, and so their time zone (owner, 9 November 2026). people.location is no longer written. */
   address: AddressForm
 }
 
@@ -95,7 +95,6 @@ export async function savePersonal(personId: string, input: PersonalInput): Prom
     phone: text(input.phone),
     whatsapp_same_number: whatsapp,
     date_of_birth: dateOfBirth,
-    location: text(input.location),
     address: (input.address ? normalizeAddress(input.address) : null) as Json,
   }).eq('id', personId)
   if (error) return fail(mapPersonError(error.message))

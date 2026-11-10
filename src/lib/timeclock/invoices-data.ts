@@ -17,6 +17,7 @@ import { buildInvoiceLines, dueOn, missingRate, type ReimbursementForInvoice } f
 import { loadInvoiceSettings, loadPayTerms, paysWhat } from './pay-terms'
 import { periodLabel } from './periods'
 import type { PaysAs } from './routing'
+import { placeOf, type PersonAddress } from '@/lib/address'
 
 /** The client a job bills: its top folder ("2 - i7 Marketing"), or the job itself at the top. */
 export const clientFolder = (path: string): string => (path ? path.split(' › ')[0] : 'Other')
@@ -113,7 +114,7 @@ export async function writeInvoice(x: { personId: string; submissionId: number |
     loadInvoiceSettings(),
     x.paysAs === 'fixed_no_timesheet' ? Promise.resolve([]) : hoursByClient(x.personId, x.start, x.end, now),
     reimbursementsFor(x.personId),
-    c.from('people').select('full_name, location, email_personal, email_true_north').eq('id', x.personId).maybeSingle(),
+    c.from('people').select('full_name, address, email_personal, email_true_north').eq('id', x.personId).maybeSingle(),
   ])
   // The invoice keeps who it is from: an unread name would be saved blank on it.
   if (personRes.error) throw new Error(`The person could not be read: ${personRes.error.message}`)
@@ -124,7 +125,7 @@ export async function writeInvoice(x: { personId: string; submissionId: number |
   const fields = {
     person_id: x.personId, submission_id: x.submissionId, period_start: x.start, period_end: x.end, kind: x.paysAs,
     state: 'waiting', issued_on: issued, due_on: dueOn(issued, settings.paymentDays), total,
-    from_snapshot: { name: person?.full_name ?? '', location: person?.location ?? '', email: person?.email_personal ?? person?.email_true_north ?? '' },
+    from_snapshot: { name: person?.full_name ?? '', location: placeOf(person?.address as PersonAddress | null | undefined) ?? '', email: person?.email_personal ?? person?.email_true_north ?? '' },
     to_snapshot: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '', email: settings.billingEmail ?? '' },
     approved_by: null, approved_at: null, updated_at: now.toISOString(),
   }

@@ -3,14 +3,14 @@ import { countryOf, nationalHolidays } from './holidays'
 import { countryName, flagOf } from './model'
 
 describe('where a person lives', () => {
-  it('reads the address country first, then the end of the location', () => {
-    expect(countryOf({ country: 'br' }, 'Nairobi, Kenya')).toBe('BR')
-    expect(countryOf(null, 'Nairobi, Kenya')).toBe('KE')
-    expect(countryOf({ country: '' }, 'Los Angeles, California, USA')).toBe('US')
-    expect(countryOf(null, 'Fortaleza, Brazil')).toBe('BR')
-    expect(countryOf(null, 'London, UK')).toBe('GB')
-    expect(countryOf(null, null)).toBeNull()
-    expect(countryOf(null, 'Somewhere')).toBeNull()
+  it('reads the address country, as a code or a name', () => {
+    expect(countryOf({ country: 'br' })).toBe('BR')
+    expect(countryOf({ country: 'Kenya' })).toBe('KE')
+    expect(countryOf({ country: 'USA' })).toBe('US')
+    expect(countryOf({ country: 'UK' })).toBe('GB')
+    expect(countryOf({ country: '' })).toBeNull()
+    expect(countryOf(null)).toBeNull()
+    expect(countryOf({ country: 'Somewhere' })).toBeNull()
   })
 })
 

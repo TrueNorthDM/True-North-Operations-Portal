@@ -34,7 +34,7 @@ function cheyenne(): PersonPageData {
   const teams = [{ teamId: 't-wr', teamName: 'Writers', color: '#86C06A', position: 'member' as const, primary: true }]
   return {
     id: '00000000-0000-4000-8000-0000000000c1', name: 'Cheyenne Wilson', title: 'Writer', avatarUrl: null, color: '#86C06A', active: true, rights, rates: null,
-    cover: { teams, hireDate: hire, tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: nextMilestone(t) }, location: 'Los Angeles, California, USA', localTime: null, email: null, whatsapp: null },
+    cover: { teams, hireDate: hire, tenure: { text: formatTenure(t), milestone: milestoneOf(t), next: nextMilestone(t) }, place: 'Los Angeles, CA, United States', localTime: null, email: null, whatsapp: null },
     personal: null,
     work: {
       fullName: 'Cheyenne Wilson', title: 'Writer', employmentType: 'contractor', schedule: 'full', weeklyHours: null, status: 'active', accessLevel: 'user',
@@ -82,7 +82,7 @@ export function Part2Frame({ frame }: { frame: string }) {
     // Rock Kai, Social Media, contractor, reports to Dave Sharpe (Company Settings.dc.html 10A-3, 10A-4).
     const base = cheyenne()
     const teams = [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'lead' as const, primary: true }]
-    const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams, location: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', title: 'Team Leader', teams, managerId: 'm-ds', managerName: 'Dave Sharpe' } }
+    const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams, place: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', title: 'Team Leader', teams, managerId: 'm-ds', managerName: 'Dave Sharpe' } }
     // His own approvals and pay, as the prototype draws them: Dave Sharpe for both, $20.00/h, no allowance.
     // 10A-4: the change scheduled for Dec 1.
     const sched = frame === '10A4'
@@ -123,7 +123,7 @@ export function Part2Frame({ frame }: { frame: string }) {
   if (frame.startsWith('10P')) {
     const emp = frame === '10P2'
     const base = cheyenne()
-    const data = emp ? { ...base, id: '00000000-0000-4000-8000-0000000000c2', name: 'Wendy Cacka', title: 'Web Developer', color: '#A99BD4', cover: { ...base.cover, teams: [{ teamId: 't-web', teamName: 'Web', color: '#A99BD4', position: 'lead' as const, primary: true }], location: 'Chicago, Illinois, USA' } } : base
+    const data = emp ? { ...base, id: '00000000-0000-4000-8000-0000000000c2', name: 'Wendy Cacka', title: 'Web Developer', color: '#A99BD4', cover: { ...base.cover, teams: [{ teamId: 't-web', teamName: 'Web', color: '#A99BD4', position: 'lead' as const, primary: true }], place: 'Chicago, IL, United States' } } : base
     return (
       <div className="space-y-4">
         <Breadcrumb parents={['/directory']} now={data.name} />

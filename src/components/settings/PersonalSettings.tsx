@@ -8,7 +8,9 @@
  *   Notifications         the notification table (NotificationSettings).
  *   Sign-in and security  the address they sign in with, two-step sign-in, and
  *                         signing out on every device.
- *   Time and region       their time zone and the hour of the daily summary.
+ *   Time and region       their time zone (read only: it comes from the address
+ *                         on their profile, owner 9 November 2026) and the
+ *                         hour of the daily summary.
  *   Home and start        the page they land on after signing in, which
  *                         cards Home shows (4 November 2026), and up to
  *                         five favourite pages.
@@ -24,10 +26,10 @@ import { useRouter } from 'next/navigation'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { Switch } from '@/components/ui/Switch'
 import { Segmented as Choice } from '@/components/ui/Segmented'
-import { Select } from '@/components/ui/Select'
+import Link from 'next/link'
 import type { SaveHidden } from '@/lib/settings/columns'
 import { START_PAGES, SUMMARY_HOURS, type PersonSettings, type SettingsPatch, type StartPage } from '@/lib/settings/person'
-import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
+import { zoneLabel } from '@/lib/notifications/zones'
 import { BTN } from '@/lib/ui/buttons'
 import { SECTION_TITLE } from '@/lib/ui/type'
 
@@ -71,9 +73,11 @@ function Row({ label, hint, status, children }: { label: string; hint: string; s
 }
 
 export function PersonalSettings({
-  settings, email, notifications, twoStep, signOutEverywhere, save, blocked, only, home, saveHome = null,
+  settings, email, notifications, twoStep, signOutEverywhere, save, blocked, only, home, saveHome = null, zone,
 }: {
   settings: PersonSettings
+  /** Their time zone as their address sets it ("Brasília time (BRT), Fortaleza"), and their profile's Personal tab, where the address is. */
+  zone?: { text: string; profileHref: string | null }
   email: string | null
   /** The notification table, drawn by the server. */
   notifications: React.ReactNode
@@ -121,8 +125,8 @@ export function PersonalSettings({
       if (!res.ok) revert()
       setStatus({ key, state: res.ok ? 'saved' : 'error', error: res.error })
       // The Notifications section says when the summary arrives: drawn by the
-      // server, so it is drawn again with the new zone or hour.
-      if (res.ok && (key === 'zone' || key === 'hour')) router.refresh()
+      // server, so it is drawn again with the new hour.
+      if (res.ok && key === 'hour') router.refresh()
     })
   }
   const set = <K extends keyof PersonSettings>(key: string, field: K, value: PersonSettings[K], patch: SettingsPatch) => {
@@ -204,8 +208,9 @@ export function PersonalSettings({
         </Section>
 
         <Section id="time" hidden={!!only && !only.includes('time')} title="Time and region" intro="When the daily summary reaches you, and the times in the bell.">
-          <Row label="Your time zone" hint="Your daily summary and the times in the bell follow it. Until you choose, it is the time where your Directory profile says you live (New York time when it does not say)." status={statusFor('zone')}>
-            <Select value={s.timeZone} onChange={z => set('zone', 'timeZone', z, { timeZone: z })} options={zoneOptions()} searchable ariaLabel="Your time zone" />
+          <Row label="Your time zone" hint="Your daily summary, the times in the bell and the Agenda follow it. It is where the address on your profile says you live (New York time when it cannot tell): change the address to change it.">
+            <span className="text-[13.5px] text-tn-ink font-semibold">{zone?.text ?? zoneLabel(s.timeZone)}</span>
+            {zone?.profileHref && <Link href={zone.profileHref} className="text-[13px] font-bold text-tn-teal hover:underline">Set by the address on your profile</Link>}
           </Row>
           <Row label="Daily summary at" hint={`When the daily summary reaches you, in ${zoneLabel(s.timeZone)} time, Monday to Friday.`} status={statusFor('hour')}>
             <Choice label="Daily summary at" value={s.summaryHour} onChange={h => set('hour', 'summaryHour', h, { summaryHour: h })}
