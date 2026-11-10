@@ -274,24 +274,33 @@ export const countryName = (cc: string): string => { try { return new Intl.Displ
 /** `flag`: a holiday shows its country's flag where the others show their icon; `yrs`: a work
  * anniversary shows the HR tenure badge (TenureBadge) with its years (owner, 2026-10-23). */
 export interface Look { bg: string; fg: string; d: string; c: string; flag: string; yrs?: number }
-/** The New event drawer's types (owner, 30 October 2026): an icon each; the colour says who it is for. */
-const TYPE_ICON: Record<EventType, string> = {
+/**
+ * The New event drawer's types (owner, 30 October 2026): an icon and a colour
+ * each. The one source of both, for the type picker, the Agenda's views and
+ * cards, Coming up and Home's Agenda card, so a type looks the same everywhere
+ * (owner, 10 November 2026; the List view drew every event with a clock).
+ */
+export const TYPE_ICON: Record<EventType, string> = {
   meeting: 'M3 6h12v12H3zM15 10l6-4v12l-6-4',
   training: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 2 9 2 12 0v-5',
+  company: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
   deadline: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2 2M5 3L2 6M19 3l3 3',
   milestone: 'M4 22V4M4 4h13l-2 4 2 4H4',
-  company: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
   celebration: 'M5.8 11.3L2 22l10.7-3.8M11 13c1.9 1.9 2.8 4.2 2 5s-3.1-.1-5-2-2.8-4.2-2-5 3.1.1 5 2zM15 2h.01M22 8h.01M22 20h.01M4 3h.01',
   reminder: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  block: 'M6 3h12M6 21h12M7 3v4l5 5-5 5v4M17 3v4l-5 5 5 5v4',
+  absence: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M10 14l4 4M14 14l-4 4',
 }
-const TYPE_LOOK: Record<EventType, { bg: string; fg: string; c: string }> = {
+export const TYPE_LOOK: Record<EventType, { bg: string; fg: string; c: string }> = {
   meeting: { bg: '#e8edf6', fg: '#012358', c: '#012358' },
   training: { bg: '#efe9fb', fg: '#5b3fb0', c: '#5b3fb0' },
+  company: { bg: '#012358', fg: '#ffffff', c: '#012358' },
   deadline: { bg: '#fdecea', fg: '#b2412f', c: '#b2412f' },
   milestone: { bg: '#e6f6ee', fg: '#0d7a4f', c: '#1E9E6A' },
-  company: { bg: '#012358', fg: '#ffffff', c: '#012358' },
   celebration: { bg: '#fdf3c4', fg: '#7a5c00', c: '#c99a00' },
   reminder: { bg: '#eaf4f4', fg: '#1E7D7F', c: '#1E7D7F' },
+  block: { bg: '#f1efe8', fg: '#444441', c: '#888780' },
+  absence: { bg: '#fbeaf0', fg: '#993556', c: '#d4537e' },
 }
 
 export function look(x: AgendaItem): Look {
@@ -500,7 +509,7 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
     out.push({
       day: d, title: fday(d), sub: d === today ? 'Today' : d === addDays(today, 1) ? 'Tomorrow' : '', today: d === today,
       rows: its.map(x => {
-        const L = look(x), company = x.k === 'event' && !x.team
+        const L = look(x)
         const sub = x.k === 'pto' ? `${x.type && seesType(x) ? `${x.type} · ` : ''}${drng(x.a, x.b)}`
           : x.k === 'event' ? `${x.teams ?? 'Everyone'}${x.place ? ` · ${x.place.split(' · ')[0]}` : ''}`
           : x.k === 'ms' ? `Milestone${x.client ? ` · ${x.client}` : ''}`
@@ -508,8 +517,9 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
           : x.k === 'anni' ? 'Anniversary' : KIND[x.k].label.replace(/s$/, '')
         return {
           id: x.id, label: label(x), sub, time: x.s != null ? hourLabel(x.s) : 'All day',
-          bg: company ? '#012358' : L.bg, fg: company ? '#F2C40A' : L.fg,
-          d: x.k === 'pto' ? AG_ICON.cal : x.k === 'event' ? AG_ICON.clock : x.k === 'hol' ? AG_ICON.flag : L.d || AG_ICON.star,
+          // The same tile as everywhere else: an event keeps its type's icon and colour (it was a clock, and navy for company events).
+          bg: L.bg, fg: L.fg,
+          d: x.k === 'pto' ? AG_ICON.cal : x.k === 'hol' ? AG_ICON.flag : L.d || AG_ICON.star,
           flag: L.flag, yrs: L.yrs, meet: !!meetOf(x),
         }
       }),

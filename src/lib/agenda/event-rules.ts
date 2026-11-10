@@ -3,9 +3,18 @@
  * event drawer). Pure: the server actions read the database and the access and
  * decide with these.
  *
- *   Type       Members a Meeting; Team Leaders also Training, Deadline and
- *              Milestone; Admins and Super Admins also Company event,
- *              Celebration and Reminder.
+ *   Type       Everyone: Meeting, Reminder and Block time. Team Leaders also
+ *              Training, Deadline and Milestone; Admins and Super Admins every
+ *              type but Absence. Absence only for contractors (owner, 10
+ *              November 2026; on staging for everyone, to train).
+ *   Block time Time held on one's own calendar (owner, 10 November 2026): at a
+ *              time or all day, nobody invited, seen by its creator alone, busy
+ *              in Find a time and on the booking page, and on the creator's
+ *              Google account when one is chosen.
+ *   Absence    A contractor says they are away (owner, 10 November 2026): all
+ *              day or a few days, seen by everyone as time off is, and on the
+ *              team calendar (office@) like time off; never paid, never sent to
+ *              Rippling.
  *   Reminder   A note on the calendar (owner, 8 November 2026): all day or a
  *              few days, no time, no Online or In person, nobody invited.
  *              Seen by the creator only (Guests with nobody on it), the chosen
@@ -29,26 +38,39 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 import { DC, instantOf } from './time'
 import { cleanRepeat, lastDay, toRRule, type Repeat } from './recurrence'
 
-export type EventType = 'meeting' | 'training' | 'deadline' | 'milestone' | 'company' | 'celebration' | 'reminder'
+export type EventType = 'meeting' | 'training' | 'company' | 'deadline' | 'milestone' | 'celebration' | 'reminder' | 'block' | 'absence'
+/** The three groups the type picker shows, three types each (owner, 10 November 2026). */
+export type TypeGroup = 'meet' | 'date' | 'time'
+export const GROUPS: readonly { id: TypeGroup; label: string }[] = [
+  { id: 'meet', label: 'Meet' },
+  { id: 'date', label: 'Mark a date' },
+  { id: 'time', label: 'Your time' },
+]
 export type Audience = 'guests' | 'teams' | 'all'
 export type When = 'time' | 'day' | 'range'
 
-export const TYPES: readonly { id: EventType; label: string; sub: string; guests: boolean; meet: boolean; client: boolean; when: When }[] = [
-  { id: 'meeting', label: 'Meeting', sub: 'Calls, 1:1s, clients', guests: true, meet: true, client: false, when: 'time' },
-  { id: 'training', label: 'Training', sub: 'Onboarding, workshops', guests: true, meet: true, client: false, when: 'time' },
-  { id: 'deadline', label: 'Deadline', sub: 'Something is due', guests: true, meet: false, client: true, when: 'day' },
-  { id: 'milestone', label: 'Milestone', sub: 'A launch, a goal met', guests: true, meet: false, client: true, when: 'day' },
-  { id: 'company', label: 'Company event', sub: 'All-hands, webinars', guests: true, meet: true, client: false, when: 'time' },
-  { id: 'celebration', label: 'Celebration', sub: 'Parties, big moments', guests: true, meet: true, client: false, when: 'time' },
-  { id: 'reminder', label: 'Reminder', sub: 'A note on the calendar, no invitations', guests: false, meet: false, client: false, when: 'day' },
+export const TYPES: readonly { id: EventType; label: string; sub: string; group: TypeGroup; guests: boolean; meet: boolean; client: boolean; when: When }[] = [
+  { id: 'meeting', label: 'Meeting', sub: 'Calls, 1:1s, clients', group: 'meet', guests: true, meet: true, client: false, when: 'time' },
+  { id: 'training', label: 'Training', sub: 'Onboarding, workshops', group: 'meet', guests: true, meet: true, client: false, when: 'time' },
+  { id: 'company', label: 'Company event', sub: 'All-hands, webinars', group: 'meet', guests: true, meet: true, client: false, when: 'time' },
+  { id: 'deadline', label: 'Deadline', sub: 'Something is due', group: 'date', guests: true, meet: false, client: true, when: 'day' },
+  { id: 'milestone', label: 'Milestone', sub: 'A launch, a goal met', group: 'date', guests: true, meet: false, client: true, when: 'day' },
+  { id: 'celebration', label: 'Celebration', sub: 'Parties, big moments', group: 'date', guests: true, meet: true, client: false, when: 'time' },
+  { id: 'reminder', label: 'Reminder', sub: 'A note, no invitations', group: 'time', guests: false, meet: false, client: false, when: 'day' },
+  { id: 'block', label: 'Block time', sub: 'Focus time, shows busy', group: 'time', guests: false, meet: false, client: false, when: 'time' },
+  { id: 'absence', label: 'Absence', sub: 'Away, contractors only', group: 'time', guests: false, meet: false, client: false, when: 'day' },
 ]
 export const typeOf = (t: EventType) => TYPES.find(x => x.id === t) ?? TYPES[0]
 
-/** The types a level may create. */
-export function typesFor(level: AccessLevel): EventType[] {
-  if (level === 'super_admin' || level === 'admin') return TYPES.map(t => t.id)
-  if (level === 'team_leader') return ['meeting', 'training', 'deadline', 'milestone']
-  return ['meeting']
+/**
+ * The types a person may create, in the picker's order. `contractor`: Absence is
+ * for contractors only (the caller passes true on staging, so it can be tried).
+ */
+export function typesFor(level: AccessLevel, contractor = false): EventType[] {
+  const all: EventType[] = level === 'super_admin' || level === 'admin' ? TYPES.map(t => t.id)
+    : level === 'team_leader' ? ['meeting', 'training', 'deadline', 'milestone', 'reminder', 'block', 'absence']
+      : ['meeting', 'reminder', 'block', 'absence']
+  return TYPES.map(t => t.id).filter(id => all.includes(id) && (id !== 'absence' || contractor))
 }
 
 /** Who-it's-for choices a person has: Teams needs a team to send to, True North a level the Super Admin chose. */
@@ -113,7 +135,7 @@ export interface DrawerInput {
   repeat?: Repeat | null
 }
 
-export interface DrawerRights { level: AccessLevel; led: ReadonlySet<string>; allLevels: readonly string[]; teamIds: readonly string[] }
+export interface DrawerRights { level: AccessLevel; led: ReadonlySet<string>; allLevels: readonly string[]; teamIds: readonly string[]; /** Absence is theirs to create (a contractor, or anyone on staging). */ contractor?: boolean }
 
 export interface DrawerRow {
   kind: 'event' | 'milestone'
@@ -143,23 +165,28 @@ const clean = (s: unknown, max: number) => String(s ?? '').trim().slice(0, max)
 /** What the drawer may save, or a sentence saying why not. */
 export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; row: DrawerRow; guests: GuestIn[] } | { ok: false; error: string } {
   const t = TYPES.find(x => x.id === input?.type)
-  if (!t || !typesFor(r.level).includes(t.id)) return { ok: false, error: 'That type is not open to your access.' }
+  if (!t || !typesFor(r.level, !!r.contractor).includes(t.id)) return { ok: false, error: t?.id === 'absence' ? 'Absence is for contractors.' : 'That type is not open to your access.' }
   const title = clean(input.title, 160)
   if (!title) return { ok: false, error: 'Give it a title.' }
   if (!ISO.test(input.date ?? '')) return { ok: false, error: 'Pick a date.' }
-  const reminder = t.id === 'reminder'
-  if (!reminder && (input.accountId == null || !Number.isSafeInteger(input.accountId))) return { ok: false, error: 'Select the account to send from.' }
-  if (reminder && input.when === 'time') return { ok: false, error: 'A reminder is all day or a few days, never at a time.' }
+  const reminder = t.id === 'reminder', block = t.id === 'block', absence = t.id === 'absence'
+  // These three invite nobody; whoever sees them comes from Who it's for (a Reminder), from the creator alone (Block time) or from everyone (Absence).
+  const noInvites = reminder || block || absence
+  // A Reminder and an Absence pick no account (the team calendar when for everyone); Block time may name its own, or stay in the portal.
+  const accountOptional = reminder || block || absence
+  if (!accountOptional && (input.accountId == null || !Number.isSafeInteger(input.accountId))) return { ok: false, error: 'Select the account to send from.' }
+  if ((reminder || absence) && input.when === 'time') return { ok: false, error: `${absence ? 'An absence' : 'A reminder'} is all day or a few days, never at a time.` }
+  if (block && input.when === 'range') return { ok: false, error: 'Block time is at a time or all day.' }
+  const audience: Audience = block ? 'guests' : absence ? 'all' : input.audience
   const audiences = audiencesFor(r.level, r.led.size, r.allLevels)
-  if (!audiences.includes(input.audience)) return { ok: false, error: input.audience === 'all' ? 'Inviting all of True North is not open to your access.' : 'Sending to teams is not open to your access.' }
-  const teams = input.audience === 'teams' ? [...new Set(input.teams ?? [])] : []
-  if (input.audience === 'teams') {
+  if (!block && !absence && !audiences.includes(audience)) return { ok: false, error: audience === 'all' ? 'Inviting all of True North is not open to your access.' : 'Sending to teams is not open to your access.' }
+  const teams = audience === 'teams' ? [...new Set(input.teams ?? [])] : []
+  if (audience === 'teams') {
     if (!teams.length) return { ok: false, error: 'Add at least one team.' }
     const allowed = teamsFor(r.level, r.led, r.teamIds)
     if (teams.some(x => !allowed.includes(x))) return { ok: false, error: 'You can only send to teams you lead.' }
   }
-  // A Reminder invites nobody: whoever sees it comes from Who it's for alone.
-  const guests = reminder ? [] : (input.guests ?? []).map(g => ({ personId: g.personId ?? null, email: clean(g.email, 254).toLowerCase() }))
+  const guests = noInvites ? [] : (input.guests ?? []).map(g => ({ personId: g.personId ?? null, email: clean(g.email, 254).toLowerCase() }))
   if (guests.some(g => !EMAIL.test(g.email))) return { ok: false, error: 'One of the guests is not an email address.' }
   if (guests.length > MAX_GUESTS) return { ok: false, error: `Up to ${MAX_GUESTS} guests.` }
   // Any type may have nobody invited (owner, 10 November 2026): on Guests with nobody it stays on the creator's own Agenda.
@@ -190,13 +217,13 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
     ok: true,
     guests,
     row: {
-      kind: t.id === 'milestone' ? 'milestone' : 'event', type: t.id, audience: input.audience, title,
+      kind: t.id === 'milestone' ? 'milestone' : 'event', type: t.id, audience, title,
       start_date, end_date, starts_at, ends_at, time_zone: starts_at ? DC : null,
       how, place: how === 'in_person' ? clean(input.place, 300) || null : null,
       audience_team_ids: teams.length ? teams : null,
       client: t.client ? clean(input.client, 160) || null : null,
       description: clean(input.description, 2000) || null,
-      sent_from_account_id: reminder ? null : input.accountId,
+      sent_from_account_id: (reminder || absence) ? null : (Number.isSafeInteger(input.accountId) ? input.accountId : null),
       recurrence, recur_until,
     },
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { audiencesFor, checkDrawer, invitees, legacyType, mayManage, seesEvent, teamsFor, typesFor, type DrawerInput, type Person } from './event-rules'
+import { GROUPS, TYPES, audiencesFor, checkDrawer, invitees, legacyType, mayManage, seesEvent, teamsFor, typesFor, type DrawerInput, type Person } from './event-rules'
 
 const base: DrawerInput = { type: 'meeting', when: 'time', title: 'Kickoff with Hope Clinic', date: '2026-11-04', from: 600, to: 660, how: 'online', audience: 'guests', teams: [], guests: [{ email: 'maria.santos@hopeclinic.org' }], accountId: 7 }
 const admin = { level: 'admin' as const, led: new Set<string>(), allLevels: ['super_admin', 'admin'], teamIds: ['mk', 'gr'] }
@@ -7,12 +7,21 @@ const lead = { level: 'team_leader' as const, led: new Set(['mk']), allLevels: [
 const member = { level: 'user' as const, led: new Set<string>(), allLevels: ['super_admin', 'admin'], teamIds: ['mk', 'gr'] }
 
 describe('who may create what', () => {
-  it('gives members meetings, Team Leaders four types, Admins all seven, Reminder among them', () => {
-    expect(typesFor('user')).toEqual(['meeting'])
-    expect(typesFor('team_leader')).toEqual(['meeting', 'training', 'deadline', 'milestone'])
-    expect(typesFor('admin')).toHaveLength(7)
-    expect(typesFor('admin')).toContain('reminder')
-    expect(typesFor('super_admin')).toContain('reminder')
+  it('gives everyone Meeting, Reminder and Block time; Team Leaders four more; Admins all but Absence', () => {
+    expect(typesFor('user')).toEqual(['meeting', 'reminder', 'block'])
+    expect(typesFor('team_leader')).toEqual(['meeting', 'training', 'deadline', 'milestone', 'reminder', 'block'])
+    expect(typesFor('admin')).toEqual(['meeting', 'training', 'company', 'deadline', 'milestone', 'celebration', 'reminder', 'block'])
+    expect(typesFor('super_admin')).toEqual(typesFor('admin'))
+  })
+  it('offers Absence to contractors only, at any level, in the picker order', () => {
+    expect(typesFor('user', true)).toEqual(['meeting', 'reminder', 'block', 'absence'])
+    expect(typesFor('team_leader', true)).toContain('absence')
+    expect(typesFor('admin', true)).toEqual(TYPES.map(t => t.id))
+  })
+  it('lays the nine types out in three groups of three', () => {
+    expect(GROUPS.map(g => TYPES.filter(t => t.group === g.id).map(t => t.id))).toEqual([
+      ['meeting', 'training', 'company'], ['deadline', 'milestone', 'celebration'], ['reminder', 'block', 'absence'],
+    ])
   })
   it('opens True North to the levels the Super Admin chose, and Teams to whoever has teams', () => {
     expect(audiencesFor('user', 0, ['super_admin', 'admin'])).toEqual(['guests'])
@@ -97,10 +106,11 @@ describe('a Reminder (owner, 8 November 2026)', () => {
     expect(r.ok && r.guests).toEqual([])
     expect(r.ok && r.row.sent_from_account_id).toBeNull()
   })
-  it('is never at a time, and is not open to Team Leaders or members', () => {
+  it('is never at a time, and is open to every level (owner, 10 November 2026)', () => {
     expect(checkDrawer({ ...r0, when: 'time' }, admin)).toEqual({ ok: false, error: 'A reminder is all day or a few days, never at a time.' })
-    expect(checkDrawer(r0, lead)).toEqual({ ok: false, error: 'That type is not open to your access.' })
-    expect(checkDrawer(r0, member)).toEqual({ ok: false, error: 'That type is not open to your access.' })
+    expect(checkDrawer({ ...r0, audience: 'guests' }, lead).ok).toBe(true)
+    expect(checkDrawer({ ...r0, audience: 'guests' }, member).ok).toBe(true)
+    expect(checkDrawer({ ...r0, audience: 'all' }, member)).toEqual({ ok: false, error: 'Inviting all of True North is not open to your access.' })
   })
   it('"Only me" (Guests with nobody) is seen by the creator alone; Everyone by all', () => {
     const v = (id: string) => ({ id, level: 'user' as const, teamIds: ['mk'], led: new Set<string>() })
@@ -120,5 +130,46 @@ describe('nobody invited (owner, 10 November 2026)', () => {
     const mine = { audience: 'guests' as const, audience_team_ids: null, created_by: 'me', team_id: null }
     expect(seesEvent(mine, { id: 'me', level: 'user', teamIds: [], led: new Set() }, new Set())).toBe(true)
     expect(seesEvent(mine, { id: 'other', level: 'super_admin', teamIds: [], led: new Set() }, new Set())).toBe(false)
+  })
+})
+
+describe('Block time (owner, 10 November 2026)', () => {
+  const b: DrawerInput = { ...base, type: 'block', title: 'Focus: i7 report', guests: [], accountId: null, audience: 'all', teams: ['mk'] }
+  it('is the creator\'s alone whatever Who it\'s for says, at a time or all day, with or without an account', () => {
+    for (const rights of [member, lead, admin]) {
+      const r = checkDrawer(b, rights)
+      expect(r.ok && r.row).toMatchObject({ type: 'block', audience: 'guests', audience_team_ids: null, how: null, sent_from_account_id: null, starts_at: '2026-11-04T15:00:00.000Z' })
+      expect(r.ok && r.guests).toEqual([])
+    }
+    const day = checkDrawer({ ...b, when: 'day', accountId: 7 }, member)
+    expect(day.ok && day.row).toMatchObject({ starts_at: null, sent_from_account_id: 7 })
+  })
+  it('invites nobody even when guests are sent, and is not a few days', () => {
+    const r = checkDrawer({ ...b, guests: [{ email: 'x@y.org' }] }, member)
+    expect(r.ok && r.guests).toEqual([])
+    expect(checkDrawer({ ...b, when: 'range', end: '2026-11-06' }, member)).toEqual({ ok: false, error: 'Block time is at a time or all day.' })
+  })
+  it('is seen by nobody but its creator, Super Admins included', () => {
+    const row = { audience: 'guests' as const, audience_team_ids: null, created_by: 'me', team_id: null }
+    expect(seesEvent(row, { id: 'me', level: 'user', teamIds: [], led: new Set() }, new Set())).toBe(true)
+    expect(seesEvent(row, { id: 'boss', level: 'super_admin', teamIds: [], led: new Set() }, new Set())).toBe(false)
+  })
+})
+
+describe('Absence (owner, 10 November 2026)', () => {
+  const a: DrawerInput = { ...base, type: 'absence', when: 'range', end: '2026-11-06', title: 'Cy: Away', guests: [], accountId: 7, audience: 'guests' }
+  it('is for contractors: refused to anyone else', () => {
+    expect(checkDrawer(a, member)).toEqual({ ok: false, error: 'Absence is for contractors.' })
+    expect(checkDrawer(a, { ...member, contractor: true }).ok).toBe(true)
+  })
+  it('is seen by everyone, with no account and nobody invited, whatever the form says', () => {
+    const r = checkDrawer(a, { ...member, contractor: true })
+    expect(r.ok && r.row).toMatchObject({ type: 'absence', audience: 'all', how: null, sent_from_account_id: null, start_date: '2026-11-04', end_date: '2026-11-06' })
+    expect(r.ok && r.guests).toEqual([])
+    const row = { audience: 'all' as const, audience_team_ids: null, created_by: 'cy', team_id: null }
+    expect(seesEvent(row, { id: 'anyone', level: 'user', teamIds: [], led: new Set() }, new Set())).toBe(true)
+  })
+  it('is all day or a few days, never at a time', () => {
+    expect(checkDrawer({ ...a, when: 'time' }, { ...member, contractor: true })).toEqual({ ok: false, error: 'An absence is all day or a few days, never at a time.' })
   })
 })

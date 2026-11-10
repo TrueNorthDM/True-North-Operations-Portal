@@ -18,6 +18,8 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
+import { loadRoutes } from '@/lib/timeclock/pay-terms'
+import { IS_STAGING } from '@/lib/environment'
 import { closedRefusal } from '@/lib/agenda/google-lock'
 import { allLevels, invitablePeople, loadAvailability } from '@/lib/agenda/drawer-data'
 import { checkDrawer, invitees, mayManage, seesEvent, type DrawerInput, type SeenRow, type Viewer } from '@/lib/agenda/event-rules'
@@ -55,27 +57,33 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
   const { access, viewer } = w
   const c = createAdminClient()
   const dir = await loadDirectory()
-  const r = checkDrawer(input, { level: viewer.level, led: viewer.led, allLevels: await allLevels(), teamIds: [...dir.teams.keys()] })
+  // Absence is for contractors (owner, 10 November 2026); on staging anyone may try it, as with time off.
+  const contractor = IS_STAGING || (await loadRoutes([access.personId])).get(access.personId)?.isContractor === true
+  const r = checkDrawer(input, { level: viewer.level, led: viewer.led, allLevels: await allLevels(), teamIds: [...dir.teams.keys()], contractor })
   if (!r.ok) return no(r.error)
-  // A Reminder (owner, 8 November 2026) invites nobody and picks no account: for
-  // everyone it goes to the team calendar (office@) with no attendees, so nobody
-  // gets an email; for teams or only the creator it stays in the portal.
-  const reminder = r.row.type === 'reminder'
+  // A Reminder, Block time and an Absence invite nobody (owner, 8 and 10 November 2026).
+  //  - Reminder and Absence pick no account: for everyone (an Absence always is) the event goes to the team calendar (office@) with no
+  //    attendees, so nobody gets an email; a Reminder for teams or only the creator stays in the portal.
+  //  - Block time keeps the creator's own account, or none: then it stays in the portal (it still shows busy in Find a time).
+  const type = r.row.type
+  const noInvites = type === 'reminder' || type === 'block' || type === 'absence'
   let google: boolean
-  if (reminder) {
-    if (r.row.audience === 'all') {
+  if (type === 'reminder' || type === 'absence') {
+    if (type === 'absence' || r.row.audience === 'all') {
       const { data: team } = await c.from('agenda_accounts').select('id').eq('team_calendar', true).eq('source', 'google').eq('status', 'connected').maybeSingle()
       r.row.sent_from_account_id = (team?.id as number | undefined) ?? null
     }
     google = r.row.sent_from_account_id != null
+  } else if (type === 'block' && r.row.sent_from_account_id == null) {
+    google = false
   } else {
     // Their own account, or the team calendar (office@), which anyone may send from.
     const { data: acct } = await c.from('agenda_accounts').select('id, source').eq('id', r.row.sent_from_account_id as number).or(`person_id.eq.${access.personId},team_calendar.eq.true`).maybeSingle()
     if (!acct) return no('That account is no longer connected. Select another one to send from.')
     google = acct.source === 'google'
   }
-  // Where the row came from: Google, the portal alone (a Reminder kept here), or a sample account.
-  const source = google ? 'google' : reminder ? 'portal' : 'sample'
+  // Where the row came from: Google, the portal alone, or a sample account.
+  const source = google ? 'google' : noInvites ? 'portal' : 'sample'
   let eventId = id
   let before: { accountId: number | null; googleEventId: string | null } | undefined
   if (id != null) {
@@ -97,8 +105,8 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
     eventId = data.id as number
     if (r.row.how === 'online' && !google) await c.from('agenda_events').update({ meet_link: sampleMeet(`${eventId}`) }).eq('id', eventId)
   }
-  // A Reminder is seen through Who it's for (lib/agenda/event-rules.ts seesEvent), never sent to anyone.
-  const list = reminder ? [] : invitees(r.row.audience, r.row.audience_team_ids ?? [], r.guests, await invitablePeople(), access.personId)
+  // These are seen through Who it's for (lib/agenda/event-rules.ts seesEvent), never sent to anyone.
+  const list = noInvites ? [] : invitees(r.row.audience, r.row.audience_team_ids ?? [], r.guests, await invitablePeople(), access.personId)
   if (list.length) {
     const { error } = await c.from('agenda_event_guests').insert(list.map(g => ({ ...g, event_id: eventId as number })))
     if (error) { console.error('[agenda drawer] guests:', error.message); return no(NOT_SAVED) }
@@ -112,9 +120,10 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
   revalidatePath('/agenda')
   revalidatePath('/')
   const n = list.length
-  if (reminder) {
-    if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but the team calendar did not take it. Open it and save again, or reconnect office@ in Agenda settings.` }
-    return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${google ? ' and on the team calendar, with no invitations' : ''}.` }
+  if (noInvites) {
+    const where = type === 'block' ? 'your Google calendar' : 'the team calendar'
+    if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but ${where} did not take it. Open it and save again, or reconnect the account in Agenda settings.` }
+    return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${google ? ` and on ${where}, with no invitations` : ''}.` }
   }
   if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but Google did not take it, so no invitation went out. Open it and save again, or reconnect the account in Agenda settings.` }
   return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${n ? `. Google invitation sent to ${n} ${n === 1 ? 'person' : 'people'}` : ''}.` }

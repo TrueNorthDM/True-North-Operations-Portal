@@ -17,6 +17,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { teamColour } from '@/lib/directory/team-colour'
 import { loadDirectory, type Directory } from '@/lib/timeclock/clocky-context'
 import { usHolidays } from '@/lib/notifications/calendar'
+import { loadRoutes } from '@/lib/timeclock/pay-terms'
+import { IS_STAGING } from '@/lib/environment'
 import { audiencesFor, teamsFor, typesFor, type Audience, type EventType, type Person } from './event-rules'
 import type { Avail } from './find-time'
 import { refreshGoogleBusy } from './google-busy'
@@ -84,6 +86,7 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
   if (!access.personId) return null
   const me = access.personId, level = access.level as AccessLevel
   const dir = await loadDirectory()
+  const contractor = (await loadRoutes([me])).get(me)?.isContractor === true
   const [{ people, accounts }, levels, teamRes] = await Promise.all([addressBook(dir), allLevels(),
     createAdminClient().from('agenda_accounts').select('id, email').eq('team_calendar', true).maybeSingle()])
   const led = dir.led.get(me) ?? new Set<string>()
@@ -93,7 +96,8 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
   const zone = dir.zoneOf(me)
   return {
     me: { id: me, name: dir.nameOf(me), zone, zoneName: zoneLabel(zone), emails: people.find(p => p.id === me)?.emails ?? [] },
-    types: typesFor(level),
+    // Absence is for contractors (owner, 10 November 2026); on staging anyone may try it, as with time off.
+    types: typesFor(level, IS_STAGING || contractor),
     audiences: audiencesFor(level, led.size, levels),
     teams: allTeams.filter(t => mine.has(t.id)).map(t => ({ id: t.id, name: t.name, color: teamColour(t.color, t.name), count: count(t.id) })),
     people: people.filter(p => p.id !== me && p.emails.length).map(p => ({ personId: p.id, name: p.name, teamIds: p.teamIds, emails: p.emails })),
@@ -109,7 +113,7 @@ const ms = (iso: string) => Date.parse(iso)
 /**
  * Working and busy times for Find a time, from a Washington day for some days.
  * Busy: every connected account (Google's own busy times for the ones signed
- * in with Google), the timed portal events the person is in,
+ * in with Google), the timed portal events the person is in, their Block time,
  * approved time off (whole days in their zone) and the US holidays.
  */
 export async function loadAvailability(personIds: string[], fromDay: string, days: number): Promise<{ id: string; name: string; place: string; avail: Avail }[]> {
@@ -120,7 +124,7 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
   const lo = instantOf(fromDay, 0, DC), hi = lo + days * 864e5
   const loIso = new Date(lo).toISOString(), hiIso = new Date(hi).toISOString()
   const hiDay = new Date(hi).toISOString().slice(0, 10)
-  const [acc, set, off, guests, created, series] = await Promise.all([
+  const [acc, set, off, guests, created, series, allDay] = await Promise.all([
     c.from('agenda_accounts').select('id, person_id, source').in('person_id', ids),
     c.from('agenda_person_settings').select('person_id, working_hours').in('person_id', ids),
     c.from('tc_absence_requests').select('person_id, start_date, end_date').eq('state', 'approved').in('person_id', ids)
@@ -130,8 +134,10 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
     // Repeating events at a time that run in these days: each occurrence is busy for its creator and its guests.
     c.from('agenda_events').select('id, created_by, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, agenda_event_guests(person_id)')
       .not('recurrence', 'is', null).not('starts_at', 'is', null).lte('start_date', hiDay).or(`recur_until.is.null,recur_until.gte.${fromDay}`).limit(500),
+    // Block time for whole days (owner, 10 November 2026): the creator is busy those days in their zone.
+    c.from('agenda_events').select('created_by, start_date, end_date').eq('type', 'block').is('starts_at', null).in('created_by', ids).lte('start_date', hiDay).gte('end_date', fromDay),
   ])
-  for (const r of [acc, set, off, created, series]) if (r.error) throw new Error(`Availability could not be read: ${r.error.message}`)
+  for (const r of [acc, set, off, created, series, allDay]) if (r.error) throw new Error(`Availability could not be read: ${r.error.message}`)
   const accounts = (acc.data ?? []) as { id: number; person_id: string; source: string }[]
   // Accounts connected by Google sign-in: their busy times come from Google, refreshed when the copy is old.
   await refreshGoogleBusy(accounts.filter(a => a.source === 'google').map(a => a.id), lo, hi)
@@ -156,6 +162,10 @@ export async function loadAvailability(personIds: string[], fromDay: string, day
     for (const { row } of expandSeries(sr, fromDay, hiDay)) {
       if (row.starts_at && row.ends_at) for (const p of who) push(p, ms(row.starts_at), ms(row.ends_at))
     }
+  }
+  for (const b of (allDay.data ?? []) as { created_by: string; start_date: string; end_date: string }[]) {
+    const z = dir.zoneOf(b.created_by)
+    push(b.created_by, instantOf(b.start_date, 0, z), instantOf(b.end_date, 1440, z))
   }
   for (const o of (off.data ?? []) as { person_id: string; start_date: string; end_date: string }[]) {
     const z = dir.zoneOf(o.person_id)
