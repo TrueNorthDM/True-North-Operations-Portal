@@ -135,14 +135,14 @@ describe('changing how a person submits never cuts a period in half (11A)', () =
   it('monthly to every 2 weeks: the month still closes monthly; aligned, no short period', () => {
     const plan = cadenceChange('2026-10-15', 'biweekly', monthly)
     expect(plan.insert).toEqual([{ cadence: 'biweekly', effectiveFrom: '2026-11-01' }])
-    expect(plan.text).toBe('Starts with the pay period of Nov 1 to 14. October still closes monthly.')
+    expect(plan.text).toBe('Every 2 weeks from Nov 1. Until then, October closes as a month.')
   })
 
   it('monthly to every 2 weeks: the days between the month and the first pay period close as one short period', () => {
     const rules: CadenceRules = { ...monthly, anchors: [{ anchor: '2026-10-08', effectiveFrom: null }] }
     const plan = cadenceChange('2026-10-15', 'biweekly', rules)
     expect(plan.effectiveFrom).toBe('2026-11-01')
-    expect(plan.text).toBe('Starts with the pay period of Nov 5 to 18. October still closes monthly, and Nov 1 to 4 closes as one short period.')
+    expect(plan.text).toBe('Every 2 weeks from Nov 5. Until then, October closes as a month, and Nov 1 to 4 closes on its own.')
     const after = { ...rules, changes: plan.insert }
     expect(periodContaining('2026-10-20', after)).toEqual({ start: '2026-10-01', end: '2026-10-31', kind: 'month' })
     expect(periodContaining('2026-11-02', after)).toEqual({ start: '2026-11-01', end: '2026-11-04', kind: 'pay_period' })
@@ -155,7 +155,7 @@ describe('changing how a person submits never cuts a period in half (11A)', () =
       { cadence: 'biweekly', effectiveFrom: '2026-10-18', onePeriod: true },
       { cadence: 'monthly', effectiveFrom: '2026-11-01' },
     ])
-    expect(plan.text).toBe('Starts in November. The current pay period (Oct 4 to 17) closes as it is, then Oct 18 to 31 closes as one last pay period.')
+    expect(plan.text).toBe('Monthly from Nov 1. Until then, the current pay period (Oct 4 to 17) closes as it is, and Oct 18 to 31 closes as one last pay period.')
     const after = { ...biweekly, changes: plan.insert }
     expect(periodContaining('2026-10-10', after)).toEqual({ start: '2026-10-04', end: '2026-10-17', kind: 'pay_period' })
     expect(periodContaining('2026-10-25', after)).toEqual({ start: '2026-10-18', end: '2026-10-31', kind: 'pay_period' })
@@ -165,13 +165,13 @@ describe('changing how a person submits never cuts a period in half (11A)', () =
   it('every 2 weeks to monthly with no days left: monthly starts on the 1st', () => {
     const plan = cadenceChange('2026-10-25', 'monthly', biweekly)
     expect(plan.insert).toEqual([{ cadence: 'monthly', effectiveFrom: '2026-11-01' }])
-    expect(plan.text).toBe('Starts in November. The current pay period (Oct 18 to 31) closes as it is.')
+    expect(plan.text).toBe('Monthly from Nov 1. Until then, the current pay period (Oct 18 to 31) closes as it is.')
   })
 
   it('every 2 weeks to monthly when the pay period crosses the month: monthly starts the month after', () => {
     const plan = cadenceChange('2026-11-03', 'monthly', biweekly)
     expect(plan.effectiveFrom).toBe('2026-12-01')
-    expect(plan.text).toBe('Starts in December. The current pay period (Nov 1 to 14) closes as it is, then Nov 15 to 30 closes as one last pay period.')
+    expect(plan.text).toBe('Monthly from Dec 1. Until then, the current pay period (Nov 1 to 14) closes as it is, and Nov 15 to 30 closes as one last pay period.')
   })
 
   it('changing back before it takes effect undoes it', () => {
@@ -188,7 +188,7 @@ describe('changing how a person submits never cuts a period in half (11A)', () =
     }
     const plan = cadenceChange('2026-10-20', 'biweekly', inStretch)
     expect(plan.insert).toEqual([{ cadence: 'biweekly', effectiveFrom: '2026-11-01' }])
-    expect(plan.text).toBe('Starts with the pay period of Nov 1 to 14. The current pay period (Oct 18 to 31) closes as it is.')
+    expect(plan.text).toBe('Every 2 weeks from Nov 1. Until then, the current pay period (Oct 18 to 31) closes as it is.')
   })
 
   it('leaves no gap and no overlap between periods across the changes', () => {

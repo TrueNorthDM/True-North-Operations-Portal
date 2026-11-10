@@ -319,7 +319,8 @@ export function cadenceChange(today: string, to: Cadence, rules: CadenceRules): 
     return {
       insert: [{ cadence: 'biweekly', effectiveFrom: first }],
       effectiveFrom: first,
-      text: `Starts with the pay period of ${rangeText(start, addDays(start, PAY_PERIOD_DAYS - 1))}. The current pay period (${rangeText(now.from!, now.to)}) closes as it is${gap ? `, and ${rangeText(gap.start, gap.end)} closes as one short period` : ''}.`,
+      // Plain words (owner, 10 November 2026): when it starts, then what closes until then.
+      text: `Every 2 weeks from ${dayText(start)}. Until then, the current pay period (${rangeText(now.from!, now.to)}) closes as it is${gap ? `, and ${rangeText(gap.start, gap.end)} closes on its own` : ''}.`,
     }
   }
 
@@ -334,7 +335,7 @@ export function cadenceChange(today: string, to: Cadence, rules: CadenceRules): 
     return {
       insert: [{ cadence: 'biweekly', effectiveFrom: first }],
       effectiveFrom: first,
-      text: `Starts with the pay period of ${rangeText(start, addDays(start, PAY_PERIOD_DAYS - 1))}. ${longMonth(today)} still closes monthly${gap ? `, and ${rangeText(gap.start, gap.end)} closes as one short period` : ''}.`,
+      text: `Every 2 weeks from ${dayText(start)}. Until then, ${longMonth(today)} closes as a month${gap ? `, and ${rangeText(gap.start, gap.end)} closes on its own` : ''}.`,
     }
   }
 
@@ -348,9 +349,12 @@ export function cadenceChange(today: string, to: Cadence, rules: CadenceRules): 
       { cadence: 'monthly', effectiveFrom: first },
     ],
     effectiveFrom: first,
-    text: `Starts in ${longMonth(first)}. The current pay period (${rangeText(cur.start, cur.end)}) closes as it is${gap ? `, then ${rangeText(gap.start, gap.end)} closes as one last pay period` : ''}.`,
+    text: `Monthly from ${dayText(first)}. Until then, the current pay period (${rangeText(cur.start, cur.end)}) closes as it is${gap ? `, and ${rangeText(gap.start, gap.end)} closes as one last pay period` : ''}.`,
   }
 }
+
+/** "Dec 6": a day in the change note. */
+const dayText = (iso: string): string => rangeText(iso, iso).replace(/ to .*$/, '')
 
 /** The first day on or after `iso` where a pay period of the grid starts. */
 function firstGridStart(iso: string, anchors: readonly AnchorChange[]): string | null {

@@ -58,7 +58,7 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
   editing?: boolean
   draft?: Cadence
   onDraft?: (c: Cadence) => void
-  /** "Starts with the pay period of Oct 18 to 31. October still closes monthly." while the choice differs. */
+  /** "Every 2 weeks from Nov 1. Until then, October closes as a month." while the choice differs. */
   startsLine?: string | null
 }) {
   const choosing = editing && t.canEdit
@@ -79,7 +79,8 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
           <p className="m-0 mt-2 text-[12.5px] text-[var(--warn-fg)] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 leading-[1.45]">{startsLine}</p>
         )}
         <dl className="m-0">
-          <Row label="Current period"><span className="tabular-nums">{choosing && shown ? t.periodIf[shown] : t.currentPeriod}</span></Row>
+          {/* The period in force today while a change waits to start (owner, 10 November 2026); the chosen one's only when nothing is set yet. */}
+          <Row label="Current period"><span className="tabular-nums">{choosing && shown && !startsLine && t.cadence === null ? t.periodIf[shown] : t.currentPeriod}</span></Row>
           {invoicesLine && <Row label="Invoices">{invoicesLine}</Row>}
         </dl>
         <p className="m-0 pt-2 text-[12px] text-muted leading-normal">
