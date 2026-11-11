@@ -18,21 +18,26 @@ export interface Booking { setup: DrawerSetup; preset: Partial<Omit<DrawerEdit, 
   free: boolean
 }
 
-export async function bookingFor(access: Access, o: { personId: string; title: string; description: string; note: string; today: string; minutes?: number }): Promise<Booking | null> {
+export async function bookingFor(access: Access, o: { personId: string; title: string; description: string; note: string; today: string; minutes?: number
+  /** More guests: the other reviewer, for one meeting for both parts (owner, 10 November 2026). */
+  others?: string[] }): Promise<Booking | null> {
   if (!(await agendaGoogleOpen())) return null
   const setup = await loadDrawerSetup(access, [])
   if (!setup || !setup.types.includes('meeting')) return null
   const dur = o.minutes ?? 45
   let date = o.today, from = 600, free = false
   try {
-    const people = await loadAvailability([setup.me.id, o.personId], o.today, 35)
+    const people = await loadAvailability([setup.me.id, o.personId, ...(o.others ?? [])], o.today, 35)
     const first = nextFree(people.map(p => p.avail), o.today, dur, 1)[0]
     if (first) { date = first.day; from = first.start; free = true }
   } catch (e) {
     console.error('[review] find a time:', e instanceof Error ? e.message : e)
   }
-  const guest = setup.people.find(p => p.personId === o.personId)
-  const email = guest?.emails.find(e => e.tag === 'Work')?.email ?? guest?.emails[0]?.email
+  const emailOf = (id: string) => {
+    const guest = setup.people.find(p => p.personId === id)
+    return guest?.emails.find(e => e.tag === 'Work')?.email ?? guest?.emails[0]?.email
+  }
+  const guests = [o.personId, ...(o.others ?? [])].map(id => ({ personId: id, email: emailOf(id) })).filter((g): g is { personId: string; email: string } => !!g.email)
   const own = setup.accounts.filter(a => !a.team)
   return {
     setup,
@@ -40,7 +45,7 @@ export async function bookingFor(access: Access, o: { personId: string; title: s
     free,
     preset: {
       type: 'meeting', when: 'time', title: o.title, date, from, to: from + dur, how: 'online', place: '', audience: 'guests', teams: [],
-      guests: email ? [{ personId: o.personId, email }] : [], client: '', description: o.description, accountId: own[0]?.id ?? null, repeat: null,
+      guests, client: '', description: o.description, accountId: own[0]?.id ?? null, repeat: null,
     },
   }
 }

@@ -8,7 +8,7 @@
 import { cardShows, cardState, dueOf, dueWords, monthLabel, statusSummary, type CardState, type GoalStatus } from './rules'
 import { answeredCount, loadReviewView } from './view'
 import {
-  loadCheckins, loadCurrentCycle, loadGoalUpdates, loadGoals, loadImports, loadPersonReviews, loadPriorities, loadTeamStates, nameIn, rdb, reviewToday,
+  loadCheckins, loadCurrentCycle, loadGoalUpdates, loadGoals, loadImports, loadParts, loadPersonReviews, loadPriorities, loadTeamStates, nameIn, rdb, reviewToday,
   type Cycle, type ReviewViewer, type Roster,
 } from './data'
 import { fmtDay, fmtInstantDay, fmtWhen } from './format'
@@ -34,11 +34,13 @@ export async function loadMyCard(personId: string, roster: Roster, today: string
   }
   const due = dueOf(r.step, r.phase, cycle)
   const state = cardState({ step: r.step, answered, goals, due, meetingStartsAt: r.meeting_starts_at, meetingEndsAt: r.meeting_ends_at, agreedAt: r.agreed_at }, today, now)
-  const reviewer = nameIn(roster, r.reviewer_id)
+  // With two reviewers the card names both (owner, 10 November 2026).
+  const extra = await loadParts([r.id])
+  const reviewer = [r.reviewer_id, ...extra.map(x => x.reviewer_id)].map(id => nameIn(roster, id)).filter(Boolean).join(' and ')
   const href = `/human-resources/reviews/${r.id}`
   const g = `${goals} ${goals === 1 ? 'goal' : 'goals'}`
   const card: Record<CardState, () => Omit<ReviewCard, 'state' | 'year' | 'steps'>> = {
-    soon: () => ({ title: 'Your self-review opens soon', sub: `It opens when your team's priorities are approved${cycle.teams_open_by ? `, or on ${fmtDay(cycle.teams_open_by)} at the latest` : ''}.`, button: 'See the priorities', href }),
+    soon: () => ({ title: 'Your self-review opens soon', sub: 'It opens when the reviews start.', button: 'Open your review', href }),
     open: () => ({ title: `Self-review due ${fmtDay(due)}`, sub: `The ${cycle.year} cycle opened on ${fmtInstantDay(r.opened_at ?? cycle.started_at).replace(/^\w+, /, '')}.${due ? ` ${dueWords(due, today).replace(/^./, c => c.toUpperCase())}.` : ''}`, button: 'Start your self-review', href }),
     progress: () => ({ title: `Self-review due ${fmtDay(due)}`, sub: `${answered} of ${total} questions answered, ${g}.${due ? ` ${dueWords(due, today).replace(/^./, c => c.toUpperCase())}.` : ''}`, button: 'Continue', href }),
     late: () => ({ title: `Self-review was due ${fmtDay(due)}`, sub: `${dueWords(due!, today).replace(/^./, c => c.toUpperCase())}. ${reviewer} can see that it is late.`, button: 'Continue', href }),
@@ -48,7 +50,7 @@ export async function loadMyCard(personId: string, roster: Roster, today: string
       const held = r.meeting_ends_at ? reviewToday(new Date(r.meeting_ends_at)) : null
       return { title: 'Read and agree', sub: `${held === today || !held ? 'The meeting was today.' : `The meeting was on ${fmtDay(held)}.`} Read the notes and the goals, then agree.`, button: 'Read and agree', href }
     },
-    approved: () => ({ title: `Approved on ${fmtInstantDay(r.approved_at)}`, sub: `Approved by ${nameIn(roster, r.approved_by)}. The PDF is ready.`, button: 'Open PDF', href }),
+    approved: () => ({ title: `Approved on ${fmtInstantDay(r.approved_at)}`, sub: `Approved by ${reviewer}. Your goals are on your profile; the PDF is ready.`, button: 'Open your review', href }),
   }
   const cur = r.step === 'approved' ? 4 : r.step === 'waiting' ? -1 : STEPS.indexOf(r.step as (typeof STEPS)[number])
   return {

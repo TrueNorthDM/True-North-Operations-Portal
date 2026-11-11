@@ -20,7 +20,7 @@ const noop = async () => EXAMPLE
 const noPicker = async () => ({ ok: false as const, error: 'This is an example.' })
 
 const HR_API: HrSettingsApi = {
-  saveHrSettings: noop, saveReviewDates: noop, saveHrDriveFolder: noop, hrPicker: noPicker, pickImportFiles: noop,
+  saveHrSettings: noop, saveHrDriveFolder: noop, hrPicker: noPicker, pickImportFiles: noop,
   setImportPerson: noop, importFiles: noop, saveImportGoal: noop, removeImportGoal: noop,
 }
 const INTEGRATIONS_API: IntegrationsApi = {

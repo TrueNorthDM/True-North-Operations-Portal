@@ -46,7 +46,7 @@ const nameOf = (id: string) => PEOPLE.find(p => p.id === id)?.name ?? 'Someone'
 
 // ── Company settings ────────────────────────────────────────────────────────
 
-/** Human Resources for the 2026 review: roles picked, dates set, last year's files half imported. */
+/** Human Resources for the 2026 review: roles picked, one person with two reviewers, last year's files half imported. */
 export function hrSettingsSample(): HrSettingsData {
   return {
     year: 2026,
@@ -54,11 +54,9 @@ export function hrSettingsSample(): HrSettingsData {
     people: PEOPLE.map(p => ({ value: p.id, label: p.name })),
     employees: 6,
     extra: [{ id: 'p-ben', name: 'Ben Carter' }],
-    dates: {
-      leaders_open_on: '2026-11-16', leaders_due: '2026-11-27', teams_open_by: '2026-12-01', self_due: '2026-12-11',
-      review_due: '2026-12-18', meeting_due: '2027-01-15', approval_due: '2027-01-29', checkins_by: '2027-06-30',
-    },
+    datesLine: 'The 2026 reviews have not started. The VP of Operations is reminded on the second Monday of November.',
     started: null,
+    second: [{ personId: 'p-sam', name: 'Sam Patel', first: 'Chris Taylor', firstArea: 'SEO', reviewer: 'Jordan Lee', area: 'Writers', how: 'rule' }],
     drive: { name: 'Approved reviews', ready: true, why: null, account: `office@${TN}` },
     imports: [
       { id: 1, file: '2025.11 - Alex Rivera.docx', personId: 'p-alex', person: 'Alex Rivera', match: 'matched', imported: true, leftOn: null, found: { read: true, job: 4 }, goals: [{ id: 11, what: 'Lead the December editorial calendar', byMonth: '2026-12-01' }] },

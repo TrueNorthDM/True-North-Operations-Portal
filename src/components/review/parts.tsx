@@ -150,7 +150,10 @@ export function PriorityBlock({ id, label, items, showGoals, open, onToggle }: {
 const chip = 'inline-flex items-center gap-1.5 rounded-full bg-subtle px-2.5 py-[3px] text-[12px] font-semibold text-tn-ink'
 const FLAG = 'M4 22V4M4 4h13l-2 4 2 4H4'
 
-function GoalRead({ g, who, onEdit }: { g: GoalView; who: string; onEdit?: () => void }) {
+/** With two reviewers: who each goal is for, "Jeannette Owens · SEO" (owner, 10 November 2026). */
+export interface GoalOwner { no: 0 | 1; label: string }
+
+function GoalRead({ g, who, onEdit, owners }: { g: GoalView; who: string; onEdit?: () => void; owners?: GoalOwner[] }) {
   const [orig, setOrig] = useState(false)
   const was = g.original
   const changes: string[] = []
@@ -167,6 +170,7 @@ function GoalRead({ g, who, onEdit }: { g: GoalView; who: string; onEdit?: () =>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{g.what || 'Untitled goal'}</span>
         {g.how && <span className="text-[13px] text-[#435066]">Measured by: {g.how}</span>}
         <div className="flex flex-wrap items-center gap-1.5">
+          {owners && owners.length > 1 && <span className={chip}>For {owners.find(o => o.no === (g.part ?? 0))?.label}</span>}
           {g.byLabel && <span className={chip}>By {g.byLabel}</span>}
           {g.term && <span className={chip}>{TERM_LABEL[g.term]}</span>}
           {g.priorityTitle && <span className={`${chip} bg-[#eaf4f4] text-tn-teal`}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={FLAG} /></svg>{g.priorityTitle}</span>}
@@ -188,13 +192,16 @@ function GoalRead({ g, who, onEdit }: { g: GoalView; who: string; onEdit?: () =>
 }
 
 export interface GoalApi {
-  saveGoal(i: { goalId: number; what?: string; how?: string; byMonth?: string | null; term?: '6m' | '1y' | null; priorityId?: number | null }): Promise<Res>
+  saveGoal(i: { goalId: number; what?: string; how?: string; byMonth?: string | null; term?: '6m' | '1y' | null; priorityId?: number | null; part?: 0 | 1 }): Promise<Res>
   removeGoal(i: { goalId: number }): Promise<Res>
 }
 
-function GoalEdit({ g, priorities, api, onSaved, onError, onRemoved, tag }: {
+function GoalEdit({ g, priorities, api, onSaved, onError, onRemoved, tag, owners, pickOwner }: {
   g: GoalView; priorities: PriorityView[]; api: GoalApi; onSaved: Saved; onError: (e: string) => void; onRemoved: () => void; tag?: string
+  /** Two reviewers: the person says which one each goal is for. */
+  owners?: GoalOwner[]; pickOwner?: boolean
 }) {
+  const [owner, setOwner] = useState<'0' | '1'>(String(g.part ?? 0) as '0' | '1')
   const what = useAutosave(g.what, v => api.saveGoal({ goalId: g.id, what: v }), onSaved, onError)
   const how = useAutosave(g.how, v => api.saveGoal({ goalId: g.id, how: v }), onSaved, onError)
   const [by, setBy] = useState(g.byMonth?.slice(0, 7) ?? '')
@@ -217,6 +224,10 @@ function GoalEdit({ g, priorities, api, onSaved, onError, onRemoved, tag }: {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
         </button>
       </div>
+      {owners && owners.length > 1 && (pickOwner
+        ? <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>For</span>
+            <Segmented label="Which reviewer this goal is for" value={owner} options={owners.map(o => ({ key: String(o.no) as '0' | '1', label: o.label }))} onChange={k => { setOwner(k); void save({ goalId: g.id, part: Number(k) as 0 | 1 }) }} /></div>
+        : <span className="text-[12.5px] text-muted">For {owners.find(o => o.no === (g.part ?? 0))?.label}</span>)}
       <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>What</span>
         <input value={what.value} onChange={e => what.change(e.target.value)} onBlur={what.blur} maxLength={500} placeholder="What you will do" className={`${INPUT} w-full font-semibold`} /></label>
       <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>How it is measured</span>
@@ -236,16 +247,20 @@ function GoalEdit({ g, priorities, api, onSaved, onError, onRemoved, tag }: {
 }
 
 /** The goals for the coming year: read, or edited by whoever may change them now. */
-export function GoalList({ goals, priorities, api, editable, mode, who, onSaved, onError, onChanged, editingId, setEditingId }: {
+export function GoalList({ goals, priorities, api, editable, mode, who, onSaved, onError, onChanged, editingId, setEditingId, owners, myPart }: {
   goals: GoalView[]; priorities: PriorityView[]; api: GoalApi; editable: boolean; mode: 'person' | 'reviewer' | 'read'; who: string
   onSaved: Saved; onError: (e: string) => void; onChanged: () => void; editingId: number | null; setEditingId: (id: number | null) => void
+  /** Two reviewers: who each goal is for; a reviewer changes only theirs (or one given to neither). */
+  owners?: GoalOwner[]; myPart?: 0 | 1 | null
 }) {
+  const two = !!owners && owners.length > 1
+  const mayEdit = (g: GoalView) => editable && (mode !== 'reviewer' || !two || g.part === null || g.part === myPart)
   return (
     <div className="flex flex-col">
-      {goals.map(g => (mode === 'person' && editable) || (editable && editingId === g.id)
+      {goals.map(g => (mode === 'person' && editable) || (mayEdit(g) && editingId === g.id)
         ? <GoalEdit key={g.id} g={g} priorities={priorities} api={api} onSaved={onSaved} onError={onError} onRemoved={onChanged}
-            tag={g.addedByReviewer ? `Added by ${g.addedByName}` : undefined} />
-        : <GoalRead key={g.id} g={g} who={who} onEdit={editable ? () => setEditingId(g.id) : undefined} />)}
+            tag={g.addedByReviewer ? `Added by ${g.addedByName}` : undefined} owners={owners} pickOwner={mode === 'person'} />
+        : <GoalRead key={g.id} g={g} who={who} owners={owners} onEdit={mayEdit(g) ? () => setEditingId(g.id) : undefined} />)}
       {!goals.length && <p className="m-0 text-[13px] text-muted">No goals yet. Add the first one: what, how it is measured, and by when (month and year).</p>}
     </div>
   )

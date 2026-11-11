@@ -1,22 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays, cardShows, cardState, checkinsOpenOn, dueOf, dueWords, matchFile, monthEnd, monthLabel, nameInFile, participants, pdfName,
-  reminderToday, reviewerFor, rolesFromTitles, decidesTeam, startRowShows, statusSummary, stepBack, takesPart, teamOpens, waitsFor,
+  reminderToday, reviewerFor, rolesFromTitles, decidesTeam, secondReviewerFor, statusSummary, stepBack, takesPart, waitsFor,
   type RosterMembership, type RosterPerson,
 } from './rules'
 
 const person = (id: string, over: Partial<RosterPerson> = {}): RosterPerson => ({
   id, name: id.toUpperCase(), active: true, employmentType: 'us', managerId: null, title: null, hireDate: null, ...over,
-})
-
-describe('the start row in Needs you', () => {
-  it('shows from a week before Team Leaders open until the cycle starts', () => {
-    expect(startRowShows('2026-11-01', '2026-11-09', false)).toBe(false)
-    expect(startRowShows('2026-11-02', '2026-11-09', false)).toBe(true)
-    expect(startRowShows('2026-11-12', '2026-11-09', false)).toBe(true)
-    expect(startRowShows('2026-11-04', '2026-11-09', true)).toBe(false)
-    expect(startRowShows('2026-11-04', null, false)).toBe(false)
-  })
 })
 
 describe('who decides a team\'s priorities', () => {
@@ -87,6 +77,43 @@ describe('who reviews', () => {
     expect(got.get('laura')).toMatchObject({ teamLeaderId: null, reviewerId: 'vp', phase: 1, leads: ['w'] })
     expect(got.get('marcus')).toMatchObject({ teamLeaderId: null, reviewerId: 'vp', phase: 1 })
     expect(got.get('vp')).toMatchObject({ reviewerId: 'ciso', phase: 1 })
+    expect(got.get('amy')).toMatchObject({ area: 'Writing Team', secondReviewerId: null })
+  })
+})
+
+describe('two reviewers', () => {
+  // Kathleen leads Social Media and works in SEO under Jeannette; she reports to Arnaldo (owner, 10 November 2026).
+  const roles = { vpId: 'vp', cisoId: 'ciso', hrId: null }
+  const members: RosterMembership[] = [
+    { personId: 'kathleen', teamId: 'social', position: 'lead', isPrimary: true },
+    { personId: 'kathleen', teamId: 'seo', position: 'member', isPrimary: false },
+    { personId: 'jeannette', teamId: 'seo', position: 'lead', isPrimary: true },
+    { personId: 'cheyenne', teamId: 'writers', position: 'member', isPrimary: true },
+    { personId: 'cheyenne', teamId: 'seo', position: 'member', isPrimary: false },
+    { personId: 'vp', teamId: 'ops', position: 'lead', isPrimary: true },
+    { personId: 'vp', teamId: 'seo', position: 'member', isPrimary: false },
+  ]
+  const teams = new Map([['social', { id: 'social', name: 'Social Media' }], ['seo', { id: 'seo', name: 'SEO' }], ['writers', { id: 'writers', name: 'Writers' }], ['ops', { id: 'ops', name: 'Operations' }]])
+  const active = new Set(['kathleen', 'jeannette', 'cheyenne', 'vp', 'arnaldo'])
+
+  it('gives a Team Leader who works in another team that team\'s leader as a second reviewer', () => {
+    expect(secondReviewerFor('kathleen', 'arnaldo', members, teams, roles, active)).toEqual({ reviewerId: 'jeannette', area: 'SEO' })
+  })
+  it('gives none to a plain member of two teams, to the VP and the CISO, or when it is the first reviewer again', () => {
+    expect(secondReviewerFor('cheyenne', 'x', members, teams, roles, active)).toBeNull()
+    expect(secondReviewerFor('vp', 'ciso', members, teams, roles, active)).toBeNull()
+    expect(secondReviewerFor('kathleen', 'jeannette', members, teams, roles, active)).toBeNull()
+  })
+  it('follows a choice made by hand', () => {
+    expect(secondReviewerFor('kathleen', 'arnaldo', members, teams, roles, active, { kathleen: false })).toBeNull()
+    expect(secondReviewerFor('cheyenne', 'x', members, teams, roles, active, { cheyenne: { reviewerId: 'jeannette', area: 'SEO' } })).toEqual({ reviewerId: 'jeannette', area: 'SEO' })
+    // Someone who left is never a reviewer.
+    expect(secondReviewerFor('cheyenne', 'x', members, teams, roles, active, { cheyenne: { reviewerId: 'gone', area: 'SEO' } })).toBeNull()
+  })
+  it('puts the second reviewer on the participant', () => {
+    const people = [person('kathleen', { managerId: 'arnaldo' }), person('jeannette', { managerId: 'arnaldo' }), person('arnaldo')]
+    const got = participants(people, members, [...teams.values()], roles, new Set()).find(p => p.personId === 'kathleen')
+    expect(got).toMatchObject({ reviewerId: 'arnaldo', phase: 1, area: 'Social Media', secondReviewerId: 'jeannette', secondArea: 'SEO' })
   })
 })
 
@@ -99,12 +126,22 @@ describe('steps', () => {
     expect(stepBack('approved')).toBeNull()
   })
 
-  it('takes the phase 1 date for Team Leaders', () => {
+  it('takes the phase 1 date for Team Leaders in a year from before the new workflow', () => {
     const d = { leaders_open_on: '2026-11-09', leaders_due: '2026-11-15', teams_open_by: '2026-11-16', self_due: '2026-11-30', review_due: '2026-12-04', meeting_due: '2026-12-18', approval_due: '2026-12-23', checkins_by: '2027-06-30' }
     expect(dueOf('self', 1, d)).toBe('2026-11-15')
     expect(dueOf('self', 2, d)).toBe('2026-11-30')
     expect(dueOf('approval', 2, d)).toBe('2026-12-23')
+    expect(dueOf('approval', 1, d)).toBe('2026-12-23')
     expect(dueOf('approved', 2, d)).toBeNull()
+  })
+
+  it('gives each lane its own meeting and approval date', () => {
+    const d = { leaders_open_on: '2026-11-09', leaders_due: null, teams_open_by: null, self_due: '2026-11-20', review_due: '2026-11-25', meeting_due: '2026-12-09', approval_due: '2026-12-15', checkins_by: '2027-05-10', leaders_meeting_due: '2026-12-04', leaders_approval_due: '2026-12-11' }
+    expect(dueOf('self', 1, d)).toBe('2026-11-20')
+    expect(dueOf('meeting', 1, d)).toBe('2026-12-04')
+    expect(dueOf('meeting', 2, d)).toBe('2026-12-09')
+    expect(dueOf('approval', 1, d)).toBe('2026-12-11')
+    expect(dueOf('approval', 2, d)).toBe('2026-12-15')
   })
 
   it('waits for the person to agree once the meeting is over', () => {
@@ -116,12 +153,6 @@ describe('steps', () => {
     expect(waitsFor({ ...base, step: 'approved', meetingEndsAt: null }, now)).toBeNull()
   })
 
-  it('opens a team on approval or on the date', () => {
-    expect(teamOpens({ approved: true }, '2026-11-16', '2026-11-10')).toBe(true)
-    expect(teamOpens(null, '2026-11-16', '2026-11-15')).toBe(false)
-    expect(teamOpens(null, '2026-11-16', '2026-11-16')).toBe(true)
-    expect(teamOpens(null, null, '2026-11-16')).toBe(false)
-  })
 })
 
 describe('days', () => {
@@ -132,9 +163,10 @@ describe('days', () => {
     expect(dueWords('2026-11-30', '2026-12-02')).toBe('2 days late')
   })
 
-  it('reminds 1 week, 3 days and on the day', () => {
-    expect(reminderToday('2026-11-30', '2026-11-23')).toBe(7)
+  it('reminds 3 days before, the day before and on the day', () => {
+    expect(reminderToday('2026-11-30', '2026-11-23')).toBeNull()
     expect(reminderToday('2026-11-30', '2026-11-27')).toBe(3)
+    expect(reminderToday('2026-11-30', '2026-11-29')).toBe(1)
     expect(reminderToday('2026-11-30', '2026-11-30')).toBe(0)
     expect(reminderToday('2026-11-30', '2026-11-28')).toBeNull()
     expect(reminderToday(null, '2026-11-28')).toBeNull()

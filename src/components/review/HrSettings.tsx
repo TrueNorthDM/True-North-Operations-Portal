@@ -3,8 +3,10 @@
 /**
  * Company settings > Human Resources (annual review handoff, A1 and A2): the
  * yearly review's roles (picked here, never named in code), who takes part
- * beyond the employees, the year's dates, the Drive folder for the approved
- * PDFs, and last year's reviews imported once from Drive (first year only).
+ * beyond the employees, who has two reviewers, the Drive folder for the
+ * approved PDFs, and last year's reviews imported once from Drive (first year
+ * only). The dates come from the kickoff (owner, 10 November 2026): they are
+ * moved in Human Resources › Reviews, not here.
  * Super Admins change them, and so does the person picked as HR.
  */
 
@@ -15,11 +17,11 @@ import { CARD, FIELD_LABEL, TH } from '@/lib/ui/type'
 import { INPUT } from '@/lib/ui/fields'
 import { Pill } from '@/components/ui/Pill'
 import { Select } from '@/components/ui/Select'
-import { DateField, MonthField } from '@/components/ui/DateField'
+import { MonthField } from '@/components/ui/DateField'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { MODAL_TITLE, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { openPicker } from '@/lib/drive/picker-client'
-import { fmtDay, initials } from '@/lib/review/format'
+import { initials } from '@/lib/review/format'
 import { APR_COLORS } from '@/lib/review/colors'
 
 type Res = { ok: true; toast?: string } | { ok: false; error: string }
@@ -29,18 +31,19 @@ export interface HrSettingsData {
   people: { value: string; label: string }[]
   employees: number
   extra: { id: string; name: string }[]
-  dates: Record<DateKey, string | null>
+  /** The year's dates, read only here: "Started Mon, Nov 9 · all approved by Tue, Dec 15". */
+  datesLine: string
   started: string | null
+  /** Who has two reviewers: by the rule, or set by hand (none, or another reviewer). */
+  second: { personId: string; name: string; first: string; firstArea: string; reviewer: string | null; area: string; how: 'rule' | 'hand' | 'none' }[]
   drive: { name: string | null; ready: boolean; why: string | null; account: string | null }
   imports: { id: number; file: string; personId: string | null; person: string | null; match: 'matched' | 'check' | 'none' | 'skipped'; imported: boolean; leftOn: string | null
     /** What the file said (migration 150): whether it could be read, how many Job Description answers. */
     found: { read: boolean; job: number } | null
     goals: { id: number; what: string; byMonth: string | null }[] }[]
 }
-type DateKey = 'leaders_open_on' | 'leaders_due' | 'teams_open_by' | 'self_due' | 'review_due' | 'meeting_due' | 'approval_due' | 'checkins_by'
 export interface HrSettingsApi {
-  saveHrSettings(i: { vpId?: string | null; cisoId?: string | null; hrId?: string | null; extra?: string[] }): Promise<Res>
-  saveReviewDates(i: { year: number; dates: Partial<Record<DateKey, string | null>> }): Promise<Res>
+  saveHrSettings(i: { vpId?: string | null; cisoId?: string | null; hrId?: string | null; extra?: string[]; second?: { personId: string; reviewerId?: string | null; area?: string } }): Promise<Res>
   saveHrDriveFolder(i: { id: string; name: string }): Promise<Res>
   hrPicker(): Promise<{ ok: true; token: string; key: string; appId: string } | { ok: false; error: string }>
   pickImportFiles(i: { year: number; files: { id: string; name: string; mimeType?: string; url?: string }[] }): Promise<Res>
@@ -54,14 +57,9 @@ export interface HrSettingsApi {
 const badged = (people: { value: string; label: string }[]) => people.map(p => ({ ...p, icon: <span className="w-[22px] h-[22px] rounded-full bg-[#eef1f5] border border-[#dfe4ea] flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[9px] text-[#435066]">{initials(p.label)}</span> }))
 const MONTH = (d: string) => new Date(`${d}T12:00:00`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
 
-const DATES: { key: DateKey; label: string }[] = [
-  { key: 'leaders_open_on', label: 'Team Leaders open on' }, { key: 'leaders_due', label: "Team Leaders' self-review by" },
-  { key: 'teams_open_by', label: 'Teams open by' }, { key: 'self_due', label: 'Self-review by' }, { key: 'review_due', label: 'Review by' },
-  { key: 'meeting_due', label: 'Meeting by' }, { key: 'approval_due', label: 'Approval by' }, { key: 'checkins_by', label: 'Check-ins by' },
-]
 const ROLES = [
-  { key: 'vpId', label: 'VP of Operations', what: "Writes the Company Priorities with the CISO and approves each team's. Reviews only the people who report to them. Reviewed by the CISO." },
-  { key: 'cisoId', label: 'CISO', what: "Writes the Company Priorities with the VP of Operations and approves each team's. Reviews the VP of Operations and the people who report to them. Nobody reviews the CISO, who has no review of their own." },
+  { key: 'vpId', label: 'VP of Operations', what: 'Starts the reviews each November and adds their own priorities for next year. Reviews the people who report to them and approves them. Reviewed by the CISO.' },
+  { key: 'cisoId', label: 'CISO', what: 'Writes the Company Priorities for next year, which every review shows. Reviews the VP of Operations and the people who report to them. Nobody reviews the CISO, who has no review of their own.' },
   { key: 'hrId', label: 'HR', what: 'Sees every review. Told when one is approved.' },
 ] as const
 
@@ -107,7 +105,6 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
     setProgress(null); setBusy(false); setOutcome(result)
     router.refresh()
   }
-  const opensIn = data.dates.leaders_open_on
   const imported = data.imports.filter(i => i.imported).length
   const left = data.people.filter(p => !data.extra.some(e => e.id === p.value))
   const withBadge = badged(data.people)
@@ -140,17 +137,12 @@ export function HrSettings({ data, canEdit, canRoles = canEdit, api }: { data: H
         </div>
       </div>
 
-      <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3`}>
-        <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Dates</span><span className="text-[12.5px] text-muted">Team Leaders, and the people with no Team Leader, go first. A team&apos;s self-reviews open when its priorities are approved, or on &ldquo;Teams open by&rdquo; at the latest. The deadlines show on every review and on the year&apos;s list.</span></div>
-        <div className="grid gap-x-4 gap-y-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {DATES.map(d => (
-            <label key={d.key} className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>{d.label}</span>
-              <DateField value={data.dates[d.key] ?? ''} disabled={!canEdit || busy} clearable ariaLabel={d.label}
-                onChange={v => void run(() => api.saveReviewDates({ year: data.year, dates: { [d.key]: v || null } }))} /></label>
-          ))}
-        </div>
-        {opensIn && !data.started && <p className="m-0 text-[13px] text-tn-ink">The {data.year} cycle opens for Team Leaders when a Super Admin starts it in Human Resources › Reviews (planned for {fmtDay(opensIn)}).</p>}
-        {data.started && <p className="m-0 text-[13px] text-tn-ink">The {data.year} cycle started on {fmtDay(data.started.slice(0, 10))}. Changing a date moves its reminders.</p>}
+      <SecondReviewers data={data} canEdit={canRoles} busy={busy} people={withBadge} onSave={x => void run(() => api.saveHrSettings({ second: x }))} />
+
+      <div className={`${CARD} px-[22px] py-5 flex flex-col gap-1`}>
+        <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Dates</span>
+        <span className="text-[13px] text-[#435066]">{data.datesLine}</span>
+        <span className="text-[12.5px] text-muted">Every due date comes from the day the VP of Operations starts the reviews, all approved within about five weeks. They are moved in Human Resources › Reviews.</span>
       </div>
 
       <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3`}>
@@ -282,5 +274,40 @@ function GoalsCheck({ row, year, api, onSaved, onClose }: {
         <button type="button" className={BTN.navy} onClick={onClose}>Done</button>
       </div>
     </div></Modal>
+  )
+}
+
+/** Who has two reviewers (owner, 10 November 2026): by the rule, or set by hand. Super Admins change it. */
+function SecondReviewers({ data, canEdit, busy, people, onSave }: {
+  data: HrSettingsData; canEdit: boolean; busy: boolean; people: { value: string; label: string }[]
+  onSave: (x: { personId: string; reviewerId?: string | null; area?: string }) => void
+}) {
+  const [adding, setAdding] = useState<{ personId: string; reviewerId: string; area: string } | null>(null)
+  const HOW = { rule: ['By the rule', 'gray'], hand: ['Set by hand', 'blue'], none: ['Removed by hand', 'amber'] } as const
+  return (
+    <div className={`${CARD} px-[22px] py-5 flex flex-col gap-3`}>
+      <div className="flex flex-col gap-0.5"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Two reviewers</span>
+        <span className="text-[12.5px] text-muted">Someone who leads their own team and also works in another team is reviewed by both: who they report to, for their team, and the other team&apos;s Team Leader. Each one has their own part of the review, and each goal says which of them it is for.</span></div>
+      {data.second.map(x => (
+        <div key={x.personId} className="grid gap-x-4 gap-y-1.5 items-center border-t border-[var(--row-rule)] pt-3 sm:grid-cols-[200px_1fr_auto]">
+          <span className="font-bold text-[14px] text-tn-ink">{x.name}</span>
+          <span className="text-[13px] text-[#435066]">{x.how === 'none' ? `Only ${x.first}${x.firstArea ? ` · ${x.firstArea}` : ''}` : `${x.first}${x.firstArea ? ` · ${x.firstArea}` : ''}, and ${x.reviewer}${x.area ? ` · ${x.area}` : ''}`}</span>
+          <span className="flex items-center gap-2.5 flex-wrap"><Pill tone={HOW[x.how][1]} text={HOW[x.how][0]} />
+            {canEdit && x.how === 'rule' && <button type="button" className={BTN.link} disabled={busy} onClick={() => onSave({ personId: x.personId, reviewerId: null })}>Remove</button>}
+            {canEdit && x.how !== 'rule' && <button type="button" className={BTN.link} disabled={busy} onClick={() => onSave({ personId: x.personId })}>Back to the rule</button>}</span>
+        </div>
+      ))}
+      {!data.second.length && <span className="text-[13px] text-muted">Nobody has two reviewers.</span>}
+      {canEdit && !adding && <div><button type="button" className={BTN.smallWhite} disabled={busy} onClick={() => setAdding({ personId: '', reviewerId: '', area: '' })}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Add a second reviewer</button></div>}
+      {adding && (
+        <div className="grid gap-3 items-end border-t border-[var(--row-rule)] pt-3 sm:grid-cols-[1fr_1fr_180px_auto]">
+          <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Person</span><Select value={adding.personId} options={people} searchable fullWidth ariaLabel="Person" placeholder="Pick a person" className={INPUT} onChange={v => setAdding(a => a && { ...a, personId: v })} /></label>
+          <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Second reviewer</span><Select value={adding.reviewerId} options={people.filter(p => p.value !== adding.personId)} searchable fullWidth ariaLabel="Second reviewer" placeholder="Pick a person" className={INPUT} onChange={v => setAdding(a => a && { ...a, reviewerId: v })} /></label>
+          <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>For which team</span><input value={adding.area} onChange={e => setAdding(a => a && { ...a, area: e.target.value })} maxLength={120} placeholder="SEO" className={INPUT} /></label>
+          <span className="flex gap-2"><button type="button" className={BTN.white} onClick={() => setAdding(null)}>Cancel</button>
+            <button type="button" className={`${BTN.navy} disabled:opacity-50`} disabled={busy || !adding.personId || !adding.reviewerId} onClick={() => { onSave({ personId: adding.personId, reviewerId: adding.reviewerId, area: adding.area }); setAdding(null) }}>Save</button></span>
+        </div>
+      )}
+    </div>
   )
 }

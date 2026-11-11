@@ -27,7 +27,10 @@ export function ReviewDoc({ v, today }: { v: ReviewView; today: string }) {
   const mgr = v.template.sections.find(s => s.key === 'manager')!
   const ans = (k: string) => v.answers[k]?.body?.trim() ?? ''
   const head = `Annual Performance Review ${v.year} · ${v.person.name}`
-  const facts = [['Employee', v.person.name], ['Position', v.person.title ?? ''], ['Team', v.person.teamName ?? ''], [v.person.teamLeaderName ? 'Team Leader' : 'Reviewer', v.person.teamLeaderName ?? v.reviewer.name], ['Date of hire', hireLabel(v.person.hireDate, today)], ['Cycle opened', fmtInstantDay(v.cycle.started_at, true).replace(/^\w+, /, '')]]
+  // Two reviewers (owner, 10 November 2026): each one's feedback, meeting notes and approval, by name and team.
+  const two = v.parts.length > 1
+  const label = (p: ReviewView['parts'][number]) => `${p.reviewer.name}${two && p.area ? ` · ${p.area}` : ''}`
+  const facts = [['Employee', v.person.name], ['Position', v.person.title ?? ''], ['Team', v.person.teamName ?? ''], [two ? 'Reviewers' : v.person.teamLeaderName ? 'Team Leader' : 'Reviewer', two ? v.parts.map(label).join(', ') : v.person.teamLeaderName ?? v.reviewer.name], ['Date of hire', hireLabel(v.person.hireDate, today)], ['Cycle opened', fmtInstantDay(v.cycle.started_at, true).replace(/^\w+, /, '')]]
   return (
     <div className="print-doc bg-white w-[816px] text-[#435066]" data-file={v.pdf.name ?? `${v.year} - ${v.person.name}.pdf`}>
       <div className="px-[72px] flex flex-col gap-[22px]">
@@ -114,19 +117,22 @@ export function ReviewDoc({ v, today }: { v: ReviewView; today: string }) {
           </section>
         ))}
 
-        <section className={`flex flex-col gap-5 ${NEW_PAGE}`}>
-          <div className={H2_ROW}><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">{mgr.title}</h2><span className="text-[12.5px] text-[#8593a4]">{v.reviewer.name}</span></div>
-          <Answers qs={mgr.questions} ans={ans} />
-        </section>
-
-        <section className="flex flex-col gap-5 mt-1.5 break-inside-avoid">
-          <div className={H2_ROW}><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Meeting notes</h2><span className="text-[12.5px] text-[#8593a4]">{v.meeting.startsAt ? `${new Date(v.meeting.startsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}, with ${v.reviewer.name}` : ''}</span></div>
-          <p className="m-0 text-[14.5px] leading-[1.55] whitespace-pre-wrap">{v.meeting.notes || 'No notes.'}</p>
-        </section>
+        {v.parts.map((p, i) => (
+          <div key={p.no} className="contents">
+            <section className={`flex flex-col gap-5 ${i === 0 ? NEW_PAGE : 'mt-1.5'}`}>
+              <div className={H2_ROW}><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">{two ? `Review by ${p.reviewer.name}` : mgr.title}</h2><span className="text-[12.5px] text-[#8593a4]">{two ? p.area : p.reviewer.name}</span></div>
+              <Answers qs={mgr.questions} ans={k => p.answers[k]?.body?.trim() ?? ''} />
+            </section>
+            <section className="flex flex-col gap-5 mt-1.5 break-inside-avoid">
+              <div className={H2_ROW}><h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Meeting notes{two ? ` · ${p.reviewer.name}` : ''}</h2><span className="text-[12.5px] text-[#8593a4]">{p.meeting.startsAt ? `${new Date(p.meeting.startsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}, with ${p.reviewer.name}` : ''}</span></div>
+              <p className="m-0 text-[14.5px] leading-[1.55] whitespace-pre-wrap">{p.meeting.notes || 'No notes.'}</p>
+            </section>
+          </div>
+        ))}
 
         <div className="flex flex-col gap-3 px-5 py-[18px] border border-[#d9dee6] rounded-[10px] text-[15px] text-tn-ink break-inside-avoid">
-          {v.dates.agreed && <span className="flex items-center gap-3"><Check /><span>Read and agreed by <b>{v.person.name}</b> on <b>{longDay(v.dates.agreed)}</b></span></span>}
-          {v.dates.approved && <span className="flex items-center gap-3"><Check /><span>Approved by <b>{v.dates.approvedBy}</b> on <b>{longDay(v.dates.approved)}</b></span></span>}
+          {v.parts.map(p => p.dates.agreed && <span key={`a${p.no}`} className="flex items-center gap-3"><Check /><span>Read and agreed by <b>{v.person.name}</b>{two ? <> with {p.reviewer.name}</> : null} on <b>{longDay(p.dates.agreed)}</b></span></span>)}
+          {v.parts.map(p => p.dates.approved && <span key={`p${p.no}`} className="flex items-center gap-3"><Check /><span>Approved by <b>{p.dates.approvedBy}</b>{two && p.area ? ` (${p.area})` : ''} on <b>{longDay(p.dates.approved)}</b></span></span>)}
         </div>
         <p data-running className="m-0 pb-[30px] pt-6 text-[11.5px] text-[#8593a4]">Confidential. True North Digital Marketing.</p>
       </div>

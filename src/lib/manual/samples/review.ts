@@ -10,28 +10,33 @@ import type { ReviewView, GoalView, PriorityView } from '@/lib/review/view'
 import type { Cycle } from '@/lib/review/data'
 import type { ReviewCard } from '@/lib/review/mine'
 import type { GoalsView, HistoryRow, TeamGoalRow } from '@/lib/review/mine'
-import type { ListRow, StartCheck } from '@/components/review/ReviewList'
-import type { PriorityRow, TeamRow } from '@/components/review/PrioritiesPage'
-import { templateFor } from '@/lib/review/template'
+import type { KickoffInfo, ListRow, StartCheck } from '@/components/review/ReviewList'
+import type { Block, TeamRow } from '@/components/review/PrioritiesPage'
+import { managerKeys, templateFor } from '@/lib/review/template'
+import { computeProgress, type Progress } from '@/lib/review/progress'
+import { PLAN, planFrom } from '@/lib/review/schedule'
+import type { Part } from '@/lib/review/parts'
 
 export const REVIEW_TODAY = '2026-11-10'
 
+// Started by the VP on the second Monday of November; every date from that day (lib/review/schedule.ts).
 export const CYCLE: Cycle = {
-  id: 1, year: 2026, started_at: '2026-11-02T14:00:00Z', started_by: 'p-chris',
-  leaders_open_on: '2026-11-02', leaders_due: '2026-11-13', teams_open_by: '2026-11-16',
-  self_due: '2026-11-30', review_due: '2026-12-07', meeting_due: '2026-12-14', approval_due: '2026-12-18', checkins_by: '2027-06-30',
+  id: 1, year: 2026, started_at: '2026-11-09T14:00:00Z', started_by: 'p-chris',
+  leaders_open_on: '2026-11-09', leaders_due: null, teams_open_by: null, ...planFrom('2026-11-09'), checkins_by: '2027-05-10',
+  company_done_at: '2026-11-10T15:00:00Z', vp_done_at: null,
 }
 
 const PRIORITIES: PriorityView[] = [
-  { id: 1, n: 1, scope: 'Whole company', teamId: null, title: 'Grow organic reach', body: 'More readers find the client sites through search.', goals: 2 },
-  { id: 2, n: 2, scope: 'Whole company', teamId: null, title: 'Ship on time', body: 'Every promised date is met or moved before it is missed.', goals: 1 },
-  { id: 3, n: 3, scope: 'Writers', teamId: 't-Writers', title: 'One editorial voice', body: 'Every article reads like the same careful writer wrote it.', goals: 1 },
+  { id: 1, n: 1, scope: 'Whole company', teamId: null, kind: 'company', title: 'Grow organic reach', body: 'More readers find the client sites through search.', goals: 2, mid: null },
+  { id: 2, n: 2, scope: 'Whole company', teamId: null, kind: 'company', title: 'Ship on time', body: 'Every promised date is met or moved before it is missed.', goals: 1, mid: null },
+  { id: 4, n: 3, scope: 'VP of Operations', teamId: null, kind: 'vp', title: 'One shared client calendar', body: 'Every launch and deadline in one place the whole team reads.', goals: 0, mid: null },
+  { id: 3, n: 4, scope: 'Writers', teamId: 't-Writers', kind: 'team', title: 'One editorial voice', body: 'Every article reads like the same careful writer wrote it.', goals: 1, mid: null },
 ]
 
 const goal = (g: Partial<GoalView> & Pick<GoalView, 'id' | 'n' | 'what'>): GoalView => ({
   how: '', byMonth: null, byLabel: '', term: null, priorityId: null, priorityTitle: null,
   addedByReviewer: false, addedByName: null, changedByName: null, original: null,
-  status: 'not_started', result: null, resultComment: '', fromLastReview: true, ...g,
+  status: 'not_started', result: null, resultComment: '', fromLastReview: true, part: null, ...g,
 })
 
 const PAST: GoalView[] = [
@@ -74,8 +79,27 @@ function view(step: ReviewView['step'], role: ReviewView['role']): ReviewView {
     ...GOALS.map(g => g.id === 22 ? { ...g, changedByName: 'Jordan Lee', original: { what: 'Hand most articles in on time' } } : g),
     goal({ id: 23, n: 3, what: 'Lead the monthly outline review', how: 'Held every month with the Writers', byMonth: '2027-12-01', byLabel: 'December 2027', term: '1y', priorityId: 3, priorityTitle: 'One editorial voice', addedByReviewer: true, addedByName: 'Jordan Lee', fromLastReview: false }),
   ]
+  const partStep: Part['step'] = step === 'self' || step === 'waiting' ? 'waiting' : step
+  const meeting: ReviewView['meeting'] = after
+    ? { eventId: 'e-7', startsAt: '2026-12-08T15:00:00Z', endsAt: '2026-12-08T15:45:00Z', notes: 'We went through every goal. Alex will lead the outline review from January; Jordan sends briefs a week ahead.', held: true, how: 'online', place: null }
+    : { eventId: null, startsAt: null, endsAt: null, notes: '', held: false, how: null, place: null }
+  const mgr = managerKeys(templateFor(2026))
+  const dates: ReviewView['dates'] = {
+    selfSent: step === 'self' ? null : '2026-11-19T16:00:00Z', reviewSent: after ? '2026-11-24T15:00:00Z' : null,
+    agreed: step === 'approval' || step === 'approved' ? '2026-12-08T19:00:00Z' : null,
+    approved: step === 'approved' ? '2026-12-11T15:00:00Z' : null, approvedBy: step === 'approved' ? 'Jordan Lee' : null, opened: '2026-11-09T14:00:00Z',
+  }
   return {
     id: 7, year: 2026, cycle: CYCLE, step, phase: 2,
+    parts: [{
+      no: 0, reviewer: { id: 'p-jordan', name: 'Jordan Lee' }, area: '', lane: 2, step: partStep,
+      due: step === 'review' ? CYCLE.review_due : step === 'meeting' ? CYCLE.meeting_due : step === 'approval' ? CYCLE.approval_due : null,
+      waitsFor: null, mine: role === 'reviewer',
+      answers: Object.fromEntries(Object.entries(answers).filter(([k]) => mgr.has(k))),
+      dates: { reviewSent: dates.reviewSent, agreed: dates.agreed, approved: dates.approved, approvedBy: dates.approvedBy },
+      meeting, sentBack: null,
+    }],
+    myPart: role === 'reviewer' ? 0 : null, goalsOpen: true, approvedSeen: true,
     person: { id: 'p-alex', name: 'Alex Rivera', title: 'Writer', teamName: 'Writers', hireDate: '2024-11-18', avatarUrl: null, teamLeaderName: 'Jordan Lee' },
     reviewer: { id: 'p-jordan', name: 'Jordan Lee' },
     role, waitsFor: null,
@@ -84,14 +108,8 @@ function view(step: ReviewView['step'], role: ReviewView['role']): ReviewView {
     pastGoals: step === 'self' ? PAST : PAST.map(g => g.result ? g : { ...g, result: 'met' as const, resultComment: 'Every draft edited within two days since May.' }),
     goals, priorities: PRIORITIES, teamBlocks: [], approvers: ['Chris Taylor', 'Priya Nair'],
     hr: 'Maria Gomez', driveFolder: 'Annual Performance Reviews', lastImport: null, canCopyJob: false,
-    dates: {
-      selfSent: step === 'self' ? null : '2026-11-24T16:00:00Z', reviewSent: after ? '2026-12-03T15:00:00Z' : null,
-      agreed: step === 'approval' || step === 'approved' ? '2026-12-10T19:00:00Z' : null,
-      approved: step === 'approved' ? '2026-12-11T15:00:00Z' : null, approvedBy: step === 'approved' ? 'Jordan Lee' : null, opened: '2026-11-16T12:00:00Z',
-    },
-    meeting: after
-      ? { eventId: 'e-7', startsAt: '2026-12-09T15:00:00Z', endsAt: '2026-12-09T15:45:00Z', notes: 'We went through every goal. Alex will lead the outline review from January; Jordan sends briefs a week ahead.', held: true, how: 'online', place: null }
-      : { eventId: null, startsAt: null, endsAt: null, notes: '', held: false, how: null, place: null },
+    dates,
+    meeting,
     sentBack: null,
     pdf: { ready: step === 'approved', name: step === 'approved' ? '2026.12 - Alex Rivera.pdf' : null, drive: step === 'approved' ? 'saved' : null, driveError: null, driveLink: null },
     log: [], updatedAt: '2026-11-10T15:00:00Z',
@@ -116,7 +134,7 @@ const STEPS = (now: number): ReviewCard['steps'] => ['Self-review', 'Review', 'M
 /** The review card at the top of Human Resources and Home. */
 export function reviewCardSample(state: 'progress' | 'agree'): ReviewCard {
   return state === 'progress'
-    ? { state, year: 2026, title: 'Self-review due Mon, Nov 30', sub: '4 of 12 questions answered, 2 goals. Due in 20 days.', button: 'Continue', href: '/human-resources/reviews/7', steps: STEPS(0) }
+    ? { state, year: 2026, title: 'Self-review due Fri, Nov 20', sub: '4 of 12 questions answered, 2 goals. 10 days left.', button: 'Continue', href: '/human-resources/reviews/7', steps: STEPS(0) }
     : { state, year: 2026, title: 'Read and agree', sub: 'The meeting was today. Read the notes and the goals, then agree.', button: 'Read and agree', href: '/human-resources/reviews/7', steps: STEPS(2) }
 }
 
@@ -131,7 +149,7 @@ export function historySample(): HistoryRow[] {
 /** My goals: the goals agreed in the last approved review, during the year. */
 export function myGoalsSample(): GoalsView {
   return {
-    year: 2027, reviewYear: 2026, reviewId: 7, personId: 'p-alex', manager: { id: 'p-jordan', name: 'Jordan Lee' }, checkinsBy: '2027-06-30',
+    year: 2027, reviewYear: 2026, reviewId: 7, personId: 'p-alex', manager: { id: 'p-jordan', name: 'Jordan Lee' }, checkinsBy: '2027-05-10',
     checkin: { at: null, finished: null, eventId: null }, summary: '1 on track · 1 at risk',
     goals: [
       { id: 21, n: 1, what: 'Write 10 search-led articles a month', how: 'Counted on the publishing board, with the target keyword', by: 'October 2027', term: '1 year', serves: 'Grow organic reach', status: 'on_track', dueNote: null,
@@ -155,37 +173,74 @@ export function teamGoalsSample(): TeamGoalRow[] {
 export function reviewListSample(): ListRow[] {
   const row = (r: Partial<ListRow> & Pick<ListRow, 'id' | 'name' | 'sub' | 'team' | 'step' | 'waits'>): ListRow => ({ personId: `p-${r.id}`, leader: null, sentBack: false, booked: null, due: null, dueText: '', late: false, approvedOn: null, drive: null, ...r })
   return [
-    row({ id: 1, name: 'Ben Carter', sub: 'Designer', team: 'Graphics', step: 'self', waits: 'Ben Carter', due: '2026-11-13', dueText: 'Fri, Nov 13' }),
-    row({ id: 2, name: 'Alex Rivera', sub: 'Writer', team: 'Writers', leader: 'Jordan Lee', step: 'self', waits: 'Alex Rivera', due: '2026-11-30', dueText: 'Mon, Nov 30' }),
-    row({ id: 3, name: 'Sam Patel', sub: 'SEO Specialist', team: 'SEO', step: 'review', waits: 'Chris Taylor', due: '2026-12-07', dueText: 'Mon, Dec 7' }),
-    row({ id: 4, name: 'Jordan Lee', sub: 'Lead Writer', team: 'Writers', step: 'meeting', waits: 'Chris Taylor, to book', due: '2026-12-14', dueText: 'Mon, Dec 14' }),
-    row({ id: 5, name: 'Maria Gomez', sub: 'HR Coordinator', team: 'Leadership', step: 'approved', waits: 'Approved Nov 9', approvedOn: '2026-11-09T15:00:00Z', drive: 'saved' }),
+    row({ id: 1, name: 'Ben Carter', sub: 'Designer', team: 'Graphics', leader: 'Chris Taylor', step: 'self', waits: 'Ben Carter', due: '2026-11-20', dueText: 'Fri, Nov 20' }),
+    row({ id: 2, name: 'Alex Rivera', sub: 'Writer', team: 'Writers', leader: 'Jordan Lee', step: 'self', waits: 'Alex Rivera', due: '2026-11-20', dueText: 'Fri, Nov 20' }),
+    row({ id: 3, name: 'Sam Patel', sub: 'SEO Specialist', team: 'SEO', leader: 'Chris Taylor, Jordan Lee', step: 'review', waits: 'Chris Taylor', due: '2026-11-25', dueText: 'Wed, Nov 25' }),
+    row({ id: 4, name: 'Jordan Lee', sub: 'Lead Writer', team: 'Writers', leader: 'Chris Taylor', step: 'review', waits: 'Chris Taylor', due: '2026-11-25', dueText: 'Wed, Nov 25' }),
   ]
 }
 
-/** Before the year starts: what the cycle needs, as a Super Admin sees it. */
+/** Before the year starts: what it needs and the dates "Start Reviews" would set, as the VP of Operations sees it on Mon, Nov 9. */
+export function kickoffSample(): KickoffInfo {
+  const plan = planFrom('2026-11-09')
+  const who: Record<string, string> = {
+    company_due: 'CISO', vp_due: 'VP of Operations', self_due: 'Everyone; Team Leaders write their team\'s priorities first', review_due: 'VP for the Team Leaders, Team Leaders for their members',
+    leaders_meeting_due: 'VP and each Team Leader', meeting_due: 'Each Team Leader and their members', leaders_approval_due: 'VP of Operations', approval_due: 'Team Leaders',
+  }
+  const day = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return {
+    canStart: true, canSettings: true, warn: null, people: 7, added: ['Ben Carter'], finish: day(plan.approval_due),
+    plan: [{ label: 'Start the reviews', who: 'VP of Operations', due: 'Today, Nov 9' }, ...PLAN.map(p => ({ label: p.label, who: who[p.key], due: day(plan[p.key]) }))],
+    checks: startChecksSample(),
+  }
+}
+
 export function startChecksSample(): StartCheck[] {
   return [
-    { key: 'dates', label: 'Dates', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: 'Team Leaders open on Mon, Nov 2 · Teams open by Mon, Nov 16 · Approval by Fri, Dec 18' },
     { key: 'roles', label: 'Roles', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: 'VP of Operations: Chris Taylor · CISO: Priya Nair · HR: Maria Gomez' },
-    { key: 'people', label: 'Who takes part', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: '6 employees from the Directory · 1 added' },
-    { key: 'priorities', label: 'Company Priorities for 2027', ok: true, href: '/human-resources/reviews/priorities', action: 'Open', text: '2 written by Chris Taylor and Priya Nair' },
+    { key: 'people', label: 'Who takes part', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: '6 employees from the Directory · added: Ben Carter · 1 with two reviewers' },
+    { key: 'priorities', label: 'Company Priorities for 2027', ok: 'warn', href: '/human-resources/reviews/priorities', action: 'Open', text: 'The CISO writes them in the first days after the start.' },
     { key: 'drive', label: 'Google Drive folder', ok: true, href: '/admin/settings#human-resources', action: 'Change', text: 'Annual Performance Reviews / 2026' },
-    { key: 'last', label: "Last year's reviews", ok: 'warn', href: '/admin/settings#human-resources', action: 'Fix it', text: '6 of 7 files imported · 1 still needs a person. It does not stop the cycle.' },
+    { key: 'last', label: "Last year's reviews", ok: 'warn', href: '/admin/settings#human-resources', action: 'Fix it', text: '6 of 7 files imported · 1 still needs a person' },
   ]
 }
 
-/** The Priorities page, as the VP of Operations sees it with the Writers' sent for approval. */
-export function prioritiesPageSample(): { company: PriorityRow[]; teams: TeamRow[] } {
+/** The progress block on Tue, Nov 24, as the VP of Operations sees it: everyone's self-review in, the reviews being written. */
+export function progressSample(): Progress {
+  const part = (no: 0 | 1, name: string, lane: 1 | 2, step: Part['step'], meeting: string | null = null): Part & { reviewerName: string } => ({
+    no, reviewerId: `p-${name}`, reviewerName: name, area: '', lane, step, reviewSentAt: null, meetingEventId: null, meetingStartsAt: meeting, meetingEndsAt: null, meetingNotes: '',
+    agreedAt: null, approvedAt: null, approvedBy: null, sentBack: null,
+  })
+  return computeProgress({
+    today: '2026-11-24', now: new Date('2026-11-24T15:00:00Z'), cycle: { ...CYCLE, vp_done_at: '2026-11-12T15:00:00Z' },
+    reviews: [
+      { id: 1, personId: 'p-ben', name: 'Ben Carter', step: 'review', selfSentAt: '2026-11-18T15:00:00Z', parts: [part(0, 'Chris Taylor', 1, 'review')] },
+      { id: 2, personId: 'p-alex', name: 'Alex Rivera', step: 'review', selfSentAt: '2026-11-19T15:00:00Z', parts: [part(0, 'Jordan Lee', 2, 'meeting', '2026-11-30T15:00:00Z')] },
+      { id: 3, personId: 'p-sam', name: 'Sam Patel', step: 'review', selfSentAt: '2026-11-20T15:00:00Z', parts: [{ ...part(0, 'Chris Taylor', 1, 'meeting', '2026-12-01T15:00:00Z'), area: 'SEO' }, { ...part(1, 'Jordan Lee', 2, 'review'), area: 'Writers' }] },
+      { id: 4, personId: 'p-jordan', name: 'Jordan Lee', step: 'review', selfSentAt: '2026-11-17T15:00:00Z', parts: [part(0, 'Chris Taylor', 1, 'review')] },
+      { id: 5, personId: 'p-maria', name: 'Maria Gomez', step: 'review', selfSentAt: '2026-11-16T15:00:00Z', parts: [part(0, 'Chris Taylor', 1, 'meeting', '2026-11-27T15:00:00Z')] },
+    ],
+    leaders: [{ personId: 'p-jordan', name: 'Jordan Lee', reviewId: 4, teams: [{ id: 't-Writers', name: 'Writers', written: 1 }] }, { personId: 'p-sam', name: 'Sam Patel', reviewId: 3, teams: [{ id: 't-SEO', name: 'SEO', written: 2 }] }],
+    priorities: { company: 2, vp: 1 },
+    fmt: d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+  })
+}
+
+/** The Priorities page, as the CISO sees it: theirs ready, the VP's still being written. */
+export function prioritiesPageSample(): { blocks: Block[]; teams: TeamRow[] } {
   return {
-    company: [
-      { id: 1, title: 'Grow organic reach', body: 'More readers find the client sites through search.', changed: 'Changed by Chris Taylor on Mon, Oct 26, 10:12 AM' },
-      { id: 2, title: 'Ship on time', body: 'Every promised date is met or moved before it is missed.', changed: 'Changed by Priya Nair on Tue, Oct 27, 3:40 PM' },
+    blocks: [
+      { kind: 'company', title: 'Company Priorities', writer: 'Priya Nair', canEdit: true, ready: 'Tue, Nov 10', due: 'Wed, Nov 11', rows: [
+        { id: 1, title: 'Grow organic reach', body: 'More readers find the client sites through search.', changed: 'Changed by Priya Nair on Tue, Nov 10, 10:12 AM' },
+        { id: 2, title: 'Ship on time', body: 'Every promised date is met or moved before it is missed.', changed: 'Changed by Priya Nair on Tue, Nov 10, 10:20 AM' },
+      ] },
+      { kind: 'vp', title: "VP of Operations' priorities", writer: 'Chris Taylor', canEdit: false, ready: null, due: 'Fri, Nov 13', rows: [
+        { id: 4, title: 'One shared client calendar', body: 'Every launch and deadline in one place the whole team reads.', changed: null },
+      ] },
     ],
     teams: [
-      { teamId: 't-Writers', name: 'Writers', leader: 'Jordan Lee', state: 'sent', line: '1 priority, sent Thu, Nov 5.', decider: null, sentLine: 'Sent Thu, Nov 5, 4:10 PM, from their self-review', members: 2,
-        priorities: [{ id: 3, title: 'One editorial voice', body: 'Every article reads like the same careful writer wrote it.', changed: null }] },
-      { teamId: 't-SEO', name: 'SEO', leader: 'Sam Patel', state: 'draft', line: 'Writing them in their self-review, due Fri, Nov 13.', decider: null, sentLine: null, members: 1, priorities: [] },
+      { teamId: 't-Writers', name: 'Writers', leader: 'Jordan Lee', written: 1, line: 'One editorial voice' },
+      { teamId: 't-SEO', name: 'SEO', leader: 'Sam Patel', written: 0, line: 'Written first in their self-review, due Fri, Nov 20.' },
     ],
   }
 }

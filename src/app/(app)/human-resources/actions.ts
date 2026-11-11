@@ -7,12 +7,13 @@
  *
  *   the person      writes their self-review while it is theirs (step 1),
  *                   reads and agrees after the meeting, updates their goals;
- *   the reviewer    the one they report to now: reviews, sends back, books
- *                   the meeting, writes the notes, approves, comments on goals
+ *   a reviewer      each reviewer has their own part (two reviewers, owner,
+ *                   10 November 2026): reviews, sends back, books the
+ *                   meeting, writes the notes, approves, comments on goals
  *                   and holds the 6-month check-in;
- *   VP and CISO     the Company Priorities and each team's approval;
- *   a Team Leader   their team's priorities, inside their own self-review;
- *   Super Admin     starts the cycle.
+ *   the CISO        the Company Priorities; the VP of Operations their own;
+ *   a Team Leader   their team's priorities, first thing in their self-review;
+ *   VP of Ops       starts the year (a Super Admin as back-up).
  *
  * Every refusal is a sentence for the toast; every write stamps who and when.
  */
@@ -20,11 +21,14 @@
 import { revalidatePath } from 'next/cache'
 import { allowedTo, writerAccess } from '@/lib/access/resolve'
 import {
-  addLog, loadCycle, loadHrSettings, loadImports, loadPriorities, loadReview, loadRoster, loadTeamStates, nameIn,
-  currentReviewerOf, rdb, rosterParticipants, syncCycle, viewerOf, type Cycle, type Goal, type ReviewRow,
+  addLog, cleanOverrides, defaultYear, ensureYearCycle, loadCycle, loadHrSettings, loadImports, loadParts, loadPriorities, loadReview, loadRoster, nameIn,
+  currentReviewerOf, rdb, reviewToday, rosterParticipants, syncCycle, viewerOf, type Cycle, type Goal, type ReviewRow,
 } from '@/lib/review/data'
 import { ownKeys, managerKeys, templateFor, JOB_KEYS } from '@/lib/review/template'
-import { decidesTeam, stepBack, type GoalResult, type GoalStatus, type Step } from '@/lib/review/rules'
+import { isLeadPositionName, type GoalResult, type GoalStatus } from '@/lib/review/rules'
+import { everyPartApproved, partBack, partsOf, type PartNo, type PartRow, type PartStep } from '@/lib/review/parts'
+import { checkinPlanFrom, goalsOpen, moveUp, orderProblems, planFrom, sixMonthsAfter, type DateKey } from '@/lib/review/schedule'
+import { fmtDay } from '@/lib/review/format'
 import { firstName, noticeOnce } from '@/lib/review/notify'
 import { reviewMails } from '@/lib/review/emails'
 import { approveReviewWork, copyReviewToDrive, sendOpenedNotices } from '@/lib/review/service'
@@ -46,8 +50,12 @@ async function actor() {
 }
 type Actor = NonNullable<Awaited<ReturnType<typeof actor>>>
 
-/** The review and its year, with who the actor is on it. */
-async function onReview(id: unknown) {
+/**
+ * The review and its year, with who the actor is on it. `part` picks the
+ * reviewer's part (two reviewers); left out, it is the actor's own part when
+ * they review this person, else the first.
+ */
+async function onReview(id: unknown, wantPart?: unknown) {
   const a = await actor()
   if (!a) return { error: 'Sign in again to do this.' } as const
   const n = Number(id)
@@ -56,13 +64,47 @@ async function onReview(id: unknown) {
   if (!r) return { error: GONE } as const
   const cycle = (await rdb().from('review_cycles').select('*').eq('id', r.cycle_id).maybeSingle()).data as Cycle | null
   if (!cycle) return { error: GONE } as const
-  // The reviewer is whoever the person reports to NOW: a former manager keeps no hand in the review (audit, 4 November 2026).
-  const isReviewer = !!r.reviewer_id && r.reviewer_id === a.me && (r.step === 'approved' || currentReviewerOf(a.roster, a.settings, r.person_id) === a.me)
-  return { a, r, cycle, isPerson: r.person_id === a.me, isReviewer } as const
+  const extra = (await loadParts([r.id]))[0] ?? null
+  const parts = partsOf(r, extra ? [extra] : [])
+  const asked = wantPart === 0 || wantPart === 1 ? wantPart as PartNo : null
+  const mine = parts.find(x => x.reviewerId === a.me)?.no ?? null
+  const part: PartNo = asked ?? mine ?? 0
+  const p = parts.find(x => x.no === part) ?? parts[0]
+  // A reviewer is whoever the person reports to NOW for that part: a former manager keeps no hand in the review (audit, 4 November 2026).
+  const isReviewer = !!p.reviewerId && p.reviewerId === a.me && (p.step === 'approved' || currentReviewerOf(a.roster, a.settings, r.person_id, part) === a.me)
+  return { a, r, cycle, extra, parts, part, p, isPerson: r.person_id === a.me, isReviewer } as const
+}
+type OnReview = Extract<Awaited<ReturnType<typeof onReview>>, { a: unknown }>
+
+async function setStep(r: ReviewRow, from: ReviewRow['step'], patch: Record<string, unknown>): Promise<boolean> {
+  const u = await rdb().from('reviews').update({ ...patch, updated_at: stamp() }).eq('id', r.id).eq('step', from).select('id')
+  return !u.error && (u.data?.length ?? 0) > 0
 }
 
-async function setStep(r: ReviewRow, from: Step, patch: Record<string, unknown>): Promise<boolean> {
-  const u = await rdb().from('reviews').update({ ...patch, updated_at: stamp() }).eq('id', r.id).eq('step', from).select('id')
+/**
+ * Moves one part on, from the step it is on: the first part lives on the
+ * review row, the second on its review_parts row. Refuses when the part has
+ * moved since the page was read.
+ */
+async function setPart(x: OnReview, from: PartStep, patch: Record<string, unknown>): Promise<boolean> {
+  if (x.part === 0) {
+    if (x.p.step !== from) return false
+    const q = rdb().from('reviews').update({ ...patch, updated_at: stamp() }).eq('id', x.r.id).eq('step', from === 'waiting' ? 'self' : from)
+    const u = from === 'approval' ? await q.is('approved_at', null).select('id') : await q.select('id')
+    return !u.error && (u.data?.length ?? 0) > 0
+  }
+  if (!x.extra) return false
+  const u = await rdb().from('review_parts').update({ ...patch, updated_at: stamp() }).eq('id', x.extra.id).eq('step', from).select('id')
+  return !u.error && (u.data?.length ?? 0) > 0
+}
+
+/** The review is approved when every part is (the first part's approval keeps the row at "approval" while the second is open). */
+async function closeIfAllApproved(reviewId: number): Promise<boolean> {
+  const r = await loadReview(reviewId)
+  if (!r || r.step === 'approved') return false
+  const parts = partsOf(r, await loadParts([reviewId]))
+  if (!everyPartApproved(parts)) return false
+  const u = await rdb().from('reviews').update({ step: 'approved', drive_status: 'waiting', updated_at: stamp() }).eq('id', reviewId).eq('step', 'approval').select('id')
   return !u.error && (u.data?.length ?? 0) > 0
 }
 
@@ -72,16 +114,16 @@ const clean = (s: unknown, max: number) => String(s ?? '').replace(/\r\n/g, '\n'
 // ── Answers ────────────────────────────────────────────────────────────────
 
 /** Saves one answer as the person types (their part in step 1, the reviewer's feedback in step 2). */
-export async function saveAnswer(input: { reviewId: number; key: string; body: string }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+export async function saveAnswer(input: { reviewId: number; key: string; body: string; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
   const t = templateFor(x.cycle.year)
   const key = String(input?.key ?? '')
   const mine = ownKeys(t).has(key) && x.isPerson && x.r.step === 'self'
-  const theirs = managerKeys(t).has(key) && x.isReviewer && x.r.step === 'review'
+  const theirs = managerKeys(t).has(key) && x.isReviewer && x.p.step === 'review'
   if (!mine && !theirs) return no(x.isPerson || x.isReviewer ? 'This part is locked now.' : 'Only the person and the one they report to write in a review.')
   const now = stamp()
-  const r = await rdb().from('review_answers').upsert({ review_id: x.r.id, key, body: clean(input.body, 20000), copied: false, updated_by: x.a.me, updated_at: now }, { onConflict: 'review_id,key' })
+  const r = await rdb().from('review_answers').upsert({ review_id: x.r.id, key, part: mine ? 0 : x.part, body: clean(input.body, 20000), copied: false, updated_by: x.a.me, updated_at: now }, { onConflict: 'review_id,key,part' })
   if (r.error) { console.error('[review] answer:', r.error.message); return no(NOT_SAVED) }
   const t2 = await rdb().from('reviews').update({ updated_at: now }).eq('id', x.r.id)
   if (t2.error) console.error('[review] answer stamp:', t2.error.message)
@@ -99,13 +141,13 @@ export async function copyJobDescription(input: { reviewId: number }): Promise<D
   const file = pr ? null : (await loadImports({ personId: x.r.person_id })).find(i => i.year === x.cycle.year - 1 && i.found?.job)
   if (!pr && !file) return no(`There is no ${x.cycle.year - 1} review to copy from.`)
   const old = pr
-    ? (await rdb().from('review_answers').select('key, body').eq('review_id', pr.id).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
+    ? (await rdb().from('review_answers').select('key, body').eq('review_id', pr.id).eq('part', 0).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
     : Object.entries(file!.found!.job).map(([key, body]) => ({ key, body: body ?? '' })).filter(a => (JOB_KEYS as readonly string[]).includes(a.key))
-  const have = (await rdb().from('review_answers').select('key, body').eq('review_id', x.r.id).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
+  const have = (await rdb().from('review_answers').select('key, body').eq('review_id', x.r.id).eq('part', 0).in('key', [...JOB_KEYS])).data as { key: string; body: string }[] | null
   const filled = new Set((have ?? []).filter(a => a.body.trim()).map(a => a.key))
-  const rows = (old ?? []).filter(a => a.body.trim() && !filled.has(a.key)).map(a => ({ review_id: x.r.id, key: a.key, body: a.body, copied: true, updated_by: x.a.me, updated_at: stamp() }))
+  const rows = (old ?? []).filter(a => a.body.trim() && !filled.has(a.key)).map(a => ({ review_id: x.r.id, key: a.key, part: 0, body: a.body, copied: true, updated_by: x.a.me, updated_at: stamp() }))
   if (!rows.length) return no(`Your ${x.cycle.year - 1} review has no Job Description to copy.`)
-  const r = await rdb().from('review_answers').upsert(rows, { onConflict: 'review_id,key' })
+  const r = await rdb().from('review_answers').upsert(rows, { onConflict: 'review_id,key,part' })
   if (r.error) return no(NOT_SAVED)
   refresh()
   return { ok: true, toast: `Copied from your ${x.cycle.year - 1} review. Change anything that is different now.` }
@@ -116,7 +158,7 @@ export async function undoCopyJob(input: { reviewId: number }): Promise<Done> {
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
   if (!x.isPerson || x.r.step !== 'self') return no('This part is locked now.')
-  const r = await rdb().from('review_answers').delete().eq('review_id', x.r.id).eq('copied', true)
+  const r = await rdb().from('review_answers').delete().eq('review_id', x.r.id).eq('part', 0).eq('copied', true)
   if (r.error) return no(NOT_SAVED)
   refresh()
   return { ok: true, toast: 'Undone.' }
@@ -130,26 +172,31 @@ async function loadGoal(id: unknown): Promise<Goal | null> {
   return (await rdb().from('review_goals').select('*').eq('id', n).maybeSingle()).data as Goal | null
 }
 
-/** Who may change a goal of this review now: the person in step 1, the reviewer in steps 2 and 3. */
-function goalWriter(x: { isPerson: boolean; isReviewer: boolean; r: ReviewRow }): 'person' | 'reviewer' | null {
+/** Who may change a goal of this review now: the person in step 1, a reviewer while their part is at the review or the meeting. */
+function goalWriter(x: { isPerson: boolean; isReviewer: boolean; r: ReviewRow; p: { step: PartStep } }): 'person' | 'reviewer' | null {
   if (x.isPerson && x.r.step === 'self') return 'person'
-  if (x.isReviewer && (x.r.step === 'review' || x.r.step === 'meeting')) return 'reviewer'
+  if (x.isReviewer && (x.p.step === 'review' || x.p.step === 'meeting')) return 'reviewer'
   return null
 }
 
+/** With two reviewers, a reviewer changes only the goals of their part (or one not given to either). */
+const goalIsTheirs = (x: { part: PartNo; parts: { no: PartNo }[] }, g: Pick<Goal, 'part'>) => x.parts.length < 2 || g.part === null || g.part === x.part
+
 /** "Add a goal" (the coming year) or "Add a 2026 goal" (the year being reviewed, typed from last year's file). */
-export async function addGoal(input: { reviewId: number; past?: boolean }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+export async function addGoal(input: { reviewId: number; past?: boolean; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
   if (!who) return no('This part is locked now.')
   // The year under review is closed (the owner, 4 November 2026): its goals are only marked, never added.
   if (input.past) return no('The year being reviewed is closed: only how each goal went can change.')
-  const count = (await rdb().from('review_goals').select('id', { count: 'exact', head: true }).eq('person_id', x.r.person_id).eq('goal_year', input.past ? x.cycle.year : x.cycle.year + 1)).count ?? 0
+  // The goals for next year wait for the priorities (owner, 10 November 2026).
+  if (who === 'person' && !goalsOpen(x.cycle, reviewToday())) return no(`Your goals for ${x.cycle.year + 1} open when the Company Priorities and the VP of Operations' priorities are ready${x.cycle.vp_due ? `, by ${fmtDay(x.cycle.vp_due)} at the latest` : ''}.`)
+  const count = (await rdb().from('review_goals').select('id', { count: 'exact', head: true }).eq('person_id', x.r.person_id).eq('goal_year', x.cycle.year + 1)).count ?? 0
   if (count >= 20) return no('Twenty goals is the most a year can have.')
-  const row = input.past
-    ? { person_id: x.r.person_id, review_id: null, marked_in: x.r.id, goal_year: x.cycle.year, position: count, added_by: x.a.me }
-    : { person_id: x.r.person_id, review_id: x.r.id, goal_year: x.cycle.year + 1, position: count, added_by: x.a.me, added_by_reviewer: who === 'reviewer', term: '1y' }
+  // With two reviewers each goal is for one of them: a reviewer's own goal is theirs; the person picks, the first by default.
+  const part = x.parts.length < 2 ? null : who === 'reviewer' ? x.part : (input.part === 1 ? 1 : 0)
+  const row = { person_id: x.r.person_id, review_id: x.r.id, goal_year: x.cycle.year + 1, position: count, added_by: x.a.me, added_by_reviewer: who === 'reviewer', term: '1y', part }
   const r = await rdb().from('review_goals').insert(row).select('id').single()
   if (r.error) { console.error('[review] add goal:', r.error.message); return no(NOT_SAVED) }
   refresh()
@@ -157,7 +204,7 @@ export async function addGoal(input: { reviewId: number; past?: boolean }): Prom
 }
 
 /** Saves a goal's fields. A reviewer's change to the person's goal keeps the original, marked for them. */
-export async function saveGoal(input: { goalId: number; what?: string; how?: string; byMonth?: string | null; term?: '6m' | '1y' | null; priorityId?: number | null }): Promise<Done> {
+export async function saveGoal(input: { goalId: number; what?: string; how?: string; byMonth?: string | null; term?: '6m' | '1y' | null; priorityId?: number | null; part?: PartNo }): Promise<Done> {
   const g = await loadGoal(input?.goalId)
   if (!g) return no('This goal is not there any more. Reload the page.')
   if (!g.review_id) return no('The year being reviewed is closed: only how each goal went can change.')
@@ -166,6 +213,7 @@ export async function saveGoal(input: { goalId: number; what?: string; how?: str
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
   if (!who) return no('This part is locked now.')
+  if (who === 'reviewer' && !goalIsTheirs(x, g)) return no(`This goal is for ${nameIn(x.a.roster, x.parts.find(p => p.no === g.part)?.reviewerId)}. Only they change it.`)
   const patch: Record<string, unknown> = { updated_at: stamp() }
   if (input.what !== undefined) patch.what = clean(input.what, 500)
   if (input.how !== undefined) patch.how = clean(input.how, 1000)
@@ -179,10 +227,16 @@ export async function saveGoal(input: { goalId: number; what?: string; how?: str
   }
   if (input.priorityId !== undefined) {
     if (input.priorityId !== null) {
-      const ok = (await loadPriorities(x.cycle.id)).some(p => p.id === input.priorityId && (!p.team_id || p.team_id === x.r.team_id))
+      const teams = new Set([x.r.team_id, ...x.a.roster.members.filter(m => m.personId === x.r.person_id).map(m => m.teamId)])
+      const ok = (await loadPriorities(x.cycle.id)).some(p => p.id === input.priorityId && (!p.team_id || teams.has(p.team_id)))
       if (!ok) return no('That priority is not one of this review\'s.')
     }
     patch.priority_id = input.priorityId
+  }
+  if (input.part !== undefined) {
+    if (who !== 'person' || x.parts.length < 2) return no('Only the person says which reviewer a goal is for.')
+    if (input.part !== 0 && input.part !== 1) return no('Pick one of the two reviewers.')
+    patch.part = input.part
   }
   if (who === 'reviewer' && !g.added_by_reviewer) {
     patch.changed_by = x.a.me
@@ -190,6 +244,7 @@ export async function saveGoal(input: { goalId: number; what?: string; how?: str
   }
   const r = await rdb().from('review_goals').update(patch).eq('id', g.id)
   if (r.error) { console.error('[review] goal:', r.error.message); return no(NOT_SAVED) }
+  if (input.part !== undefined) refresh()
   return { ok: true, savedAt: patch.updated_at as string }
 }
 
@@ -201,6 +256,7 @@ export async function removeGoal(input: { goalId: number }): Promise<Done> {
   if ('error' in x) return no(x.error!)
   const who = goalWriter(x)
   if (!who) return no('This part is locked now.')
+  if (who === 'reviewer' && !goalIsTheirs(x, g)) return no(`This goal is for ${nameIn(x.a.roster, x.parts.find(p => p.no === g.part)?.reviewerId)}. Only they change it.`)
   if (who === 'reviewer' && !g.added_by_reviewer) return no(`This goal is ${nameIn(x.a.roster, x.r.person_id)}'s. Change it instead; the original stays for them to see.`)
   const r = await rdb().from('review_goals').delete().eq('id', g.id)
   if (r.error) return no(NOT_SAVED)
@@ -230,53 +286,69 @@ export async function markGoal(input: { goalId: number; result?: GoalResult | nu
 
 // ── The steps ──────────────────────────────────────────────────────────────
 
-/** Submit the self-review: it goes to the reviewer and the person's part locks. */
+/** Submit the self-review: it goes to every reviewer and the person's part locks. */
 export async function submitSelf(input: { reviewId: number }): Promise<Done> {
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
   if (!x.isPerson || x.r.step !== 'self') return no('This self-review is not open for you to send.')
   if (!x.r.reviewer_id) return no('Nobody reviews you yet: ask a Super Admin to set "Reports to" on your Directory page.')
-  // A Team Leader sends the team's priorities first: the block lives in this self-review (audit, 4 November 2026).
+  // A Team Leader writes the team's priorities first, in this self-review (owner, 10 November 2026): no approval, but not empty.
   const leads = x.a.parts.find(p => p.personId === x.a.me)?.leads ?? []
   if (leads.length) {
-    const states = await loadTeamStates(x.cycle.id)
-    const waiting = leads.filter(t => ['draft', 'returned'].includes(states.get(t)?.state ?? 'draft'))
-    if (waiting.length) return no(`Send ${waiting.length === 1 ? `the ${x.a.roster.teams.get(waiting[0])?.name ?? 'team'}'s` : 'your teams\''} priorities for approval first, so your team can start.`)
+    const written = new Set((await loadPriorities(x.cycle.id)).filter(p => p.team_id && p.title.trim()).map(p => p.team_id!))
+    const empty = leads.filter(t => !written.has(t))
+    if (empty.length) return no(`Write at least one priority for ${empty.length === 1 ? `the ${x.a.roster.teams.get(empty[0])?.name ?? 'team'}` : 'each of your teams'} first: your team builds its goals on them.`)
   }
-  if (!(await setStep(x.r, 'self', { step: 'review', self_sent_at: stamp() }))) return no(NOT_SAVED)
+  if (!(await setStep(x.r, 'self', { step: 'review', self_sent_at: stamp(), approved_at: null, approved_by: null }))) return no(NOT_SAVED)
+  if (x.extra) await rdb().from('review_parts').update({ step: 'review', agreed_at: null, approved_at: null, approved_by: null, updated_at: stamp() }).eq('id', x.extra.id).in('step', ['waiting', 'review'])
   const who = nameIn(x.a.roster, x.r.person_id)
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'self_sent', text: `${who} sent the self-review.` })
-  await noticeOnce(`review:${x.r.id}:to-review:${stamp().slice(0, 16)}`, x.a.roster, x.r.reviewer_id, o => reviewMails.toReviewer({ year: x.cycle.year, who, what: 'review', due: x.cycle.review_due, days: null, url: reviewUrl(o, x.r.id) }))
+  for (const pt of x.parts) {
+    await noticeOnce(`review:${x.r.id}:to-review:${pt.no}:${stamp().slice(0, 16)}`, x.a.roster, pt.reviewerId, o => reviewMails.toReviewer({ year: x.cycle.year, who, what: 'review', due: x.cycle.review_due, days: null, url: reviewUrl(o, x.r.id) }))
+  }
   refresh()
-  return { ok: true, toast: `Sent to ${nameIn(x.a.roster, x.r.reviewer_id)}. Your part is locked now.` }
+  const names = x.parts.map(pt => nameIn(x.a.roster, pt.reviewerId)).filter(Boolean)
+  return { ok: true, toast: `Sent to ${names.join(' and ')}. Your part is locked now.` }
 }
 
-/** Send back one step, always with a reason. */
-export async function sendBack(input: { reviewId: number; reason: string }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+/**
+ * Send back one step, always with a reason. From a reviewer's review it goes
+ * back to the self-review, and with two reviewers both parts start again from
+ * there (their notes stay); from the meeting or approval only that part moves.
+ */
+export async function sendBack(input: { reviewId: number; reason: string; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
   const reason = clean(input?.reason, 2000).trim()
   if (!reason) return no('Write the reason: the other person sees it.')
-  const back = stepBack(x.r.step)
+  const back = partBack(x.p.step)
   if (!back) return no('This review cannot go back from here.')
-  if (!x.isReviewer) return no(`Only ${nameIn(x.a.roster, x.r.reviewer_id) || 'the reviewer'} sends this review back.`)
-  const patch: Record<string, unknown> = { step: back, sent_back_at: stamp(), sent_back_by: x.a.me, sent_back_reason: reason, sent_back_from: x.r.step }
-  if (x.r.step === 'approval') patch.agreed_at = null
-  if (!(await setStep(x.r, x.r.step, patch))) return no(NOT_SAVED)
+  if (!x.isReviewer) return no(`Only ${nameIn(x.a.roster, x.p.reviewerId) || 'the reviewer'} sends this back.`)
+  const mark = { sent_back_at: stamp(), sent_back_by: x.a.me, sent_back_reason: reason, sent_back_from: x.p.step }
+  if (back === 'self') {
+    if (x.r.step === 'approved') return no('This review is approved.')
+    const u = await rdb().from('reviews').update({ step: 'self', agreed_at: null, approved_at: null, approved_by: null, ...(x.part === 0 ? mark : {}), updated_at: stamp() }).eq('id', x.r.id).neq('step', 'approved').select('id')
+    if (u.error || !u.data?.length) return no(NOT_SAVED)
+    if (x.extra) await rdb().from('review_parts').update({ step: 'waiting', agreed_at: null, approved_at: null, approved_by: null, ...(x.part === 1 ? mark : {}), updated_at: stamp() }).eq('id', x.extra.id)
+  } else {
+    const patch: Record<string, unknown> = { step: back, ...mark }
+    if (x.p.step === 'approval') patch.agreed_at = null
+    if (!(await setPart(x, x.p.step, patch))) return no(NOT_SAVED)
+  }
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'sent_back', text: `${nameIn(x.a.roster, x.a.me)} sent it back to ${back === 'self' ? 'the self-review' : back}: ${reason}` })
-  if (back === 'self' || x.r.step === 'approval') {
+  if (back === 'self' || x.p.step === 'approval') {
     await noticeOnce(`review:${x.r.id}:back:${stamp()}`, x.a.roster, x.r.person_id, o => reviewMails.sentBack({ year: x.cycle.year, by: nameIn(x.a.roster, x.a.me), reason, url: reviewUrl(o, x.r.id) }))
   }
   refresh()
   return { ok: true, toast: back === 'self' ? `Sent back to ${nameIn(x.a.roster, x.r.person_id)}, with your reason.` : 'Sent back one step.' }
 }
 
-/** "Save and book the meeting": the review is done, the meeting step opens. */
-export async function finishReview(input: { reviewId: number }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+/** "Save and book the meeting": this reviewer's review is done, their meeting step opens. */
+export async function finishReview(input: { reviewId: number; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
-  if (!x.isReviewer || x.r.step !== 'review') return no('This review is not waiting for you.')
-  if (!(await setStep(x.r, 'review', { step: 'meeting', review_sent_at: stamp() }))) return no(NOT_SAVED)
+  if (!x.isReviewer || x.p.step !== 'review') return no('This review is not waiting for you.')
+  if (!(await setPart(x, 'review', { step: 'meeting', review_sent_at: stamp() }))) return no(NOT_SAVED)
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'review_sent', text: `${nameIn(x.a.roster, x.a.me)} finished the review.` })
   refresh()
   return { ok: true, toast: 'Saved. Now book the meeting.' }
@@ -292,54 +364,149 @@ async function ownEventWith(me: string, personId: string, eventId: unknown): Pro
   return guest.data?.length ? ev : null
 }
 
-/** Links the meeting booked in the Agenda's drawer to the review. */
-export async function linkMeeting(input: { reviewId: number; eventId: string }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+/**
+ * Links the meeting booked in the Agenda's drawer to this reviewer's part.
+ * One meeting for both reviewers (owner, 10 November 2026): when the other
+ * reviewer is a guest too and their part is at the meeting with none booked,
+ * it is theirs as well.
+ */
+export async function linkMeeting(input: { reviewId: number; eventId: string; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
-  if (!x.isReviewer || x.r.step !== 'meeting') return no('Only the reviewer books the meeting, at the meeting step.')
+  if (!x.isReviewer || x.p.step !== 'meeting') return no('Only the reviewer books the meeting, at the meeting step.')
   const ev = await ownEventWith(x.a.me, x.r.person_id, input?.eventId)
   if (!ev) return no('The meeting was not found in the Agenda. Try booking it again.')
-  const u = await rdb().from('reviews').update({ meeting_event_id: ev.id, meeting_starts_at: ev.starts_at, meeting_ends_at: ev.ends_at, updated_at: stamp() }).eq('id', x.r.id)
+  const when = { meeting_event_id: ev.id, meeting_starts_at: ev.starts_at, meeting_ends_at: ev.ends_at, updated_at: stamp() }
+  const u = x.part === 0 ? await rdb().from('reviews').update(when).eq('id', x.r.id) : await rdb().from('review_parts').update(when).eq('id', x.extra!.id)
   if (u.error) return no(NOT_SAVED)
+  let joint = ''
+  const other = x.parts.find(pt => pt.no !== x.part)
+  if (other?.reviewerId && other.step === 'meeting' && !other.meetingStartsAt) {
+    const guest = await rdb().from('agenda_event_guests').select('id').eq('event_id', ev.id).eq('person_id', other.reviewerId).limit(1)
+    if (guest.data?.length) {
+      const w = other.no === 0 ? await rdb().from('reviews').update(when).eq('id', x.r.id) : await rdb().from('review_parts').update(when).eq('id', x.extra!.id)
+      if (!w.error) joint = ` ${nameIn(x.a.roster, other.reviewerId)} is in it too: one meeting for both parts.`
+    }
+  }
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'meeting_booked', text: `${nameIn(x.a.roster, x.a.me)} booked the meeting.` })
   refresh()
-  return { ok: true, toast: 'Booked. It is on both Agendas and both Google Calendars.' }
+  return { ok: true, toast: `Booked. It is on the Agendas and the Google Calendars.${joint}` }
 }
 
-export async function saveMeetingNotes(input: { reviewId: number; notes: string }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+export async function saveMeetingNotes(input: { reviewId: number; notes: string; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
-  if (!x.isReviewer || x.r.step !== 'meeting') return no('The meeting notes are written by the reviewer, at the meeting step.')
+  if (!x.isReviewer || x.p.step !== 'meeting') return no('The meeting notes are written by the reviewer, at the meeting step.')
   const now = stamp()
-  const u = await rdb().from('reviews').update({ meeting_notes: clean(input?.notes, 20000), updated_at: now }).eq('id', x.r.id).eq('step', 'meeting').select('id')
+  const u = x.part === 0
+    ? await rdb().from('reviews').update({ meeting_notes: clean(input?.notes, 20000), updated_at: now }).eq('id', x.r.id).eq('step', 'meeting').select('id')
+    : await rdb().from('review_parts').update({ meeting_notes: clean(input?.notes, 20000), updated_at: now }).eq('id', x.extra!.id).eq('step', 'meeting').select('id')
   if (u.error || !u.data?.length) return no('The review moved on. Reload the page.')
   return { ok: true, savedAt: now }
 }
 
-/** "I have read and agree": after the meeting, the review goes to the reviewer for approval. */
-export async function agreeReview(input: { reviewId: number }): Promise<Done> {
-  const x = await onReview(input?.reviewId)
+/** "I have read and agree": after the meeting, this part goes to its reviewer for approval (both, after a joint meeting). */
+export async function agreeReview(input: { reviewId: number; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
   if ('error' in x) return no(x.error!)
-  if (!x.isPerson || x.r.step !== 'meeting') return no('There is nothing to agree to yet.')
-  if (!x.r.meeting_ends_at || new Date(x.r.meeting_ends_at) > new Date()) return no('You agree after the meeting.')
-  if (!(await setStep(x.r, 'meeting', { step: 'approval', agreed_at: stamp() }))) return no(NOT_SAVED)
+  if (!x.isPerson) return no('There is nothing to agree to yet.')
+  const ready = x.parts.filter(pt => pt.step === 'meeting' && pt.meetingEndsAt && new Date(pt.meetingEndsAt) <= new Date() && (input?.part === undefined || pt.no === input.part || (pt.meetingEventId && pt.meetingEventId === x.p.meetingEventId)))
+  if (!ready.length) return no(x.parts.some(pt => pt.step === 'meeting') ? 'You agree after the meeting.' : 'There is nothing to agree to yet.')
   const who = nameIn(x.a.roster, x.r.person_id)
+  for (const pt of ready) {
+    const ok = pt.no === 0
+      ? await setStep(x.r, 'meeting', { step: 'approval', agreed_at: stamp() })
+      : !(await rdb().from('review_parts').update({ step: 'approval', agreed_at: stamp(), updated_at: stamp() }).eq('id', x.extra!.id).eq('step', 'meeting')).error
+    if (!ok) return no(NOT_SAVED)
+    await noticeOnce(`review:${x.r.id}:to-approve:${pt.no}`, x.a.roster, pt.reviewerId, o => reviewMails.toReviewer({ year: x.cycle.year, who, what: 'approve', due: x.cycle.approval_due, days: null, url: reviewUrl(o, x.r.id) }))
+  }
   await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'agreed', text: `${who} read and agreed.` })
-  await noticeOnce(`review:${x.r.id}:to-approve`, x.a.roster, x.r.reviewer_id, o => reviewMails.toReviewer({ year: x.cycle.year, who, what: 'approve', due: x.cycle.approval_due, days: null, url: reviewUrl(o, x.r.id) }))
   refresh()
-  return { ok: true, toast: `Thank you. ${nameIn(x.a.roster, x.r.reviewer_id)} approves it next.` }
+  return { ok: true, toast: `Thank you. ${ready.map(pt => nameIn(x.a.roster, pt.reviewerId)).join(' and ')} ${ready.length > 1 ? 'approve' : 'approves'} it next.` }
 }
 
-/** Approve: the review locks, the PDF is made and copied to Drive, the person and HR are told. */
-export async function approveReview(input: { reviewId: number }): Promise<Done> {
+/** One part's approval; the review is approved, its PDF made and copied to Drive, once every part is. */
+async function approvePart(x: OnReview): Promise<Done> {
+  if (!x.isReviewer || x.p.step !== 'approval') return no('This review is not waiting for your approval.')
+  const at = { approved_at: stamp(), approved_by: x.a.me }
+  const ok = x.part === 0
+    ? await setPart(x, 'approval', { ...at, ...(x.parts.length < 2 ? { step: 'approved', drive_status: 'waiting' } : {}) })
+    : await setPart(x, 'approval', { step: 'approved', ...at })
+  if (!ok) return no(NOT_SAVED)
+  await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'approved', text: `${nameIn(x.a.roster, x.a.me)} approved the review${x.parts.length > 1 ? ` (${x.p.area || 'their part'})` : ''}.` })
+  const done = x.parts.length < 2 || await closeIfAllApproved(x.r.id)
+  if (done) {
+    await approveReviewWork(x.r.id, x.a.roster, x.a.settings)
+    return { ok: true, toast: 'Approved. The PDF is made and on its way to Google Drive.' }
+  }
+  const other = x.parts.find(pt => pt.no !== x.part)
+  return { ok: true, toast: `Approved. It is complete when ${nameIn(x.a.roster, other?.reviewerId) || 'the other reviewer'} approves too.` }
+}
+
+export async function approveReview(input: { reviewId: number; part?: PartNo }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part)
+  if ('error' in x) return no(x.error!)
+  const r = await approvePart(x)
+  refresh()
+  return r
+}
+
+/** "Approve all" (owner, 10 November 2026): every review waiting for the actor's approval this year, after reading each one. */
+export async function approveAll(input: { reviewIds: number[] }): Promise<Done> {
+  const ids = [...new Set((input?.reviewIds ?? []).map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 200)
+  if (!ids.length) return no('Nothing is waiting for your approval.')
+  let n = 0
+  const failed: string[] = []
+  for (const id of ids) {
+    const x = await onReview(id)
+    if ('error' in x) continue
+    if (!x.isReviewer || x.p.step !== 'approval') continue
+    const r = await approvePart(x)
+    if (r.ok) n++
+    else failed.push(nameIn(x.a.roster, x.r.person_id))
+  }
+  refresh()
+  if (!n) return no(failed.length ? `Not approved: ${failed.join(', ')}. Try again.` : 'Nothing is waiting for your approval.')
+  return { ok: true, toast: `${n} ${n === 1 ? 'review' : 'reviews'} approved.${failed.length ? ` Not approved: ${failed.join(', ')}.` : ''}` }
+}
+
+/** The person read the "approved" window on Home (owner, 10 November 2026). */
+export async function markApprovedSeen(input: { reviewId: number }): Promise<Done> {
   const x = await onReview(input?.reviewId)
   if ('error' in x) return no(x.error!)
-  if (!x.isReviewer || x.r.step !== 'approval') return no('This review is not waiting for your approval.')
-  if (!(await setStep(x.r, 'approval', { step: 'approved', approved_at: stamp(), approved_by: x.a.me, drive_status: 'waiting' }))) return no(NOT_SAVED)
-  await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'approved', text: `${nameIn(x.a.roster, x.a.me)} approved the review.` })
-  await approveReviewWork(x.r.id, x.a.roster, x.a.settings)
+  if (!x.isPerson || x.r.step !== 'approved') return { ok: true }
+  await rdb().from('reviews').update({ approved_seen_at: stamp() }).eq('id', x.r.id).is('approved_seen_at', null)
   refresh()
-  return { ok: true, toast: 'Approved. The PDF is made and on its way to Google Drive.' }
+  return { ok: true }
+}
+
+/**
+ * "Remind" from the progress block (owner, 10 November 2026): the reminder for
+ * where this review is, sent now to whoever it waits for. Once a day per
+ * review and step, so a second click sends nothing.
+ */
+export async function remindNow(input: { reviewId: number; part?: PartNo | null }): Promise<Done> {
+  const x = await onReview(input?.reviewId, input?.part ?? undefined)
+  if ('error' in x) return no(x.error!)
+  const v = x.a.viewer
+  if (!v.isVp && !v.isCiso && !v.seesAll) return no('Only the VP of Operations, the CISO and HR send reminders from here.')
+  const today = reviewToday()
+  const url = (o: string) => reviewUrl(o, x.r.id)
+  const who = nameIn(x.a.roster, x.r.person_id)
+  if (x.r.step === 'self') {
+    const due = x.cycle.self_due
+    const { dayDiff } = await import('@/lib/review/rules')
+    const sent = await noticeOnce(`nudge:${x.r.id}:self:${today}`, x.a.roster, x.r.person_id, o => reviewMails.selfDue({ year: x.cycle.year, due: due ?? today, days: Math.max(0, due ? dayDiff(today, due) : 0), answered: 0, total: 0, goals: 0, url: url(o) }))
+    return sent ? { ok: true, toast: `Reminder sent to ${who}.` } : no(`${who} was reminded today already.`)
+  }
+  const { partWaitsFor } = await import('@/lib/review/parts')
+  const w = partWaitsFor(x.p, x.r.person_id, new Date())
+  if (!w || x.p.step === 'approved' || x.p.step === 'waiting') return no('Nothing is waiting on anyone in this part.')
+  const what = x.p.step === 'review' ? 'review' : x.p.step === 'meeting' ? 'meeting' : 'approve'
+  const sent = w === x.r.person_id
+    ? await noticeOnce(`nudge:${x.r.id}:${x.part}:agree:${today}`, x.a.roster, w, o => reviewMails.agree({ year: x.cycle.year, manager: nameIn(x.a.roster, x.p.reviewerId), url: url(o) }))
+    : await noticeOnce(`nudge:${x.r.id}:${x.part}:${x.p.step}:${today}`, x.a.roster, w, o => reviewMails.toReviewer({ year: x.cycle.year, who, what, due: null, days: null, url: url(o) }))
+  return sent ? { ok: true, toast: `Reminder sent to ${nameIn(x.a.roster, w)}.` } : no(`${nameIn(x.a.roster, w)} was reminded today already.`)
 }
 
 /** Try again on a Drive copy that failed. */
@@ -363,26 +530,35 @@ async function onCycle(cycleId: unknown) {
   return { a, c } as const
 }
 
-const leaderOf = (a: Actor, teamId: string) => a.roster.members.some(m => m.teamId === teamId && m.personId === a.me && ['lead', 'founder', 'manager', 'team_leader'].includes(m.position ?? ''))
+const leaderOf = (a: Actor, teamId: string) => a.roster.members.some(m => m.teamId === teamId && m.personId === a.me && isLeadPositionName(m.position))
 
-/** Adds or saves a priority: the Company Priorities by the VP and CISO, a team's by its Team Leader (until approved). */
-export async function savePriority(input: { cycleId: number; id?: number | null; teamId?: string | null; title?: string; body?: string; supportsId?: number | null }): Promise<Done> {
+/**
+ * Who writes which priorities (owner, 10 November 2026): the CISO the Company
+ * Priorities, the VP of Operations their own, a Team Leader their team's while
+ * their own self-review is open. A Super Admin may do any of them.
+ */
+async function writesPriorities(a: Actor, c: Cycle, kind: 'company' | 'vp' | 'team', teamId: string | null): Promise<string | null> {
+  if (a.access.isSuperAdmin) return null
+  if (kind === 'company') return a.viewer.isCiso ? null : 'Only the CISO writes the Company Priorities.'
+  if (kind === 'vp') return a.viewer.isVp ? null : 'Only the VP of Operations writes these priorities.'
+  if (!teamId || !leaderOf(a, teamId)) return 'Only the team\'s Team Leader writes its priorities.'
+  const mine = (await rdb().from('reviews').select('step').eq('cycle_id', c.id).eq('person_id', a.me).maybeSingle()).data as { step: string } | null
+  return !mine || mine.step === 'self' || mine.step === 'waiting' ? null : 'Your self-review is sent: these priorities are locked now.'
+}
+
+/** Adds or saves a priority: the CISO's Company Priorities, the VP of Operations', or a team's. */
+export async function savePriority(input: { cycleId: number; id?: number | null; teamId?: string | null; kind?: 'company' | 'vp' | 'team'; title?: string; body?: string; supportsId?: number | null }): Promise<Done> {
   const x = await onCycle(input?.cycleId)
   if ('error' in x) return no(x.error!)
-  const teamId = input.teamId ?? null
-  let existing: { id: number; team_id: string | null } | null = null
+  let existing: { id: number; team_id: string | null; kind: 'company' | 'vp' | 'team' } | null = null
   if (input.id) {
-    existing = (await rdb().from('review_priorities').select('id, team_id').eq('id', input.id).eq('cycle_id', x.c.id).maybeSingle()).data
+    existing = (await rdb().from('review_priorities').select('id, team_id, kind').eq('id', input.id).eq('cycle_id', x.c.id).maybeSingle()).data
     if (!existing) return no('That priority is not there any more. Reload the page.')
   }
-  const scope = existing ? existing.team_id : teamId
-  if (!scope) {
-    if (!x.a.viewer.leads) return no('Only the VP of Operations and the CISO write the Company Priorities.')
-  } else {
-    const st = (await loadTeamStates(x.c.id)).get(scope)
-    const locked = st?.state === 'approved' || st?.state === 'sent'
-    if (!(x.a.viewer.leads || (leaderOf(x.a, scope) && !locked))) return no(locked ? 'These priorities are sent. Only the VP of Operations and the CISO change them now.' : 'Only the team\'s Team Leader writes its priorities.')
-  }
+  const teamId = existing ? existing.team_id : input.teamId ?? null
+  const kind: 'company' | 'vp' | 'team' = existing ? existing.kind ?? (teamId ? 'team' : 'company') : teamId ? 'team' : input.kind === 'vp' ? 'vp' : 'company'
+  const refused = await writesPriorities(x.a, x.c, kind, teamId)
+  if (refused) return no(refused)
   const fields: Record<string, unknown> = { updated_by: x.a.me, updated_at: stamp() }
   if (input.title !== undefined) fields.title = clean(input.title, 200)
   if (input.body !== undefined) fields.body = clean(input.body, 2000)
@@ -400,11 +576,13 @@ export async function savePriority(input: { cycleId: number; id?: number | null;
     return { ok: true, savedAt: fields.updated_at as string }
   }
   const base = c.from('review_priorities').select('id', { count: 'exact', head: true }).eq('cycle_id', x.c.id)
-  const count = (await (scope ? base.eq('team_id', scope) : base.is('team_id', null))).count ?? 0
+  const count = (await (teamId ? base.eq('team_id', teamId) : base.is('team_id', null).eq('kind', kind))).count ?? 0
   if (count >= 12) return no('Twelve priorities is the most.')
-  const r = await c.from('review_priorities').insert({ cycle_id: x.c.id, team_id: scope, position: count, created_by: x.a.me, ...fields }).select('id').single()
+  // Added during the 6-month check-in: marked as added, so everyone sees it is new.
+  const mid = x.c.checkin_started_at && !teamId ? { mid_status: 'added', mid_at: stamp(), mid_by: x.a.me } : {}
+  const r = await c.from('review_priorities').insert({ cycle_id: x.c.id, team_id: teamId, kind, position: count, created_by: x.a.me, ...mid, ...fields }).select('id').single()
   if (r.error) { console.error('[review] priority:', r.error.message); return no(NOT_SAVED) }
-  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'priority_added', text: `${nameIn(x.a.roster, x.a.me)} added a ${scope ? `${x.a.roster.teams.get(scope)?.name ?? 'team'} ` : 'whole-company '}priority.` })
+  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'priority_added', text: `${nameIn(x.a.roster, x.a.me)} added a ${teamId ? `${x.a.roster.teams.get(teamId)?.name ?? 'team'} ` : kind === 'vp' ? 'VP of Operations ' : 'whole-company '}priority.` })
   refresh()
   return { ok: true, id: r.data.id }
 }
@@ -412,14 +590,12 @@ export async function savePriority(input: { cycleId: number; id?: number | null;
 export async function removePriority(input: { id: number }): Promise<Done> {
   const a = await actor()
   if (!a) return no('Sign in again to do this.')
-  const p = (await rdb().from('review_priorities').select('id, cycle_id, team_id, title').eq('id', Number(input?.id)).maybeSingle()).data as { id: number; cycle_id: number; team_id: string | null; title: string } | null
+  const p = (await rdb().from('review_priorities').select('id, cycle_id, team_id, kind, title').eq('id', Number(input?.id)).maybeSingle()).data as { id: number; cycle_id: number; team_id: string | null; kind: 'company' | 'vp' | 'team'; title: string } | null
   if (!p) return { ok: true }
-  if (!p.team_id && !a.viewer.leads) return no('Only the VP of Operations and the CISO change the Company Priorities.')
-  if (p.team_id) {
-    const st = (await loadTeamStates(p.cycle_id)).get(p.team_id)
-    const locked = st?.state === 'approved' || st?.state === 'sent'
-    if (!(a.viewer.leads || (leaderOf(a, p.team_id) && !locked))) return no('These priorities are locked now.')
-  }
+  const c = (await rdb().from('review_cycles').select('*').eq('id', p.cycle_id).maybeSingle()).data as Cycle | null
+  if (!c) return { ok: true }
+  const refused = await writesPriorities(a, c, p.kind ?? (p.team_id ? 'team' : 'company'), p.team_id)
+  if (refused) return no(refused)
   const r = await rdb().from('review_priorities').delete().eq('id', p.id)
   if (r.error) return no(NOT_SAVED)
   await addLog({ cycle_id: p.cycle_id, actor_id: a.me, kind: 'priority_removed', text: `${nameIn(a.roster, a.me)} removed "${p.title || 'a priority'}".` })
@@ -427,71 +603,26 @@ export async function removePriority(input: { id: number }): Promise<Done> {
   return { ok: true, toast: 'Priority removed.' }
 }
 
-/** A Team Leader sends their team's priorities for approval, without sending their self-review. */
-export async function sendTeamPriorities(input: { cycleId: number; teamId: string }): Promise<Done> {
+/**
+ * "The priorities are ready": the CISO for the Company Priorities, the VP of
+ * Operations for theirs. When both are, the goals for next year open in
+ * every self-review (schedule.ts goalsOpen).
+ */
+export async function markPrioritiesReady(input: { cycleId: number; kind: 'company' | 'vp' }): Promise<Done> {
   const x = await onCycle(input?.cycleId)
   if ('error' in x) return no(x.error!)
-  const teamId = String(input?.teamId ?? '')
-  if (!leaderOf(x.a, teamId)) return no('Only the team\'s Team Leader sends its priorities.')
-  const was = (await loadTeamStates(x.c.id)).get(teamId)?.state ?? 'draft'
-  if (was === 'sent') return no('These priorities are already sent. They are waiting for approval.')
-  if (was === 'approved') return no('These priorities are approved. Only the VP of Operations and the CISO change them now.')
-  const mine = (await loadPriorities(x.c.id)).filter(p => p.team_id === teamId && p.title.trim())
-  if (!mine.length) return no('Write at least one priority with a title first.')
-  const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'sent', sent_at: stamp(), sent_by: x.a.me, return_reason: null }, { onConflict: 'cycle_id,team_id' })
+  const kind = input?.kind === 'vp' ? 'vp' : 'company'
+  const refused = await writesPriorities(x.a, x.c, kind, null)
+  if (refused) return no(refused)
+  const written = (await loadPriorities(x.c.id)).filter(p => !p.team_id && (p.kind ?? 'company') === kind && p.title.trim())
+  if (!written.length) return no('Write at least one priority with a title first.')
+  const col = kind === 'company' ? 'company_done_at' : 'vp_done_at'
+  const r = await rdb().from('review_cycles').update({ [col]: stamp(), updated_at: stamp() }).eq('id', x.c.id)
   if (r.error) return no(NOT_SAVED)
-  const team = x.a.roster.teams.get(teamId)?.name ?? 'team'
-  const leader = nameIn(x.a.roster, x.a.me)
-  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'team_sent', text: `${leader} sent ${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'} for the ${team}.` })
-  for (const to of [x.a.settings.vpId, x.a.settings.cisoId]) {
-    await noticeOnce(`team:${x.c.id}:${teamId}:sent:${stamp().slice(0, 16)}:${to}`, x.a.roster, to, o => reviewMails.teamPriorities({ year: x.c.year, leader, team, url: `${o}/human-resources/reviews/priorities` }))
-  }
+  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'priorities_ready', text: `${nameIn(x.a.roster, x.a.me)} marked the ${kind === 'company' ? 'Company Priorities' : "VP of Operations' priorities"} ready.` })
+  const both = kind === 'company' ? !!x.c.vp_done_at : !!x.c.company_done_at
   refresh()
-  return { ok: true, toast: 'Sent for approval. Your self-review stays open.' }
-}
-
-const OWN_TEAM = 'You lead this team, so the other of the VP of Operations and the CISO decides its priorities (the CISO, when both lead it).'
-
-/** The VP of Operations or the CISO approves a team's priorities: the team's self-reviews open. */
-export async function approveTeamPriorities(input: { cycleId: number; teamId: string }): Promise<Done> {
-  const x = await onCycle(input?.cycleId)
-  if ('error' in x) return no(x.error!)
-  if (!x.a.viewer.leads) return no('Only the VP of Operations and the CISO approve team priorities.')
-  const teamId = String(input?.teamId ?? '')
-  if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
-  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members, x.a.settings)) return no(OWN_TEAM)
-  if ((await loadTeamStates(x.c.id)).get(teamId)?.state !== 'sent') return no('These priorities are not waiting for approval.')
-  const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'approved', decided_at: stamp(), decided_by: x.a.me, return_reason: null }, { onConflict: 'cycle_id,team_id' })
-  if (r.error) return no(NOT_SAVED)
-  const team = x.a.roster.teams.get(teamId)?.name ?? 'team'
-  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'team_approved', text: `${nameIn(x.a.roster, x.a.me)} approved the priorities for the ${team}.${x.c.started_at ? ` The ${team}'s self-reviews opened.` : ''}` })
-  const { opened } = await syncCycle(x.c)
-  await sendOpenedNotices(x.c, opened)
-  refresh()
-  return { ok: true, toast: opened.length ? `Approved. ${opened.length} self-review${opened.length === 1 ? '' : 's'} opened.` : 'Approved.' }
-}
-
-export async function returnTeamPriorities(input: { cycleId: number; teamId: string; reason: string }): Promise<Done> {
-  const x = await onCycle(input?.cycleId)
-  if ('error' in x) return no(x.error!)
-  if (!x.a.viewer.leads) return no('Only the VP of Operations and the CISO send team priorities back.')
-  const reason = clean(input?.reason, 2000).trim()
-  if (!reason) return no('Write the reason: the Team Leader sees it.')
-  const teamId = String(input?.teamId ?? '')
-  if (!x.a.roster.teams.has(teamId)) return no('That team is not in the Directory.')
-  if (!decidesTeam(x.a.me, true, teamId, x.a.roster.members, x.a.settings)) return no(OWN_TEAM)
-  const st = (await loadTeamStates(x.c.id)).get(teamId)
-  if (st?.state !== 'sent') return no('These priorities are not waiting for approval.')
-  const r = await rdb().from('review_team_priorities').upsert({ cycle_id: x.c.id, team_id: teamId, state: 'returned', decided_at: stamp(), decided_by: x.a.me, return_reason: reason }, { onConflict: 'cycle_id,team_id' })
-  if (r.error) return no(NOT_SAVED)
-  const team = x.a.roster.teams.get(teamId)?.name ?? 'team'
-  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'team_returned', text: `${nameIn(x.a.roster, x.a.me)} sent the ${team}'s priorities back: ${reason}` })
-  if (st?.sent_by) {
-    const rev = (await rdb().from('reviews').select('id').eq('cycle_id', x.c.id).eq('person_id', st.sent_by).maybeSingle()).data as { id: number } | null
-    await noticeOnce(`team:${x.c.id}:${teamId}:back:${stamp()}`, x.a.roster, st.sent_by, o => reviewMails.prioritiesBack({ year: x.c.year, by: nameIn(x.a.roster, x.a.me), team, reason, url: rev ? reviewUrl(o, rev.id) : `${o}/human-resources` }))
-  }
-  refresh()
-  return { ok: true, toast: 'Sent back to the Team Leader, with your reason.' }
+  return { ok: true, toast: both ? `Ready. The goals for ${x.c.year + 1} are open in every self-review.` : `Ready. The goals for ${x.c.year + 1} open when the ${kind === 'company' ? "VP of Operations' priorities are" : 'Company Priorities are'} ready too.` }
 }
 
 // ── The year ───────────────────────────────────────────────────────────────
@@ -505,29 +636,68 @@ async function settingsWriter() {
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
-const DATE_KEYS = ['leaders_open_on', 'leaders_due', 'teams_open_by', 'self_due', 'review_due', 'meeting_due', 'approval_due', 'checkins_by'] as const
+const DATE_KEYS: readonly DateKey[] = ['company_due', 'vp_due', 'self_due', 'review_due', 'leaders_meeting_due', 'meeting_due', 'leaders_approval_due', 'approval_due']
 
-/** Saves the year's dates (Company settings > Human Resources), making the year's cycle when there is none. */
-export async function saveReviewDates(input: { year: number; dates: Partial<Record<(typeof DATE_KEYS)[number], string | null>> }): Promise<Done> {
-  const a = await settingsWriter()
-  if (!a) return no('Only Super Admins and HR change the review settings.')
+/** Who moves the year's dates: the VP of Operations, HR and Super Admins. */
+async function datesWriter() {
+  const a = await actor()
+  if (!a) return null
+  if (a.viewer.isVp || a.viewer.isHr || await allowedTo('cs-hr-edit')) return a
+  return null
+}
+
+/**
+ * "Move a due date" (owner, 10 November 2026): the dates come from the
+ * kickoff and can be changed here. Dates out of order are saved and named,
+ * so the person can fix them.
+ */
+export async function saveReviewDates(input: { year: number; dates: Partial<Record<DateKey, string | null>> }): Promise<Done> {
+  const a = await datesWriter()
+  if (!a) return no('Only the VP of Operations, HR and Super Admins change the review dates.')
   const year = Number(input?.year)
   if (!Number.isInteger(year) || year < 2025 || year > 2100) return no('That is not a year.')
+  const c = await loadCycle(year)
+  if (!c?.started_at) return no('The dates come from the kickoff: start the reviews first.')
   const patch: Record<string, unknown> = { updated_at: stamp() }
   for (const k of DATE_KEYS) {
     const v = input.dates?.[k]
     if (v === undefined) continue
-    if (v !== null && !DAY.test(v)) return no('Pick a date.')
+    if (v === null || !DAY.test(v)) return no('Pick a date.')
     patch[k] = v
   }
-  const r = await rdb().from('review_cycles').upsert({ year, ...patch }, { onConflict: 'year' })
+  const r = await rdb().from('review_cycles').update(patch).eq('id', c.id)
   if (r.error) { console.error('[review] dates:', r.error.message); return no(NOT_SAVED) }
-  revalidatePath('/admin/settings')
-  return { ok: true, toast: 'Saved.' }
+  await addLog({ cycle_id: c.id, actor_id: a.me, kind: 'dates', text: `${nameIn(a.roster, a.me)} changed the ${year} dates.` })
+  const problems = orderProblems({ ...c, ...patch } as Partial<Record<DateKey, string>>, d => fmtDay(d))
+  refresh()
+  return { ok: true, toast: problems.length ? `Saved. ${problems.join(' ')}` : 'Saved. The reminders follow the new dates.' }
+}
+
+/**
+ * The dates rule (owner, 10 November 2026): when a step is done before its
+ * date, the dates after it may come earlier by the days saved. Nothing is ever
+ * pushed later.
+ */
+export async function moveDatesUp(input: { year: number; key: DateKey }): Promise<Done> {
+  const a = await datesWriter()
+  if (!a) return no('Only the VP of Operations, HR and Super Admins change the review dates.')
+  const c = await loadCycle(Number(input?.year))
+  if (!c?.started_at) return no('The reviews have not started.')
+  if (!DATE_KEYS.includes(input?.key)) return no('Pick a step.')
+  const { loadProgress } = await import('@/lib/review/progress-data')
+  const row = (await loadProgress(c, a.roster, a.settings)).rows.find(r => r.dateKey === input.key)
+  if (!row || row.done < row.total) return no('That step is not finished yet.')
+  const m = moveUp(c as unknown as Partial<Record<DateKey, string>>, input.key, reviewToday())
+  if (!m) return no('That step finished on its date: nothing to move.')
+  const r = await rdb().from('review_cycles').update({ ...m.patch, updated_at: stamp() }).eq('id', c.id)
+  if (r.error) return no(NOT_SAVED)
+  await addLog({ cycle_id: c.id, actor_id: a.me, kind: 'dates', text: `${nameIn(a.roster, a.me)} moved the dates after "${row.label}" up by ${m.days} ${m.days === 1 ? 'day' : 'days'}.` })
+  refresh()
+  return { ok: true, toast: `The later dates are ${m.days} ${m.days === 1 ? 'day' : 'days'} earlier. The reminders follow them.` }
 }
 
 /** Saves the three roles, or who takes part beyond the employees. */
-export async function saveHrSettings(input: { vpId?: string | null; cisoId?: string | null; hrId?: string | null; extra?: string[] }): Promise<Done> {
+export async function saveHrSettings(input: { vpId?: string | null; cisoId?: string | null; hrId?: string | null; extra?: string[]; second?: { personId: string; reviewerId?: string | null; area?: string } }): Promise<Done> {
   const a = await settingsWriter()
   if (!a) return no('Only Super Admins and HR change the review settings.')
   const patch: Record<string, unknown> = { updated_by: a.me, updated_at: stamp() }
@@ -543,6 +713,20 @@ export async function saveHrSettings(input: { vpId?: string | null; cisoId?: str
     const ids = [...new Set(input.extra.map(String))]
     if (!ids.every(id => a.roster.people.get(id)?.active)) return no('Pick active people.')
     patch.extra_people = ids
+  }
+  if (input.second !== undefined) {
+    // A second reviewer by hand, or none, over the rule (owner, 10 November 2026). Super Admins only, like the roles.
+    if (!(await allowedTo('cs-hr-edit'))) return no('Only a Super Admin changes who reviews whom.')
+    const { personId, reviewerId, area } = input.second
+    if (!a.roster.people.get(personId)?.active) return no('Pick an active person.')
+    const next = { ...cleanOverrides((await rdb().from('hr_settings').select('second_reviewers').eq('singleton_id', 1).maybeSingle()).data?.second_reviewers) } as Record<string, { reviewerId: string; area: string } | false>
+    if (reviewerId === undefined) delete next[personId]
+    else if (reviewerId === null) next[personId] = false
+    else {
+      if (reviewerId === personId || !a.roster.people.get(reviewerId)?.active) return no('Pick an active person other than them.')
+      next[personId] = { reviewerId, area: clean(area, 120).trim() || 'Second team' }
+    }
+    patch.second_reviewers = next
   }
   const r = await rdb().from('hr_settings').update(patch).eq('singleton_id', 1)
   if (r.error) return no(NOT_SAVED)
@@ -677,23 +861,35 @@ export async function importFiles(input: { year: number; importId?: number }): P
   return { ok: true, toast: `${r.done} file${r.done === 1 ? '' : 's'} imported.${r.failed ? ` ${r.failed} could not be read; try them again.` : ''}` }
 }
 
-/** "Start the 2026 cycle" (Super Admin): phase 1 opens now, with an email to each. */
+/**
+ * "Start Reviews" (owner, 10 November 2026): the VP of Operations starts the
+ * current year, a Super Admin as back-up. Every due date comes from today
+ * (schedule.ts planFrom), everyone's self-review opens, and the CISO and the
+ * VP are asked for the priorities.
+ */
 export async function startCycle(input: { year: number }): Promise<Done> {
-  if (!(await allowedTo('hr-start'))) return no('Only a Super Admin starts the cycle.')
   const a = await actor()
   if (!a) return no('Sign in again to do this.')
-  const c = await loadCycle(Number(input?.year))
-  if (!c) return no('Set the dates in Company settings > Human Resources first.')
-  if (c.started_at) return no(`The ${c.year} cycle has already started.`)
-  if (!c.self_due || !c.approval_due) return no('Set the dates in Company settings > Human Resources first.')
-  const u = await rdb().from('review_cycles').update({ started_at: stamp(), started_by: a.me, updated_at: stamp() }).eq('id', c.id).is('started_at', null).select('id')
-  if (u.error || !u.data?.length) return no(`The ${c.year} cycle has already started.`)
-  const started = { ...c, started_at: stamp(), started_by: a.me }
-  await addLog({ cycle_id: c.id, actor_id: a.me, kind: 'started', text: `${nameIn(a.roster, a.me)} started the ${c.year} cycle.` })
+  if (!a.viewer.isVp && !(await allowedTo('hr-start'))) return no('Only the VP of Operations starts the reviews.')
+  const year = Number(input?.year)
+  if (year !== defaultYear()) return no(`Only the current year, ${defaultYear()}, can be started.`)
+  if (!a.settings.vpId || !a.settings.cisoId) return no('Pick the VP of Operations and the CISO in Company settings › Human Resources first.')
+  const c = await ensureYearCycle(year)
+  if (c.started_at) return no(`The ${c.year} reviews have already started.`)
+  const today = reviewToday()
+  const plan = planFrom(today)
+  const u = await rdb().from('review_cycles').update({ ...plan, leaders_open_on: today, leaders_due: null, teams_open_by: null, checkins_by: sixMonthsAfter(today), started_at: stamp(), started_by: a.me, updated_at: stamp() })
+    .eq('id', c.id).is('started_at', null).select('id')
+  if (u.error || !u.data?.length) return no(`The ${c.year} reviews have already started.`)
+  const started = (await loadCycle(year))!
+  await addLog({ cycle_id: c.id, actor_id: a.me, kind: 'started', text: `${nameIn(a.roster, a.me)} started the ${c.year} reviews.` })
   const { opened } = await syncCycle(started)
   await sendOpenedNotices(started, opened)
+  const url = (o: string) => `${o}/human-resources/reviews/priorities`
+  await noticeOnce(`cycle:${c.id}:ask:company`, a.roster, a.settings.cisoId, o => reviewMails.prioritiesAsk({ year: c.year, which: 'company', due: plan.company_due, days: null, url: url(o) }))
+  await noticeOnce(`cycle:${c.id}:ask:vp`, a.roster, a.settings.vpId, o => reviewMails.prioritiesAsk({ year: c.year, which: 'vp', due: plan.vp_due, days: null, url: url(o) }))
   refresh()
-  return { ok: true, toast: `The ${c.year} cycle started. ${opened.length} self-review${opened.length === 1 ? '' : 's'} opened.` }
+  return { ok: true, toast: `The ${c.year} reviews started. ${opened.length} self-review${opened.length === 1 ? '' : 's'} opened; everything is due by ${fmtDay(plan.approval_due)}.` }
 }
 
 // ── Goals during the year ──────────────────────────────────────────────────

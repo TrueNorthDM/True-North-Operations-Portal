@@ -17,7 +17,7 @@ import { PriorityGrid } from '@/components/review/parts'
 import { reviewContext } from '@/lib/review/page-context'
 import { requireSurface } from '@/lib/access/resolve'
 import { loadGoalsView, loadHistory, loadMyCard, loadTeamGoals } from '@/lib/review/mine'
-import { currentReviewerOf, loadCurrentCycle, loadPriorities, loadTeamStates, prioritiesFor, reviewToday } from '@/lib/review/data'
+import { currentReviewerOf, loadCurrentCycle, loadPriorities, prioritiesFor, reviewToday } from '@/lib/review/data'
 import { updateGoal } from './actions'
 import { hrTabs } from '@/lib/review/hr-tabs'
 
@@ -44,9 +44,12 @@ export default async function HumanResourcesPage({ searchParams }: { searchParam
   if (tab === 'priorities' && me) {
     const c = await loadCurrentCycle()
     if (c) {
-      const [all, states] = await Promise.all([loadPriorities(c.id), loadTeamStates(c.id)])
-      const mine = roster.members.find(m => m.personId === me && m.isPrimary)?.teamId ?? roster.members.find(m => m.personId === me)?.teamId ?? null
-      priorities = { year: c.year, items: prioritiesFor(all, mine, states).map((p, i) => ({ id: p.id, n: i + 1, scope: p.team_id ? roster.teams.get(p.team_id)?.name ?? 'Team' : 'Whole company', teamId: p.team_id, title: p.title, body: p.body, goals: 0 })) }
+      const all = await loadPriorities(c.id)
+      const mine = roster.members.filter(m => m.personId === me).map(m => m.teamId)
+      priorities = { year: c.year, items: prioritiesFor(all, mine).map((p, i) => ({
+        id: p.id, n: i + 1, scope: p.team_id ? roster.teams.get(p.team_id)?.name ?? 'Team' : p.kind === 'vp' ? 'VP of Operations' : 'Whole company', teamId: p.team_id,
+        kind: p.kind ?? (p.team_id ? 'team' as const : 'company' as const), title: p.title, body: p.body, goals: 0, mid: p.mid_status ? { status: p.mid_status, note: p.mid_note } : null,
+      })) }
     }
   }
 

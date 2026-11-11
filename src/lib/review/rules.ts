@@ -8,12 +8,19 @@
  * Operations and the CISO, picked in Company settings, stand apart: the CISO
  * reviews the VP, and nobody reviews the CISO, who has no review.
  *
- * Phase 1: the Team Leaders and everyone with no Team Leader go first, when
- * the cycle starts. Phase 2: each team's people open when the team's
- * priorities are approved, or on "Teams open by", whichever comes first.
+ * The workflow of 10 November 2026 (docs/annual-review/01-workflow-2026-11.md):
+ * everyone's self-review opens at the kickoff. Phase is the lane a review's
+ * dates come from: 1, the leaders' lane (the Team Leaders and everyone with
+ * no Team Leader, reviewed by who they report to); 2, the teams' lane
+ * (reviewed by their Team Leader). Someone who leads their main team and is a
+ * plain member of another has a second reviewer, that team's leader, whose
+ * part of the review runs in the teams' lane.
  */
 
 import { isLeadPosition } from '@/lib/access/catalogue'
+
+/** A membership position that leads its team (the catalogue's rule, for code that reads raw positions). */
+export const isLeadPositionName = (position: string | null) => isLeadPosition(position)
 
 // ── Who takes part, and who reviews them ───────────────────────────────────
 
@@ -30,7 +37,16 @@ export interface Participant {
   reviewerId: string | null
   phase: 1 | 2
   leads: string[]
+  /** What the first reviewer reviews them for: their main team's name. */
+  area: string
+  /** The second reviewer (two reviewers, owner, 10 November 2026) and the team they review them for. */
+  secondReviewerId: string | null
+  secondArea: string
 }
+
+/** A second reviewer set by hand in Company settings, or false for none (hr_settings.second_reviewers). */
+export type SecondOverride = { reviewerId: string; area: string } | false
+export type SecondOverrides = Readonly<Record<string, SecondOverride>>
 
 /** Employees always; anyone else only when added in "Who takes part". */
 // The roles read from the Directory titles, for any role not picked by hand in
@@ -94,7 +110,31 @@ export function reviewerFor(personId: string, teamLeaderId: string | null, manag
   return null
 }
 
-export function participants(people: RosterPerson[], members: RosterMembership[], teams: RosterTeam[], roles: Roles, extra: ReadonlySet<string>): Participant[] {
+/**
+ * The second reviewer (owner, 10 November 2026): someone who leads their main
+ * team and is a plain member of another team, led by someone else, is also
+ * reviewed by that team's leader (Kathleen leads Social Media and works in
+ * SEO under Jeannette). Never for the VP of Operations or the CISO, never the
+ * first reviewer again. A choice made by hand wins over the rule.
+ */
+export function secondReviewerFor(personId: string, firstReviewerId: string | null, members: RosterMembership[], teams: Map<string, RosterTeam>, roles: Roles, active: ReadonlySet<string>, overrides: SecondOverrides = {}): { reviewerId: string; area: string } | null {
+  const own = overrides[personId]
+  if (own === false) return null
+  if (own) return own.reviewerId !== personId && own.reviewerId !== firstReviewerId && active.has(own.reviewerId) ? own : null
+  if (personId === roles.vpId || personId === roles.cisoId) return null
+  const main = mainTeamOf(personId, members, teams)
+  if (!main || !leadersOf(main, members).includes(personId)) return null
+  const others = members
+    .filter(m => m.personId === personId && m.teamId !== main && teams.has(m.teamId) && !isLeadPosition(m.position))
+    .sort((a, b) => teams.get(a.teamId)!.name.localeCompare(teams.get(b.teamId)!.name))
+  for (const m of others) {
+    const lead = leadersOf(m.teamId, members).find(id => id !== personId && active.has(id))
+    if (lead && lead !== firstReviewerId) return { reviewerId: lead, area: teams.get(m.teamId)!.name }
+  }
+  return null
+}
+
+export function participants(people: RosterPerson[], members: RosterMembership[], teams: RosterTeam[], roles: Roles, extra: ReadonlySet<string>, overrides: SecondOverrides = {}): Participant[] {
   const teamMap = new Map(teams.map(t => [t.id, t]))
   const active = new Set(people.filter(p => p.active).map(p => p.id))
   // The CISO has no review of their own: nobody reviews them (owner, 4 November 2026).
@@ -104,13 +144,18 @@ export function participants(people: RosterPerson[], members: RosterMembership[]
     const iLead = teamId ? leadersOf(teamId, members).includes(p.id) : false
     const teamLeaderId = iLead ? null : (leaders[0] ?? null)
     const leads = members.filter(m => m.personId === p.id && isLeadPosition(m.position) && teamMap.has(m.teamId)).map(m => m.teamId)
+    const reviewerId = reviewerFor(p.id, teamLeaderId, p.managerId, roles)
+    const second = secondReviewerFor(p.id, reviewerId, members, teamMap, roles, active, overrides)
     return {
       personId: p.id,
       teamId,
       teamLeaderId,
-      reviewerId: reviewerFor(p.id, teamLeaderId, p.managerId, roles),
+      reviewerId,
       phase: teamLeaderId ? 2 : 1,
       leads,
+      area: teamId ? teamMap.get(teamId)!.name : '',
+      secondReviewerId: second?.reviewerId ?? null,
+      secondArea: second?.area ?? '',
     }
   })
 }
@@ -131,15 +176,21 @@ export function stepBack(step: Step): Step | null {
 export interface CycleDates {
   leaders_open_on: string | null; leaders_due: string | null; teams_open_by: string | null
   self_due: string | null; review_due: string | null; meeting_due: string | null; approval_due: string | null; checkins_by: string | null
+  /** From 10 November 2026 (migration 164): the priorities, and the leaders' lane's own meeting and approval dates. */
+  company_due?: string | null; vp_due?: string | null; leaders_meeting_due?: string | null; leaders_approval_due?: string | null
 }
 
-/** The due date of the step a review is on. Phase 1 self-reviews are due earlier. */
-export function dueOf(step: Step, phase: 1 | 2, d: CycleDates): string | null {
+/**
+ * The due date of a step, in a lane: 1 the leaders' (no Team Leader), 2 the
+ * teams'. A year from before the workflow of 10 November 2026 has no leaders'
+ * meeting or approval date and falls back to the shared one.
+ */
+export function dueOf(step: Step, lane: 1 | 2, d: CycleDates): string | null {
   switch (step) {
-    case 'self': return phase === 1 ? (d.leaders_due ?? d.self_due) : d.self_due
+    case 'self': return lane === 1 ? (d.leaders_due ?? d.self_due) : d.self_due
     case 'review': return d.review_due
-    case 'meeting': return d.meeting_due
-    case 'approval': return d.approval_due
+    case 'meeting': return lane === 1 ? (d.leaders_meeting_due ?? d.meeting_due) : d.meeting_due
+    case 'approval': return lane === 1 ? (d.leaders_approval_due ?? d.approval_due) : d.approval_due
     default: return null
   }
 }
@@ -157,24 +208,11 @@ export function waitsFor(r: { step: Step; personId: string; reviewerId: string |
   }
 }
 
-/** A team opens when its priorities are approved, or on "Teams open by" at the latest. */
-export function teamOpens(state: { approved: boolean } | null, teamsOpenBy: string | null, today: string): boolean {
-  if (state?.approved) return true
-  return !!teamsOpenBy && today >= teamsOpenBy
-}
 
 // ── Days ───────────────────────────────────────────────────────────────────
 
 export const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 
-/**
- * When a Super Admin's Home asks them to start the year's cycle: from a week
- * before "Team Leaders open on" until someone starts it (late stays shown).
- */
-export const START_NOTICE_DAYS = 7
-export function startRowShows(today: string, leadersOpenOn: string | null, started: boolean): boolean {
-  return !started && !!leadersOpenOn && dayDiff(today, leadersOpenOn) <= START_NOTICE_DAYS
-}
 
 /** "4 days left", "tomorrow", "today", "2 days late". */
 export function dueWords(due: string, today: string): string {
@@ -185,12 +223,15 @@ export function dueWords(due: string, today: string): string {
   return n === -1 ? '1 day late' : `${-n} days late`
 }
 
-/** The reminder days for a due date: 1 week before, 3 days before and on the day. */
-export const REMINDER_OFFSETS = [7, 3, 0] as const
-export function reminderToday(due: string | null, today: string): 7 | 3 | 0 | null {
+/**
+ * The reminder days for a due date: 3 days before, the day before and on the
+ * day (the 6-week calendar of 10 November 2026 has steps of 2 days).
+ */
+export const REMINDER_OFFSETS = [3, 1, 0] as const
+export function reminderToday(due: string | null, today: string): 3 | 1 | 0 | null {
   if (!due) return null
   const n = dayDiff(today, due)
-  return (REMINDER_OFFSETS as readonly number[]).includes(n) ? (n as 7 | 3 | 0) : null
+  return (REMINDER_OFFSETS as readonly number[]).includes(n) ? (n as 3 | 1 | 0) : null
 }
 
 /** The last day of a goal's month (its "by when"), as YYYY-MM-DD. */

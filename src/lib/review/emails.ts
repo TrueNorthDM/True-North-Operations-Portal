@@ -48,7 +48,7 @@ export function renderReviewMail(m: ReviewMail, origin: string): { subject: stri
 
 const FOOT = (year: number) => `You get this because you take part in the ${year} review.`
 const FOOT_MGR = (year: number) => `You get this because someone who reports to you takes part in the ${year} review.`
-const FOOT_LEAD = (year: number) => `You get this because you approve the team priorities of the ${year} review.`
+const FOOT_LEAD = (year: number) => `You get this because you lead a team in the ${year} review.`
 
 /** "Mon, Nov 30" from YYYY-MM-DD. */
 export function dayLabel(day: string, withYear = false): string {
@@ -96,24 +96,31 @@ export const reviewMails = {
   approved: (v: { year: number; who: string; by: string; url: string; toHr: boolean }): ReviewMail => ({
     subject: v.toHr ? `${v.who}'s ${v.year} review is approved` : `Your ${v.year} review is approved`, pre: 'The PDF is ready.',
     title: v.toHr ? `${v.who}'s ${v.year} review is approved` : `Your ${v.year} review is approved`,
-    body: [v.toHr ? `${v.by} approved ${v.who}'s ${v.year} review. The PDF is made and copied to Google Drive.` : `${v.by} approved your ${v.year} review. The PDF is ready, and your goals are in Human Resources, My goals.`],
+    body: [v.toHr ? `${v.by} approved ${v.who}'s ${v.year} review. The PDF is made and copied to Google Drive.` : `${v.by} approved your ${v.year} review. Your goals are recorded on your profile and in Human Resources, My review, and in 6 months there is a check-in to look at them again.`],
     button: 'Open the review', url: v.url, footer: v.toHr ? `You get this because you are HR in Company settings.` : FOOT(v.year),
   }),
   prioritiesDue: (v: { year: number; due: string; days: number; teams: string[]; url: string }): ReviewMail => ({
-    subject: v.days === 0 ? `${v.teams.length === 1 ? TeamOf(v.teams[0]) : 'Your teams'}' priorities are due today` : `${v.days} days left: ${v.teams.length === 1 ? `${teamOf(v.teams[0])}'s` : 'your teams\''} priorities`,
-    pre: `Due ${dayLabel(v.due)}.`, title: v.days === 0 ? 'Your team\'s priorities are due today' : `${v.days} days left: your team's priorities`,
-    body: [`The priorities for ${v.year + 1} of ${listOf(v.teams.map(teamOf))} are due ${dayLabel(v.due)}. They are in your self-review: write them and send them for approval, so your team's self-reviews can open.`],
+    subject: v.days === 0 ? `${v.teams.length === 1 ? `${TeamOf(v.teams[0])}'s` : 'Your teams\''} priorities are due today` : `${left(v.days).replace(/^./, c => c.toUpperCase())}: ${v.teams.length === 1 ? `${teamOf(v.teams[0])}'s` : 'your teams\''} priorities`,
+    pre: `Due ${dayLabel(v.due)}.`, title: v.days === 0 ? 'Your team\'s priorities are due today' : 'Your team\'s priorities',
+    body: [`The priorities for ${v.year + 1} of ${listOf(v.teams.map(teamOf))} are the first part of your self-review, due ${dayLabel(v.due)}. Your team builds its goals on them, so write them first.`],
     button: 'Open your review', url: v.url, footer: FOOT_LEAD(v.year),
   }),
-  teamPriorities: (v: { year: number; leader: string; team: string; url: string }): ReviewMail => ({
-    subject: `Approve ${teamOf(v.team)}'s priorities`, pre: `From ${v.leader}.`, title: `Approve ${teamOf(v.team)}'s priorities`,
-    body: [`${v.leader} sent ${teamOf(v.team)}'s priorities for ${v.year + 1}. Approving them opens the team's self-reviews.`],
-    button: 'Open the priorities', url: v.url, footer: FOOT_LEAD(v.year),
-  }),
-  prioritiesBack: (v: { year: number; by: string; team: string; reason: string; url: string }): ReviewMail => ({
-    subject: `${v.by} sent ${teamOf(v.team)}'s priorities back`, pre: v.reason, title: `${TeamOf(v.team)}'s priorities came back`,
-    body: [`${v.by} sent ${teamOf(v.team)}'s priorities back, with this reason:`, `"${v.reason}"`],
-    button: 'Open your review', url: v.url, footer: FOOT(v.year),
+  /** The CISO's Company Priorities or the VP of Operations' own, asked for at the kickoff and reminded (owner, 10 November 2026). */
+  prioritiesAsk: (v: { year: number; which: 'company' | 'vp'; due: string | null; days: number | null; url: string }): ReviewMail => {
+    const what = v.which === 'company' ? `the Company Priorities for ${v.year + 1}` : `your priorities for ${v.year + 1}`
+    const title = v.days === 0 ? `Due today: ${what}` : `Write ${what}`
+    return {
+      subject: title, pre: v.due ? `Due ${dayLabel(v.due)}.` : title, title,
+      body: [`The ${v.year} reviews have started. ${v.which === 'company' ? 'The Company Priorities come first: every review shows them, and everyone builds their goals on them.' : 'After the Company Priorities, yours: every review shows them too.'}${v.due ? ` They are due ${v.days === null ? '' : `${left(v.days)}, `}${dayLabel(v.due)}.` : ''} When they are written, mark them ready: the goals for ${v.year + 1} open in every review.`],
+      button: 'Open the priorities', url: v.url, footer: FOOT(v.year),
+    }
+  },
+  checkinTime: (v: { year: number; first: string; with: string; reviewer: boolean; by: string | null; url: string }): ReviewMail => ({
+    subject: 'Time for the 6-month check-in', pre: v.by ? `By ${dayLabel(v.by)}.` : 'Look at the goals again.', title: 'Time for the 6-month check-in',
+    body: [v.reviewer
+      ? `Hi ${v.first}, it is time for the 6-month check-in with ${v.with}. Book the meeting${v.by ? ` by ${dayLabel(v.by)}` : ''}; together you tick the goals done, adjust or add goals and leave notes, in the review's check-in part.`
+      : `Hi ${v.first}, it is time for your 6-month check-in with ${v.with}. ${v.with.split(' ')[0]} books the meeting; before it, look at your goals and write your notes in the review's check-in part.`],
+    button: 'Open the check-in', url: v.url, footer: v.reviewer ? FOOT_MGR(v.year) : FOOT(v.year),
   }),
   goalDue: (v: { year: number; goal: string; month: string; manager: string; url: string }): ReviewMail => ({
     subject: 'Your goal is due this month', pre: v.goal, title: 'Your goal is due this month',

@@ -1,17 +1,18 @@
-// Step 0, Priorities (design handoff, A3): for the VP of Operations and the
-// CISO (and Super Admins). Everyone else goes back to the list.
+// The priorities for next year (owner, 10 November 2026): the CISO's Company
+// Priorities, the VP of Operations' and each team's. Open to the VP of
+// Operations, the CISO, HR and Super Admins; everyone else goes back to the list.
 
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { PrioritiesPage, type TeamRow } from '@/components/review/PrioritiesPage'
+import { PrioritiesPage, type Block, type TeamRow } from '@/components/review/PrioritiesPage'
 import { reviewContext } from '@/lib/review/page-context'
 import { requireSurface } from '@/lib/access/resolve'
-import { ensureCurrentCycle, loadLog, loadPriorities, loadTeamStates, nameIn } from '@/lib/review/data'
-import { decidesTeam, leadersOf } from '@/lib/review/rules'
+import { ensureCurrentCycle, loadLog, loadPriorities, nameIn } from '@/lib/review/data'
+import { leadersOf } from '@/lib/review/rules'
 import { fmtDay, fmtInstantDay, fmtTime } from '@/lib/review/format'
-import { approveTeamPriorities, removePriority, returnTeamPriorities, savePriority } from '../../actions'
+import { markPrioritiesReady, removePriority, savePriority } from '../../actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Priorities' }
@@ -21,47 +22,41 @@ const listOf = (names: string[]) => names.length < 2 ? names[0] ?? '' : `${names
 
 export default async function PrioritiesRoute() {
   const { viewer, roster, settings } = await reviewContext(await requireSurface('human-resources'))
-  if (!viewer.leads) redirect(await previewHref('/human-resources/reviews'))
+  if (!viewer.leads && !viewer.seesAll) redirect(await previewHref('/human-resources/reviews'))
   const cycle = await ensureCurrentCycle()
-  const [all, states, log] = await Promise.all([loadPriorities(cycle.id), loadTeamStates(cycle.id), loadLog({ cycleId: cycle.id }, 40)])
+  const [all, log] = await Promise.all([loadPriorities(cycle.id), loadLog({ cycleId: cycle.id }, 40)])
   const changedLine = (by: string | null, at: string) => `Changed by ${nameIn(roster, by)} on ${fmtInstantDay(at)}, ${fmtTime(at)}`
+  const rowsOf = (kind: 'company' | 'vp') => all.filter(p => !p.team_id && (p.kind ?? 'company') === kind).map(p => ({ id: p.id, title: p.title, body: p.body, changed: p.updated_by ? changedLine(p.updated_by, p.updated_at) : null }))
+  const blocks: Block[] = [
+    { kind: 'company', title: 'Company Priorities', writer: nameIn(roster, settings.cisoId) || 'The CISO', canEdit: viewer.isCiso || viewer.isSuperAdmin,
+      ready: cycle.company_done_at ? fmtInstantDay(cycle.company_done_at) : null, due: cycle.company_due ? fmtDay(cycle.company_due) : null, rows: rowsOf('company') },
+    { kind: 'vp', title: "VP of Operations' priorities", writer: nameIn(roster, settings.vpId) || 'The VP of Operations', canEdit: viewer.isVp || viewer.isSuperAdmin,
+      ready: cycle.vp_done_at ? fmtInstantDay(cycle.vp_done_at) : null, due: cycle.vp_due ? fmtDay(cycle.vp_due) : null, rows: rowsOf('vp') },
+  ]
   const teams: TeamRow[] = []
   const noLeader: string[] = []
   for (const t of roster.teams.values()) {
     const leaders = leadersOf(t.id, roster.members).filter(id => roster.people.get(id)?.active)
     if (!leaders.length) { noLeader.push(t.name); continue }
-    const st = states.get(t.id)
-    const mine = all.filter(p => p.team_id === t.id)
-    const members = roster.members.filter(m => m.teamId === t.id && !leaders.includes(m.personId) && roster.people.get(m.personId)?.active).length
-    const state = st?.state ?? 'none'
+    const mine = all.filter(p => p.team_id === t.id && p.title.trim())
     teams.push({
       // A team may have several leaders (Leadership has three): all of them, in the Directory's order.
-      teamId: t.id, name: t.name, leader: listOf(leaders.map(id => nameIn(roster, id))), state, members,
-      // A team the viewer leads is decided by the other of the two (the CISO, when both lead it).
-      decider: decidesTeam(viewer.personId, true, t.id, roster.members, settings) ? null
-        : nameIn(roster, [settings.cisoId, settings.vpId].find(id => id && id !== viewer.personId && decidesTeam(id, true, t.id, roster.members, settings))) || 'the other approver',
-      sentLine: st?.sent_at ? `Sent ${fmtInstantDay(st.sent_at)}, ${fmtTime(st.sent_at)}, from ${st.sent_by ? 'their' : 'the'} self-review` : null,
-      line: state === 'approved' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, approved ${fmtInstantDay(st!.decided_at)}.${st?.opened_at ? ` ${t.name}'s self-reviews are open.` : ''}`
-        : state === 'sent' ? `${mine.length} ${mine.length === 1 ? 'priority' : 'priorities'}, sent ${fmtInstantDay(st!.sent_at)}.`
-        : state === 'returned' ? `Sent back ${fmtInstantDay(st!.decided_at)}: ${st?.return_reason ?? ''}`
-        : `Writing them in their self-review${cycle.leaders_due ? `, due ${fmtDay(cycle.leaders_due)}` : ''}.`,
-      priorities: mine.map(p => ({ id: p.id, title: p.title, body: p.body, changed: p.updated_by ? changedLine(p.updated_by, p.updated_at) : null })),
+      teamId: t.id, name: t.name, leader: listOf(leaders.map(id => nameIn(roster, id))), written: mine.length,
+      line: mine.length ? mine.map(p => p.title).join(' · ') : `Written first in their self-review${cycle.self_due ? `, due ${fmtDay(cycle.self_due)}` : ''}.`,
     })
   }
-  teams.sort((a, b) => Number(b.state === 'sent') - Number(a.state === 'sent') || a.name.localeCompare(b.name))
+  teams.sort((a, b) => Number(!!a.written) - Number(!!b.written) || a.name.localeCompare(b.name))
   const notice = cycle.started_at
-    ? `Team Leaders' self-reviews are open${cycle.leaders_due ? ` until ${fmtDay(cycle.leaders_due)}` : ''}. A team's self-reviews open when you approve its priorities${cycle.teams_open_by ? `, or on ${fmtDay(cycle.teams_open_by)} at the latest` : ''}.`
-    : `The ${cycle.year} cycle has not started. Write the whole-company priorities now; the Team Leaders write theirs once it starts.`
+    ? `The ${cycle.year} reviews started ${fmtInstantDay(cycle.started_at)}. The goals for ${cycle.year + 1} open in every self-review when both are marked ready${cycle.vp_due ? `, or after ${fmtDay(cycle.vp_due)}` : ''}.`
+    : `The ${cycle.year} reviews have not started. The priorities can be written now; the goals open once both are ready.`
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumb parents={['/human-resources', '/human-resources/reviews']} now="Priorities" />
       <PrioritiesPage cycleId={cycle.id} year={cycle.year} notice={notice}
-        intro="Step 0 of the review. The VP of Operations and the CISO write the whole-company priorities before the Team Leaders start. Each Team Leader writes their team's in their own self-review, and you approve them. A person sees the whole-company priorities and their own team's."
-        editors={[settings.vpId, settings.cisoId].filter((id): id is string => !!id).map(id => nameIn(roster, id))}
-        company={all.filter(p => !p.team_id).map(p => ({ id: p.id, title: p.title, body: p.body, changed: p.updated_by ? changedLine(p.updated_by, p.updated_at) : null }))}
-        teams={teams} noLeader={noLeader}
-        log={log.filter(l => l.kind.startsWith('priority') || l.kind.startsWith('team')).map(l => ({ who: nameIn(roster, l.actor_id), text: l.text, at: l.created_at }))}
-        api={{ savePriority, removePriority, approveTeamPriorities, returnTeamPriorities }} />
+        intro="The CISO writes the Company Priorities, the VP of Operations adds theirs, and each Team Leader writes their team's first thing in their self-review. Every review shows the Company Priorities and the VP's; a person also sees their own team's."
+        blocks={blocks} teams={teams} noLeader={noLeader}
+        log={log.filter(l => l.kind.startsWith('priorit') || l.kind.startsWith('team')).map(l => ({ who: nameIn(roster, l.actor_id), text: l.text, at: l.created_at }))}
+        api={{ savePriority, removePriority, markPrioritiesReady }} />
     </div>
   )
 }

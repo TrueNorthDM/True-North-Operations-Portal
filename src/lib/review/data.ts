@@ -17,9 +17,10 @@ import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { localDate } from '@/lib/timeclock/format'
 import {
-  participants, rolesFromTitles, teamOpens, type CycleDates, type GoalResult, type GoalStatus, type Participant, type Roles, type RosterMembership,
-  type RosterPerson, type RosterTeam, type Step,
+  participants, rolesFromTitles, type CycleDates, type GoalResult, type GoalStatus, type Participant, type Roles, type RosterMembership,
+  type RosterPerson, type RosterTeam, type SecondOverrides, type Step,
 } from './rules'
+import type { PartRow } from './parts'
 
 export const REVIEW_ZONE = 'America/New_York'
 export const reviewToday = (now = new Date()) => localDate(now, REVIEW_ZONE)
@@ -45,6 +46,8 @@ const one = <T>(r: { data: T | null; error: { message: string } | null }, what: 
 export interface HrSettings {
   vpId: string | null; cisoId: string | null; hrId: string | null; extra: string[]
   driveFolderId: string | null; driveFolderName: string | null; driveFolderPath: string | null
+  /** Second reviewers set by hand over the rule (migration 164). */
+  second: SecondOverrides
 }
 
 export const loadHrSettings = cache(async (): Promise<HrSettings> => {
@@ -58,16 +61,34 @@ export const loadHrSettings = cache(async (): Promise<HrSettings> => {
     driveFolderId: (s?.drive_folder_id as string) ?? null,
     driveFolderName: (s?.drive_folder_name as string) ?? null,
     driveFolderPath: (s?.drive_folder_path as string) ?? null,
+    second: cleanOverrides(s?.second_reviewers),
   }
 })
+
+/** hr_settings.second_reviewers as stored: { personId: { reviewerId, area } | false }; anything else is dropped. */
+export function cleanOverrides(raw: unknown): SecondOverrides {
+  const out: Record<string, { reviewerId: string; area: string } | false> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === false) out[k] = false
+    else if (v && typeof v === 'object' && typeof (v as { reviewerId?: unknown }).reviewerId === 'string') out[k] = { reviewerId: (v as { reviewerId: string }).reviewerId, area: String((v as { area?: unknown }).area ?? '').slice(0, 120) }
+  }
+  return out
+}
 
 export const rolesOf = (s: HrSettings): Roles => ({ vpId: s.vpId, cisoId: s.cisoId, hrId: s.hrId })
 
 // ── The year ───────────────────────────────────────────────────────────────
 
-export interface Cycle extends CycleDates { id: number; year: number; started_at: string | null; started_by: string | null }
+export interface Cycle extends CycleDates {
+  id: number; year: number; started_at: string | null; started_by: string | null
+  /** Migration 164: the priorities marked ready, and the 6-month check-in. */
+  company_done_at?: string | null; vp_done_at?: string | null
+  checkin_started_at?: string | null; checkin_started_by?: string | null; checkin_told_at?: string | null
+  ck_priorities_due?: string | null; ck_book_due?: string | null; ck_done_due?: string | null
+}
 
-export const CYCLE_COLUMNS = 'id, year, leaders_open_on, leaders_due, teams_open_by, self_due, review_due, meeting_due, approval_due, checkins_by, started_at, started_by'
+export const CYCLE_COLUMNS = 'id, year, leaders_open_on, leaders_due, teams_open_by, self_due, review_due, meeting_due, approval_due, checkins_by, started_at, started_by, company_due, vp_due, leaders_meeting_due, leaders_approval_due, company_done_at, vp_done_at, checkin_started_at, checkin_started_by, checkin_told_at, ck_priorities_due, ck_book_due, ck_done_due'
 
 /** The latest year's cycle (the one being set up or run), or null before the first. */
 export const loadCurrentCycle = cache(async (): Promise<Cycle | null> => {
@@ -84,6 +105,16 @@ export async function ensureCurrentCycle(): Promise<Cycle> {
   if (c) return c
   const r = await rdb().from('review_cycles').upsert({ year: defaultYear() }, { onConflict: 'year', ignoreDuplicates: true }).select(CYCLE_COLUMNS).maybeSingle()
   return one<Cycle>(r, 'The review year could not be made') ?? (await loadCycle(defaultYear()))!
+}
+
+/** The cycle of a given year, made empty (no dates, not started) when there is none. */
+export async function ensureYearCycle(year: number): Promise<Cycle> {
+  const have = await loadCycle(year)
+  if (have) return have
+  await rdb().from('review_cycles').upsert({ year }, { onConflict: 'year', ignoreDuplicates: true })
+  const made = await loadCycle(year)
+  if (!made) throw new Error('The review year could not be made')
+  return made
 }
 
 export async function loadCycle(year: number): Promise<Cycle | null> {
@@ -127,12 +158,13 @@ export const loadRoster = cache(async (): Promise<Roster> => {
 export const nameIn = (roster: Roster, id: string | null | undefined) => (id ? roster.people.get(id)?.name ?? 'Someone' : '')
 
 export function rosterParticipants(roster: Roster, settings: HrSettings): Participant[] {
-  return participants([...roster.people.values()], roster.members, [...roster.teams.values()], rolesOf(settings), new Set(settings.extra))
+  return participants([...roster.people.values()], roster.members, [...roster.teams.values()], rolesOf(settings), new Set(settings.extra), settings.second)
 }
 
-/** Who someone reports to now, for the review: their reviewer worked out today. */
-export function currentReviewerOf(roster: Roster, settings: HrSettings, personId: string): string | null {
-  return rosterParticipants(roster, settings).find(p => p.personId === personId)?.reviewerId ?? null
+/** Who someone reports to now, for the review: their reviewer worked out today (part 1: their second reviewer). */
+export function currentReviewerOf(roster: Roster, settings: HrSettings, personId: string, part: 0 | 1 = 0): string | null {
+  const p = rosterParticipants(roster, settings).find(x => x.personId === personId)
+  return (part === 1 ? p?.secondReviewerId : p?.reviewerId) ?? null
 }
 
 // ── The viewer ─────────────────────────────────────────────────────────────
@@ -145,7 +177,7 @@ export interface ReviewViewer {
   leads: boolean
   /** Sees every review: HR and Super Admins. The VP and the CISO see only the people who report to them (handoff, Who sees what). */
   seesAll: boolean
-  /** The people who report to them now (their reviewees). */
+  /** The people who report to them now (their reviewees, as first or second reviewer). */
   reports: Set<string>
 }
 
@@ -158,7 +190,7 @@ export function viewerOf(access: { personId: string | null; isSuperAdmin: boolea
     personId: id, isSuperAdmin: access.isSuperAdmin, isVp, isCiso, isHr,
     leads: isVp || isCiso || access.isSuperAdmin,
     seesAll: isHr || access.isSuperAdmin,
-    reports: new Set(id ? parts.filter(p => p.reviewerId === id).map(p => p.personId) : []),
+    reports: new Set(id ? parts.filter(p => p.reviewerId === id || p.secondReviewerId === id).map(p => p.personId) : []),
   }
 }
 
@@ -173,6 +205,8 @@ export interface ReviewRow {
   agreed_at: string | null; approved_at: string | null; approved_by: string | null
   sent_back_at: string | null; sent_back_by: string | null; sent_back_reason: string | null; sent_back_from: string | null
   pdf_path: string | null; pdf_name: string | null; drive_status: 'waiting' | 'saved' | 'failed' | null; drive_file_id: string | null; drive_error: string | null
+  /** The person read the "approved" window on Home (migration 164). */
+  approved_seen_at: string | null
   updated_at: string
 }
 
@@ -186,6 +220,17 @@ export async function loadReview(id: number): Promise<ReviewRow | null> {
   return one<ReviewRow>(r, 'The review could not be read')
 }
 
+/** The second reviewers' parts of these reviews (migration 164). */
+export async function loadParts(reviewIds: number[]): Promise<PartRow[]> {
+  if (!reviewIds.length) return []
+  const out: PartRow[] = []
+  for (let i = 0; i < reviewIds.length; i += 300) {
+    const r = await rdb().from('review_parts').select('*').in('review_id', reviewIds.slice(i, i + 300))
+    out.push(...must<PartRow[]>(r, 'The reviews could not be read'))
+  }
+  return out
+}
+
 export async function loadPersonReviews(personId: string): Promise<(ReviewRow & { year: number })[]> {
   const r = await rdb().from('reviews').select('*, review_cycles(year)').eq('person_id', personId).limit(100)
   const rows = must<(ReviewRow & { review_cycles: { year: number } | null })[]>(r, 'The reviews could not be read')
@@ -194,7 +239,13 @@ export async function loadPersonReviews(personId: string): Promise<(ReviewRow & 
 
 // ── Team priorities ────────────────────────────────────────────────────────
 
-export interface Priority { id: number; cycle_id: number; team_id: string | null; position: number; title: string; body: string; supports_id: number | null; created_by: string | null; updated_by: string | null; updated_at: string }
+export interface Priority {
+  id: number; cycle_id: number; team_id: string | null; position: number; title: string; body: string; supports_id: number | null; created_by: string | null; updated_by: string | null; updated_at: string
+  /** The CISO's Company Priorities, the VP of Operations', or a team's (migration 164). */
+  kind: 'company' | 'vp' | 'team'
+  /** At the 6-month check-in: kept, changed (what and why) or added. */
+  mid_status: 'same' | 'changed' | 'added' | null; mid_note: string; mid_at: string | null; mid_by: string | null
+}
 export interface TeamPriorityState { cycle_id: number; team_id: string; state: 'draft' | 'sent' | 'approved' | 'returned'; sent_at: string | null; sent_by: string | null; decided_at: string | null; decided_by: string | null; return_reason: string | null; opened_at: string | null }
 
 export async function loadPriorities(cycleId: number): Promise<Priority[]> {
@@ -207,60 +258,82 @@ export async function loadTeamStates(cycleId: number): Promise<Map<string, TeamP
   return new Map(must<TeamPriorityState[]>(r, 'The team priorities could not be read').map(t => [t.team_id, t]))
 }
 
-/** What a person sees: the Company Priorities and their own team's once approved, numbered in that order. */
-export function prioritiesFor(all: Priority[], teamId: string | null, states: Map<string, TeamPriorityState>): Priority[] {
-  const company = all.filter(p => !p.team_id)
-  const team = teamId && states.get(teamId)?.state === 'approved' ? all.filter(p => p.team_id === teamId) : []
-  return [...company, ...team]
+/**
+ * What a person sees, numbered in this order: the CISO's Company Priorities,
+ * the VP of Operations', and their team's. A team's show as soon as its Team
+ * Leader writes them: there is no approval step since 10 November 2026.
+ */
+export function prioritiesFor(all: Priority[], teamIds: (string | null)[]): Priority[] {
+  const teams = new Set(teamIds.filter((t): t is string => !!t))
+  const company = all.filter(p => !p.team_id && p.kind !== 'vp')
+  const vp = all.filter(p => !p.team_id && p.kind === 'vp')
+  const team = all.filter(p => p.team_id && teams.has(p.team_id))
+  return [...company, ...vp, ...team]
 }
 
 // ── Opening reviews ────────────────────────────────────────────────────────
 
 /**
- * Brings a started year up to date: a review for everyone who takes part,
- * phase 1 open, each team open once its priorities are approved or "Teams
- * open by" has come, and each open review's reviewer taken from the Directory
- * as it is now. Returns the reviews it just opened (for the "is open" email).
- * Safe to run any number of times: the page, the actions and the daily job
- * all call it.
+ * Brings a started year up to date: a review for everyone who takes part, all
+ * open from the kickoff (owner, 10 November 2026), each open review's
+ * reviewers taken from the Directory as it is now, and the second reviewer's
+ * part made, moved or taken away while it has not started. Returns the
+ * reviews it just opened (for the "is open" email). Safe to run any number of
+ * times: the page, the actions and the daily job all call it.
  */
 export async function syncCycle(cycle: Cycle, now = new Date()): Promise<{ opened: number[] }> {
   if (!cycle.started_at) return { opened: [] }
-  const [settings, roster, reviews, states] = await Promise.all([loadHrSettings(), loadRoster(), loadReviews(cycle.id), loadTeamStates(cycle.id)])
-  const today = reviewToday(now)
+  const [settings, roster, reviews] = await Promise.all([loadHrSettings(), loadRoster(), loadReviews(cycle.id)])
   const parts = rosterParticipants(roster, settings)
   const byPerson = new Map(reviews.map(r => [r.person_id, r]))
-  const openNow = (p: Participant) => p.phase === 1 || (p.teamId ? teamOpens({ approved: states.get(p.teamId)?.state === 'approved' }, cycle.teams_open_by, today) : true)
   const stamp = now.toISOString()
   const c = rdb()
 
   const inserts = parts.filter(p => !byPerson.has(p.personId)).map(p => ({
-    cycle_id: cycle.id, person_id: p.personId, reviewer_id: p.reviewerId, team_id: p.teamId, phase: p.phase,
-    step: openNow(p) ? 'self' : 'waiting', opened_at: openNow(p) ? stamp : null,
+    cycle_id: cycle.id, person_id: p.personId, reviewer_id: p.reviewerId, team_id: p.teamId, phase: p.phase, step: 'self', opened_at: stamp,
   }))
   const opened: number[] = []
   if (inserts.length) {
-    const r = await c.from('reviews').upsert(inserts, { onConflict: 'cycle_id,person_id', ignoreDuplicates: true }).select('id, step')
-    for (const x of must<{ id: number; step: Step }[]>(r, 'The reviews could not be made')) if (x.step === 'self') opened.push(x.id)
+    const r = await c.from('reviews').upsert(inserts, { onConflict: 'cycle_id,person_id', ignoreDuplicates: true }).select('id, person_id, step')
+    for (const x of must<{ id: number; person_id: string; step: Step }[]>(r, 'The reviews could not be made')) {
+      if (x.step === 'self') opened.push(x.id)
+      byPerson.set(x.person_id, { id: x.id, person_id: x.person_id, step: x.step } as ReviewRow)
+    }
   }
   for (const p of parts) {
     const r = byPerson.get(p.personId)
-    if (!r) continue
+    if (!r || !r.cycle_id) continue
     const patch: Record<string, unknown> = {}
-    if (r.step === 'waiting' && openNow(p)) { patch.step = 'self'; patch.opened_at = stamp; opened.push(r.id) }
-    if (r.step !== 'approved' && r.reviewer_id !== p.reviewerId) patch.reviewer_id = p.reviewerId
+    // A year started before 10 November 2026 may still have reviews waiting for their team: they open now.
+    if (r.step === 'waiting') { patch.step = 'self'; patch.opened_at = stamp; opened.push(r.id) }
+    if (r.step !== 'approved' && !r.approved_at && r.reviewer_id !== p.reviewerId) patch.reviewer_id = p.reviewerId
     if (r.step !== 'approved' && r.team_id !== p.teamId) patch.team_id = p.teamId
-    if (r.step === 'waiting' && r.phase !== p.phase) patch.phase = p.phase
+    if ((r.step === 'waiting' || r.step === 'self') && r.phase !== p.phase) patch.phase = p.phase
     if (Object.keys(patch).length) {
       const u = await c.from('reviews').update({ ...patch, updated_at: stamp }).eq('id', r.id).eq('step', r.step)
       if (u.error) throw new Error(`A review could not be opened: ${u.error.message}`)
     }
   }
-  // Stamp the teams whose people just opened.
-  const openedTeams = new Set(parts.filter(p => p.phase === 2 && p.teamId && openNow(p)).map(p => p.teamId!))
-  for (const teamId of openedTeams) {
-    if (states.get(teamId)?.opened_at) continue
-    await c.from('review_team_priorities').upsert({ cycle_id: cycle.id, team_id: teamId, opened_at: stamp, state: states.get(teamId)?.state ?? 'draft' }, { onConflict: 'cycle_id,team_id' })
+
+  // The second reviewers' parts.
+  const ids = [...byPerson.values()].map(r => r.id)
+  const extra = new Map((await loadParts(ids)).map(x => [x.review_id, x]))
+  for (const p of parts) {
+    const r = byPerson.get(p.personId)
+    if (!r || r.step === 'approved') continue
+    const have = extra.get(r.id)
+    if (p.secondReviewerId && !have) {
+      const step = r.step === 'waiting' || r.step === 'self' ? 'waiting' : 'review'
+      const i = await c.from('review_parts').upsert({ review_id: r.id, part: 1, reviewer_id: p.secondReviewerId, area: p.secondArea, step, updated_at: stamp }, { onConflict: 'review_id,part', ignoreDuplicates: true })
+      if (i.error) throw new Error(`A second reviewer could not be added: ${i.error.message}`)
+      // The first reviewer's part is named for its team once there are two.
+    } else if (have && have.step !== 'approved' && p.secondReviewerId && (have.reviewer_id !== p.secondReviewerId || have.area !== p.secondArea)) {
+      await c.from('review_parts').update({ reviewer_id: p.secondReviewerId, area: p.secondArea, updated_at: stamp }).eq('id', have.id)
+    } else if (have && !p.secondReviewerId && (have.step === 'waiting' || have.step === 'review') && !have.review_sent_at) {
+      // No second reviewer any more, and theirs had not started: the part goes, with their notes if any.
+      await c.from('review_answers').delete().eq('review_id', r.id).eq('part', 1)
+      await c.from('review_parts').delete().eq('id', have.id)
+    }
   }
   return { opened }
 }
@@ -268,8 +341,9 @@ export async function syncCycle(cycle: Cycle, now = new Date()): Promise<{ opene
 // ── Answers, goals, log ────────────────────────────────────────────────────
 
 export interface Answer { key: string; body: string; copied: boolean; updated_at: string }
-export async function loadAnswers(reviewId: number): Promise<Map<string, Answer>> {
-  const r = await rdb().from('review_answers').select('key, body, copied, updated_at').eq('review_id', reviewId)
+/** The answers of one part: 0 the person's and the first reviewer's, 1 the second reviewer's (migration 164). */
+export async function loadAnswers(reviewId: number, part: 0 | 1 = 0): Promise<Map<string, Answer>> {
+  const r = await rdb().from('review_answers').select('key, body, copied, updated_at').eq('review_id', reviewId).eq('part', part)
   return new Map(must<Answer[]>(r, 'The answers could not be read').map(a => [a.key, a]))
 }
 
@@ -278,6 +352,8 @@ export interface Goal {
   what: string; how: string; by_month: string | null; term: '6m' | '1y' | null; priority_id: number | null
   added_by: string | null; added_by_reviewer: boolean; changed_by: string | null; original: { what?: string; how?: string; by_month?: string | null; term?: string | null; priority_id?: number | null } | null
   status: GoalStatus; marked_in: number | null; result: GoalResult | null; result_comment: string; updated_at: string
+  /** With two reviewers: which reviewer's part the goal is for (migration 164); null with one. */
+  part: 0 | 1 | null
 }
 
 export async function loadGoals(filter: { personId: string; years?: number[] } | { reviewId: number }): Promise<Goal[]> {
@@ -328,11 +404,18 @@ export async function loadImports(filter: { year?: number; personId?: string } =
   return must<ImportRow[]>(r, "Last year's reviews could not be read")
 }
 
-export interface Checkin { id: number; cycle_id: number; person_id: string; manager_id: string | null; event_id: string | null; starts_at: string | null; finished_at: string | null }
+export interface Checkin { id: number; cycle_id: number; person_id: string; manager_id: string | null; event_id: string | null; starts_at: string | null; finished_at: string | null
+  /** Migration 164: which reviewer's check-in, and each side's notes. */
+  part: 0 | 1; person_note: string; manager_note: string }
+/** Each person's first check-in (part 0), by person. */
 export async function loadCheckins(cycleId: number, personIds?: string[]): Promise<Map<string, Checkin>> {
+  return new Map((await loadAllCheckins(cycleId, personIds)).filter(x => x.part === 0).map(x => [x.person_id, x]))
+}
+/** Every check-in row, both parts. */
+export async function loadAllCheckins(cycleId: number, personIds?: string[]): Promise<Checkin[]> {
   let q = rdb().from('review_checkins').select('*').eq('cycle_id', cycleId)
   if (personIds) q = q.in('person_id', personIds.length ? personIds : ['00000000-0000-0000-0000-000000000000'])
   const r = await q
-  return new Map(must<Checkin[]>(r, 'The check-ins could not be read').map(x => [x.person_id, x]))
+  return must<Checkin[]>(r, 'The check-ins could not be read')
 }
 
