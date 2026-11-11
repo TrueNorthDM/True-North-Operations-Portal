@@ -373,16 +373,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Open', href: '/requests/extra-hours' },
   },
-  // Clocky part 2: Rippling's refusals, the timesheet reminders and the allowance (Company Settings.dc.html 13C).
-  {
-    key: 'clocky-timeoff-refused', src: 'Requests · time off', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true, alarm: true,
-    timings: 'instant', section: 'Time off', stat: 'refused by Rippling', statOne: 'refused by Rippling',
-    example: { title: "Rippling refused Dave Sharpe's time off (Sick, Thu, Oct 29)", body: '"Sick balance is 0h."' },
-    title: 'Rippling refused an approved time off',
-    description: 'Payroll does not have those days yet. Fix it in Rippling, then Try again on the request. In the bell only.',
-    who: 'Super Admins', audience: { kind: 'tool', tool: 'ck-timeoff' },
-    button: { label: 'Open request', href: '/requests/time-off' },
-  },
+  // Clocky part 2: the timesheet reminders and the allowance (Company Settings.dc.html 13C).
   {
     key: 'clocky-reminder', src: 'North Time · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheet reminders', statOne: 'timesheet reminder',
@@ -443,9 +434,9 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-type-change', src: 'North Time · people', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Contractor to employee', stat: 'changes scheduled', statOne: 'change scheduled',
-    example: { title: 'Rock Kai becomes an employee on Tue, Dec 1, 2026', body: 'November closes as the last invoice; then pay periods and Rippling.' },
+    example: { title: 'Rock Kai becomes an employee on Tue, Dec 1, 2026', body: 'November closes as the last invoice; then pay periods and payroll.' },
     title: 'A contractor becomes an employee',
-    description: 'A Super Admin scheduled it: the last invoice, then pay periods and Rippling. To whoever they report to and Finance. In the bell only.',
+    description: 'A Super Admin scheduled it: the last invoice, then pay periods and payroll. To whoever they report to and Finance. In the bell only.',
     who: 'Whoever they report to, and Finance', audience: { kind: 'everyone' },
     button: { label: 'Open' },
   },

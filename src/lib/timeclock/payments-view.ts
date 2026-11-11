@@ -4,7 +4,7 @@
  *
  *   contractor   their invoices (paid date and reference, PDF) and their
  *                reimbursements, which they add to the next invoice they send
- *   employee     the pay periods sent to Rippling (worked, time off, the
+ *   employee     the pay periods for payroll (worked, time off, the
  *                payroll summary PDF) and their reimbursement documents
  *
  * Open to the person, Super Admins and Finance; never Team Leaders
@@ -17,7 +17,7 @@ import { db, loadCatalog, loadDirectory, rowsOf } from './clocky-context'
 import { dateLabel, dayLabel, localDate } from './format'
 import { INV_COLS, paidText, usd, type InvRow } from './invoice-doc'
 import { loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
-import { sentToRippling, weeksOf, type DocKind } from './pay-docs'
+import { weeksOf, type DocKind } from './pay-docs'
 import { periodLabel } from './periods'
 import { formatDuration } from './rounding'
 import { hoursApprover, invoiceApprover, loneInvoiceApprover, oneStep, type RoutePerson, type RouteSettings } from './routing'
@@ -102,35 +102,31 @@ export function buildContractorPayments(x: { name: string; invoices: InvLite[]; 
 
 // ── Employee ────────────────────────────────────────────────────────────────
 
-type PeriodLite = { id: number; start: string; end: string; state: string; worked: number; off: number; offText: string; sent: { at: string | null; state: string; error: string | null } | undefined }
+type PeriodLite = { id: number; start: string; end: string; state: string; worked: number; off: number; offText: string; approvedAt: string | null }
 type DocLite = { id: number; number: string; created_at: string; total: number; state: string; paid_on: string | null; paid_ref: string | null; items: number }
 
 export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; docs: DocLite[]; hoursBy: string | null; zone: string }): PaymentsData {
   const first = x.name.split(' ')[0]
   const rows = x.periods.map(p => {
-    const sentNow = p.sent?.state === 'done'
-    const st: PaymentsRow['st'] = sentNow ? { label: 'Sent', tone: 'ok' }
-      : p.sent?.state === 'failed' ? { label: 'Not sent', tone: 'bad' }
-        : p.state === 'approved' || p.state === 'recorded' ? { label: 'Approved', tone: 'teal' }
-          : p.state === 'returned' ? { label: 'Sent back', tone: 'warn' } : { label: 'Waiting for approval', tone: 'warn' }
-    const c5 = sentNow ? (p.sent!.at ?? 'Sent')
-      : p.sent?.state === 'failed' ? `Rippling refused it${p.sent.error ? `: "${p.sent.error}"` : ''}`
-        : p.state === 'approved' || p.state === 'recorded' ? (p.sent?.state === 'waiting_connection' ? 'Waits for the Rippling connection' : 'Queued for Rippling')
-          : p.state === 'returned' ? 'Sent back: change it and submit again'
-            : `With ${x.hoursBy ?? 'the approver'}${p.offText ? ` · ${p.offText}` : ''}`
+    const ok = p.state === 'approved' || p.state === 'recorded'
+    const st: PaymentsRow['st'] = ok ? { label: p.state === 'recorded' ? 'Recorded' : 'Approved', tone: 'ok' }
+      : p.state === 'returned' ? { label: 'Sent back', tone: 'warn' } : { label: 'Waiting for approval', tone: 'warn' }
+    const c5 = ok ? (p.approvedAt ? `Approved ${p.approvedAt}` : 'With Finance, for payroll')
+      : p.state === 'returned' ? 'Sent back: change it and submit again'
+        : `With ${x.hoursBy ?? 'the approver'}${p.offText ? ` · ${p.offText}` : ''}`
     return { key: `p${p.id}`, c1: periodLabel({ start: p.start, end: p.end }).label, c2: formatDuration(p.worked), c3: p.off ? formatDuration(p.off) : '-', c4: formatDuration(p.worked + p.off), st, c5, doc: { kind: 'payroll' as const, id: p.id } }
   })
-  const sent = x.periods.filter(p => p.sent?.state === 'done').slice(0, 3)
+  const sent = x.periods.filter(p => p.state === 'approved' || p.state === 'recorded').slice(0, 3)
   const wait = x.periods.find(p => p.state === 'submitted')
   return {
     kind: 'employee', first,
     cards: [
-      { label: 'Sent to Rippling, last 3 periods', val: formatDuration(sent.reduce((n, p) => n + p.worked + p.off, 0)), sub: `${formatDuration(sent.reduce((n, p) => n + p.off, 0))} of it PTO`, fg: '#0d7a4f' },
+      { label: 'Approved for payroll, last 3 periods', val: formatDuration(sent.reduce((n, p) => n + p.worked + p.off, 0)), sub: `${formatDuration(sent.reduce((n, p) => n + p.off, 0))} of it PTO`, fg: '#0d7a4f' },
       { label: 'Waiting', val: wait ? periodLabel({ start: wait.start, end: wait.end }).label : '-', sub: wait ? `With ${x.hoursBy ?? 'the approver'}` : 'Nothing waiting', fg: '#8a6d1a' },
       { label: 'Pay', val: 'In Rippling', sub: 'Salary and pay stubs live in Rippling', fg: '#012358' },
     ],
     tables: [
-      { title: 'Pay periods sent to payroll', sub: 'Approved hours and PTO go to Rippling, by day.', heads: heads(['Pay period', 'Worked', 'Time off', 'Paid hours', 'State', 'Sent to Rippling', ''], 3), rows, empty: 'No pay periods sent yet.' },
+      { title: 'Pay periods for payroll', sub: 'Finance takes approved hours and PTO to Rippling payroll.', heads: heads(['Pay period', 'Worked', 'Time off', 'Paid hours', 'State', 'Payroll', ''], 3), rows, empty: 'No pay periods submitted yet.' },
       {
         title: 'Reimbursement documents', sub: 'Paid by Finance, outside Rippling payroll.', heads: heads(['Number', 'Date', 'Items', 'Total', 'State', 'Paid', ''], 3), empty: 'No reimbursement documents.',
         rows: x.docs.map(d => ({ key: `d${d.id}`, c1: d.number, c2: dateLabel(localDate(d.created_at, x.zone)), c3: String(d.items), c4: usd(Number(d.total)), st: d.state === 'paid' ? { label: 'Paid', tone: 'ok' as const } : { label: 'Approved', tone: 'teal' as const }, c5: d.state === 'paid' && d.paid_on ? paidText(d.paid_on, d.paid_ref) : 'Waiting for Finance', doc: { kind: 'rmb' as const, id: d.id } })),
@@ -174,14 +170,13 @@ export async function loadPayments(personId: string, v: Pick<Access, 'personId' 
     })
   }
   const [{ data: subs, error }, { data: docs, error: dErr }] = await Promise.all([
-    c.from('tc_submissions').select('id, state, tc_periods(start_date, end_date)').eq('person_id', personId).neq('state', 'draft').order('id', { ascending: false }).limit(12),
+    c.from('tc_submissions').select('id, state, approved_at, tc_periods(start_date, end_date)').eq('person_id', personId).neq('state', 'draft').order('id', { ascending: false }).limit(12),
     c.from('reimbursement_documents').select('id, number, created_at, total, state, paid_on, paid_ref').eq('person_id', personId).order('created_at', { ascending: false }).limit(24),
   ])
   if (error || dErr) throw new Error(`Payments could not be read: ${(error ?? dErr)!.message}`)
-  const list = ((subs ?? []) as unknown as { id: number; state: string; tc_periods: { start_date: string; end_date: string } | null }[])
+  const list = ((subs ?? []) as unknown as { id: number; state: string; approved_at: string | null; tc_periods: { start_date: string; end_date: string } | null }[])
     .filter(s => s.tc_periods).sort((a, b) => b.tc_periods!.start_date.localeCompare(a.tc_periods!.start_date))
-  const [sent, weeks, items] = await Promise.all([
-    sentToRippling(list.map(s => s.id), zone),
+  const [weeks, items] = await Promise.all([
     Promise.all(list.map(s => weeksOf(personId, s.tc_periods!.start_date, s.tc_periods!.end_date, now))),
     (docs ?? []).length ? c.from('reimbursements').select('document_id').in('document_id', (docs ?? []).map(d => d.id)).then(r => rowsOf(r, 'Payments could not be read')) : Promise.resolve([] as { document_id: number | null }[]),
   ])
@@ -200,7 +195,7 @@ export async function loadPayments(personId: string, v: Pick<Access, 'personId' 
       return {
         id: s.id, start: p.start_date, end: p.end_date, state: s.state,
         worked: weeks[i].reduce((n, w) => n + w.worked, 0), off: weeks[i].reduce((n, w) => n + w.off, 0),
-        offText: off.map(o => `${kindOf(o.jobcode_id)}, ${o.start_date === o.end_date ? dayLabel(o.start_date) : `${dayLabel(o.start_date)} to ${dayLabel(o.end_date)}`}`).join(', '), sent: sent.get(s.id),
+        offText: off.map(o => `${kindOf(o.jobcode_id)}, ${o.start_date === o.end_date ? dayLabel(o.start_date) : `${dayLabel(o.start_date)} to ${dayLabel(o.end_date)}`}`).join(', '), approvedAt: s.state === 'approved' && s.approved_at ? dateLabel(localDate(s.approved_at, zone)) : null,
       }
     }),
     docs: (docs ?? []).map(d => ({ ...d, total: Number(d.total), items: count.get(d.id) ?? 0 })),

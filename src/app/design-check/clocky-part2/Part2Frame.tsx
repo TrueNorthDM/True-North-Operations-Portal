@@ -68,9 +68,6 @@ export function Part2Frame({ frame }: { frame: string }) {
       people: [{ value: 'p1', label: 'Arnaldo Oliveira' }],
       billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14, mileageRate: 0.76, form: { link: 'https://truenorthportal.online/send', pageRate: 30, assetRate: 5 },
     }} integrations={{
-      rippling: { tokenSaved: true, tokenEnd: '9f2c', who: "Token saved by Arnaldo Oliveira, Sep 30, 2026. Nothing is sent until the portal's Rippling calls are written.",
-        facts: [{ k: 'Sends', v: 'Approved PTO, and approved employee hours by day' }, { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' }, { k: 'Waiting to send', v: '2 items, sent by themselves once it works' }],
-        errors: [{ id: 1, when: 'Nov 2, 11:18 AM', what: 'Time off', text: 'Dave Sharpe, Sick, Thu, Oct 29: "Sick balance is 0h."', failed: true, doneText: null }, { id: 2, when: 'Oct 19, 9:58 AM', what: 'Hours', text: 'Wendy Cacka, Oct 4 to 17: "No pay schedule for Oct 4 to 17."', failed: false, doneText: 'Sent Oct 19, 10:02 AM' }] },
       google: { connected: true, saved: true, viaOffice: false, account: 'calendar@truenorthdm.org', who: 'Connected as calendar@truenorthdm.org by Arnaldo Oliveira, Sep 30, 2026.',
         teamCalendarId: 'c_truenorth.team@group.calendar.google.com',
         facts: [{ k: 'Last sync', v: 'Nov 3, 9:15 AM: 3 PTO events written today' }, { k: 'Writes', v: 'Approved PTO ("Name: Time off") and events marked for the team calendar' }], errors: [] },
@@ -93,7 +90,7 @@ export function Part2Frame({ frame }: { frame: string }) {
           { k: 'Hours approved by', v: 'Dave Sharpe', sub: 'The person they report to' },
           { k: sched ? 'Invoice, until Nov 30' : 'Invoice approved by', v: 'Dave Sharpe', sub: 'They report to Dave Sharpe' },
         ],
-        note: sched ? 'From Dec 1 no invoice: Dave Sharpe approves the hours and they go to Rippling.' : 'Same person: one step, Approve both.',
+        note: sched ? 'From Dec 1 no invoice: Dave Sharpe approves the hours, and Finance takes them to payroll.' : 'Same person: one step, Approve both.',
       },
       pay: { isContractor: true, paysAs: 'hourly' as const, hourlyRate: 20, fixedAmount: null, allowance: null, timeOff: sched ? 'From Dec 1, in Requests' : 'Contractors do not ask PTO', contractorUntil: sched ? 'Nov 30' : null, canEdit: true },
       invoicesLine: sched ? 'Last one: November 2026' : 'Sent by them each pay period: their own file or the invoice builder',
@@ -105,9 +102,8 @@ export function Part2Frame({ frame }: { frame: string }) {
         <Breadcrumb parents={['/directory']} now="Rock Kai" />
         <PersonPayCheck data={rock} editing={false} sample={rockPay} typeChange={{
           name: 'Rock Kai', canMigrate: frame === '10A3', canCancel: frame === '10A4', options, startOpen: frame === '10A3',
-          scheduled: frame === '10A4' ? { date: 'Tue, Dec 1, 2026', text: 'November closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.' } : null,
+          scheduled: frame === '10A4' ? { date: 'Tue, Dec 1, 2026', text: 'November closes as a contractor, with their last invoice; then pay periods and payroll. It goes in their history on the day.' } : null,
           stays: "Reports to Dave Sharpe, who keeps approving Rock's hours. Their team, their allowance, their time entries and every past invoice and decision.",
-          rippling: 'none',
         }} />
       </div>
     )

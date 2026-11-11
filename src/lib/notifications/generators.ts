@@ -610,13 +610,6 @@ export function clockyExtraDecidedDrafts(ctx: Ctx, x: { id: number; to: readonly
   }))
 }
 
-/** Rippling refused an approved time off: to the Super Admins who decide time off. */
-export function clockyTimeOffRefusedDrafts(ctx: Ctx, x: { requestId: number; text: string; body: string }): Draft[] {
-  return ctx.aud.withTool('ck-timeoff').flatMap(r => draftFor(ctx, 'clocky-timeoff-refused', r, {
-    title: x.text, body: x.body, href: '/requests/time-off', dedupeKey: String(x.requestId),
-  }))
-}
-
 /** A timesheet reminder (13C): to its person, once per period and kind (late: once a day). */
 export function clockyReminderDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
   return draftFor(ctx, 'clocky-reminder', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key })

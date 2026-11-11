@@ -195,7 +195,7 @@ export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly
     push({
       key: `t${s.id}`, type: 'ts', id: s.id, personId: s.person_id, name: who.name, initials: who.initials, team: who.team,
       main: route.isContractor ? `${label.full} · ${formatDuration(worked)}` : `${rangeLabel(p.start_date, p.end_date)} · ${formatDuration(worked)}`,
-      sub: !route.isContractor ? 'Payroll summary, goes to Rippling' : money && inv && sent ? `Invoice ${inv.number} · ${usd(Number(inv.total))}${t.paysAs === 'fixed_monthly' ? ', fixed monthly' : ''}` : 'Hours only',
+      sub: !route.isContractor ? 'Payroll summary' : money && inv && sent ? `Invoice ${inv.number} · ${usd(Number(inv.total))}${t.paysAs === 'fixed_monthly' ? ', fixed monthly' : ''}` : 'Hours only',
       flag,
       why: nR ? `Submitted with ${nR} reimbursement${nR > 1 ? 's' : ''}.` : null,
       asked: s.submitted_at ? `Submitted ${shortStamp(s.submitted_at, v.zone)}` : '',

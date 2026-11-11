@@ -67,19 +67,9 @@ export function hrSettingsSample(): HrSettingsData {
   }
 }
 
-/** Integrations as a Super Admin sees them: the team calendar on office@, Rippling not connected yet. */
+/** Integrations as a Super Admin sees them: the team calendar on office@. */
 export function integrationsSample(): IntegrationsData {
   return {
-    rippling: {
-      tokenSaved: false, tokenEnd: null,
-      who: 'Not connected. Paste the company API token to connect it.',
-      facts: [
-        { k: 'Sends', v: 'Approved PTO, and approved employee hours by day' },
-        { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' },
-        { k: 'Waiting to send', v: 'Nothing' },
-      ],
-      errors: [],
-    },
     google: {
       connected: true, saved: false, viaOffice: true, account: `office@${TN}`, teamCalendarId: '',
       who: `office@${TN}, connected by Chris Taylor, Oct 30, 2026 in Agenda settings. Approved time off and team events go to its Google Calendar.`,

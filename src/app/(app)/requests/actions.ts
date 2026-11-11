@@ -154,7 +154,7 @@ export async function askCancelTimeOff(input: { id: number; reason: string }): P
     await announceTimeOffCancelAsked({ id: r.id, person_id: v.personId, start_date: r.start_date, end_date: r.end_date, kind })
     refresh()
     const who = await whoDecides('off', v.personId)
-    return { ok: true, toast: `Asked. When ${who.names || 'who approves time off'} approves, it comes off Rippling and the team calendar.` }
+    return { ok: true, toast: `Asked. When ${who.names || 'who approves time off'} approves, it comes off the team calendar and your time entries.` }
   } catch (e) {
     return notSaved(e)
   }

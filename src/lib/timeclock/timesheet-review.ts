@@ -75,7 +75,7 @@ export interface TimesheetReview {
   state: { label: string; tone: ReviewTone }
   submitted: string
   steps: { n: string; label: string; sub: string; state: StepState }[]
-  result: { text: string; tone: ReviewTone; icon: 'check' | 'undo' | 'alert'; retry: boolean } | null
+  result: { text: string; tone: ReviewTone; icon: 'check' | 'undo' | 'alert' } | null
   readOnly: string | null
   cadenceLine: string
   isContractor: boolean
@@ -107,7 +107,7 @@ export interface TimesheetReview {
     returnTitle: string
     returnText: string
     canReopen: boolean
-    /** Reopening after Rippling got the hours: the portal cannot take them back there. */
+    /** Reopening an employee's approved pay period: Finance may already have entered it in payroll. */
     reopenWarn: string | null
     /** "Approve the hours only" beside Approve both (the invoice waits). */
     hoursOnly?: boolean
@@ -150,8 +150,6 @@ export interface ReviewSource {
   views: ReviewView[]
   /** Extra hours approved for the period. */
   extraHours: number
-  /** The Rippling job of an employee's approved pay period. */
-  job: { state: string; last_error: string | null; done_at: string | null } | null
   now: Date
   /** The check of the invoice against the timesheet (4 November 2026), with the details sent. */
   check?: InvoiceCheck | null
@@ -194,12 +192,9 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
   if (!t) return null
   const p = dir.people.get(personId)
   const team = p?.teamId ? dir.teams.get(p.teamId) : undefined
-  const [views, extra, job, invLines, prevData] = await Promise.all([
+  const [views, extra, invLines, prevData] = await Promise.all([
     sub ? loadPeriodViews(v, personId, start, end, now) : Promise.resolve([] as EntryView[]),
     loadApprovedExtra([personId], start, end),
-    sub && !t.route.isContractor
-      ? c.from('integration_jobs').select('state, last_error, done_at').eq('ref_table', 'tc_submissions').eq('ref_id', sub.id).eq('kind', 'rippling_hours').maybeSingle().then(r => oneOf(r, "Rippling's answer could not be read"))
-      : Promise.resolve(null),
     inv ? linesOf(inv.id) : Promise.resolve([] as LineRow[]),
     inv ? c.from('invoices').select('id, total, state, period_start, period_end, paid_on').eq('person_id', personId).lt('period_start', inv.period_start).order('period_start', { ascending: false }).limit(2).then(r => rowsOf(r, 'The last invoices could not be read')) : Promise.resolve([]),
   ])
@@ -229,7 +224,7 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     settings, terms: t,
     person: { name: dir.nameOf(personId), teamId: p?.teamId ?? null, team: team ? { name: team.name, color: team.color } : null, zone: dir.zoneOf(personId) },
     names: Object.fromEntries([...new Set(ids)].map(x => [x, dir.nameOf(x)])),
-    views, extraHours: extra(personId, start, end), job, now, check, sendInfo, record,
+    views, extraHours: extra(personId, start, end), now, check, sendInfo, record,
   }
 }
 
@@ -295,8 +290,8 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const invoiceView = money ? withRecord(invoiceDocOf(i, src.invLines, period.full), src.record, src.sendInfo) : null
     const form = !!i.source
     const result = st === 'approved'
-      ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const, retry: false }
-      : st === 'returned' ? { text: `Sent back: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const, retry: false } : null
+      ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const }
+      : st === 'returned' ? { text: `Sent back: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const } : null
     return {
       id: i.id, kind: 'invoice', personId, who, initials: initialsOf(who), team, zoneCity,
       title: `${who}, ${period.full}`,
@@ -419,28 +414,24 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
   const at = (iso: string | null) => (iso ? noYear(stampLabel(iso, v.zone)) : '')
   const ret = s.state === 'returned'
   const steps: TimesheetReview['steps'] = one
-    ? [{ n: s.state === 'approved' || s.state === 'recorded' ? '✓' : '1', label: route.isContractor ? `Hours and invoice · ${nameOf(ib)}` : `Hours · ${nameOf(hb)}, then Rippling`, sub: s.state === 'approved' ? `Approved ${at(s.approved_at)}` : s.state === 'recorded' ? 'Recorded, no approval' : ret ? 'Returned' : 'Waiting. One step, one decision', state: s.state === 'approved' || s.state === 'recorded' ? 'done' : ret ? 'bad' : 'now' }]
+    ? [{ n: s.state === 'approved' || s.state === 'recorded' ? '✓' : '1', label: route.isContractor ? `Hours and invoice · ${nameOf(ib)}` : `Hours · ${nameOf(hb)}, then payroll`, sub: s.state === 'approved' ? `Approved ${at(s.approved_at)}` : s.state === 'recorded' ? 'Recorded, no approval' : ret ? 'Returned' : 'Waiting. One step, one decision', state: s.state === 'approved' || s.state === 'recorded' ? 'done' : ret ? 'bad' : 'now' }]
     : [
       { n: s.hours_approved_at && !ret ? '✓' : '1', label: `Hours · ${nameOf(hb)}`, sub: s.hours_approved_at && !ret ? `Approved ${at(s.hours_approved_at)}` : ret ? 'Returned' : 'Waiting', state: s.hours_approved_at && !ret ? 'done' : ret ? 'bad' : 'now' },
       { n: s.state === 'approved' ? '✓' : '2', label: isLead ? `Then · ${nameOf(ib)}` : `Invoice · ${nameOf(ib)}`, sub: s.state === 'approved' ? `Approved ${at(s.approved_at)}` : ret ? 'Returned' : hoursDone ? 'Waiting' : 'After the hours', state: s.state === 'approved' ? 'done' : ret ? 'bad' : hoursDone ? 'now' : 'later' },
     ]
 
-  // Rippling, for an employee's approved pay period.
-  const job = src.job
+  // What goes to payroll for an employee's pay period (Finance takes it there, from a report).
   const offTotal = off.reduce((n, e) => n + e.seconds, 0)
   const offType = off[0]?.short || 'Time off'
   const ripWhat = `${hm(tot)} regular${offTotal ? ` and ${hm(offTotal)} ${offType}` : ''}`
 
   let result: TimesheetReview['result'] = null
-  if (ret) result = { text: `Sent back, ${at(s.approved_at)}: "${s.note ?? ''}". The timesheet is open again${route.isContractor ? ` and ${money && inv ? inv.number : 'the rest'} is back to Draft` : ' and nothing went to Rippling'}.`, tone: 'bad', icon: 'undo', retry: false }
-  else if (s.state === 'recorded') result = { text: `Recorded, ${at(s.submitted_at)}. The Deputy Director's timesheet needs no approval.`, tone: 'neu', icon: 'check', retry: false }
-  else if (s.state === 'approved' && route.isContractor) result = { text: `Approved by ${youOr(s.approved_by)}, ${at(s.approved_at)}${one ? '' : ` (hours by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)})`}. ${period.label} is locked${money && inv ? ` and ${inv.number} is ${inv.state === 'paid' ? 'Paid' : 'Approved, waiting for Finance'}` : ''}.${s.note ? ` Note: "${s.note}"` : ''}`, tone: 'ok', icon: 'check', retry: false }
+  if (ret) result = { text: `Sent back, ${at(s.approved_at)}: "${s.note ?? ''}". The timesheet is open again${route.isContractor ? ` and ${money && inv ? inv.number : 'the rest'} is back to Draft` : ' and nothing goes to payroll yet'}.`, tone: 'bad', icon: 'undo' }
+  else if (s.state === 'recorded') result = { text: `Recorded, ${at(s.submitted_at)}. The Deputy Director's timesheet needs no approval.`, tone: 'neu', icon: 'check' }
+  else if (s.state === 'approved' && route.isContractor) result = { text: `Approved by ${youOr(s.approved_by)}, ${at(s.approved_at)}${one ? '' : ` (hours by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)})`}. ${period.label} is locked${money && inv ? ` and ${inv.number} is ${inv.state === 'paid' ? 'Paid' : 'Approved, waiting for Finance'}` : ''}.${s.note ? ` Note: "${s.note}"` : ''}`, tone: 'ok', icon: 'check' }
   else if (s.state === 'approved') {
-    result = job?.state === 'failed'
-      ? { text: `Approved, but Rippling refused it: "${job.last_error ?? 'no reason given'}" Fix it in Rippling, then try again.`, tone: 'bad', icon: 'alert', retry: v.can('ck-rippling-retry') || me === hb }
-      : job?.state === 'done' ? { text: `Approved and sent to Rippling, ${at(job.done_at)}. The pay period is locked.`, tone: 'ok', icon: 'check', retry: false }
-        : { text: `Approved, ${at(s.approved_at)}. The pay period is locked; it goes to Rippling ${job?.state === 'waiting_connection' ? 'when Rippling is connected in Company settings' : 'in a moment'}.`, tone: 'ok', icon: 'check', retry: false }
-  } else if (hoursDone && !one) result = { text: `Hours approved by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)}. ${ib === me ? 'The invoice is yours to approve.' : isLead ? `${nameOf(ib)} finishes the approval.` : `The invoice is with ${nameOf(ib)}.`}`, tone: 'teal', icon: 'check', retry: false }
+    result = { text: `Approved, ${at(s.approved_at)}. The pay period is locked; Finance takes it to payroll.`, tone: 'ok', icon: 'check' }
+  } else if (hoursDone && !one) result = { text: `Hours approved by ${youOr(s.hours_approved_by)}, ${at(s.hours_approved_at)}. ${ib === me ? 'The invoice is yours to approve.' : isLead ? `${nameOf(ib)} finishes the approval.` : `The invoice is with ${nameOf(ib)}.`}`, tone: 'teal', icon: 'check' }
 
   const act = canHours || canBoth || canInv
   const roText = isLead && hoursDone
@@ -466,13 +457,11 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       rows.push({ day: dayLabel(d), w: sec ? hm(sec) : '-', worked: !!sec, o: p ? `${hm(p.seconds)} ${p.type}` : '-', pto: !!p })
     }
     const rip: NonNullable<TimesheetReview['payroll']>['rip'] = s.state !== 'approved'
-      ? { text: `Sent to Rippling when approved: ${ripWhat}, by day.`, tone: 'neu', icon: 'send' }
-      : job?.state === 'failed' ? { text: `Rippling refused it: "${job.last_error ?? 'no reason given'}" Try again.`, tone: 'bad', icon: 'alert' }
-        : job?.state === 'done' ? { text: `Sent to Rippling, ${at(job.done_at)}: ${ripWhat}.`, tone: 'ok', icon: 'check' }
-          : { text: `Approved: ${ripWhat} wait for Rippling to be connected in Company settings.`, tone: 'neu', icon: 'send' }
+      ? { text: `For payroll when approved: ${ripWhat}, by day.`, tone: 'neu', icon: 'send' }
+      : { text: `Approved for payroll: ${ripWhat}. Finance enters it in Rippling.`, tone: 'ok', icon: 'check' }
     return {
       rows, total: `Total, ${hm(tot + offTotal)}`, worked: hm(tot), off: offTotal ? `${hm(offTotal)} ${offType}` : '-', period: rangeLabel(start, end) + `, ${end.slice(0, 4)}`,
-      st: s.state === 'approved' ? (job?.state === 'failed' ? { label: 'Rippling refused it', tone: 'bad' } : { label: job?.state === 'done' ? 'Sent to Rippling' : 'Approved', tone: 'ok' }) : ret ? { label: 'Returned', tone: 'bad' } : { label: 'Waiting for approval', tone: 'warn' },
+      st: s.state === 'approved' ? { label: 'Approved', tone: 'ok' } : ret ? { label: 'Returned', tone: 'bad' } : { label: 'Waiting for approval', tone: 'warn' },
       rip,
       line: `${team?.name ?? 'No team'} · US Employee · paid through Rippling payroll`,
     }
@@ -518,20 +507,20 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     payroll,
     act: {
       kind: canHours ? 'hours' : canInv ? 'invoice' : canBoth ? (route.isContractor ? 'both' : 'payroll') : null,
-      label: canHours ? 'Approve hours' : canInv ? 'Approve invoice' : route.isContractor ? 'Approve both' : 'Approve and send to Rippling',
+      label: canHours ? 'Approve hours' : canInv ? 'Approve invoice' : route.isContractor ? 'Approve both' : 'Approve for payroll',
       barNote: canHours && sendsOwn && !sent ? `You approve the hours now. ${first} has not sent the invoice yet; its step starts when it arrives. Send the hours back reopens the timesheet for ${first}, with your reason.`
         : canHours ? `You approve the hours only. Then ${nameOf(ib)} finishes it; invoices are not shown to Team Leaders. Send the hours back reopens the timesheet for ${first}, with your reason.`
         : canInv ? `${nameOf(s.hours_approved_by)} approved the hours. Approve the invoice to lock both. Send the hours back sends both back to ${first}, with your reason.`
           : route.isContractor ? (src.check && !src.check.matches ? 'The invoice does not match the timesheet: send the invoice back, approve the hours only, or approve both with a reason.' : 'One decision for both: they match. Approve locks the timesheet and approves the invoice. Send the hours back sends both back, with your reason.')
-            : 'Approve locks the pay period and sends the hours and the PTO to Rippling. Send the hours back reopens it, with your reason.',
+            : 'Approve locks the pay period; Finance takes the hours and the PTO to payroll. Send the hours back reopens it, with your reason.',
       overWarn: over > 0 && (canBoth || canInv) ? `${hm(over)} over the allowance were not approved in advance. Approve still works, with a note.` : null,
       overInfo: over > 0 && canHours ? `${hm(over)} over the allowance, not approved in advance. ${nameOf(ib)} decides these hours with the invoice.` : null,
       returnTitle: route.isContractor ? `Send the ${period.label} hours back to ${first}?` : `Send the pay period's hours back to ${first}?`,
       returnText: route.isContractor
         ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to ${first}. ${first} sees your reason, fixes the hours, submits again and sends the invoice again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
-        : `The pay period unlocks and nothing goes to Rippling. ${first} sees your reason, fixes the hours and submits again.`,
+        : `The pay period unlocks and nothing goes to payroll. ${first} sees your reason, fixes the hours and submits again.`,
       canReopen: v.can('ck-reopen') && (s.state === 'approved' || s.state === 'recorded') && inv?.state !== 'paid',
-      reopenWarn: payroll?.st.label === 'Sent to Rippling' ? 'These hours were already sent to Rippling. Reopening here does not change Rippling; fix it there too.' : null,
+      reopenWarn: payroll && s.state === 'approved' ? 'This pay period was approved for payroll. If Finance already entered it in Rippling, reopening here does not change Rippling: tell Finance.' : null,
       hoursOnly: canBoth && route.isContractor,
       sendBack: (canBoth || canInv) && sendsOwn && sent && inv?.state === 'waiting' ? inv.id : null,
       needsReason: (canBoth || canInv) && !!src.check && !src.check.matches,

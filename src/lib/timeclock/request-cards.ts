@@ -167,14 +167,14 @@ export async function waitingRequests(v: Viewer, dir: Directory, settings: Invoi
 }
 
 type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string | null; receipt_name: string | null; receipt_size: number | null; receipt_number: string | null; report_id: number | null; miles: number | null }
-type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
+type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
 type XhRow = { id: number; person_id: string; asked_by: string | null; hours: number; period: string; period_start: string; period_end: string; client: string | null; reason: string; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
 
 export async function loadRequestRows(v: Viewer, dir: Directory, since: string, settings: InvoiceSettings, now = new Date()): Promise<CardRow[]> {
   const c = db()
   // Every row, a page at a time, and a failed read throws: an empty list would read as nothing waiting.
   const [offs, rmbs, xhs, catalog] = await Promise.all([
-    allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
+    allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
       .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id').range(a, b), 'Time off could not be read'),
     allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, receipt_name, receipt_size, receipt_number, report_id, miles')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Reimbursements could not be read'),
@@ -240,8 +240,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         if (pending) return null
         if (r.state === 'cancelled') return { label: 'Cancelled', tone: 'neu', by: `${dir.nameOf(r.cancelled_by)}, ${short(r.cancelled_at!, v.zone)}` }
         if (r.state === 'denied') return { label: 'Denied', tone: 'bad', by: `${dir.nameOf(r.decided_by)}, ${short(r.decided_at!, v.zone)}${r.decision_note ? `: "${r.decision_note}"` : ''}` }
-        if (r.rippling_state === 'refused') return { label: 'Rippling refused it', tone: 'bad', by: `Approved by ${dir.nameOf(r.decided_by)}, ${short(r.decided_at!, v.zone)}. Open it to try again.` }
-        return { label: 'Approved', tone: 'ok', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}.${r.rippling_state === 'sent' ? ' Sent to Rippling.' : ''}` }
+        return { label: 'Approved', tone: 'ok', by: `${dir.nameOf(r.decided_by)}, ${dateLabel(localDate(r.decided_at!, v.zone)).replace(/, \d{4}$/, '')}.` }
       }
       out.push({
         key: `o${r.id}`, type: 'off', id: r.id, personId: r.person_id, ...who,
@@ -252,7 +251,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         askedAt: cancelAsk ? r.cancel_asked_at! : r.requested_at,
         ownerName, owner, decides, own,
         done: doneOf(),
-        href: !pending && r.rippling_state === 'refused' ? '/requests/time-off' : null,
+        href: null,
         request: {
           kind: cancelAsk ? 'off-cancel' : 'off', id: r.id, type: 'Time off',
           title: cancelAsk ? `Cancel ${kind}, ${formatDuration(seconds)}` : `${kind}, ${formatDuration(seconds)}`,
@@ -260,14 +259,14 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           facts: [
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
             { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
-            { k: 'Balance in Rippling', v: `${kind}: the balance shows here once Rippling is connected.` },
+            { k: 'Balance', v: `${kind}: kept in Rippling.` },
             ...(cancelAsk ? (cancelReason ? [{ k: 'Why cancel', v: `"${cancelReason}"` }] : []) : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
           ],
           allow: null,
           cal: { label: `Team calendar, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
           after: cancelAsk
-            ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off Rippling and the team calendar where it went. Keep it, with a reason, and it stays.`
-            : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day into their time entries.`,
+            ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off the team calendar. Keep it, with a reason, and it stays.`
+            : `On approval, by itself: the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day (${formatDuration(seconds)} of ${kind}) into their time entries. Finance takes it to payroll.`,
           canDecide,
           roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Decline',

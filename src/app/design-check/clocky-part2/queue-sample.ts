@@ -25,7 +25,7 @@ const WAIT: Seed[] = [
   { id: 'r11', type: 'ts', ts: true, who: 'Samuel Manzi', main: 'October 2026 · 160h 00m', sub: 'Invoice INV-2026-0147 · $3,200.00', subLead: 'Hours only', flag: ['Hours approved by Wendy Cacka', 'ok'], flagLead: ['Hours with Wendy Cacka', 'neu'], asked: 'Submitted Oct 31, 6:40 PM', owner: 'Arnaldo Oliveira' },
   { id: 'r2', type: 'ts', ts: true, who: 'Justus Tsofa', main: 'October 2026 · 162h 30m', sub: 'Invoice INV-2026-0142 · $2,310.00', why: 'Submitted with 1 reimbursement.', asked: 'Submitted Nov 1, 2:05 AM', owner: 'Arnaldo Oliveira' },
   { id: 'r4', type: 'ts', ts: true, who: 'Olivia Hale', main: 'October 2026 · 118h 45m', sub: 'Invoice INV-2026-0144 · $1,800.00, fixed monthly', asked: 'Submitted Oct 31, 6:40 PM', owner: 'Arnaldo Oliveira' },
-  { id: 'r5', type: 'ts', ts: true, who: 'Wendy Cacka', main: 'Oct 4 to 17 · 80h 00m + 8h 00m Vacation', sub: 'Payroll summary, goes to Rippling', asked: 'Submitted Oct 17, 5:40 PM', owner: 'Arnaldo Oliveira' },
+  { id: 'r5', type: 'ts', ts: true, who: 'Wendy Cacka', main: 'Oct 4 to 17 · 80h 00m + 8h 00m Vacation', sub: 'Payroll summary', asked: 'Submitted Oct 17, 5:40 PM', owner: 'Arnaldo Oliveira' },
   { id: 'r14', type: 'ts', ts: true, who: 'Andressa', main: 'October 2026 · fixed monthly', sub: 'Invoice INV-2026-0149 · $2,000.00', subLead: 'No timesheet', flag: ['No timesheet', 'neu'], why: 'Fixed monthly, no timesheet.', asked: 'Created by itself, Nov 1', owner: 'Arnaldo Oliveira' },
   { id: 'r15', type: 'ts', ts: true, who: 'Yuliberth', main: 'October 2026 · fixed monthly', sub: 'Invoice INV-2026-0150 · $1,600.00', subLead: 'No timesheet', flag: ['No timesheet', 'neu'], why: 'Fixed monthly, no timesheet.', asked: 'Created by itself, Nov 1', owner: 'Arnaldo Oliveira' },
   { id: 'r16', type: 'ts', ts: true, who: 'John', main: 'October 2026 · fixed monthly', sub: 'Invoice INV-2026-0151 · $2,400.00', subLead: 'No timesheet', flag: ['No timesheet', 'neu'], why: 'Fixed monthly, no timesheet.', asked: 'Created by itself, Nov 1', owner: 'Dave Sharpe' },
@@ -41,9 +41,9 @@ const WAIT: Seed[] = [
 
 const DONE: (Seed & { st: string; tone: Tone; by: string })[] = [
   { id: 'd1', type: 'ts', who: 'Stephanie Aguirre', main: 'October 2026 · 128h 00m', sub: 'Invoice INV-2026-0138 · $2,304.00', st: 'Approved', tone: 'ok', by: 'Hours: Rock Kai, Oct 31. Invoice: Arnaldo Oliveira, Mon, Nov 2, 3:10 PM.', asked: '', owner: '' },
-  { id: 'd9', type: 'ts', who: 'Dave Sharpe', main: 'Oct 18 to 31 · 80h 00m', sub: 'Payroll summary, sent to Rippling', st: 'Recorded', tone: 'neu', by: 'No approval for the Deputy Director. Recorded and sent to Rippling, Sun, Nov 1, 7:05 AM.', asked: '', owner: '' },
+  { id: 'd9', type: 'ts', who: 'Dave Sharpe', main: 'Oct 18 to 31 · 80h 00m', sub: 'Payroll summary', st: 'Recorded', tone: 'neu', by: 'No approval for the Deputy Director. Recorded and sent to Rippling, Sun, Nov 1, 7:05 AM.', asked: '', owner: '' },
   { id: 'd2', type: 'ts', who: 'Alyssa Sommerville', main: 'October 2026 · 98h 00m', sub: 'Invoice INV-2026-0146 · back to Draft', st: 'Returned', tone: 'bad', by: 'Arnaldo Oliveira, Mon, Nov 2, 2:30 PM: "Oct 12 has 2 entries on DDI that belong to GNA."', asked: '', owner: '' },
-  { id: 'd3', type: 'off', who: 'Dave Sharpe', main: 'Sick · 8h 00m', sub: 'Thu, Oct 29', st: 'Rippling refused it', tone: 'bad', by: 'Approved by Arnaldo Oliveira, Mon, Nov 2, 11:18 AM. Open it to try again.', asked: '', owner: '' },
+  { id: 'd3', type: 'off', who: 'Dave Sharpe', main: 'Sick · 8h 00m', sub: 'Thu, Oct 29', st: 'Approved', tone: 'ok', by: 'Approved by Arnaldo Oliveira, Mon, Nov 2, 11:18 AM.', asked: '', owner: '' },
   { id: 'd4', type: 'rmb', who: 'Justus Tsofa', main: 'Internet · $35.00', sub: 'Internet, October · on invoice INV-2026-0142', st: 'Approved', tone: 'ok', by: 'Arnaldo Oliveira, Oct 27', asked: '', owner: '' },
   { id: 'd5', type: 'off', who: 'Wendy Cacka', main: 'Vacation · 8h 00m', sub: 'Wed, Nov 25 to Fri, Nov 27 (Thu and Fri are company holidays)', st: 'Approved', tone: 'ok', by: 'Arnaldo Oliveira, Oct 21. Sent to Rippling, on the team calendar.', asked: '', owner: '' },
   { id: 'd6', type: 'xh', who: 'Cheyenne Wilson', main: 'Extra hours · 8h 00m', sub: 'October 2026 · 2 - i7 Marketing', st: 'Approved', tone: 'ok', by: 'Arnaldo Oliveira, Oct 20', asked: '', owner: '' },
@@ -62,7 +62,7 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
       { name: 'Wendy Cacka', sub: 'Out (approved), Web', color: '#A99BD4', cells: [null, null, 'out', 'out', 'out'] },
       { name: 'Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, 'hol', 'hol'] },
     ] },
-    after: 'On approval, by itself: Rippling gets 24h of Vacation, the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and North Time writes 8h a day into her time entries.',
+    after: 'On approval, by itself: the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and North Time writes 8h a day into her time entries.',
     approveLabel: 'Approve', denyLabel: 'Decline',
   },
   r7: {

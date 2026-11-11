@@ -4,7 +4,7 @@
  * change waiting, and applying it on the day.
  *
  *   until the day   contractor: the last month closes as their last invoice
- *   from the day    every 2 weeks, by pay period; approved hours to Rippling;
+ *   from the day    every 2 weeks, by pay period; approved hours to payroll;
  *                   time off in Requests; reimbursements on a document
  *
  * The cadence is written when it is scheduled (tc_person_cadence, from the
@@ -29,7 +29,7 @@ export function typeChangeOptions(today: string, anchor: string | null, invoiceA
   const days: { date: string; kind: 'month' | 'pay' }[] = [{ date: first(1), kind: 'month' }]
   if (ppStart && ppStart !== first(1)) days.push({ date: ppStart, kind: 'pay' })
   days.push({ date: first(2), kind: 'month' })
-  const tail = { title: 'From then on', text: 'No more invoices. Time off is asked in Requests, with balances from Rippling. Reimbursements go on a reimbursement document for Finance.' }
+  const tail = { title: 'From then on', text: 'No more invoices. Time off is asked in Requests, with balances kept in Rippling. Reimbursements go on a reimbursement document for Finance.' }
   return days.map(({ date, kind }) => {
     const before = addDays(date, -1)
     const monthStartBefore = `${before.slice(0, 7)}-01`
@@ -40,7 +40,7 @@ export function typeChangeOptions(today: string, anchor: string | null, invoiceA
         { title: `Until ${dayLabel(before)}: contractor`, text: before.slice(8) === new Date(Date.UTC(Number(before.slice(0, 4)), Number(before.slice(5, 7)), 0)).toISOString().slice(8, 10)
           ? `${monthLong(before)} closes monthly. Submitting it makes their last invoice, approved by ${invoiceApprover}; reimbursements approved until then go on it.`
           : `${monthLong(before)} closes early, ${rangeText(monthStartBefore, before)}, as their last invoice, approved by ${invoiceApprover}.` },
-        { title: `From ${dayLabel(date)}: every 2 weeks`, text: `Their first pay period is ${rangeText(date, addDays(date, PAY_PERIOD_DAYS - 1))}. Approved hours go to Rippling.` },
+        { title: `From ${dayLabel(date)}: every 2 weeks`, text: `Their first pay period is ${rangeText(date, addDays(date, PAY_PERIOD_DAYS - 1))}. Approved hours go to payroll.` },
         tail,
       ]
     } else {
@@ -48,7 +48,7 @@ export function typeChangeOptions(today: string, anchor: string | null, invoiceA
       steps = [
         { title: `Until ${dayLabel(before)}: contractor`, text: `${monthLong(before)} closes monthly. Submitting it makes their last invoice, approved by ${invoiceApprover}; reimbursements approved until then go on it.` },
         ...(ppEnd ? [
-          { title: `${rangeText(date, ppEnd)}: first pay period, short`, text: `The pay period ${rangeText(payPeriodStart(date, anchor!), ppEnd)} has already started, so their first one is ${rangeText(date, ppEnd)}. Approved hours go to Rippling.` },
+          { title: `${rangeText(date, ppEnd)}: first pay period, short`, text: `The pay period ${rangeText(payPeriodStart(date, anchor!), ppEnd)} has already started, so their first one is ${rangeText(date, ppEnd)}. Approved hours go to payroll.` },
           { title: `From ${dayLabel(addDays(ppEnd, 1))}: every 2 weeks`, text: tail.text },
         ] : [tail]),
       ]

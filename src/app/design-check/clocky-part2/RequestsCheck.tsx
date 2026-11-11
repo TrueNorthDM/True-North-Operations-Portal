@@ -26,7 +26,7 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
   if (timeOff) {
     const ok = async () => ({ ok: true as const, toast: 'Sent. Arnaldo Oliveira decides; you hear back in the bell.' })
     return (
-      <TimeOffView key={frame} data={timeOff} api={{ askTimeOff: ok, cancelTimeOff: async () => ({ ok: true, toast: 'Request cancelled. Nothing was sent anywhere.' }), askCancelTimeOff: async () => ({ ok: true, toast: 'Asked. When a Super Admin approves, it comes off Rippling and the team calendar.' }), retryTimeOffRippling: async () => ({ ok: true, toast: 'Sent to Rippling, Nov 3, 2026, 9:41 AM.' }) }}
+      <TimeOffView key={frame} data={timeOff} api={{ askTimeOff: ok, cancelTimeOff: async () => ({ ok: true, toast: 'Request cancelled. Nothing was sent anywhere.' }), askCancelTimeOff: async () => ({ ok: true, toast: 'Asked. When a Super Admin approves, it comes off Rippling and the team calendar.' }) }}
         initial={frame === '7A' || frame === '7Ap' ? { modal: 'ask', form: { type: 1, a: '2026-11-23', b: '2026-11-25', note: 'Family trip for Thanksgiving.', month: '2026-11' } }
           : frame === '7D' ? { drawer: 2 } : frame === '7Dx' ? { drawer: 5, tab: 'all' } : frame === '7E' ? { modal: 'cancel', drawer: 2 } : undefined} />
     )

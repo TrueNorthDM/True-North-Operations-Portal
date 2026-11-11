@@ -176,7 +176,7 @@ describe('exceptions', () => {
   })
 
   it('keeps the Super-Admin-only items closed to an Admin, whatever is ticked', () => {
-    for (const key of ['d-positions', 'd-2fa', 'ck-timeoff', 'ck-reopen']) {
+    for (const key of ['d-positions', 'd-2fa', 'ck-reopen']) {
       expect(ITEM.get(key)?.superOnly, key).toBe(true)
       const ticked = { ...NO_RULES, levels: new Map([[ruleKey('admin', key), true]]) }
       expect(decide(who('admin'), key, ticked, { today: T }).ok, key).toBe(false)

@@ -61,8 +61,9 @@ describe('the Pay period card', () => {
     expect(late.band!.sub).toBe('72h 15m logged. Send it so Arnaldo Oliveira can approve it.')
     expect(late.nextLine).toBe('Next period, Oct 26 to Nov 8, started today: 2h 45m so far.')
     const emp = buildPayPeriod({ ...src('Late'), employee: true })
-    expect(emp.meter!.stats[1].v).toBe('Rippling')
-    expect(emp.footer.text).toBe('Goes to Rippling for payroll when it closes on Sun, Nov 8.')
+    // An employee's hours are approved by a person, like anyone's; payroll is Finance's (owner, 11 November 2026).
+    expect(emp.meter!.stats[1].v).toBe('Arnaldo Oliveira')
+    expect(emp.footer.text).toBe('Goes to payroll when it closes on Sun, Nov 8.')
   })
 
   it('names the previous period in its chip', () => {

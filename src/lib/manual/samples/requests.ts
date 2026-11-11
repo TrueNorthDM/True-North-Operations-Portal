@@ -60,8 +60,6 @@ function offRow(o: Off): TimeOffRow {
   const req: OffRequest = {
     id: o.id, personId: o.who, who: o.who, type: o.type, start: o.a, end: o.b, hoursPerDay: 8, state: o.st, note: o.note,
     askedAt: at(o.asked), decidedAt: decided, decidedBy: decided ? APPROVER : null, decisionNote: null,
-    // Rippling is not connected yet: approved days wait for it; the team calendar and the time entries are done.
-    rippling: decided ? 'waiting_connection' : null, ripplingError: null, ripplingSentAt: null,
     calendar: decided ? 'done' : null, entriesWrittenAt: decided, cancelAskedAt: null, cancelReason: null,
   }
   const days = offDays(o.a, o.b, HOLS).days.length
@@ -74,7 +72,7 @@ function offRow(o: Off): TimeOffRow {
     cancel: o.st === 'pending' ? 'direct' : o.a > TODAY ? 'ask' : null,
     drawer: {
       dates: `${daysText(o.a, o.b)}, ${o.b.slice(0, 4)}`, note: o.note,
-      steps: stepsOf(req, { days, seconds, stamp, canRetry: false, who: APPROVER }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'North Time' }),
+      steps: stepsOf(req, { days, seconds, stamp, who: APPROVER }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'North Time' }),
       stateLabel: pill.label, stateTone: pill.tone,
     },
   }
@@ -185,7 +183,7 @@ const OFF_CARD: RequestCard = {
   facts: [
     { k: 'Dates', v: 'Mon, Nov 23 to Wed, Nov 25, 2026' },
     { k: 'Counted', v: '3 working days, 8h a day, 24h 00m' },
-    { k: 'Balance in Rippling', v: 'Vacation: the balance shows here once Rippling is connected.' },
+    { k: 'Balance', v: 'Vacation: kept in Rippling.' },
     { k: 'Note', v: '"Family trip for Thanksgiving."' },
   ],
   allow: null,
@@ -194,7 +192,7 @@ const OFF_CARD: RequestCard = {
     { name: 'Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, 'hol', null] },
     { name: 'Day after Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, null, 'hol'] },
   ] },
-  after: 'On approval, by itself: Rippling gets 24h 00m of Vacation, the team calendar gets "Maria Gomez, out" on Mon, Nov 23 to Wed, Nov 25, and North Time writes 8h a day into their time entries.',
+  after: 'On approval, by itself: the team calendar gets "Maria Gomez, out" on Mon, Nov 23 to Wed, Nov 25, and North Time writes 8h a day (24h 00m of Vacation) into their time entries. Finance takes it to payroll.',
   canDecide: true, roText: null, approveLabel: 'Approve', denyLabel: 'Decline',
 }
 

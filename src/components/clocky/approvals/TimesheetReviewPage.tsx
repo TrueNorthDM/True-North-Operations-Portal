@@ -30,7 +30,6 @@ export interface ReviewApi {
   approve(note?: string): Promise<Res>
   return(reason: string): Promise<Res>
   reopen(reason: string): Promise<Res>
-  retry(): Promise<Res>
   /** The contractor's own invoice (4 November 2026): the hours alone, the invoice waits. */
   approveHours?(): Promise<Res>
   /** The invoice alone goes back to the contractor, with the reason. */
@@ -194,12 +193,6 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           style={{ background: TONE[r.result.tone].bg, borderColor: TONE[r.result.tone].bd, color: TONE[r.result.tone].fg }}>
           <Svg d={ICONS[r.result.icon]} size={18} stroke="currentColor" sw={2.4} />
           <span className="flex-1 min-w-0 [text-wrap:pretty]">{r.result.text}</span>
-          {r.result.retry && (
-            <button type="button" disabled={busy} onClick={() => void run(api.retry)}
-              className={`${BTN.smallNavy} disabled:opacity-60`}>
-              <Svg d={ICONS.refresh} size={13} stroke={BTN_ICON.navy} sw={2.6} />Try again
-            </button>
-          )}
           {a.canReopen && (
             <button type="button" disabled={busy} onClick={() => { setReason(''); setModal('reopen') }}
               className={BTN.smallWhite}>Reopen</button>
@@ -340,7 +333,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
                 <div className="flex gap-2.5 items-start rounded-[11px] px-[13px] py-[11px] text-[12.5px] leading-normal font-semibold" style={{ background: TONE[r.payroll.rip.tone].bg, color: TONE[r.payroll.rip.tone].fg }}>
                   <Svg d={ICONS[r.payroll.rip.icon]} size={16} stroke="currentColor" /><span>{r.payroll.rip.text}</span>
                 </div>
-                <div className="text-[12px] text-muted leading-[1.55]">No invoice for employees. Rippling gets the approved hours and the PTO, by day, for payroll.</div>
+                <div className="text-[12px] text-muted leading-[1.55]">No invoice for employees. Finance takes the approved hours and the PTO, by day, to payroll in Rippling.</div>
               </div>
             </div>
           )}

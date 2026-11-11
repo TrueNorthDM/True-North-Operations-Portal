@@ -49,7 +49,6 @@ const readInvoiceCheck = vi.fn()
 vi.mock('@/lib/timeclock/invoice-check-data', () => ({ readInvoiceCheck: (...a: unknown[]) => readInvoiceCheck(...a) }))
 vi.mock('@/lib/timeclock/allowance-data', () => ({ loadApprovedExtra: async () => () => 0 }))
 vi.mock('@/lib/timeclock/allowance-limit', () => ({ limitRefusal: async () => null }))
-vi.mock('@/lib/integrations/connections', () => ({ loadConnections: async () => ({ rippling: { connected: false } }) }))
 vi.mock('@/lib/integrations/outbox', () => ({ enqueue: vi.fn(), retryJobs: vi.fn() }))
 
 const { decideReimbursement, decideReimbursementReport, decideInvoice, approveTimesheet } = await import('./actions')

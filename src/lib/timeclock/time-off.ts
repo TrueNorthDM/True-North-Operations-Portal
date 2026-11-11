@@ -1,7 +1,7 @@
 /**
  * Time off, part 2 (Requests.dc.html 7A to 7E): the days a request counts,
  * the rows of My time off and the drawer that says what happened by itself
- * after the approval (Rippling, the team calendar, the time entries). Pure:
+ * after the approval (the team calendar, the time entries). Pure:
  * time-off-data.ts reads, the page and the actions use these.
  *
  * The company holidays are the company holiday list the Agenda shows; today
@@ -64,9 +64,6 @@ export interface OffRequest {
   decidedAt: string | null
   decidedBy: string | null
   decisionNote: string | null
-  rippling: 'waiting_connection' | 'queued' | 'sent' | 'refused' | null
-  ripplingError: string | null
-  ripplingSentAt: string | null
   calendar: 'waiting_connection' | 'queued' | 'done' | 'failed' | null
   entriesWrittenAt: string | null
   cancelAskedAt: string | null
@@ -92,44 +89,33 @@ export interface OffCheck { t: string; tone: OffTone; icon: 'check' | 'x' | 'clo
 export function checksOf(r: OffRequest, who = ''): OffCheck[] {
   if (r.state === 'pending') return [{ t: who ? `${who} decides` : 'Waiting for a decision', tone: 'warn', icon: 'clock' }]
   if (r.cancelAskedAt) return [{ t: who ? `Waiting for ${who}` : 'Waiting for a decision', tone: 'warn', icon: 'clock' }]
-  const rip: OffCheck = r.rippling === 'sent' ? { t: 'Sent to Rippling', tone: 'ok', icon: 'check' }
-    : r.rippling === 'refused' ? { t: 'Rippling refused it', tone: 'bad', icon: 'x' }
-      : { t: 'Waiting for Rippling', tone: 'warn', icon: 'clock' }
   const cal: OffCheck = r.calendar === 'done' ? { t: 'On the team calendar', tone: 'ok', icon: 'check' }
     : r.calendar === 'failed' ? { t: 'Not on the calendar', tone: 'bad', icon: 'x' }
       : { t: 'Waiting for the calendar', tone: 'warn', icon: 'clock' }
-  return [rip, cal]
+  return [cal]
 }
 
-/** The state pill: Waiting, Cancellation asked, Approved (with Rippling's refusal on the drawer). */
+/** The state pill: Waiting, Cancellation asked, Approved. */
 export function pillOf(r: OffRequest): { label: string; tone: OffTone } {
   if (r.state === 'pending') return { label: 'Waiting', tone: 'warn' }
   if (r.cancelAskedAt) return { label: 'Cancellation asked', tone: 'warn' }
   return { label: 'Approved', tone: 'ok' }
 }
 
-export interface OffStep { t: string; sub: string; state: 'ok' | 'bad' | 'wait'; retry: boolean }
+export interface OffStep { t: string; sub: string; state: 'ok' | 'bad' | 'wait' }
 
 /** "What happened by itself" (7D, 7D-x). */
-export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp: (t: string) => string; canRetry: boolean; who?: string }): OffStep[] {
-  if (r.state === 'pending') return [{ t: 'Nothing yet', sub: `When ${x.who || 'it is'} approve${x.who ? 's' : 'd'}: Rippling, the team calendar and the time entries, by themselves.`, state: 'wait', retry: false }]
-  const first = r.who.split(' ')[0]
-  const rip: OffStep = r.rippling === 'sent'
-    ? { t: `Sent to Rippling, ${r.ripplingSentAt ? x.stamp(r.ripplingSentAt) : ''}`.replace(/, $/, ''), sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll.`, state: 'ok', retry: false }
-    : r.rippling === 'refused'
-      ? { t: `Rippling refused it${r.ripplingError ? `: "${r.ripplingError}"` : ''}`, sub: `Fix ${/balance/i.test(r.ripplingError ?? '') ? 'the balance' : 'it'} in Rippling, then try again. Payroll does not have ${x.days === 1 ? 'this day' : 'these days'} yet.`, state: 'bad', retry: x.canRetry }
-      : r.rippling === 'queued'
-        ? { t: 'Being sent to Rippling', sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll. It goes in the next few minutes.`, state: 'wait', retry: false }
-        : { t: 'Waiting for Rippling', sub: 'Rippling is not connected yet. It is sent by itself once a Super Admin connects it in Company settings, Integrations.', state: 'wait', retry: false }
+export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp: (t: string) => string; who?: string }): OffStep[] {
+  if (r.state === 'pending') return [{ t: 'Nothing yet', sub: `When ${x.who || 'it is'} approve${x.who ? 's' : 'd'}: the team calendar and the time entries, by themselves. Finance takes it to payroll.`, state: 'wait' }]
   const cal: OffStep = r.calendar === 'done'
-    ? { t: 'On the team calendar', sub: `"${r.who}, out" on ${daysText(r.start, r.end)}. Agenda shows it to everyone, with the type.`, state: 'ok', retry: false }
+    ? { t: 'On the team calendar', sub: `"${r.who}, out" on ${daysText(r.start, r.end)}. Agenda shows it to everyone, with the type.`, state: 'ok' }
     : r.calendar === 'failed'
-      ? { t: 'Not on the team calendar', sub: 'Google Calendar refused it. A Super Admin can try again from Company settings, Integrations.', state: 'bad', retry: false }
-      : { t: r.calendar === 'queued' ? 'Going on the team calendar' : 'Waiting for Google Calendar', sub: r.calendar === 'queued' ? `"${r.who}, out" on ${daysText(r.start, r.end)}, in the next few minutes.` : 'Google Calendar is not connected yet. It goes on the team calendar by itself once a Super Admin connects it.', state: 'wait', retry: false }
+      ? { t: 'Not on the team calendar', sub: 'Google Calendar refused it. A Super Admin can try again from Company settings, Integrations.', state: 'bad' }
+      : { t: r.calendar === 'queued' ? 'Going on the team calendar' : 'Waiting for Google Calendar', sub: r.calendar === 'queued' ? `"${r.who}, out" on ${daysText(r.start, r.end)}, in the next few minutes.` : 'Google Calendar is not connected yet. It goes on the team calendar by itself once a Super Admin connects it.', state: 'wait' }
   const ent: OffStep = r.entriesWrittenAt
-    ? { t: 'Written into the time entries', sub: `${x.days} day${x.days === 1 ? '' : 's'} of ${r.type}, ${formatDuration(x.seconds / Math.max(1, x.days))} each.`, state: 'ok', retry: false }
-    : { t: 'Not written into the time entries yet', sub: 'North Time writes the days when the request is approved.', state: 'wait', retry: false }
-  return [rip, cal, ent]
+    ? { t: 'Written into the time entries', sub: `${x.days} day${x.days === 1 ? '' : 's'} of ${r.type}, ${formatDuration(x.seconds / Math.max(1, x.days))} each.`, state: 'ok' }
+    : { t: 'Not written into the time entries yet', sub: 'North Time writes the days when the request is approved.', state: 'wait' }
+  return [cal, ent]
 }
 
 /** The drawer's history, newest first. */

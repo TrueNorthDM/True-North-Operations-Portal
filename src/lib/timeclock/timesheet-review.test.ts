@@ -47,7 +47,7 @@ function src(o: Partial<Src> & { me?: string; level?: Src['viewer']['level']; st
     person: { name: 'Pat Doe', teamId: 'web', team: { name: 'Web', color: '#A99BD4' }, zone: NY },
     names: { ao: 'Arnaldo Oliveira', dave: 'Dave Sharpe', wendy: 'Wendy Cacka', p: 'Pat Doe' },
     views: ['05', '06', '07', '08', '09', '12', '13', '14', '15', '16'].map(d => view(`2026-10-${d}`, 10)),
-    extraHours: 0, job: null, now: new Date('2026-11-03T14:32:00Z'),
+    extraHours: 0, now: new Date('2026-11-03T14:32:00Z'),
     ...o,
   }
 }
@@ -144,10 +144,12 @@ describe('the 6C page (buildReview)', () => {
     expect(r.act.barNote).toMatch(/Send the hours back sends both back/)
   })
 
-  it('an employee: payroll summary, Rippling refused shows Try again', () => {
-    const r = buildReview(src({ contractor: false, state: 'approved', job: { state: 'failed', last_error: 'No pay schedule.', done_at: null } }))!
-    expect(r.payroll?.rip.tone).toBe('bad')
-    expect(r.result?.retry).toBe(true)
+  it('an employee: a payroll summary for Finance, nothing sent to Rippling (owner, 11 November 2026)', () => {
+    const r = buildReview(src({ contractor: false, state: 'approved' }))!
+    expect(r.payroll?.rip.tone).toBe('ok')
+    expect(r.payroll?.rip.text).toMatch(/^Approved for payroll: .* Finance enters it in Rippling\.$/)
+    expect(r.payroll?.st).toEqual({ label: 'Approved', tone: 'ok' })
+    expect(r.result?.text).toMatch(/Finance takes it to payroll/)
     expect(r.invoice).toBeNull()
   })
 })

@@ -27,18 +27,17 @@ import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved,
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText, RMB_CHANGED, RMB_VERSION_COLS, rmbVersion, type RmbVersioned } from '@/lib/timeclock/reimbursement-reports'
 import { loadInvoiceSettings, loadPayTerms, loadRequestDeciders, loadRouteSettings, loadRoutes, seesMoney } from '@/lib/timeclock/pay-terms'
-import { currentStep, hoursApprover, invoiceApprover, isSentInvoice, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
+import { currentStep, invoiceApprover, isSentInvoice, loneInvoiceApprover, stateAfterApprove, type RequestKind, type TimesheetState } from '@/lib/timeclock/routing'
 import { tellFormSender } from '@/lib/invoice-form/data'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { readInvoiceCheck } from '@/lib/timeclock/invoice-check-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus, hoursForPeriod, windowName } from '@/lib/timeclock/allowance'
 import { limitRefusal } from '@/lib/timeclock/allowance-limit'
-import { loadConnections } from '@/lib/integrations/connections'
 import { NOTE_TO_APPROVE, REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
 import { holidaysBetween, offDays } from '@/lib/timeclock/time-off'
-import { enqueue, retryJobs } from '@/lib/integrations/outbox'
+import { enqueue } from '@/lib/integrations/outbox'
 import { dayLabel, monthYear } from '@/lib/timeclock/format'
 import { lockedMessage, periodLabel } from '@/lib/timeclock/periods'
 import { canApproveCorrection, canReopen } from '@/lib/timeclock/scope'
@@ -171,8 +170,8 @@ export async function decideCorrection(input: { id: number; decision: 'approve' 
  * Approve or deny time off (whoever the routing names; Requests.dc.html 7C). Approving
  * writes its entries, one per working day that is not a company holiday, and
  * is refused when a day sits in a locked period (audit finding N8); then, by
- * itself, Rippling gets it for payroll and the team calendar shows the person
- * out (both through the outbox: they wait for their connection). Denying needs
+ * itself, the team calendar shows the person out (through the outbox: it
+ * waits for its connection). Payroll is Finance's, from a report. Denying needs
  * a reason.
  */
 export async function decideTimeOff(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result> {
@@ -210,13 +209,10 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
         await c.from('tc_absence_requests').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null }).eq('id', r.id)
         return notSaved(e3)
       }
-      // What happens by itself after the approval (7D): Rippling and the team calendar, through the outbox.
+      // What happens by itself after the approval (7D): the team calendar, through the outbox. Payroll is Finance's, from a report (owner, 11 November 2026).
       const payload = { person_id: r.person_id, kind, start: r.start_date, end: r.end_date, days, hours_per_day: Number(r.hours_per_day), who: dir.nameOf(r.person_id) }
-      const [rip, cal] = await Promise.all([
-        enqueue({ kind: 'rippling_pto', refTable: 'tc_absence_requests', refId: r.id, payload, key: `rippling_pto:${r.id}` }),
-        enqueue({ kind: 'gcal_upsert', refTable: 'tc_absence_requests', refId: r.id, payload, key: `gcal_upsert:${r.id}` }),
-      ])
-      await c.from('tc_absence_requests').update({ entries_written_at: at, rippling_state: rip === 'queued' ? 'queued' : 'waiting_connection', calendar_state: cal === 'queued' ? 'queued' : 'waiting_connection' }).eq('id', r.id)
+      const cal = await enqueue({ kind: 'gcal_upsert', refTable: 'tc_absence_requests', refId: r.id, payload, key: `gcal_upsert:${r.id}` })
+      await c.from('tc_absence_requests').update({ entries_written_at: at, calendar_state: cal === 'queued' ? 'queued' : 'waiting_connection' }).eq('id', r.id)
     }
     // The person hears of it (the card's toast promises so).
     await announceTimeOffDecided({
@@ -232,7 +228,7 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
 
 /**
  * An approved time off its person asked to cancel (7E): approving takes it off
- * the time entries, Rippling and the team calendar; denying keeps it, with the
+ * the time entries and the team calendar; denying keeps it, with the
  * reason. Whoever decides the time off itself (the routing).
  */
 export async function decideTimeOffCancel(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ toast: string }>> {
@@ -241,7 +237,7 @@ export async function decideTimeOffCancel(input: { id: number; decision: 'approv
   try {
     const c = db()
     const dir = await loadDirectory()
-    const { data: r, error } = await c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, state, cancel_asked_at, rippling_state, rippling_request_ids, calendar_event_id').eq('id', Number(input.id)).maybeSingle()
+    const { data: r, error } = await c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, state, cancel_asked_at, calendar_event_id').eq('id', Number(input.id)).maybeSingle()
     if (error) return notSaved(error)
     if (!r || r.state !== 'approved' || !r.cancel_asked_at || !(await routedTo(v, 'off', r.person_id))) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
@@ -266,34 +262,12 @@ export async function decideTimeOffCancel(input: { id: number; decision: 'approv
     if (!moved?.length) return fail(NOT_WAITING)
     await c.from('tc_entries').delete().eq('person_id', r.person_id).eq('kind', 'absence').eq('source', 'portal').eq('notes', `Time off request #${r.id}`)
     const payload = { person_id: r.person_id, kind, start: r.start_date, end: r.end_date, event_id: r.calendar_event_id }
-    // Only what went out comes back off: Rippling if it was sent, the calendar if it is on it.
-    // Sent, or partly sent before a failure (some days already in Rippling): those days are cancelled there.
-    if (r.rippling_state === 'sent' || (r.rippling_request_ids ?? []).length) await enqueue({ kind: 'rippling_pto_cancel', refTable: 'tc_absence_requests', refId: r.id, payload, key: `rippling_pto_cancel:${r.id}` })
-    else await c.from('integration_jobs').delete().eq('ref_table', 'tc_absence_requests').eq('ref_id', r.id).eq('kind', 'rippling_pto').in('state', ['waiting_connection', 'queued', 'failed'])
+    // Only what went out comes back off: the calendar, if it is on it.
     if (r.calendar_event_id) await enqueue({ kind: 'gcal_delete', refTable: 'tc_absence_requests', refId: r.id, payload, key: `gcal_delete:${r.id}` })
     else await c.from('integration_jobs').delete().eq('ref_table', 'tc_absence_requests').eq('ref_id', r.id).eq('kind', 'gcal_upsert').in('state', ['waiting_connection', 'queued', 'failed'])
     await announceTimeOffDecided({ id: r.id, person_id: r.person_id, start_date: r.start_date, end_date: r.end_date, kind, seconds: 0 }, v.personId, true, null, 'cancel')
     refresh()
     return { ok: true, toast: `Cancelled. ${label} came off ${first(dir.nameOf(r.person_id))}'s time entries.` }
-  } catch (e) {
-    return notSaved(e)
-  }
-}
-
-/** "Try again" when Rippling refused a time off (7D-x): it goes back in the queue. Super Admins: a retry of the connection, not a decision. */
-export async function retryTimeOffRippling(input: { id: number }): Promise<Result<{ toast: string }>> {
-  const v = await actor('ck-timeoff')
-  if (isFail(v)) return v
-  try {
-    const c = db()
-    const { data: r, error } = await c.from('tc_absence_requests').select('id, state, rippling_state').eq('id', Number(input.id)).maybeSingle()
-    if (error) return notSaved(error)
-    if (!r || r.state !== 'approved' || r.rippling_state !== 'refused') return fail('Rippling did not refuse that time off.')
-    await retryJobs('tc_absence_requests', r.id, ['rippling_pto'])
-    const conn = await loadConnections()
-    await c.from('tc_absence_requests').update({ rippling_state: conn.rippling.connected ? 'queued' : 'waiting_connection', rippling_error: null }).eq('id', r.id)
-    refresh()
-    return { ok: true, toast: conn.rippling.connected ? 'Sent again. Rippling answers in the next few minutes.' : 'Queued again. It goes when Rippling is connected.' }
   } catch (e) {
     return notSaved(e)
   }
@@ -539,7 +513,7 @@ export async function decideExtraHours(input: { id: number; decision: 'approve' 
 //
 // The owner of the current step decides: the hours go to whoever the person
 // reports to, the invoice to Arnaldo Oliveira or Dave Sharpe; one step when it
-// is the same person, for employees (then Rippling) and for fixed with no
+// is the same person, for employees (then payroll) and for fixed with no
 // timesheet. Return at any step returns the timesheet and the invoice together
 // and tells everyone who approved. Hours over the allowance are decided by the
 // invoice approver, with a note. Every decision is a tc_approval_events row.
@@ -579,7 +553,7 @@ async function overFor(personId: string, start: string, end: string): Promise<nu
 
 /**
  * Approve the step that is yours: the hours, the invoice, both, or (employees)
- * send to Rippling. The contractor's own invoice (4 November 2026): the hours
+ * lock the pay period for payroll. The contractor's own invoice (4 November 2026): the hours
  * can be approved before it arrives; approving the invoice checks it against
  * the timesheet first, and an invoice that does not match is approved only
  * with a reason (`note`). `hoursOnly` approves the hours of a "both" step and
@@ -631,8 +605,6 @@ export async function approveTimesheet(input: { id: number; note?: string; hours
       if (inv) await c.from('invoices').update({ state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at }).eq('id', inv.id).eq('state', 'waiting')
       await c.from('tc_entries').update({ state: 'approved', updated_at: at })
         .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
-      // Employees: the hours and the time off go to Rippling (the outbox sends them, or waits for the connection).
-      if (!route.isContractor) await queueRipplingHours(t.id, t.personId, t.start, t.end, at)
     }
     await c.from('tc_approval_events').insert({ submission_id: t.id, invoice_id: inv?.id ?? null, step: step.step, action: 'approve', by_person: v.personId, at, note })
     const dir = await loadDirectory()
@@ -651,7 +623,7 @@ export async function approveTimesheet(input: { id: number; note?: string; hours
       ? (!inv ? `Hours approved. The invoice step starts when ${first(who)} sends their invoice.`
         : ib === v.personId ? 'Hours approved. The invoice waits for you.'
           : `Hours approved. ${ib ? dir.nameOf(ib) : 'The invoice approver'} finishes the approval.`)
-      : !route.isContractor ? 'Approved and sent to Rippling.'
+      : !route.isContractor ? 'Approved. The pay period is locked for payroll.'
         : step.step === 'invoice' ? `Invoice approved. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
           : `Approved both. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
     return { ok: true, toast }
@@ -825,32 +797,3 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
   }
 }
 
-/** Queues an employee's approved hours for Rippling (the outbox sends them, or waits for the connection). */
-async function queueRipplingHours(submissionId: number, personId: string, start: string, end: string, approvedAt: string): Promise<void> {
-  try {
-    // One job per approval: a pay period opened again and approved again is sent again (rippling-send.ts changes the days already there).
-    await enqueue({ kind: 'rippling_hours', refTable: 'tc_submissions', refId: submissionId, payload: { person_id: personId, start, end }, key: `rippling_hours:${submissionId}:${approvedAt}` })
-  } catch (e) {
-    console.error('[clocky approvals] rippling queue:', e instanceof Error ? e.message : e)
-  }
-}
-
-/** "Try again" when Rippling refused an approved pay period: the job goes back in the queue. */
-export async function retryRippling(input: { submissionId: number }): Promise<Result<{ toast: string }>> {
-  const v = await decider()
-  if (isFail(v)) return v
-  try {
-    const t = await loadSent(input.submissionId)
-    if (!t || t.state !== 'approved') return fail('That pay period is not approved.')
-    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
-    const route = routes.get(t.personId)
-    // ck-rippling-retry (Super Admins), or the person's hours approver.
-    if (!route || route.isContractor || !(v.can('ck-rippling-retry') || hoursApprover(route, settings) === v.personId)) return fail(NO_ACCESS)
-    await retryJobs('tc_submissions', t.id, ['rippling_hours'])
-    const conn = await loadConnections()
-    refresh()
-    return { ok: true, toast: conn.rippling.connected ? 'Sent to Rippling again. It shows here in a moment.' : 'Rippling is not connected yet: it goes as soon as it is, in Company settings.' }
-  } catch (e) {
-    return notSaved(e)
-  }
-}

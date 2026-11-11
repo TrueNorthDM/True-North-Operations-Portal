@@ -37,7 +37,7 @@ describe('the Submit window block (6A, 6B)', () => {
     expect(b.lines).toEqual([{ k: 'Worked', v: '80h 00m' }, { k: 'PTO: Vacation, Fri, Oct 16', v: '8h 00m' }])
     expect(b.sumLabel).toBe('Paid hours')
     expect(b.sum).toBe('88h 00m')
-    expect(b.note).toBe('Sent to Rippling when approved.')
+    expect(b.note).toBe('For payroll when approved.')
   })
 })
 

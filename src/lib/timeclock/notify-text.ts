@@ -81,7 +81,7 @@ export const hoursApprovedForPersonText = (by: string, month: string, number: st
 export function timeOffCancelDecidedText(decider: string, kind: string, startDate: string, endDate: string, approved: boolean, note: string | null): string {
   const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`
   return approved
-    ? `${decider} cancelled your time off: ${kind}, ${days}. It came off Rippling, the team calendar and your time entries.`
+    ? `${decider} cancelled your time off: ${kind}, ${days}. It came off the team calendar and your time entries.`
     : `${decider} kept your time off: ${kind}, ${days}. Reason: "${(note ?? '').trim()}"`
 }
 

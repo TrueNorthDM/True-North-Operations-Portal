@@ -29,7 +29,7 @@ function Frame({ minHeight, children }: { minHeight?: number; children: ReactNod
   )
 }
 
-const TIME_OFF_API: TimeOffApi = { askTimeOff: noop, cancelTimeOff: noop, askCancelTimeOff: noop, retryTimeOffRippling: noop }
+const TIME_OFF_API: TimeOffApi = { askTimeOff: noop, cancelTimeOff: noop, askCancelTimeOff: noop }
 
 export function TimeOffPicture({ show }: { show: 'page' | 'ask' | 'drawer' | 'cancel' }) {
   if (show === 'ask') {

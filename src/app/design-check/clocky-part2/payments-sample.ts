@@ -43,7 +43,7 @@ export function contractorPayments(): PaymentsData {
 
 export function employeePayments(): PaymentsData {
   const p = (id: number, start: string, end: string, w: [number, number][], state: string, offText: string, at: string | null) =>
-    ({ id, start, end, state, worked: w.reduce((n, x) => n + x[0] * 60, 0), off: w.reduce((n, x) => n + x[1] * 60, 0), offText, sent: at ? { at, state: 'done', error: null } : undefined })
+    ({ id, start, end, state, worked: w.reduce((n, x) => n + x[0] * 60, 0), off: w.reduce((n, x) => n + x[1] * 60, 0), offText, approvedAt: at })
   return buildEmployeePayments({
     name: 'Wendy Cacka', zone: 'America/New_York', hoursBy: 'Arnaldo Oliveira',
     periods: [
@@ -75,7 +75,7 @@ export const invoice0134 = (): InvoiceDocView => contractorDocs()[134]
 /** 10P-2's documents: Wendy Cacka's pay periods and reimbursement documents (Company Settings.dc.html docOf). */
 export function employeeDocs(): Record<string, DocSheetData> {
   const pr = (start: string, end: string, w: [number, number][], submitted: string, sent: string | null) =>
-    payrollDocOf({ name: 'Wendy Cacka', team: 'Web', start, end, submittedOn: submitted, weeks: w.map(([a, b]) => ({ worked: a * 60, off: b * 60 })), sentAt: sent })
+    payrollDocOf({ name: 'Wendy Cacka', team: 'Web', start, end, submittedOn: submitted, weeks: w.map(([a, b]) => ({ worked: a * 60, off: b * 60 })), approvedAt: sent })
   const billing = { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163\nUnited States' }
   return {
     'payroll:4': pr('2026-10-04', '2026-10-17', [[2640, 0], [2160, 480]], '2026-10-17', null),

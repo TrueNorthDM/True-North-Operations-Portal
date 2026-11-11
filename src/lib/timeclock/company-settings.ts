@@ -1,7 +1,7 @@
 /**
  * Company settings for Clocky part 2 (Company Settings.dc.html):
  *
- *   13A  Integrations: Rippling and Google Calendar, what each sends and
+ *   13A  Integrations: Google Calendar, what it sends and
  *        reads, the errors with Try again
  *   13B  Invoices: numbering, who approves what (timesheets, invoices, time
  *        off and extra hours, reimbursements), Finance, True North's billing
@@ -10,8 +10,7 @@
  *        lines Clocky part 2 adds
  *
  * Read for Super Admins (who change them) and Admins (read only). Secrets
- * never leave the server: only the last four characters of the Rippling token
- * and the Google service account's address.
+ * never leave the server: only the Google service account's address.
  */
 
 import { driveAccount } from '@/lib/agenda/google-drive'
@@ -28,7 +27,6 @@ import { REMINDERS, type ReminderKey } from './reminder-kinds'
 export interface IntegrationError { id: number; when: string; what: string; text: string; failed: boolean; doneText: string | null }
 
 export interface IntegrationsData {
-  rippling: { tokenSaved: boolean; tokenEnd: string | null; who: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** `viaOffice`: the team calendar is office@ connected by Google sign-in in Agenda settings (since 31 October 2026); the service account key is then not used. */
   google: { connected: boolean; saved: boolean; viaOffice: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
@@ -39,9 +37,8 @@ export interface IntegrationsData {
 
 type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
 
-const WHAT: Record<string, string> = { rippling_pto: 'Time off', rippling_pto_cancel: 'Time off', rippling_hours: 'Hours', gcal_upsert: 'Calendar', gcal_delete: 'Calendar' }
+const WHAT: Record<string, string> = { gcal_upsert: 'Calendar', gcal_delete: 'Calendar' }
 
-const RIPPLING_KINDS = ['rippling_pto', 'rippling_pto_cancel', 'rippling_hours']
 const GOOGLE_KINDS = ['gcal_upsert', 'gcal_delete']
 
 /** The outbox as 13A reads it: what is waiting or failed, and what went out in the last two weeks. */
@@ -83,7 +80,7 @@ export function jobErrorText(p: Record<string, unknown>, error: string | null, n
  */
 export async function countRetryable(now = new Date()): Promise<number> {
   const [list, drive] = await Promise.all([readOutbox(now), countFailedCopies()])
-  return drive + [RIPPLING_KINDS, GOOGLE_KINDS].reduce((n, kinds) => n + listedErrors(list, kinds).filter(j => j.state === 'failed').length, 0)
+  return drive + [GOOGLE_KINDS].reduce((n, kinds) => n + listedErrors(list, kinds).filter(j => j.state === 'failed').length, 0)
 }
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
@@ -106,26 +103,12 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
         failed: j.state === 'failed', doneText: j.state === 'done' && j.done_at ? `Sent ${at(j.done_at)}` : null,
       }
     })
-  const waitingRippling = list.filter(j => j.kind.startsWith('rippling') && (j.state === 'waiting_connection' || j.state === 'queued')).length
   const todayLocal = localDate(now, zone)
   // "PTO events written today": time off only, not the Agenda's events (audit, 27 October 2026).
   const gcalToday = list.filter(j => j.kind === 'gcal_upsert' && j.ref_table === 'tc_absence_requests' && j.state === 'done' && j.done_at && localDate(j.done_at, zone) === todayLocal)
   const lastGcal = list.filter(j => j.kind.startsWith('gcal') && j.done_at).sort((a, b) => (a.done_at! < b.done_at! ? 1 : -1))[0]
   const by = (id: string | null, when: string | null) => `${id ? ` by ${dir.nameOf(id)}` : ''}${when ? `, ${dateLabel(localDate(when, zone))}` : ''}`
   return {
-    rippling: {
-      tokenSaved: conn.rippling.tokenSaved, tokenEnd: conn.rippling.tokenEnd,
-      // Staging never sends: its data is a copy, and Rippling is the real payroll (owner, 9 November 2026).
-      who: conn.rippling.staging ? 'The staging copy never connects to Rippling: only the live portal sends to it.'
-        : conn.rippling.tokenSaved ? `Connected${conn.rippling.connectedAs ? ` to ${conn.rippling.connectedAs}` : ''}${by(conn.rippling.connectedBy, conn.rippling.connectedAt)}. Approved time off and employees' approved hours go by themselves.`
-          : 'Not connected. Paste the company API token (Rippling, Developer, API credentials) to connect it.',
-      facts: [
-        { k: 'Sends', v: 'Approved time off (Vacation, Sick, Unpaid Time Off), and employees\' approved hours, one total a day, from Nov 8' },
-        { k: 'People', v: conn.rippling.tokenSaved ? `${conn.rippling.matched} matched to Rippling by work email` : 'Matched by work email once connected' },
-        { k: 'Waiting to send', v: waitingRippling ? `${waitingRippling} item${waitingRippling === 1 ? '' : 's'}, sent by themselves once it works` : 'Nothing' },
-      ],
-      errors: errorsOf(RIPPLING_KINDS),
-    },
     google: office ? {
       connected: office.status === 'connected', saved: false, viaOffice: true, account: office.email, teamCalendarId: '',
       who: office.status === 'connected'

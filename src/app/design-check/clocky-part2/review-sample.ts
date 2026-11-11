@@ -145,7 +145,7 @@ const VIEWER: Record<Who, ReviewSource['viewer']> = {
   dave: { personId: 'dave', level: 'admin', isSuperAdmin: false, ledTeamIds: new Set(), zone: NY, can: k => k === 'ck-approvals-all' },
 }
 
-function source(k: string, me: Who, state: SubRow['state'], x: { hoursAt?: string; approvedAt?: string; job?: ReviewSource['job'] } = {}): ReviewSource {
+function source(k: string, me: Who, state: SubRow['state'], x: { hoursAt?: string; approvedAt?: string } = {}): ReviewSource {
   const t = TS[k]
   const pid = PID[k]
   const rate = t.rate ?? null
@@ -163,7 +163,7 @@ function source(k: string, me: Who, state: SubRow['state'], x: { hoursAt?: strin
     settings: { invoiceApprovers: ['ao', 'dave'], defaultApprover: 'ao', deputyDirector: 'dave', finance: ['tina'] },
     terms: { paysAs, hourlyRate: rate, fixedAmount: t.fixed ?? null, allowance: t.al ? { hours: t.al[0] / 60, per: 'month', cadence: [], anchors: [] } : null, route: { personId: pid, reportsTo: REP[k], isContractor: t.con, paysAs } },
     person: { name: t.who, teamId: TEAM[k], team: { name: TEAM[k], color: TEAMC[TEAM[k]] ?? null }, zone: t.zone ?? NY },
-    names: NAMES, views: t.noTs ? [] : entries(k), extraHours: t.al ? t.al[1] / 60 : 0, job: x.job ?? null, now: NOW,
+    names: NAMES, views: t.noTs ? [] : entries(k), extraHours: t.al ? t.al[1] / 60 : 0, now: NOW,
   }
 }
 
@@ -185,8 +185,8 @@ export function reviewFrame(frame: string): { review: TimesheetReview; tab?: 'su
     case '6Cp': return { review: b(source('jt', 'ao', 'submitted')), modal: 'pdf' }
     case '6Co': return { review: b(source('oh', 'ao', 'submitted')) }
     case '6D': return { review: b(source('wc', 'ao', 'submitted')) }
-    case '6Ds': return { review: b(source('wc', 'ao', 'approved', { approvedAt: '2026-11-03T15:02:00Z', job: { state: 'done', last_error: null, done_at: '2026-11-03T15:02:00Z' } })) }
-    case '6Dx': return { review: b(source('wc', 'ao', 'approved', { approvedAt: '2026-11-03T15:02:00Z', job: { state: 'failed', last_error: 'Wendy Cacka has no pay schedule for Oct 4 to 17.', done_at: null } })) }
+    case '6Ds': return { review: b(source('wc', 'ao', 'approved', { approvedAt: '2026-11-03T15:02:00Z' })) }
+    case '6Dx': return { review: b(source('wc', 'ao', 'approved', { approvedAt: '2026-11-03T15:02:00Z' })) }
     default: return { review: b(source('cw', 'ao', 'submitted')) }
   }
 }

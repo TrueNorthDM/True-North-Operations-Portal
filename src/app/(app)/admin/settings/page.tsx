@@ -55,7 +55,7 @@ import { saveRolloutDates, moveToWave, setNorthTimeOpen, setAgendaGoogleOpen } f
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadRolloutData } from '@/lib/timeclock/waves-data'
-import { copyDriveNow, drivePicker, retryDriveCopy, saveDriveFolder, testDrive, removeGoogle, removeGoogleApp, removeRipplingToken, matchRipplingPeople, retryIntegrationJob, saveGoogle, saveGoogleApp, saveInvoiceSettings, saveFinance, saveReimbursementApprovers, saveFormRates, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
+import { copyDriveNow, drivePicker, retryDriveCopy, saveDriveFolder, testDrive, removeGoogle, removeGoogleApp, retryIntegrationJob, saveGoogle, saveGoogleApp, saveInvoiceSettings, saveFinance, saveReimbursementApprovers, saveFormRates, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { anchorOptions } from '@/components/clocky/periods/anchor-options'
 import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
@@ -448,9 +448,9 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div>
-          <SectionHead title="Integrations" desc="Rippling for payroll and PTO, Google Calendar for the team calendar. The portal fills them; nobody copies by hand." />
+          <SectionHead title="Integrations" desc="Google Calendar for the team calendar and Google Drive for the copies. The portal fills them; nobody copies by hand." />
           <div className="mb-[18px]"><AgendaGoogleSwitch open={agOpen} canChange={access.isSuperAdmin} set={setAgendaGoogleOpen} /></div>
-          <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveRipplingToken, removeRipplingToken, matchRipplingPeople, saveGoogle, removeGoogle, testGoogle, retryIntegrationJob, saveGoogleApp, removeGoogleApp, drivePicker, saveDriveFolder, testDrive, retryDriveCopy, copyDriveNow }} />
+          <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveGoogle, removeGoogle, testGoogle, retryIntegrationJob, saveGoogleApp, removeGoogleApp, drivePicker, saveDriveFolder, testDrive, retryDriveCopy, copyDriveNow }} />
         </div>
       ),
     },

@@ -86,7 +86,7 @@ const andList = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs
 const firstName = (n: string) => n.trim().split(/\s+/)[0] ?? n
 
 /** The North Time items behind Needs you's rows, off while North Time is closed. */
-const NORTH_TIME_KEYS: ReadonlySet<string> = new Set(['clocky-hours', 'clocky-approvals', 'clocky-invoices', 'ck-timeoff', 'rq-decide', 'rq-time-off', 'rq-reimbursements', 'rq-extra-hours'])
+const NORTH_TIME_KEYS: ReadonlySet<string> = new Set(['clocky-hours', 'clocky-approvals', 'clocky-invoices', 'rq-decide', 'rq-time-off', 'rq-reimbursements', 'rq-extra-hours'])
 
 export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData> {
   const real = await loadAccess()

@@ -66,8 +66,8 @@ export interface TimeOffPage {
   decider: string
 }
 
-const COLS = 'id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, rippling_error, rippling_sent_at, calendar_state, entries_written_at, cancel_asked_at, cancel_reason'
-type Raw = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: OffRequest['rippling']; rippling_error: string | null; rippling_sent_at: string | null; calendar_state: OffRequest['calendar']; entries_written_at: string | null; cancel_asked_at: string | null; cancel_reason: string | null }
+const COLS = 'id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, calendar_state, entries_written_at, cancel_asked_at, cancel_reason'
+type Raw = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; calendar_state: OffRequest['calendar']; entries_written_at: string | null; cancel_asked_at: string | null; cancel_reason: string | null }
 
 export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperAdmin'>, zone: string, now = new Date()): Promise<TimeOffPage | null> {
   if (!v.personId) return null
@@ -99,8 +99,8 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
     const req: OffRequest = {
       id: r.id, personId: r.person_id, who: dir.nameOf(r.person_id), type: kindOf(r.jobcode_id), start: r.start_date, end: r.end_date,
       hoursPerDay: Number(r.hours_per_day), state: r.state as OffRequest['state'], note: reads ? r.reason : null, askedAt: r.requested_at,
-      decidedAt: r.decided_at, decidedBy: r.decided_by, decisionNote: r.decision_note, rippling: r.rippling_state, ripplingError: r.rippling_error,
-      ripplingSentAt: r.rippling_sent_at, calendar: r.calendar_state, entriesWrittenAt: r.entries_written_at, cancelAskedAt: r.cancel_asked_at, cancelReason: reads ? r.cancel_reason : null,
+      decidedAt: r.decided_at, decidedBy: r.decided_by, decisionNote: r.decision_note,
+      calendar: r.calendar_state, entriesWrittenAt: r.entries_written_at, cancelAskedAt: r.cancel_asked_at, cancelReason: reads ? r.cancel_reason : null,
     }
     const days = offDays(req.start, req.end, holidays).days.length
     const seconds = Math.round(days * req.hoursPerDay * 3600)
@@ -108,15 +108,14 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
     const upcoming = req.start > today
     const pill = pillOf(req)
     const group: TimeOffRow['group'] = req.state === 'pending' || req.cancelAskedAt ? 'pending' : req.start >= today ? 'upcoming' : 'past'
-    const refused = req.state === 'approved' && req.rippling === 'refused'
     return {
       id: req.id, personId: req.personId, who: req.who, initials: initials(req.who), type: req.type, start: req.start, end: req.end,
       dates: daysText(req.start, req.end), count: countText(days, seconds), checks: checksOf(req, whoDecides(req.personId)), pill, seconds, waiting: req.state === 'pending', group,
       cancel: !own ? null : req.state === 'pending' ? 'direct' as const : req.state === 'approved' && upcoming && !req.cancelAskedAt ? 'ask' as const : null,
       drawer: {
         dates: `${daysText(req.start, req.end)}, ${req.end.slice(0, 4)}`, note: req.note,
-        steps: stepsOf(req, { days, seconds, stamp, canRetry: v.can('ck-timeoff'), who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
-        stateLabel: refused ? 'Rippling refused it' : pill.label, stateTone: refused ? 'bad' as const : pill.tone,
+        steps: stepsOf(req, { days, seconds, stamp, who: whoDecides(req.personId) }), hist: historyOf(req, { stamp, nameOf: dir.nameOf }),
+        stateLabel: pill.label, stateTone: pill.tone,
       },
     }
   })

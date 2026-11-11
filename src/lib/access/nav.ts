@@ -42,7 +42,7 @@ export interface PanelItem {
   /**
    * Also needs a fact about the person, not their level: `invoices` is for
    * contractors, Super Admins and Finance (an employee gets no invoice);
-   * `employee` is for US employees (time off goes to Rippling payroll).
+   * `employee` is for US employees (time off is paid through payroll).
    */
   needs?: NavFact
   /**

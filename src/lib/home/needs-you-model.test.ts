@@ -111,7 +111,7 @@ describe('approval rows', () => {
   it('gives "Goes to" only when it names a place', () => {
     expect(facts(timesheetRow(q({}), false, today, '/a'))['Goes to']).toBeUndefined()
     expect(facts(timesheetRow(q({ key: 'n2', main: 'October 2026 · fixed monthly', sub: 'No timesheet', flag: { text: 'No timesheet', tone: 'neu' } }), false, today, '/a'))['Goes to']).toBeUndefined()
-    expect(facts(timesheetRow(q({ sub: 'Payroll summary, goes to Rippling' }), false, today, '/a'))['Goes to']).toBe('Rippling')
+    expect(facts(timesheetRow(q({ sub: 'Payroll summary' }), false, today, '/a'))['Goes to']).toBe('Payroll')
     const money = timesheetRow(q({ sub: 'Invoice INV-2026-0143 · $3,357.50' }), false, today, '/a')
     expect(facts(money).Invoice).toBe('INV-2026-0143 · $3,357.50')
     expect(money.button).toBe('Approve invoice')

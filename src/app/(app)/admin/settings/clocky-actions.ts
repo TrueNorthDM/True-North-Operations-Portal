@@ -2,7 +2,7 @@
 
 /**
  * Company settings for Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C):
- * the Rippling token, the Google service account and calendars, Test
+ * the Google service account and calendars, Test
  * connection and Try again; invoice numbering and billing details; the
  * reminders. Super Admins only (the sections' -edit items), for the person
  * really signed in and never in a View Stage preview (allowedTo). Credentials
@@ -32,72 +32,6 @@ async function logChange(setting: string, action: string): Promise<void> {
 
 // ── 13A Integrations ────────────────────────────────────────────────────────
 
-export async function saveRipplingToken(input: { token: string }): Promise<Done> {
-  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
-  // Staging's data is a copy and Rippling is the real payroll: the token is only ever saved in production.
-  const { IS_STAGING } = await import('@/lib/environment')
-  if (IS_STAGING) return no('The staging copy never connects to Rippling. Paste the token in the live portal.')
-  const token = String(input.token ?? '').trim()
-  if (token.length < 16 || /\s/.test(token)) return no('Paste the whole Rippling API token.')
-  const { companyName, RipplingError } = await import('@/lib/integrations/rippling')
-  // Tested before it is kept: a wrong or short-permission token is refused here, not job by job.
-  let company: string
-  try {
-    company = await companyName(token)
-  } catch (e) {
-    return no(e instanceof RipplingError ? e.message : 'Rippling could not be reached. Try again in a moment.')
-  }
-  const me = await getRealPerson()
-  const at = new Date().toISOString()
-  const { error } = await createAdminClient().from('app_settings').update({ rippling_api_token: token, rippling_connected_by: me?.id ?? null, rippling_connected_at: at, rippling_connected_as: company, rippling_checked_at: at, updated_at: at }).eq('singleton_id', 1)
-  if (error) { console.error('[settings] rippling:', error.message); return no(NOT_SAVED) }
-  await logChange('rippling_api_token', 'saved')
-  // The people matched, then what waited (time off approved and pay periods approved since 8 November) goes.
-  let note = ''
-  try {
-    const { matchPeople, queueSinceStart } = await import('@/lib/integrations/rippling-send')
-    const { releaseWaiting } = await import('@/lib/integrations/outbox')
-    const m = await matchPeople(token)
-    await queueSinceStart()
-    await releaseWaiting('rippling')
-    note = ` ${m.matched} of ${m.employees} employees matched${m.missing.length ? `; not found in Rippling: ${m.missing.join(', ')}` : ''}.`
-  } catch (e) {
-    console.error('[settings] rippling after saving:', e instanceof Error ? e.message : e)
-    note = ' The people could not be matched yet: press Match people.'
-  }
-  refresh()
-  return { ok: true, toast: `Connected to ${company}.${note}` }
-}
-
-/** Match people: every US employee to their Rippling worker by email, again (after an email changes). */
-export async function matchRipplingPeople(): Promise<Done> {
-  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
-  try {
-    const { matchPeople, ripplingToken } = await import('@/lib/integrations/rippling-send')
-    const { RipplingError } = await import('@/lib/integrations/rippling')
-    try {
-      const m = await matchPeople(await ripplingToken())
-      refresh()
-      return { ok: true, toast: `${m.matched} of ${m.employees} employees matched to ${m.company}.${m.missing.length ? ` Not found in Rippling: ${m.missing.join(', ')}. Their work email must be the same in both.` : ''}` }
-    } catch (e) {
-      if (e instanceof RipplingError) return no(e.message)
-      throw e
-    }
-  } catch (e) {
-    console.error('[settings] rippling match:', e instanceof Error ? e.message : e)
-    return no('The people could not be matched. Try again in a moment.')
-  }
-}
-
-export async function removeRipplingToken(): Promise<Done> {
-  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
-  const { error } = await createAdminClient().from('app_settings').update({ rippling_api_token: null, rippling_connected_by: null, rippling_connected_at: null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
-  if (error) { console.error('[settings] rippling:', error.message); return no(NOT_SAVED) }
-  await logChange('rippling_api_token', 'removed')
-  refresh()
-  return { ok: true, toast: 'Removed. Nothing goes to Rippling until a token is saved again.' }
-}
-
 /** The service account key (only when a new one is pasted) and the team calendar. Connecting sends what waited for Google. */
 export async function saveGoogle(input: { serviceAccount?: string; teamCalendarId: string }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
@@ -123,7 +57,7 @@ export async function saveGoogle(input: { serviceAccount?: string; teamCalendarI
   // Saved either way: what waited for Google is released now, or by the next save or retry.
   let released = 0, stuck = false
   if (connected) {
-    try { released = await releaseWaiting('google') } catch (e) { stuck = true; console.error('[settings] google release:', e instanceof Error ? e.message : e) }
+    try { released = await releaseWaiting() } catch (e) { stuck = true; console.error('[settings] google release:', e instanceof Error ? e.message : e) }
   }
   refresh()
   return { ok: true, toast: !connected ? 'Saved. Add the service account key and the team calendar to connect it.'
@@ -293,7 +227,6 @@ export async function retryIntegrationJob(input: { id: number }): Promise<Done> 
     if (!j || j.state !== 'failed') return no('That item is not waiting to be tried again.')
     const { retryJobs } = await import('@/lib/integrations/outbox')
     await retryJobs(j.ref_table, j.ref_id, [j.kind as Parameters<typeof retryJobs>[2][number]])
-    if (j.ref_table === 'tc_absence_requests' && j.kind === 'rippling_pto') await c.from('tc_absence_requests').update({ rippling_state: 'waiting_connection', rippling_error: null }).eq('id', j.ref_id)
     if (j.ref_table === 'tc_absence_requests' && j.kind === 'gcal_upsert') await c.from('tc_absence_requests').update({ calendar_state: 'queued' }).eq('id', j.ref_id)
   } catch (e) {
     console.error('[settings] retry:', e instanceof Error ? e.message : e)

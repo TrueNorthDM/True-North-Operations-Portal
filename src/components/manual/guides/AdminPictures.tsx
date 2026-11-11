@@ -24,7 +24,7 @@ const HR_API: HrSettingsApi = {
   setImportPerson: noop, importFiles: noop, saveImportGoal: noop, removeImportGoal: noop,
 }
 const INTEGRATIONS_API: IntegrationsApi = {
-  saveRipplingToken: noop, removeRipplingToken: noop, saveGoogle: noop, removeGoogle: noop, testGoogle: noop,
+  saveGoogle: noop, removeGoogle: noop, testGoogle: noop,
   retryIntegrationJob: noop, saveGoogleApp: noop, removeGoogleApp: noop,
   drivePicker: noPicker, saveDriveFolder: noop, testDrive: noop, retryDriveCopy: noop, copyDriveNow: noop,
 }

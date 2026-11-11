@@ -218,7 +218,7 @@ function dayViews(src: PayPeriodSource, p: Span): PayDayView[] {
 export function buildPayPeriod(src: PayPeriodSource): PayPeriodView {
   const state = payPeriodState(src)
   const cur = periodLabel(src.current).label
-  const nameOf = src.employee ? 'Rippling' : src.approver
+  const nameOf = src.approver
 
   if (state === 'fixed') {
     return {
@@ -230,7 +230,7 @@ export function buildPayPeriod(src: PayPeriodSource): PayPeriodView {
   }
 
   const footer: PayPeriodView['footer'] = src.employee
-    ? { text: `Goes to Rippling for payroll when it closes on ${dayLabel(src.current.end)}.`, icon: 'arrow' }
+    ? { text: `Goes to payroll when it closes on ${dayLabel(src.current.end)}.`, icon: 'arrow' }
     : { text: src.approver ? `When it closes, ${src.approver} approves it and it becomes your invoice.` : 'When it closes, it is recorded and becomes your invoice.', icon: 'invoice' }
 
   const shown = src.due ? src.due.period : src.current

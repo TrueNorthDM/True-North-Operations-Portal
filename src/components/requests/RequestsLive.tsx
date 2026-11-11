@@ -3,7 +3,6 @@
 /** Requests on the live pages: the screens over requests/actions.ts and approvals/actions.ts. */
 
 import { askCancelTimeOff, askExtraHours, askTimeOff, cancelTimeOff, markRmbPaid, withdrawReimbursement } from '@/app/(app)/requests/actions'
-import { retryTimeOffRippling } from '@/app/(app)/clocky-hours/approvals/actions'
 import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
 import type { TimeOffPage } from '@/lib/timeclock/time-off-data'
 import type { ExtraPage, ReimbursementsPage, RmbDocPage } from '@/lib/timeclock/requests-data'
@@ -14,7 +13,7 @@ import type { DocFilter } from './RmbDocsList'
 import { ExtraHoursView } from './ExtraHoursView'
 
 export function TimeOffLive({ data }: { data: TimeOffPage }) {
-  return <TimeOffView data={data} api={{ askTimeOff, cancelTimeOff, askCancelTimeOff, retryTimeOffRippling }} />
+  return <TimeOffView data={data} api={{ askTimeOff, cancelTimeOff, askCancelTimeOff }} />
 }
 
 export function ReimbursementsLive({ data, documents }: { data: ReimbursementsPage; documents?: { st?: DocFilter } }) {

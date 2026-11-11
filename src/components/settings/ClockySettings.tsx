@@ -3,7 +3,7 @@
 /**
  * Company settings for Clocky part 2 (Company Settings.dc.html):
  *
- *   13A  IntegrationsSettings   Rippling and Google Calendar: the connection,
+ *   13A  IntegrationsSettings   Google Calendar: the connection,
  *        what each sends and reads, Test connection, the errors with Try again
  *   13B  InvoiceSettings        numbering, who approves what (timesheets,
  *        invoices, time off and extra hours, reimbursements), Finance, billing
@@ -58,9 +58,6 @@ function ReadOnly() {
 // ── 13A ─────────────────────────────────────────────────────────────────────
 
 export interface IntegrationsApi {
-  saveRipplingToken(i: { token: string }): Promise<Done>
-  removeRipplingToken(): Promise<Done>
-  matchRipplingPeople?(): Promise<Done>
   saveGoogle(i: { serviceAccount?: string; teamCalendarId: string }): Promise<Done>
   removeGoogle(): Promise<Done>
   testGoogle(): Promise<Done>
@@ -75,7 +72,7 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
   const router = useRouter()
   const [toast, say] = useToast()
   const [busy, setBusy] = useState(false)
-  const [modal, setModal] = useState<'rippling' | 'google' | 'app' | null>(null)
+  const [modal, setModal] = useState<'google' | 'app' | null>(null)
   const [team, setTeam] = useState(data.google.teamCalendarId)
   const run = async (p: Promise<Done>, after?: () => void) => {
     setBusy(true)
@@ -90,7 +87,6 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
     }
   }
   const cards = [
-    { key: 'rippling' as const, mark: 'R', icBg: '#fbf1e6', icFg: '#92400E', name: 'Rippling', on: data.rippling.tokenSaved, onLabel: 'Token saved', d: data.rippling },
     { key: 'google' as const, mark: 'G', icBg: '#eaf4f4', icFg: '#1E7D7F', name: data.google.viaOffice ? 'Team calendar (Google)' : 'Google Calendar', on: data.google.connected, onLabel: 'Connected', d: data.google },
   ]
   return (
@@ -115,14 +111,9 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
                 <Icon d={REFRESH} size={14} color={BTN_ICON.white} width={2.2} />Test connection
               </button>
             )}
-            {canEdit && g.key === 'rippling' && data.rippling.tokenSaved && api.matchRipplingPeople && (
-              <button type="button" disabled={busy} onClick={() => void run(api.matchRipplingPeople!())} className={BTN_W}>
-                <Icon d={REFRESH} size={14} color={BTN_ICON.white} width={2.2} />Match people
-              </button>
-            )}
-            {canEdit && (g.key === 'rippling' || data.google.saved) && (
+            {canEdit && data.google.saved && (
               <button type="button" disabled={busy} onClick={() => setModal(g.key)} className={BTN_W}>
-                {g.key === 'rippling' ? (data.rippling.tokenSaved ? 'Replace token' : 'Connect') : data.google.saved ? 'Replace key' : 'Connect'}
+                {data.google.saved ? 'Replace key' : 'Connect'}
               </button>
             )}
           </div>
@@ -176,9 +167,6 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
         api={api.drivePicker && api.saveDriveFolder && api.testDrive ? { drivePicker: api.drivePicker, saveDriveFolder: api.saveDriveFolder, testDrive: api.testDrive, retryDriveCopy: api.retryDriveCopy, copyDriveNow: api.copyDriveNow } : undefined} />
       {modal === 'app' && <GoogleAppDialog app={data.googleApp} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveGoogleApp(v), () => setModal(null))} onRemove={() => void run(api.removeGoogleApp(), () => setModal(null))} />}
-      {modal === 'rippling' && <SecretDialog title="Rippling API token" hint="The company's API token from Rippling (Developer, API credentials). It is tested before it is kept; then the people are matched and what waited is sent. Only its last four characters are shown again."
-        placeholder="Paste the token" multiline={false} canRemove={data.rippling.tokenSaved} busy={busy} onClose={() => setModal(null)}
-        onSave={v => void run(api.saveRipplingToken({ token: v }), () => setModal(null))} onRemove={() => void run(api.removeRipplingToken(), () => setModal(null))} />}
       {modal === 'google' && <SecretDialog title="Google service account key" hint="The JSON key of a Google Cloud service account. Share the team calendar with its address, so the portal can change events on it."
         placeholder='{"type": "service_account", ...}' multiline canRemove={data.google.saved} busy={busy} onClose={() => setModal(null)}
         onSave={v => void run(api.saveGoogle({ serviceAccount: v, teamCalendarId: team }), () => setModal(null))} onRemove={() => void run(api.removeGoogle(), () => setModal(null))} />}
@@ -552,7 +540,6 @@ const LINES: [string, string, string][] = [
   ['Invoices', 'Invoice created (on submit) · approved · returned, with the reason · paid', 'The contractor; approved also to Finance'],
   ['Time off', 'Asked · cancellation asked', "Whoever decides it (Who approves what) and the person's Team Leader"],
   ['Time off', 'Approved, denied or cancelled', 'The person'],
-  ['Time off', 'Rippling refused it', 'Super Admins, in red'],
   ['Reimbursements', 'Asked · decided · document ready · paid', 'The Reimbursements list · the person · Finance · the person'],
   ['Extra hours', 'Asked · decided', 'Whoever decides it (Who approves what) · the person'],
   ['Allowance', '90% · over', 'The person; over without approval also to the Team Leader and Super Admins'],

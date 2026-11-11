@@ -134,7 +134,7 @@ export function InvoicesList({ data, api, initial, extra }: {
 
       {data.mode === 'none' && (
         <div className="max-w-[640px] bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-[18px] text-[13.5px] leading-[1.55] text-foreground">
-          Employees get no invoice. Your approved hours and PTO go to Rippling for payroll, so Invoices is not in your North Time menu.
+          Employees get no invoice. Finance takes your approved hours and PTO to payroll in Rippling, so Invoices is not in your North Time menu.
         </div>
       )}
 

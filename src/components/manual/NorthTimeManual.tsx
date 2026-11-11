@@ -217,7 +217,7 @@ const QUICK: Audience[] = [
       { t: 'Approve hours', steps: [
         'Open North Time, **Approvals**. **Waiting for you** lists the timesheets of the people who report to you.',
         'Press **Review** to open the timesheet: the summary by client and by day, and every entry.',
-        'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve and send to Rippling** for an employee. Or press **Send the hours back**, with a reason.',
+        'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve for payroll** for an employee (Finance then enters the hours and time off in Rippling). Or press **Send the hours back**, with a reason.',
       ] },
       { t: 'Change your team’s hours', steps: [
         'On Time entries, set **Whose hours** to **My team** and pick the person.',

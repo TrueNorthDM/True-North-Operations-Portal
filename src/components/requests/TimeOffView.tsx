@@ -8,8 +8,8 @@
  *   7A   Request time off: the kind, the days on a calendar (weekends and
  *        company holidays not counted), full days or hours a day, what it
  *        counts, the balance, who else is off.
- *   7D   The drawer: what happened by itself after the approval (Rippling,
- *        the team calendar, the time entries), Try again when Rippling refused.
+ *   7D   The drawer: what happened by itself after the approval (the team
+ *        calendar, the time entries).
  *   7E   Cancel an approved request still to come: whoever decides their time off approves it.
  */
 
@@ -36,7 +36,6 @@ export interface TimeOffApi {
   askTimeOff(i: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>>
   cancelTimeOff(i: { id: number }): Promise<Result<{ toast: string }>>
   askCancelTimeOff(i: { id: number; reason: string }): Promise<Result<{ toast: string }>>
-  retryTimeOffRippling(i: { id: number }): Promise<Result<{ toast: string }>>
 }
 
 const CHECK_ICON = { check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6 6 18', clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2' }
@@ -110,18 +109,18 @@ export function TimeOffView({ data, api, initial }: {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {data.types.filter(t => t.paid).map(t => {
-              // What is asked and not decided yet (7B: "24h waiting for approval"); the balance itself comes with Rippling.
+              // What is asked and not decided yet (7B: "24h waiting for approval"); the balance itself is kept in Rippling.
               const waiting = data.mine.filter(r => r.waiting && r.type === t.label).reduce((n, r) => n + r.seconds, 0)
               return (
                 <div key={t.id} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
                   <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}</span>
                   <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">-</span>
-                  <span className="text-[12px] text-muted">{waiting ? `${formatDuration(waiting).replace(' 00m', '')} waiting for approval` : 'From Rippling, once connected'}</span>
+                  <span className="text-[12px] text-muted">{waiting ? `${formatDuration(waiting).replace(' 00m', '')} waiting for approval` : 'Balance kept in Rippling'}</span>
                 </div>
               )
             })}
           </div>
-          <div className="text-[12px] text-muted -mt-1.5">Balances come from Rippling once a Super Admin connects it. Company holidays are off for everyone and are not asked for.</div>
+          <div className="text-[12px] text-muted -mt-1.5">Balances are kept in Rippling: check yours there. Company holidays are off for everyone and are not asked for.</div>
         </>
       )}
 
@@ -168,8 +167,7 @@ export function TimeOffView({ data, api, initial }: {
         </div>
       )}
 
-      {open && <OffDrawer row={open} me={data.me.personId} busy={busy} onClose={() => setDrawer(null)}
-        onRetry={() => void run(api.retryTimeOffRippling({ id: open.id }))}
+      {open && <OffDrawer row={open} me={data.me.personId} onClose={() => setDrawer(null)}
         onCancel={() => { setCancelId(open.id); setModal('cancel') }} />}
       {modal === 'ask' && <AskForm data={data} initial={initial?.form} busy={busy} onClose={() => setModal(null)}
         onSend={f => void run(api.askTimeOff(f), () => setModal(null))} />}
@@ -192,14 +190,14 @@ function Header({ onNew }: { onNew: (() => void) | null }) {
           </button>
         )}
       </div>
-      <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Ask for days off here, and only here. Approved, it goes to Rippling for payroll and to the team calendar by itself.</p>
+      <p className="m-0 mt-1 text-[13.5px] text-muted [text-wrap:pretty]">Ask for days off here, and only here. Approved, it goes on the team calendar by itself, and Finance takes it to payroll.</p>
     </div>
   )
 }
 
 // ── 7D: the drawer ──────────────────────────────────────────────────────────
 
-function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOffRow; me: string; busy: boolean; onClose: () => void; onRetry: () => void; onCancel: () => void }) {
+function OffDrawer({ row, me, onClose, onCancel }: { row: TimeOffRow; me: string; onClose: () => void; onCancel: () => void }) {
   const box = useRef<HTMLDivElement>(null)
   // A System manual picture draws the drawer over the picture, not the page (ui/in-picture.ts).
   const inPicture = useInPicture()
@@ -237,13 +235,6 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
                   <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
                     <span className={`text-[13px] font-bold leading-[1.45] ${bad ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{s.t}</span>
                     <span className="text-[12px] text-muted leading-[1.45]">{s.sub}</span>
-                    {s.retry && (
-                      <div className="flex mt-1.5">
-                        <button type="button" disabled={busy} onClick={onRetry} className={`${BTN.smallNavy} disabled:opacity-60`}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" /></svg>Try again
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -278,7 +269,7 @@ function CancelDialog({ row, decider, busy, onClose, onAsk }: { row: TimeOffRow;
   return (
     <Modal label="Cancel time off" width={470} onClose={onClose} alert gap={12}>
       <h2 className={`${MODAL_TITLE} leading-[1.3]`}>Cancel your time off, {row.dates}?</h2>
-      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] [text-wrap:pretty]">It is approved, so {decider || 'whoever approves time off'} approves the cancellation. Then it comes off Rippling and the team calendar, and the {formatDuration(row.seconds)} leave your time entries.</p>
+      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] [text-wrap:pretty]">It is approved, so {decider || 'whoever approves time off'} approves the cancellation. Then it comes off the team calendar, and the {formatDuration(row.seconds)} leave your time entries.</p>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel warn>Reason (required)</FieldLabel>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Why you no longer need these days" className={TEXTAREA_WARN} />
@@ -387,7 +378,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   )
   const countLine = f.a ? `${days.length} working day${days.length === 1 ? '' : 's'}, ${formatDuration(seconds)}` : 'Pick the days'
   const skipLine = skipped.length > 0 ? `${skipped.map(d => dayLabel(d)).join(' and ')} ${skipped.length === 1 ? 'is a company holiday' : 'are company holidays'}, not counted.` : null
-  const balanceLine = `${typeLabel}: the balance shows here once Rippling is connected.`
+  const balanceLine = `${typeLabel}: check your balance in Rippling.`
   const whoList = who.length ? who.map(w => (
     <div key={w.t} className="flex items-center gap-[9px] text-[13px] text-tn-ink leading-[1.45]"><span className="w-2 h-2 rounded-full flex-none" style={{ background: w.c }} /><span>{w.t}</span></div>
   )) : <div className="text-[13px] text-muted">Pick the days to see who else is off.</div>
@@ -484,7 +475,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Who else is off</span>
             {whoList}
           </div>
-          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When {data.decider || 'it is approved'}{data.decider ? ' approves' : ''}, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and North Time writes it into your time entries. Nobody copies anything.</div>
+          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When {data.decider || 'it is approved'}{data.decider ? ' approves' : ''}, the team calendar shows &quot;{data.me.name}, out&quot; on those days, North Time writes it into your time entries, and Finance takes it to payroll.</div>
         </div>
       </div>
       <div className="flex justify-end gap-2">

@@ -45,13 +45,11 @@ function row(p: P, me: string, cancelAsked = false): TimeOffRow {
   const req: OffRequest = {
     id: p.id, personId: p.who, who: p.who, type: p.type, start: p.a, end: p.b, hoursPerDay: 8, state: p.st === 'wait' ? 'pending' : 'approved',
     note: p.note || null, askedAt: at(p.asked), decidedAt: p.dec ? at(p.dec) : null, decidedBy: p.dec ? 'Arnaldo Oliveira' : null, decisionNote: null,
-    rippling: p.rip === 'sent' ? 'sent' : p.rip === 'fail' ? 'refused' : null, ripplingError: p.rip === 'fail' ? 'Sick balance is 0h.' : null,
-    ripplingSentAt: p.rip === 'sent' && p.dec ? at(p.dec) : null, calendar: p.st === 'appr' ? 'done' : null, entriesWrittenAt: p.dec ? at(p.dec) : null,
+    calendar: p.st === 'appr' ? 'done' : null, entriesWrittenAt: p.dec ? at(p.dec) : null,
     cancelAskedAt: cancelAsked ? at('Nov 3, 2026, 9:32 AM') : null, cancelReason: cancelAsked ? 'Plans changed.' : null,
   }
   const days = offDays(p.a, p.b, HOLS).days.length
   const pill = pillOf(req)
-  const refused = req.rippling === 'refused'
   return {
     id: p.id, personId: p.who, who: p.who, initials: p.who.split(' ').map(w => w[0]).join(''), type: p.type, start: p.a, end: p.b,
     dates: daysText(p.a, p.b), count: countText(days, p.min * 60), checks: checksOf(req), pill, seconds: p.min * 60, waiting: req.state === 'pending',
@@ -59,8 +57,8 @@ function row(p: P, me: string, cancelAsked = false): TimeOffRow {
     cancel: p.who !== me ? null : req.state === 'pending' ? 'direct' : !cancelAsked && p.a > TODAY ? 'ask' : null,
     drawer: {
       dates: `${daysText(p.a, p.b)}, ${p.b.slice(0, 4)}`, note: req.note,
-      steps: stepsOf(req, { days, seconds: p.min * 60, stamp, canRetry: me === 'Arnaldo Oliveira' }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'North Time' }),
-      stateLabel: refused ? 'Approved, Rippling refused it' : pill.label, stateTone: refused ? 'bad' : pill.tone,
+      steps: stepsOf(req, { days, seconds: p.min * 60, stamp }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'North Time' }),
+      stateLabel: pill.label, stateTone: pill.tone,
     },
   }
 }

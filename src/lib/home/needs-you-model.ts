@@ -297,7 +297,7 @@ export function timesheetRow(r: QueueRow, isLead: boolean, today: string, approv
     facts: [
       { k: 'Period', v: period },
       ...(hours ? [{ k: 'Hours', v: hours }] : []),
-      ...(money ? [{ k: 'Invoice', v: r.sub.replace(/^Invoice /, '') }] : payroll ? [{ k: 'Goes to', v: 'Rippling' }] : []),
+      ...(money ? [{ k: 'Invoice', v: r.sub.replace(/^Invoice /, '') }] : payroll ? [{ k: 'Goes to', v: 'Payroll' }] : []),
       ...(r.flag ? [{ k: 'Status', v: r.flag.text }] : []),
       ...(r.asked ? [{ k: fixed ? 'Created' : 'Sent', v: r.asked.replace(/^(Submitted|Created by itself,) /, '') }] : []),
     ],

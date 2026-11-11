@@ -187,8 +187,8 @@ const TREE: Node[] = [
       // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C): Admins read them; Super Admins change them.
       { key: 'cs-jobs', label: 'Job catalogue: the jobs, their fields and the clients', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-jobs-edit', label: 'Change the job catalogue', kind: 'action', superOnly: true },
-      { key: 'cs-integrations', label: 'Integrations: Rippling and Google Calendar', kind: 'tab', v: [1, 0, 0] },
-      { key: 'cs-integrations-edit', label: 'Connect Rippling and Google Calendar, and try failed items again', kind: 'action', superOnly: true },
+      { key: 'cs-integrations', label: 'Integrations: Google Calendar and Google Drive', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-integrations-edit', label: 'Connect Google Calendar and Google Drive, and try failed items again', kind: 'action', superOnly: true },
       { key: 'cs-invoices', label: 'Invoices: numbering and billing details', kind: 'tab', v: [1, 0, 0], note: 'Who approves what, who is Finance and who decides reimbursements. Finance sees everyone\'s money and marks invoices and reimbursement documents paid.' },
       { key: 'cs-invoices-edit', label: 'Change the invoice numbering and billing details', kind: 'action', superOnly: true },
       { key: 'cs-reminders', label: 'Reminders: the timesheet reminders and bell lines', kind: 'tab', v: [1, 0, 0] },
@@ -229,8 +229,6 @@ const TREE: Node[] = [
     ] },
     { key: 'clocky-approvals', label: 'Approvals: the decisions that are theirs', kind: 'page', v: [1, 1, 0], note: 'Whose decision each row is: hours, the person\'s Reports to; invoices, time off and extra hours, Company settings > Invoices, Who approves what; reimbursements, the Reimbursements list. Never their own. Someone who cannot open Approvals is passed over for the default approver.', ch: [
       { key: 'ck-approvals-all', label: 'See every approval, read only (With others, Decided)', kind: 'action', v: [1, 0, 0], note: 'Amounts only with See other people\'s money or Finance.' },
-      { key: 'ck-timeoff', label: 'Try again when Rippling refuses a time off', kind: 'action', superOnly: true, note: 'Who decides time off is set in Company settings, Invoices, Who approves what (1 November 2026).' },
-      { key: 'ck-rippling-retry', label: "Try again when Rippling refuses an employee's approved hours", kind: 'action', superOnly: true, note: "The person's hours approver can too." },
     ] },
     { key: 'ck-whos-working', label: "Who's working: their teams, or everyone with See everyone's hours", kind: 'page', v: [1, 1, 0], ch: [
       { key: 'ck-clock-out-for', label: 'Clock out for them', kind: 'action', superOnly: true },
@@ -252,9 +250,9 @@ const TREE: Node[] = [
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
   // Who decides a request is the routing (owner, 1 November 2026: Company settings > Invoices,
   // Who approves what; routing.ts requestDeciders), not a key here. ck-timeoff and rq-decide stay
-  // for what is not a decision: Rippling's retry and its bell, and reading any receipt.
+  // for what is not a decision: reading any receipt.
   { key: 'm-requests', label: 'Requests', kind: 'module', ch: [
-    { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it. The reason is seen only by the person and Super Admins.', ch: [
+    { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go on the team calendar, and Finance takes them to payroll. Contractors do not see it. The reason is seen only by the person and Super Admins.', ch: [
       { key: 'rq-off-all', label: "See everyone's time off", kind: 'action', v: [1, 0, 0] },
     ] },
     { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays. Amounts: their own, or with See other people\'s money or Finance.', ch: [

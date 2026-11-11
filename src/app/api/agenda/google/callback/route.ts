@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const r = await saveConnection({ purpose: saved.purpose, personId: access.personId, email: who.email, sub: who.sub, answer })
     if (!r.ok) return back(r.reason, who.email)
     // The team calendar connected: time off and team events that waited for a calendar go out (not on staging, see connections.ts).
-    if (saved.purpose === 'team' && !IS_STAGING) await releaseWaiting('google').catch(e => console.error('[agenda google] release:', e instanceof Error ? e.message : e))
+    if (saved.purpose === 'team' && !IS_STAGING) await releaseWaiting().catch(e => console.error('[agenda google] release:', e instanceof Error ? e.message : e))
     revalidatePath('/agenda/settings'); revalidatePath('/agenda')
     return back(saved.purpose === 'team' ? 'team_connected' : 'connected', who.email)
   } catch (e) {

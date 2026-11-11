@@ -18,7 +18,7 @@ export function CompanySettingsGuide() {
   return (
     <div className="flex flex-col gap-7">
       <GuideHeader eyebrow="Admin" title="Company settings" minutes={7}>
-        The settings the whole portal runs on: the Monday and QuickBooks Time connections, clients and budgets, publishing goals, the Google and Rippling links, and the yearly review. Admins open it and read most of it; Super Admins change it.
+        The settings the whole portal runs on: the Monday and QuickBooks Time connections, clients and budgets, publishing goals, the Google links, and the yearly review. Admins open it and read most of it; Super Admins change it.
       </GuideHeader>
 
       <Step n={1} title="Open Company settings" picture={<Picture caption="Company settings, with Human Resources open." height={620}><CompanySettingsPicture /></Picture>}>
@@ -32,7 +32,7 @@ export function CompanySettingsGuide() {
           <li><strong>Clients &amp; budgets</strong>: the dollar budget and budget period of each client, any approved Extra, and the month&apos;s Highlights note printed on the client PDF. It feeds the Clients Reports.</li>
           <li><strong>Clients, Projects &amp; Job Codes</strong>: each client, its projects and their job codes, read live from QuickBooks Time, with who is assigned and the average billing rate.</li>
           <li><strong>Human Resources</strong>: the yearly performance review. See step 3.</li>
-          <li><strong>Integrations</strong>: Google and Rippling. See step 4.</li>
+          <li><strong>Integrations</strong>: Google Calendar and Google Drive. See step 4.</li>
           <li><strong>Invoices</strong> (North Time): how invoices and reimbursement documents are numbered, and the billing details.</li>
           <li><strong>Job catalogue</strong> (North Time): the jobs people pick in North Time, their fields and the clients.</li>
           <li><strong>My Work sources</strong>: which Monday workspaces, boards and people may appear on My Work. See step 5.</li>
@@ -58,10 +58,9 @@ export function CompanySettingsGuide() {
         <p className={P}>Admins read this section. Super Admins change it, and so can the person picked as HR (everything but the roles).</p>
       </Step>
 
-      <Step n={4} title="Integrations: Google and Rippling" picture={<Picture caption="Integrations, as a Super Admin sees it." height={900}><IntegrationsPicture /></Picture>}>
+      <Step n={4} title="Integrations: Google" picture={<Picture caption="Integrations, as a Super Admin sees it." height={900}><IntegrationsPicture /></Picture>}>
         <ul className={LIST}>
           <li><strong>The new Agenda</strong>: the switch at the top opens or closes the new Agenda (event drawer, Find a time, Agenda settings, booking links) for everyone. It asks before it changes anything.</li>
-          <li><strong>Rippling</strong>: for payroll and PTO. <strong>Connect</strong> asks for the company API token; once saved, the button reads <strong>Replace token</strong>.</li>
           <li><strong>Team calendar (Google)</strong>: the office@ Google account, connected by a Super Admin in Agenda settings (the <strong>Agenda settings</strong> button takes you there). Approved time off and team events are written to its calendar.</li>
           <li><strong>Google sign-in</strong>: the portal&apos;s own Google app, which lets people connect their Google accounts in Agenda settings. <strong>Change keys</strong> replaces its keys.</li>
           <li><strong>Google Drive</strong>: the folder where the portal writes invoices and receipts. <strong>Pick the folder</strong> (or <strong>Change folder</strong>), <strong>Write a test file</strong>, and under <strong>How the copies are doing</strong>, <strong>Copy the missing now</strong>.</li>

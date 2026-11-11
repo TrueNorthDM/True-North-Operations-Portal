@@ -50,7 +50,6 @@ export const CLOCKY_KEYS = {
   team: 'ck-team',
   all: 'ck-all',
   approvals: 'clocky-approvals',
-  timeOff: 'ck-timeoff',
   reopen: 'ck-reopen',
   whosWorking: 'ck-whos-working',
   clockOutFor: 'ck-clock-out-for',

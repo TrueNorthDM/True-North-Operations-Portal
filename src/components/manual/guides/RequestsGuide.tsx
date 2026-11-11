@@ -21,7 +21,7 @@ export function TimeOffGuide() {
 
       <Step n={1} title="Open Time off" picture={<Picture caption="Time off, with one request waiting and one approved." height={620}><TimeOffPicture show="page" /></Picture>}>
         <p className="m-0">On the left rail, click the Requests icon, then <strong>Time off</strong>. Your requests are listed in <strong>Pending</strong>, <strong>Upcoming</strong> and <strong>Past</strong>, each with its state and what happened to it.</p>
-        <p className="m-0">The cards at the top are your kinds of paid time off. Their balances will show there once Rippling is connected; until then each card shows the hours still waiting for approval.</p>
+        <p className="m-0">The cards at the top are your kinds of paid time off. Balances are kept in Rippling; each card shows the hours still waiting for approval.</p>
       </Step>
 
       <Step n={2} title="Ask for days off" picture={<Picture caption="Request time off, three days of Vacation picked."><TimeOffPicture show="ask" /></Picture>}>
@@ -36,13 +36,13 @@ export function TimeOffGuide() {
       </Step>
 
       <Step n={4} title="What happens when it is approved" picture={<Picture caption="An approved request, opened." height={620}><TimeOffPicture show="drawer" /></Picture>}>
-        <p className="m-0">Click a request to open it. <strong>What happened by itself</strong> lists each step: the team calendar shows you as out on those days (everyone sees it in the Agenda), North Time writes the days into your time entries, and Rippling gets them for payroll once it is connected. Nobody copies anything by hand.</p>
+        <p className="m-0">Click a request to open it. <strong>What happened by itself</strong> lists each step: the team calendar shows you as out on those days (everyone sees it in the Agenda), North Time writes the days into your time entries, and Finance takes them to payroll. Nobody copies anything by hand.</p>
         <p className="m-0"><strong>History</strong> shows when you asked and who approved it.</p>
       </Step>
 
       <Step n={5} title="Cancel time off" picture={<Picture caption="Asking to cancel approved time off."><TimeOffPicture show="cancel" /></Picture>}>
         <p className="m-0">Still waiting: click <strong>Cancel</strong> on its row. It is gone straight away, and nothing was sent anywhere.</p>
-        <p className="m-0">Approved and still to come: click <strong>Cancel…</strong> on its row, or <strong>Cancel this time off</strong> in the request. Write the <strong>Reason (required)</strong> and click <strong>Ask to cancel</strong>. The same approver decides; once they approve, the days come off the team calendar and Rippling, and the hours leave your time entries. <strong>Keep it</strong> closes the window without asking.</p>
+        <p className="m-0">Approved and still to come: click <strong>Cancel…</strong> on its row, or <strong>Cancel this time off</strong> in the request. Write the <strong>Reason (required)</strong> and click <strong>Ask to cancel</strong>. The same approver decides; once they approve, the days come off the team calendar, and the hours leave your time entries. <strong>Keep it</strong> closes the window without asking.</p>
         <p className="m-0">Time off that has already started cannot be cancelled here: tell a Super Admin.</p>
       </Step>
 

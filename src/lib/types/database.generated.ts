@@ -683,11 +683,6 @@ export type Database = {
           agenda_all_levels: string[]
           agenda_google_open: boolean
           north_time_open: boolean
-          rippling_api_token: string | null
-          rippling_checked_at: string | null
-          rippling_connected_as: string | null
-          rippling_connected_at: string | null
-          rippling_connected_by: string | null
           singleton_id: number
           tsheets_api_token: string | null
           tsheets_synced_at: string | null
@@ -717,11 +712,6 @@ export type Database = {
           agenda_all_levels?: string[]
           agenda_google_open?: boolean
           north_time_open?: boolean
-          rippling_api_token?: string | null
-          rippling_checked_at?: string | null
-          rippling_connected_as?: string | null
-          rippling_connected_at?: string | null
-          rippling_connected_by?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
@@ -751,11 +741,6 @@ export type Database = {
           agenda_all_levels?: string[]
           agenda_google_open?: boolean
           north_time_open?: boolean
-          rippling_api_token?: string | null
-          rippling_checked_at?: string | null
-          rippling_connected_as?: string | null
-          rippling_connected_at?: string | null
-          rippling_connected_by?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
@@ -765,12 +750,6 @@ export type Database = {
           {
             foreignKeyName: "app_settings_google_connected_by_fkey"
             columns: ["google_connected_by"]
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "app_settings_rippling_connected_by_fkey"
-            columns: ["rippling_connected_by"]
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -2753,7 +2732,6 @@ export type Database = {
           profile_id: string | null
           reports_to_manager: string | null
           role_type: string
-          rippling_worker_id: string | null
           schedule: string | null
           sort_order: number
           status: string
@@ -2801,7 +2779,6 @@ export type Database = {
           profile_id?: string | null
           reports_to_manager?: string | null
           role_type?: string
-          rippling_worker_id?: string | null
           schedule?: string | null
           sort_order?: number
           status?: string
@@ -2849,7 +2826,6 @@ export type Database = {
           profile_id?: string | null
           reports_to_manager?: string | null
           role_type?: string
-          rippling_worker_id?: string | null
           schedule?: string | null
           sort_order?: number
           status?: string
@@ -3614,10 +3590,6 @@ export type Database = {
           person_id: string
           reason: string | null
           requested_at: string
-          rippling_error: string | null
-          rippling_request_ids: string[] | null
-          rippling_sent_at: string | null
-          rippling_state: string | null
           start_date: string
           state: string
         }
@@ -3639,10 +3611,6 @@ export type Database = {
           person_id: string
           reason?: string | null
           requested_at?: string
-          rippling_error?: string | null
-          rippling_request_ids?: string[] | null
-          rippling_sent_at?: string | null
-          rippling_state?: string | null
           start_date: string
           state?: string
         }
@@ -3664,10 +3632,6 @@ export type Database = {
           person_id?: string
           reason?: string | null
           requested_at?: string
-          rippling_error?: string | null
-          rippling_request_ids?: string[] | null
-          rippling_sent_at?: string | null
-          rippling_state?: string | null
           start_date?: string
           state?: string
         }
@@ -4845,7 +4809,6 @@ export type Database = {
           id: number
           note: string | null
           period_id: number
-          rippling_entries: Json | null
           person_id: string
           state: string
           submitted_at: string | null
@@ -4858,7 +4821,6 @@ export type Database = {
           id?: number
           note?: string | null
           period_id: number
-          rippling_entries?: Json | null
           person_id: string
           state?: string
           submitted_at?: string | null
@@ -4871,7 +4833,6 @@ export type Database = {
           id?: number
           note?: string | null
           period_id?: number
-          rippling_entries?: Json | null
           person_id?: string
           state?: string
           submitted_at?: string | null

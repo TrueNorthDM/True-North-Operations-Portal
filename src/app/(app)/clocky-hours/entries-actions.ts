@@ -717,7 +717,7 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     const what = nextState === 'recorded' ? 'recorded' : 'submitted'
     // A contractor is sent on to their invoice; an employee hears where the hours go.
     const toast = sendsInvoice ? `${s.label} ${what}. Now send your invoice for it.`
-      : s.block?.kind === 'payroll' && nextState !== 'recorded' ? `${s.label} submitted. Your payroll summary goes to Rippling when it is approved.`
+      : s.block?.kind === 'payroll' && nextState !== 'recorded' ? `${s.label} submitted. Your payroll summary goes to Finance for payroll when it is approved.`
         : `${s.label} ${what}. ${count} entries are now locked.`
     return { ok: true, locked: count, invoiceId, sendInvoice: sendsInvoice, toast }
   } catch (e) {

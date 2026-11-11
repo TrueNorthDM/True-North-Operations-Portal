@@ -1,7 +1,7 @@
 /**
  * The outbox worker (every 5 minutes, /api/cron/clocky-outbox): sends what is
  * queued in integration_jobs and writes the answer back on the request, so the
- * screens say "Sent to Rippling" or "Rippling refused it" with Try again.
+ * screens say whether it reached the team calendar.
  *
  *   gcal_upsert, gcal_delete   the team calendar (google-calendar.ts): time
  *                              off, and Agenda events and milestones; on
@@ -9,10 +9,6 @@
  *                              sign-in (Agenda settings, since 31 October
  *                              2026), the old service account only if office@
  *                              is not connected
- *   rippling_*                 Rippling's API (rippling-send.ts, owner 9
- *                              November 2026): approved time off as approved
- *                              leave, a cancellation, an employee's approved
- *                              hours one total a day
  *
  * A slow or failing service never blocks a decision: a job that fails for a
  * passing reason is tried again later (5 minutes, then longer), up to 5 times.
@@ -21,10 +17,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accessToken, deleteEvent, insertAllDay, insertTimed, parseServiceAccount } from './google-calendar'
 import { accessTokenFor } from '@/lib/agenda/google-app'
-import { notifyClockyTimeOffRefused } from '@/lib/notifications/run'
-import { dayLabel } from '@/lib/timeclock/format'
-import { RipplingError } from './rippling'
-import { ripplingToken, sendRipplingJob } from './rippling-send'
 
 export interface OutboxReport { sent: number; failed: number; retried: number; errors: string[] }
 
@@ -62,8 +54,6 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
     return (target = { token: await accessToken(parseServiceAccount(s.google_service_account)), calendar: s.google_team_calendar_id })
   }
 
-  let rippling: string | null = null
-
   for (const j of jobs) {
     try {
       if (j.kind === 'gcal_upsert') {
@@ -97,9 +87,6 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
         // Time off cancelled, or an Agenda event edited or deleted (its old copy).
         if (eventId) await deleteEvent(g.token, g.calendar, eventId)
         if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_event_id: null }).eq('id', j.ref_id)
-      } else if (j.kind.startsWith('rippling_')) {
-        rippling ??= await ripplingToken(c)
-        await sendRipplingJob(j, rippling, c)
       } else {
         throw new Final(`Unknown job: ${j.kind}.`)
       }
@@ -108,9 +95,9 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const attempts = j.attempts + 1
-      if (e instanceof Final || (e instanceof RipplingError && e.final) || attempts >= MAX_ATTEMPTS) {
+      if (e instanceof Final || attempts >= MAX_ATTEMPTS) {
         await c.from('integration_jobs').update({ state: 'failed', last_error: msg, attempts }).eq('id', j.id)
-        await markRefused(j, msg)
+        await markRefused(j)
         report.failed++
       } else {
         const wait = 5 * 60_000 * 2 ** (attempts - 1)
@@ -122,18 +109,12 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
   }
   return report
 
-  async function markRefused(j: Job, msg: string) {
+  async function markRefused(j: Job) {
     if (j.ref_table === 'agenda_events') {
       if (j.kind === 'gcal_upsert') await c.from('agenda_events').update({ calendar_state: 'failed' }).eq('id', j.ref_id)
       return
     }
     if (j.ref_table !== 'tc_absence_requests') return
-    if (j.kind === 'rippling_pto') {
-      await c.from('tc_absence_requests').update({ rippling_state: 'refused', rippling_error: msg }).eq('id', j.ref_id)
-      const p = j.payload as { who?: string; kind?: string; start?: string; end?: string }
-      const days = p.start && p.end ? (p.start === p.end ? dayLabel(p.start) : `${dayLabel(p.start)} to ${dayLabel(p.end)}`) : ''
-      await notifyClockyTimeOffRefused({ requestId: j.ref_id, text: `Rippling refused ${p.who ?? 'someone'}'s time off (${[p.kind, days].filter(Boolean).join(', ')})`, body: `"${msg}"` })
-    }
     if (j.kind === 'gcal_upsert') await c.from('tc_absence_requests').update({ calendar_state: 'failed' }).eq('id', j.ref_id)
   }
 }

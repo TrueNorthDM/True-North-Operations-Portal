@@ -2,7 +2,7 @@
  * The block in the Submit window that says what submitting makes
  * (Invoices.dc.html 6A and 6B): a contractor's invoice, with the same lines
  * the invoice will have (buildInvoiceLines), or an employee's payroll
- * summary (worked hours and time off, sent to Rippling when approved).
+ * summary (worked hours and time off, for payroll when approved).
  * Pure: clocky-entries.ts brings the person's terms and names.
  */
 
@@ -56,9 +56,9 @@ export function buildSubmitBlock(x: {
     kind: 'payroll', title: 'Your payroll summary',
     lines: [{ k: 'Worked', v: formatDuration(x.workedSeconds) }, ...x.timeOff.map(t => ({ k: `PTO: ${t.kind}, ${dayLabel(t.date)}`, v: formatDuration(t.seconds) }))],
     sumLabel: 'Paid hours', sum: formatDuration(x.workedSeconds + off),
-    note: x.hoursBy ? 'Sent to Rippling when approved.' : 'Recorded and sent to Rippling. Your timesheet needs no approval.',
+    note: x.hoursBy ? 'For payroll when approved.' : 'Recorded for payroll. Your timesheet needs no approval.',
     confirm: x.hoursBy
-      ? `No invoice for employees. When ${x.hoursBy} approves, your hours and PTO go to Rippling for payroll, by day.`
-      : 'No invoice for employees. Your hours and PTO go to Rippling for payroll, by day.',
+      ? `No invoice for employees. When ${x.hoursBy} approves, Finance takes your hours and PTO to payroll, by day.`
+      : 'No invoice for employees. Finance takes your hours and PTO to payroll, by day.',
   }
 }

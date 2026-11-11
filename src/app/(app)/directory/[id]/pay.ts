@@ -17,7 +17,6 @@ import { dateLabel, localDate, monthLong, monthYear } from '@/lib/timeclock/form
 import { addDays, anchorOn } from '@/lib/timeclock/periods'
 import { limitSummary } from '@/lib/timeclock/allowance'
 import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
-import { loadConnections } from '@/lib/integrations/connections'
 
 export interface PersonPay {
   approvals: ApprovalsView
@@ -53,14 +52,14 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       note = 'Deputy Director: their own timesheet is recorded without approval.'
     } else if (!p.isContractor) {
       rows.push({ k: 'Hours approved by', v: name(hb), sub: hbSub })
-      note = `No invoice: ${name(hb)} approves the hours and they go to Rippling.`
+      note = `No invoice: ${name(hb)} approves the hours, and Finance takes them to payroll.`
     } else if (p.paysAs === 'fixed_no_timesheet') {
       rows.push({ k: 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
       note = `No timesheet: they send their own invoice, and it goes straight to ${name(ib)}.`
     } else {
       rows.push({ k: 'Hours approved by', v: name(hb), sub: hbSub })
       rows.push({ k: lastDay ? `Invoice, until ${lastDay}` : 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
-      note = firstDay ? `From ${firstDay} no invoice: ${name(hb)} approves the hours and they go to Rippling.`
+      note = firstDay ? `From ${firstDay} no invoice: ${name(hb)} approves the hours, and Finance takes them to payroll.`
         : oneStep(p, settings) ? 'Same person: one step, Approve both.' : `Two steps: ${name(hb)} approves the hours, then ${name(ib)} the invoice.`
     }
 
@@ -70,18 +69,16 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     // A contractor asks no time off; once the change to employee is scheduled, from that day, in Requests (10A-3, 10A-4).
     let timeOff: string | null = null
     if (money && p.isContractor) {
-      // Rippling's state for the dialog's line; a failed read only leaves the line generic.
-      const [clocky, conn] = await Promise.all([loadClockySettings(), loadConnections().catch(() => null)])
+      const clocky = await loadClockySettings()
       const today = localDate(new Date(), 'America/New_York')
       timeOff = firstDay ? `From ${firstDay}, in Requests` : 'Contractors do not ask PTO'
       const first = name(personId).split(' ')[0]
       typeChange = {
         name: name(personId), canMigrate: access.isSuperAdmin && !scheduled,
-        scheduled: scheduled ? { date: scheduled.label, text: `${monthLong(addDays(scheduled.effectiveOn, -1))} closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.` } : null,
+        scheduled: scheduled ? { date: scheduled.label, text: `${monthLong(addDays(scheduled.effectiveOn, -1))} closes as a contractor, with their last invoice; then pay periods and payroll. It goes in their history on the day.` } : null,
         canCancel: access.isSuperAdmin && !!scheduled,
         options: typeChangeOptions(today, anchorOn(today, clocky.anchors)?.anchor ?? null, ib ? name(ib) : 'the invoice approver'),
         stays: `Reports to ${name(p.reportsTo)}, who keeps approving ${first}'s hours. Their team, their allowance, their time entries and every past invoice and decision.`,
-        rippling: !conn ? null : conn.rippling.connected ? 'connected' : conn.rippling.tokenSaved ? 'token' : 'none',
       }
     }
     return {
