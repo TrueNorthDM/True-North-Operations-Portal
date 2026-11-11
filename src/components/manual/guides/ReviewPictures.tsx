@@ -13,7 +13,7 @@ import { ReviewList } from '@/components/review/ReviewList'
 import { PrioritiesPage } from '@/components/review/PrioritiesPage'
 import { APR_COLORS } from '@/lib/review/colors'
 import {
-  REVIEW_TODAY, agreeSample, approvalSample, goalsSample, historySample, kickoffSample, managerReviewSample, myGoalsSample, pastGoalsSample,
+  REVIEW_TODAY, agreeSample, approvalSample, checkinSample, twoReviewersSample, goalsSample, historySample, kickoffSample, managerReviewSample, myGoalsSample, pastGoalsSample,
   prioritiesPageSample, prioritiesSample, progressSample, reviewCardSample, reviewListSample, selfReviewSample, teamGoalsSample,
 } from '@/lib/manual/samples/review'
 
@@ -28,7 +28,7 @@ const API: ReviewApi = {
   checkinGoalDone: noop, checkinAdjustGoal: noop, checkinAddGoal: noop, saveCheckinNote: noop, linkCheckin: noop, finishCheckin: noop,
 }
 
-const VIEWS = { self: selfReviewSample, review: managerReviewSample, agree: agreeSample, approval: approvalSample } as const
+const VIEWS = { self: selfReviewSample, review: managerReviewSample, agree: agreeSample, approval: approvalSample, two: twoReviewersSample, checkin: checkinSample } as const
 
 /** Human Resources draws every review page inside its colours (app/(app)/human-resources/layout.tsx). */
 const Colours = ({ children }: { children: React.ReactNode }) => <div className="contents" style={APR_COLORS}>{children}</div>

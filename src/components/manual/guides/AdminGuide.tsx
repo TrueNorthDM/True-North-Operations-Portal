@@ -45,12 +45,13 @@ export function CompanySettingsGuide() {
         <p className={P}>The North Time sections are being redefined, so this guide does not explain their rules yet. Admins read them; Super Admins change them.</p>
       </Step>
 
-      <Step n={3} title="Human Resources: the yearly review" picture={<Picture caption="Human Resources: roles, who takes part, dates, Drive and last year's reviews."><HrSettingsPicture /></Picture>}>
-        <p className={P}>Everything the annual review needs before it starts, in five cards:</p>
+      <Step n={3} title="Human Resources: the yearly review" picture={<Picture caption="Human Resources: roles, who takes part, two reviewers, dates, Drive and last year's reviews."><HrSettingsPicture /></Picture>}>
+        <p className={P}>Everything the annual review needs before it starts:</p>
         <ul className={LIST}>
-          <li><strong>Roles</strong>: pick the <strong>VP of Operations</strong>, the <strong>CISO</strong> and <strong>HR</strong> from the list. The VP of Operations and the CISO write the Company Priorities and approve each team&apos;s; HR sees every review and is told when one is approved. Only a Super Admin picks the roles.</li>
+          <li><strong>Roles</strong>: pick the <strong>VP of Operations</strong>, the <strong>CISO</strong> and <strong>HR</strong> from the list. The VP of Operations starts the reviews and adds their own priorities; the CISO writes the Company Priorities; HR sees every review and is told when one is approved. Only a Super Admin picks the roles.</li>
           <li><strong>Who takes part</strong>: every employee in the Directory has a review. Use <strong>Add a person</strong> to include someone else, like a contractor, and <strong>Remove</strong> to take them out.</li>
-          <li><strong>Dates</strong>: from <strong>Team Leaders open on</strong> to <strong>Check-ins by</strong>. The deadlines show on every review and on the year&apos;s list. Once the cycle has started, changing a date moves its reminders. The cycle itself starts when a Super Admin starts it in Human Resources, Reviews.</li>
+          <li><strong>Two reviewers</strong>: who is reviewed by two people, by the rule (someone who leads their own team and also works in another) or set by hand. A Super Admin can <strong>Remove</strong> one, <strong>Add a second reviewer</strong> with the team they review for, or go <strong>Back to the rule</strong>.</li>
+          <li><strong>Dates</strong>: read only here. Every date comes from the day the VP of Operations starts the reviews in Human Resources, Reviews, and is moved there.</li>
           <li><strong>Google Drive</strong>: click <strong>Pick the folder</strong> to choose where approved review PDFs go. They are copied there, inside a folder for the year, through the office@ Google account.</li>
           <li><strong>Last year&apos;s reviews</strong>: click <strong>Import last year&apos;s reviews</strong> and pick the files in Drive. Each file is matched to a person by its name; check the ones marked <strong>Check</strong> or <strong>No match</strong>, pick the right person, then click the <strong>Import</strong> button (it shows how many files are ready). Once imported, <strong>Check</strong> on a row shows the goals read from the file so you can fix them.</li>
         </ul>

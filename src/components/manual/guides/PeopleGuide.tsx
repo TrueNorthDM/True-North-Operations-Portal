@@ -137,7 +137,7 @@ export function HumanResourcesGuide() {
           <li><strong>My goals</strong>: the goals you agreed in your last review, to update during the year.</li>
           <li><strong>My team&apos;s goals</strong>: only for someone with people reporting to them.</li>
           <li><strong>Anniversaries</strong>: the org chart and the service badges, for everyone.</li>
-          <li><strong>Reviews</strong>: the year&apos;s list. HR, the VP of Operations, the CISO and Super Admins see everyone; a manager sees the people who report to them.</li>
+          <li><strong>Reviews</strong>: the year&apos;s list, with the progress block on top for the VP of Operations, the CISO, HR and Super Admins. A reviewer sees the people who report to them.</li>
         </ul>
       </Step>
 
@@ -147,11 +147,11 @@ export function HumanResourcesGuide() {
 
       <Step n={4} title="Update a goal" picture={<Picture caption="My goals during the year." height={560}><MyGoalsPicture /></Picture>}>
         <p className="m-0">On <strong>My goals</strong>, click <strong>Update</strong> on a goal. Pick where it is (Not started, On track, At risk, Done or No longer relevant), say what changed in a sentence and click <strong>Save the update</strong>. The person you report to sees it and can comment.</p>
-        <p className="m-0">The navy band on top is your 6-month check-in: your manager books it in the Agenda and you go through every goal together.</p>
+        <p className="m-0">The navy band on top is your 6-month check-in. When it is time it is on your Needs you; it happens in the check-in part of your review, where you tick goals done and write your notes with the person who reviewed you.</p>
       </Step>
 
       <Step n={5} title="Managers: my team's goals" picture={<Picture caption="My team's goals."><TeamGoalsPicture /></Picture>}>
-        <p className="m-0">One row a person: how many goals, where they are, the 6-month check-in and the last update. <strong>Open</strong> shows their goals to comment on; <strong>Book</strong> books the check-in in the Agenda. The full steps are in <Link href="/manual/guides/annual-review" className={link}>Annual review</Link>.</p>
+        <p className="m-0">One row a person: how many goals, where they are, the 6-month check-in and the last update. <strong>Open</strong> goes to their review&apos;s check-in part, where you book it, tick and adjust the goals, write your notes and finish it. The full steps are in <Link href="/manual/guides/annual-review" className={link}>Annual review</Link>.</p>
       </Step>
 
       <Step n={6} title="Anniversary badges" picture={<Picture caption="The anniversary badges."><AnniversariesPicture /></Picture>}>

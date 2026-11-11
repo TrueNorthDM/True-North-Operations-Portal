@@ -158,7 +158,7 @@ const TREE: Node[] = [
     { key: 'human-resources', label: 'Human Resources', kind: 'page', always: true, note: 'Everyone: their own review and goals. The rest follows the ticks below and the roles in Company settings > Human Resources.', ch: [
       // Open to everyone since 4 November 2026 (the owner, with the C1 screen).
       { key: 'hr-anniversaries', label: 'Anniversaries: the service badge gallery', kind: 'tab', always: true },
-      { key: 'hr-start', label: 'Start the yearly review cycle', kind: 'action', superOnly: true },
+      { key: 'hr-start', label: 'Start the yearly reviews (back-up for the VP of Operations)', kind: 'action', superOnly: true },
     ] },
   ] },
   { key: 'm-agenda', label: 'Agenda', kind: 'module', ch: [

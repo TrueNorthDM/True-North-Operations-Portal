@@ -121,7 +121,7 @@ export async function loadGoalsView(personId: string, roster: Roster, today: str
   }
 }
 
-export interface TeamGoalRow { personId: string; name: string; title: string | null; goals: number; summary: string; checkin: { label: string; state: 'book' | 'booked' | 'done' }; lastUpdate: string | null }
+export interface TeamGoalRow { personId: string; reviewId: number; name: string; title: string | null; goals: number; summary: string; checkin: { label: string; state: 'book' | 'booked' | 'done' }; lastUpdate: string | null }
 
 export async function loadTeamGoals(viewer: ReviewViewer, roster: Roster, today: string): Promise<TeamGoalRow[]> {
   const out: TeamGoalRow[] = []
@@ -131,7 +131,7 @@ export async function loadTeamGoals(viewer: ReviewViewer, roster: Roster, today:
     const last = g.goals.map(x => x.lastUpdate?.at).filter((x): x is string => !!x).sort().pop() ?? null
     const p = roster.people.get(personId)
     out.push({
-      personId, name: p?.name ?? 'Someone', title: p?.title ?? null, goals: g.goals.length, summary: g.summary || 'No goals',
+      personId, reviewId: g.reviewId, name: p?.name ?? 'Someone', title: p?.title ?? null, goals: g.goals.length, summary: g.summary || 'No goals',
       checkin: g.checkin.finished ? { label: `Done ${fmtInstantDay(g.checkin.finished).replace(/^\w+, /, '')}`, state: 'done' } : g.checkin.at ? { label: `Booked ${fmtInstantDay(g.checkin.at).replace(/^\w+, /, '')}`, state: 'booked' } : { label: g.checkinsBy ? `Book by ${fmtDay(g.checkinsBy).replace(/^\w+, /, '')}` : 'Book', state: 'book' },
       lastUpdate: last,
     })

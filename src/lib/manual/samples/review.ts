@@ -125,6 +125,53 @@ export const agreeSample = () => view('meeting', 'person')
 /** Jordan about to approve (step 4). */
 export const approvalSample = () => view('approval', 'reviewer')
 
+/**
+ * Sam Patel leads SEO and also writes for the Writers, so two people review
+ * Sam: Chris Taylor (who Sam reports to, for SEO) and Jordan Lee (the Writers'
+ * Team Leader). Seen by Jordan, whose part is at the review step while
+ * Chris has written theirs and booked the meeting.
+ */
+export function twoReviewersSample(): ReviewView {
+  const v = view('review', 'reviewer')
+  const mgr = Object.fromEntries(Object.entries(v.parts[0].answers))
+  const goals: GoalView[] = [
+    goal({ id: 31, n: 1, what: 'Lift organic sessions 20% on the three biggest sites', how: 'Search Console, January against December', byMonth: '2027-12-01', byLabel: 'December 2027', term: '1y', priorityId: 1, priorityTitle: 'Grow organic reach', fromLastReview: false, part: 0 }),
+    goal({ id: 32, n: 2, what: 'Write two search-led articles a month', how: 'Counted on the publishing board', byMonth: '2027-06-01', byLabel: 'June 2027', term: '6m', priorityId: 3, priorityTitle: 'One editorial voice', fromLastReview: false, part: 1 }),
+  ]
+  return {
+    ...v, id: 8, phase: 1,
+    person: { id: 'p-sam', name: 'Sam Patel', title: 'SEO Specialist', teamName: 'SEO', hireDate: '2023-03-06', avatarUrl: null, teamLeaderName: null },
+    reviewer: { id: 'p-chris', name: 'Chris Taylor' },
+    goals, myPart: 1,
+    parts: [
+      { ...v.parts[0], no: 0, reviewer: { id: 'p-chris', name: 'Chris Taylor' }, area: 'SEO', lane: 1, step: 'meeting', mine: false, answers: mgr,
+        dates: { ...v.parts[0].dates, reviewSent: '2026-11-23T15:00:00Z' },
+        meeting: { eventId: 'e-8', startsAt: '2026-12-02T15:00:00Z', endsAt: '2026-12-02T15:45:00Z', notes: '', held: false, how: 'online', place: null } },
+      { ...v.parts[0], no: 1, reviewer: { id: 'p-jordan', name: 'Jordan Lee' }, area: 'Writers', lane: 2, step: 'review', mine: true, answers: {},
+        dates: { reviewSent: null, agreed: null, approved: null, approvedBy: null },
+        meeting: { eventId: null, startsAt: null, endsAt: null, notes: '', held: false, how: null, place: null } },
+    ],
+  }
+}
+
+/** Alex's approved review at the 6-month check-in, as Jordan sees it on Tue, May 18, 2027. */
+export function checkinSample(): ReviewView {
+  const v = view('approved', 'reviewer')
+  return {
+    ...v,
+    goals: v.goals.map(g => g.id === 21 ? { ...g, status: 'done' as const } : g.id === 22 ? { ...g, changedByName: 'Jordan Lee', what: 'Hand every article in by its due date, from July' } : g),
+    checkin: {
+      dueBook: '2027-05-21', dueDone: '2027-06-04',
+      parts: [{ no: 0, reviewer: 'Jordan Lee', area: '', startsAt: '2027-05-18T18:00:00Z', finishedAt: null, personNote: 'The keyword list helped a lot. I would like the course paid by the company.', managerNote: '' }],
+      priorities: [
+        { title: 'Grow organic reach', status: 'same', note: '' },
+        { title: 'Ship on time', status: 'changed', note: 'Now within one day of the promised date: the new report is faster.' },
+        { title: 'Open the Spanish line', status: 'added', note: 'Two clients asked in March.' },
+      ],
+    },
+  }
+}
+
 export const pastGoalsSample = () => PAST
 export const goalsSample = () => GOALS
 export const prioritiesSample = () => PRIORITIES
@@ -164,8 +211,8 @@ export function myGoalsSample(): GoalsView {
 /** My team's goals, as Jordan sees them. */
 export function teamGoalsSample(): TeamGoalRow[] {
   return [
-    { personId: 'p-alex', name: 'Alex Rivera', title: 'Writer', goals: 3, summary: '2 on track · 1 at risk', checkin: { label: 'To book', state: 'book' }, lastUpdate: '2027-03-02T15:00:00Z' },
-    { personId: 'p-ben', name: 'Ben Carter', title: 'Designer', goals: 2, summary: '1 done · 1 on track', checkin: { label: 'Booked Jun 12', state: 'booked' }, lastUpdate: '2027-02-20T15:00:00Z' },
+    { personId: 'p-alex', reviewId: 7, name: 'Alex Rivera', title: 'Writer', goals: 3, summary: '2 on track · 1 at risk', checkin: { label: 'To book', state: 'book' }, lastUpdate: '2027-03-02T15:00:00Z' },
+    { personId: 'p-ben', reviewId: 8, name: 'Ben Carter', title: 'Designer', goals: 2, summary: '1 done · 1 on track', checkin: { label: 'Booked Jun 12', state: 'booked' }, lastUpdate: '2027-02-20T15:00:00Z' },
   ]
 }
 

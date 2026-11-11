@@ -1,7 +1,7 @@
 /**
- * The annual review's daily job (lib/review/reminders.ts): opens each team on
- * "Teams open by", and sends the reminders 1 week before, 3 days before and
- * on the day of every due date, each goal's month and the 6-month check-ins.
+ * The annual review's daily job (lib/review/reminders.ts): keeps the started
+ * year current and sends the reminders 3 days before, the day before and on
+ * the day of every due date, each goal's month and the 6-month check-in.
  * Once a day, at 13:00 UTC (9:00 AM in Washington, most of the year).
  */
 

@@ -16,10 +16,8 @@ import { Pill } from '@/components/ui/Pill'
 import { Segmented } from '@/components/ui/Segmented'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import { CloseButton, Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
-import { EventDrawer, type DrawerApi } from '@/components/agenda/EventDrawer'
 import { GOAL_STATUS, type GoalStatus } from '@/lib/review/rules'
 import { fmtDay, fmtInstantDay, fmtWhen, initials } from '@/lib/review/format'
-import type { Booking } from '@/lib/review/booking'
 import type { GoalItem, GoalsView, HistoryRow, ReviewCard as Card, TeamGoalRow } from '@/lib/review/mine'
 import { APR_COLORS } from '@/lib/review/colors'
 
@@ -263,7 +261,7 @@ export function TeamGoals({ rows }: { rows: TeamGoalRow[] }) {
             <span role="cell" className="text-[13px] text-[#435066]">{r.summary}</span>
             <span role="cell" className="flex"><Pill tone={r.checkin.state === 'done' ? 'green' : r.checkin.state === 'booked' ? 'blue' : 'amber'} text={r.checkin.label} /></span>
             <span role="cell" className="text-[12.5px] text-[#8593a4]">{r.lastUpdate ? fmtInstantDay(r.lastUpdate, true).replace(/^\w+, /, '') : 'No update yet'}</span>
-            <span role="cell" className="text-right"><Link href={`/human-resources/team-goals/${r.personId}${r.checkin.state === 'book' ? '?book=1' : ''}`} className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-[#1E7D7F] hover:text-tn-ink">{r.checkin.state === 'book' ? 'Book' : 'Open'}</Link></span>
+            <span role="cell" className="text-right"><Link href={`/human-resources/reviews/${r.reviewId}?tab=checkin`} className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-[#1E7D7F] hover:text-tn-ink">{r.checkin.state === 'book' ? 'Book' : 'Open'}</Link></span>
           </div>
         ))}
         {!rows.length && <p className="m-0 px-[18px] py-6 text-[13px] text-[#8593a4]">No agreed goals yet for the people who report to you.</p>}
@@ -273,71 +271,3 @@ export function TeamGoals({ rows }: { rows: TeamGoalRow[] }) {
 }
 
 // ── The 6-month check-in ───────────────────────────────────────────────────
-
-export function Checkin({ v, name, booking, drawerApi, today, api, bookNow }: {
-  v: GoalsView; name: string; booking: Booking | null; drawerApi: DrawerApi | null; today: string
-  /** Came from Book on My team's goals: the drawer opens at once (design handoff G5). */
-  bookNow?: boolean
-  api: {
-    commentGoal(i: { goalId: number; body: string; checkin?: boolean }): Promise<Res>
-    linkCheckin(i: { personId: string; eventId: string }): Promise<Res>
-    finishCheckin(i: { personId: string }): Promise<Res>
-  }
-}) {
-  const router = useRouter()
-  const [toast, setToast] = useState<ToastState | null>(null)
-  const [drafts, setDrafts] = useState<Record<number, string>>({})
-  const [book, setBook] = useState(!!bookNow && !v.checkin.at)
-  const [busy, setBusy] = useState(false)
-  const first = name.split(' ')[0]
-  const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 5000) }
-  const run = async (go: () => Promise<Res>) => {
-    setBusy(true)
-    try { const r = await go(); if (r.ok) { if (r.toast) say({ text: r.toast }); router.refresh() } else say({ text: r.error, error: true }) } finally { setBusy(false) }
-  }
-  const writing = Object.values(drafts).filter(x => x.trim()).length
-  // A comment is kept when the manager leaves its box, and any still open when they finish (design handoff G6: no Save per goal).
-  const keep = async (goalId: number) => {
-    const body = (drafts[goalId] ?? '').trim()
-    if (!body) return true
-    const r = await api.commentGoal({ goalId, body, checkin: true })
-    if (r.ok) { setDrafts(d => ({ ...d, [goalId]: '' })); router.refresh() } else say({ text: r.error, error: true })
-    return r.ok
-  }
-  const finish = () => run(async () => {
-    for (const id of Object.keys(drafts).map(Number)) if (!(await keep(id))) return { ok: false, error: 'A comment could not be saved. Try again.' } as Res
-    return api.finishCheckin({ personId: v.personId })
-  })
-  const cal = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
-  return (
-    <div className="flex flex-col gap-4">
-      <CheckinBanner
-        title={v.checkin.finished ? `Finished on ${fmtInstantDay(v.checkin.finished)}` : v.checkin.at ? fmtWhen(v.checkin.at) : 'Not booked yet'}
-        sub={v.checkin.at ? `Booked in the Agenda by ${v.manager.name || 'you'}, with ${name}` : `${v.checkinsBy ? `Due by ${fmtDay(v.checkinsBy, true)}. ` : ''}Book it in the Agenda, filled in.`}>
-        {v.checkin.at && <Link href={`/agenda?d=${new Date(v.checkin.at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}`} className={BTN.smallWhite}>{cal}Open in the Agenda</Link>}
-        {!v.checkin.at && (booking && drawerApi ? <button type="button" className={BTN.smallWhite} onClick={() => setBook(true)}>{cal}Book</button> : <span className="text-[12.5px] text-white/[.78]">The new Agenda is not open yet.</span>)}
-      </CheckinBanner>
-      {v.goals.map(g => (
-        <GoalCard key={g.id} g={g} comment={!v.checkin.finished && (
-          <label className="flex flex-col gap-1.5"><span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8593a4]">Your comment</span>
-            <textarea value={drafts[g.id] ?? ''} onChange={e => setDrafts(d => ({ ...d, [g.id]: e.target.value }))} onBlur={() => { if (!busy) void keep(g.id) }} rows={2} className={`${TEXTAREA} w-full min-h-[56px] text-[13.5px] leading-[1.5]`} placeholder={`What you and ${first} agreed about this goal`} />
-          </label>
-        )} />
-      ))}
-      {!v.checkin.finished && (
-        <div className="sticky bottom-3 z-[6] rounded-[14px] border border-[#e4e7ec] bg-white px-[22px] py-4 flex flex-wrap items-center gap-3.5 shadow-[0_18px_40px_-18px_rgba(1,35,88,.5)]">
-          <div className="flex-1 min-w-[220px] flex flex-col gap-[3px]">
-            <span className="text-[14px] font-bold text-tn-ink">{v.goals.length} goal{v.goals.length === 1 ? '' : 's'}{writing ? ` · ${writing} comment${writing === 1 ? '' : 's'} being written` : ''}</span>
-            <span className="text-[12.5px] text-[#8593a4]">{first} gets your comments by email and in Needs you when you finish.</span>
-          </div>
-          <button type="button" disabled={busy} className={`${BTN.navy} disabled:opacity-50`} onClick={finish}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Finish the check-in</button>
-        </div>
-      )}
-      {book && booking && drawerApi && (
-        <EventDrawer setup={booking.setup} preset={booking.preset} note={booking.note} free={booking.free} today={today} api={drawerApi} onClose={() => setBook(false)}
-          onDone={async (t, id) => { setBook(false); if (id) await run(() => api.linkCheckin({ personId: v.personId, eventId: String(id) })); else say({ text: t }) }} />
-      )}
-      <Toast toast={toast} />
-    </div>
-  )
-}

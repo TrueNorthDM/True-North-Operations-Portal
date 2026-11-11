@@ -30,7 +30,7 @@ export async function PersonReviews({ access, personId }: { access: Access; pers
   return (
     <div className="flex flex-col gap-[18px]" style={APR_COLORS}>
       <ReviewHistory rows={rows} intro={who} />
-      {goals && <PersonGoals v={goals} href={own ? '/human-resources?tab=goals' : manager === access.personId ? `/human-resources/team-goals/${personId}` : null} />}
+      {goals && <PersonGoals v={goals} href={own ? '/human-resources?tab=goals' : manager === access.personId ? `/human-resources/reviews/${goals.reviewId}?tab=checkin` : null} />}
       <HistoryNote text={own ? 'Your reviews stay here for as long as you work at True North.' : 'A new manager sees every past review of the people who report to them now. A former manager stops seeing them.'} />
     </div>
   )

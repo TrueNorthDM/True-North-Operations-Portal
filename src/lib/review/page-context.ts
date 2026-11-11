@@ -1,8 +1,8 @@
 /**
  * What every review page needs first: the access item, the review settings,
  * the Directory as it is now, and the viewer's place in the review (lib/review/
- * data.ts). A started year is brought up to date on the way (a team opening
- * on "Teams open by"), so nobody waits for the daily job.
+ * data.ts). A started year is brought up to date on the way (a new person's
+ * review, a second reviewer's part), so nobody waits for the daily job.
  */
 
 import type { Access } from '@/lib/access/resolve'
