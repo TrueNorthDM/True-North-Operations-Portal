@@ -27,6 +27,7 @@ import { seesReportMoney, withoutLineCosts } from '@/lib/tsheets/report-money'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
+import { loadBudgetUnit } from '@/lib/tsheets/budget-view'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
 import { ReportMeta } from '@/components/tsheets/ReportMeta'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
@@ -203,6 +204,8 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   }
 
   const [access, money] = await Promise.all([loadAccess(), seesReportMoney()])
+  // Hours or dollars, as this person last chose (owner, 11 November 2026).
+  const budgetUnit = await loadBudgetUnit(access.personId)
 
   // Whoever opens the report sees all of it, budget included (owner's
   // decision, 7 October 2026): the i7 tool's level and team list decide who
@@ -251,6 +254,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         projectHours={data?.projectHours ?? {}}
         // The carryover panel is In Numbers' alone.
         carryover={views.includes('numbers') ? data?.carryover ?? null : null}
+        budgetUnit={budgetUnit}
         stdRate={money ? data?.stdRate ?? 0 : 0}
         lineMoney={money}
         views={views}

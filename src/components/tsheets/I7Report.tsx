@@ -33,6 +33,8 @@ interface Props {
   preview?: boolean
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
+  /** Hours or dollars for the budget card, as this person last chose (owner, 11 November 2026). */
+  budgetUnit?: 'hours' | 'dollars'
   stdRate?: number                        // standard i7 rate for the month ($/h)
   /** Costs by line (Budget used, Budget avail.): Super Admins and Finance only (report-money.ts). */
   lineMoney?: boolean
@@ -59,7 +61,7 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, lineMoney = true, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'], initialView }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, budgetUnit = 'hours', stdRate = 0, lineMoney = true, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'], initialView }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics' | undefined>(initialView && views.includes(initialView) ? initialView : views[0])
@@ -236,7 +238,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         ) : (
         <>
         {/* Carryover: bank-account running balance */}
-        {carryover && <CarryoverPanel c={carryover} month={periodLabel} multi={!oneMonth} />}
+        {carryover && <CarryoverPanel c={carryover} month={oneMonth ? range.to : periodLabel} multi={!oneMonth} unit={budgetUnit} />}
 
         {/*
           The month note card was here too. It is still printed on the client PDF

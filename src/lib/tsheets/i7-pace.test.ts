@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetPace, todayET, workingDays } from './i7-view'
+import { budgetFigures, budgetPace, hoursText, todayET, workingDays } from './i7-view'
 
 // The i7 budget against its pace (owner, 11 November 2026): working days, the month's money available, 10% either way.
 const C = { monthUsed: 17263.75, totalAvailable: 84224.29 }
@@ -37,5 +37,22 @@ describe('the i7 budget pace', () => {
   })
   it('takes today in Washington DC', () => {
     expect(todayET(new Date('2026-11-12T03:00:00Z'))).toBe('2026-11-11')
+  })
+})
+
+describe('the i7 budget in hours (owner, 11 November 2026)', () => {
+  const c = { opening: 29224.29, monthBudget: 55000, monthUsed: 17263.75, totalAvailable: 84224.29, totalLeft: 66960.54, openingFrom: '2026-01', openingComplete: true, monthHours: 181.75, rate: 95 }
+  it('reads the money available at the i7 rate against the hours worked', () => {
+    const f = budgetFigures(c, '2026-11', 'hours', '2026-11-11')
+    expect(f.unit).toBe('hours')
+    expect(hoursText(f.total)).toBe('886.6h')
+    expect(hoursText(f.left)).toBe('704.8h')
+    expect(hoursText(f.pace.expected)).toBe('373.3h')
+    expect(f.pace.status).toBe('behind')
+  })
+  it('falls back to dollars when the month has no i7 rate or no hours', () => {
+    expect(budgetFigures({ ...c, rate: 0 }, '2026-11', 'hours', '2026-11-11').unit).toBe('dollars')
+    expect(budgetFigures({ ...c, monthHours: undefined }, '2026-11', 'hours', '2026-11-11').unit).toBe('dollars')
+    expect(budgetFigures(c, '2026-11', 'dollars', '2026-11-11')).toMatchObject({ unit: 'dollars', total: 84224.29, left: 66960.54 })
   })
 })

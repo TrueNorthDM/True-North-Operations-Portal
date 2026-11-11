@@ -100,6 +100,36 @@ export function budgetPace(c: Pick<I7Carryover, 'monthUsed' | 'totalAvailable'>,
   return { ...base, status: r < 1 - PACE_BAND ? 'behind' : r > 1 + PACE_BAND ? 'ahead' : 'onpace' }
 }
 
+export type BudgetUnit = 'hours' | 'dollars'
+
+export interface BudgetFigures {
+  /** What the figures are in: hours only when the month has an i7 rate and hours worked to read. */
+  unit: BudgetUnit
+  /** Available this month (money, or money at the i7 rate in hours), used, and left. */
+  total: number
+  used: number
+  left: number
+  pace: BudgetPace
+}
+
+/**
+ * The month's budget in the unit asked for (owner, 11 November 2026): the team
+ * works hours, so it reads them by default. Hours are the money available at the
+ * month's standard i7 rate, against the hours worked on i7; the pace is the same
+ * working-day pace, measured in that unit.
+ */
+export function budgetFigures(c: I7Carryover, month: string, unit: BudgetUnit, today: string = todayET()): BudgetFigures {
+  const rate = c.rate ?? 0
+  if (unit === 'hours' && rate > 0 && c.monthHours != null) {
+    const total = c.totalAvailable / rate, used = c.monthHours
+    return { unit, total, used, left: total - used, pace: budgetPace({ monthUsed: used, totalAvailable: total }, month, today) }
+  }
+  return { unit: 'dollars', total: c.totalAvailable, used: c.monthUsed, left: c.totalLeft, pace: budgetPace(c, month, today) }
+}
+
+/** Hours as the report writes them: one decimal and an h. */
+export const hoursText = (h: number): string => `${(Math.round(h * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h`
+
 /** Share of the money available this month that was used, 0 to 1 and beyond. */
 export function usedShare(c: I7Carryover | null | undefined): number {
   return c && c.totalAvailable > 0 ? c.monthUsed / c.totalAvailable : 0

@@ -19,6 +19,7 @@
 import { Suspense } from 'react'
 import { DayBanner } from '@/components/home/DayBanner'
 import { HomeLayout } from '@/components/home/HomeLayout'
+import { loadBudgetUnit } from '@/lib/tsheets/budget-view'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
 import { PublishingGoalsWidget } from '@/components/home/PublishingGoalsWidget'
 import { HomeAgendaCard } from '@/components/home/HomeAgendaCard'
@@ -86,7 +87,7 @@ export default async function HomePage() {
           {cardP && <div className="hidden lg:contents"><Suspense fallback={null}><Review data={cardP} /></Suspense></div>}
           {shows('agenda') && <Suspense fallback={<Skeleton h={560} label="Agenda" />}><Agenda access={access} /></Suspense>}
           {me && shows('goals') && <Suspense fallback={null}><Goals personId={me.id} /></Suspense>}
-          {shows('i7') && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 /></Suspense>}
+          {shows('i7') && <Suspense fallback={<Skeleton h={190} label="i7 Budget" />}><I7 personId={access.personId} /></Suspense>}
         </>
       }
       publishing={shows('publishing') ? <Suspense fallback={<Skeleton h={705} label="Publishing goals" />}><Publishing linked={access.canTool('publishing')} /></Suspense> : null}
@@ -149,12 +150,14 @@ async function Agenda({ access }: { access: Access }) {
   return agenda ? <HomeAgendaCard agenda={agenda} /> : null
 }
 
-async function I7() {
+async function I7({ personId }: { personId: string | null }) {
   const month = currentYearMonth()
+  // Hours or dollars, as this person chose on the i7 report (owner, 11 November 2026).
+  const unit = await loadBudgetUnit(personId)
   // loadI7Carryover, not the whole report: the card shows the balance and nothing else.
   // A read that fails shows as unavailable, never as a figure (audit, 9 October 2026).
   const carryover = await loadI7Carryover(month).catch(e => { console.error('[home] i7 budget:', (e as Error).message); return 'unavailable' as const })
-  return <I7BudgetWidget month={month} carryover={carryover} />
+  return <I7BudgetWidget month={month} carryover={carryover} unit={unit} />
 }
 
 async function Publishing({ linked }: { linked: boolean }) {

@@ -92,3 +92,23 @@ export async function saveHiddenColumns(table: TableId, hidden: string[]): Promi
     return { ok: false, error: NOT_SAVED }
   }
 }
+
+/**
+ * How this person reads the i7 budget, hours or dollars (owner, 11 November
+ * 2026): chosen on the i7 report, followed by Home's i7 widget.
+ */
+export async function saveI7BudgetView(unit: 'hours' | 'dollars'): Promise<Result> {
+  if (unit !== 'hours' && unit !== 'dollars') return { ok: false, error: 'That choice could not be read. Reload the page and try again.' }
+  const signed = await signedInPerson('change how you read the budget')
+  if ('error' in signed) return { ok: false, error: signed.error }
+  const { error } = await createAdminClient().from('person_settings').upsert(
+    { person_id: signed.personId, i7_budget_view: unit, updated_at: new Date().toISOString() },
+    { onConflict: 'person_id' },
+  )
+  if (error) {
+    console.error('[settings] i7 budget view:', error.message)
+    return { ok: false, error: NOT_SAVED }
+  }
+  revalidatePath('/')
+  return { ok: true }
+}

@@ -105,6 +105,9 @@ export interface I7Carryover {
    * instead of presenting an incomplete figure as a complete one.
    */
   openingComplete: boolean
+  /** Hours worked on i7 in the period, and the standard i7 rate ($/h) of its last month: the budget read in hours (owner, 11 November 2026). */
+  monthHours?: number
+  rate?: number
 }
 
 // Generic paginated response wrapper

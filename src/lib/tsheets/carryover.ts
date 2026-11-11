@@ -15,7 +15,7 @@
  */
 
 import { buildI7Report } from './i7report'
-import { rateFor, type Assignment } from './rates'
+import { rateFor, standardI7Rate, type Assignment } from './rates'
 import { monthBounds, monthsBetween } from './report'
 import { DATA_START, retentionFloor } from './retention'
 import type { I7Carryover, I7Entry } from './types'
@@ -78,7 +78,8 @@ export function computeI7Carryover({ entries, assignments, monthlyBudgets, from,
   const rateAt = (personId: string, ym: string) => rateFor(assignments, personId, ym)
   const inRange = (ym: string) => ym >= from && ym <= to
   const { startDate } = monthBounds(from)
-  const monthUsed = buildI7Report(entries.filter(e => inRange(e.date.slice(0, 7))), rateAt, {}, startDate).totalCost
+  const period = buildI7Report(entries.filter(e => inRange(e.date.slice(0, 7))), rateAt, {}, startDate)
+  const monthUsed = period.totalCost
 
   const byMonth = bucketByMonth(entries)
   const before = accumulateMonths(byMonth, assignments, monthlyBudgets, monthsBetween(DATA_START, from))
@@ -105,5 +106,7 @@ export function computeI7Carryover({ entries, assignments, monthlyBudgets, from,
     totalLeft: round2(totalAvailable - monthUsed),
     openingFrom: DATA_START,
     openingComplete,
+    monthHours: period.totalHours,
+    rate: standardI7Rate(assignments, to),
   }
 }

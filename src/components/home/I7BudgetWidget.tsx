@@ -13,8 +13,8 @@
 import Link from 'next/link'
 import { BUDGET_GRADIENT, PACE_PILL } from '@/components/tsheets/budget-style'
 import { MONTH_LONG } from '@/lib/format/months'
-import { money, moneySigned } from '@/lib/tsheets/format'
-import { budgetPace } from '@/lib/tsheets/i7-view'
+import { moneySigned } from '@/lib/tsheets/format'
+import { budgetFigures, hoursText, type BudgetUnit } from '@/lib/tsheets/i7-view'
 import type { I7Carryover } from '@/lib/tsheets/types'
 import { ROUTES } from '@/lib/nav/routes'
 import { FIELD_LABEL, CARD } from '@/lib/ui/type'
@@ -22,7 +22,7 @@ import { FIELD_LABEL, CARD } from '@/lib/ui/type'
 const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 const LABEL = FIELD_LABEL
 
-export function I7BudgetWidget({ month, carryover }: { month: string; carryover: I7Carryover | 'unavailable' }) {
+export function I7BudgetWidget({ month, carryover, unit = 'hours' }: { month: string; carryover: I7Carryover | 'unavailable'; unit?: BudgetUnit }) {
   return (
     <Link
       href={ROUTES.i7}
@@ -36,51 +36,51 @@ export function I7BudgetWidget({ month, carryover }: { month: string; carryover:
       <div className="px-[18px] pt-4 pb-[18px] flex flex-col gap-3">
         {carryover === 'unavailable'
           ? <p role="status" className="m-0 text-[13.5px] text-muted">The i7 budget could not be read just now. Open the i7 report to try again.</p>
-          : <Figures c={carryover} month={month} />}
+          : <Figures c={carryover} month={month} unit={unit} />}
       </div>
     </Link>
   )
 }
 
-function Figures({ c, month }: { c: I7Carryover; month: string }) {
-  // Read against the month's pace by working days, as the report reads it (owner, 11 November 2026).
-  const pace = budgetPace(c, month)
-  const pill = PACE_PILL[pace.status]
-  const has = c.totalAvailable > 0
-  const share = has ? c.monthUsed / c.totalAvailable : 0
+function Figures({ c, month, unit }: { c: I7Carryover; month: string; unit: BudgetUnit }) {
+  // In hours or dollars as this person chose on the i7 report, against the month's pace (owner, 11 November 2026).
+  const f = budgetFigures(c, month, unit)
+  const hours = f.unit === 'hours'
+  const fmt = (n: number) => (hours ? hoursText(n) : moneySigned(n))
+  const pill = PACE_PILL[f.pace.status]
+  const has = f.total > 0
+  const share = has ? f.used / f.total : 0
   return (
     <>
       <div className="flex items-start justify-between gap-2.5">
         <div>
-          <div className={LABEL}>Balance left</div>
-          <div className={`text-[26px] leading-[1.2] font-(family-name:--font-display) font-extrabold tabular-nums ${c.totalLeft < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{moneySigned(c.totalLeft)}</div>
+          <div className={LABEL}>{hours ? 'Hours left' : 'Balance left'}</div>
+          <div className={`text-[26px] leading-[1.2] font-(family-name:--font-display) font-extrabold tabular-nums ${f.left < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{fmt(f.left)}</div>
         </div>
         <span className={`gap-1.5 ${pill.cls}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
         </span>
       </div>
-      {/* The report's gradient, a grey mask past the share used. */}
-      <div className="relative mt-4">
+      <div className="flex flex-col gap-1.5">
+        <div className={LABEL}>{hours ? 'Worked vs estimated' : 'Budget used'}</div>
+        {/* The report's gradient, a grey mask past the share used. */}
         <div className="relative h-2 rounded-full overflow-hidden" style={has ? { backgroundImage: BUDGET_GRADIENT } : { backgroundColor: '#eef0f3' }}>
           {has && <div className="absolute inset-y-0 right-0 bg-[#eef0f3]" style={{ left: `${Math.min(100, Math.max(0, share * 100))}%` }} />}
         </div>
-        {/* Where it should be by today. */}
-        {has && pace.gone > 0 && pace.share < 1 && (
-          <div className="absolute -top-1 -bottom-1 w-0.5 bg-tn-primary rounded-full" style={{ left: `${pace.share * 100}%` }} aria-hidden="true">
-            <span className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 rounded-[5px] bg-tn-primary px-1.5 py-px text-[10px] font-bold text-[#ffffff] whitespace-nowrap">Pace</span>
+        <div className="flex justify-between gap-2 text-[12px] tabular-nums">
+          {has
+            ? <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{fmt(f.used)} of {fmt(f.total)} · {Math.round(share * 100)}%</span>
+            : <span className="text-muted">No budget set</span>}
+        </div>
+      </div>
+      {has && f.pace.days > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className={LABEL}>Month progress</div>
+          <div className="relative h-2 rounded-full overflow-hidden bg-[#eef0f3]">
+            <div className="absolute inset-y-0 left-0 rounded-full bg-tn-primary" style={{ width: `${Math.round(f.pace.share * 1000) / 10}%` }} />
           </div>
-        )}
-      </div>
-      <div className="flex justify-between gap-2 text-[12px] tabular-nums">
-        {has ? (
-          <>
-            <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{Math.round(share * 100)}% used · {money(c.monthUsed)}</span>
-            <span className="text-muted">{pace.share < 1 ? `pace ${Math.round(pace.share * 100)}%` : `of ${moneySigned(c.totalAvailable)}`}</span>
-          </>
-        ) : <span className="text-muted">No budget set</span>}
-      </div>
-      {has && pace.share < 1 && (pace.status === 'behind' || pace.status === 'ahead') && (
-        <div className="-mt-1.5 text-[12px] font-semibold text-[#8a6d1a] tabular-nums">{money(Math.abs(pace.diff))} {pace.status === 'behind' ? 'behind' : 'ahead of'} pace</div>
+          <span className="text-[12px] font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{f.pace.gone} of {f.pace.days} working days · {Math.round(f.pace.share * 100)}%</span>
+        </div>
       )}
     </>
   )
