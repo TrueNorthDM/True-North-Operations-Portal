@@ -46,7 +46,7 @@ const STEP_PILL: Record<ListRow['step'], [string, PillToneName]> = {
 type Filter = 'all' | 'self' | 'review' | 'meeting' | 'approved'
 type Res = { ok: true; toast?: string } | { ok: false; error: string }
 
-export function ReviewList({ year, years, intro, rows, imports, canPriorities, kickoff, progress, dates, approvals, openStart = false, api, tabs }: {
+export function ReviewList({ year, years, intro, rows, imports, canPriorities, kickoff, progress, dates, approvals, openStart = false, checkin = null, openCheckin = false, api, tabs }: {
   /** Human Resources' tabs: the list is its Reviews tab. */
   tabs?: React.ReactNode
   year: number; years: number[]; intro: string; rows: ListRow[]; imports: ImportListRow[] | null
@@ -58,6 +58,9 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, k
   dates: DateRow[] | null
   /** The reviews waiting for the viewer's approval: "Approve all". */
   approvals: { ids: number[]; names: string[] } | null
+  /** The 6-month check-in: its progress once started, and the VP's Start button when it is time (owner, 10 November 2026). */
+  checkin?: { progress: Progress | null; canStart: boolean; due: string | null; cycleId: number } | null
+  openCheckin?: boolean
   /** Opened from Needs you's "Start Reviews". */
   openStart?: boolean
   api?: {
@@ -66,6 +69,7 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, k
     saveReviewDates(i: { year: number; dates: Partial<Record<DateKey, string | null>> }): Promise<Res>
     approveAll(i: { reviewIds: number[] }): Promise<Res>
     remindNow(i: { reviewId: number; part?: 0 | 1 | null }): Promise<Res>
+    startCheckin?(i: { cycleId: number }): Promise<Res>
   }
 }) {
   const router = useRouter()
@@ -76,6 +80,7 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, k
   const [who, setWho] = useState<ProgressRow | null>(null)
   const [approveOpen, setApproveOpen] = useState(false)
   const [datesOpen, setDatesOpen] = useState(false)
+  const [askCheckin, setAskCheckin] = useState(openCheckin && !!checkin?.canStart)
   const n = (f: (r: ListRow) => boolean) => rows.filter(f).length
   const selfRows = rows.filter(r => r.step === 'self' || r.step === 'waiting')
   const tiles: { key: Filter; label: string; value: number; sub: string; red?: boolean }[] = [
@@ -180,6 +185,32 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, k
         </Modal>
       )}
 
+      {checkin?.canStart && (
+        <div className={`${CARD} px-[22px] py-4 flex flex-wrap items-center gap-3`}>
+          <div className="flex-1 min-w-[240px] flex flex-col gap-0.5">
+            <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Time for the 6-month check-in</span>
+            <span className="text-[13px] text-muted">Six months since the {year} reviews started{checkin.due ? ` (${fmtDay(checkin.due)})` : ''}. Starting it asks you and the CISO to go through the priorities; then everyone is told.</span>
+          </div>
+          <button type="button" disabled={busy} className={`${BTN.navy} disabled:opacity-50`} onClick={() => setAskCheckin(true)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PLAY} /></svg>Start check-in</button>
+        </div>
+      )}
+      {askCheckin && checkin && (
+        <Modal label="Start the 6-month check-in" width={520} gap={12} onClose={() => setAskCheckin(false)}>
+          <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Start the 6-month check-in?</h2>
+          <ol className="m-0 pl-5 flex flex-col gap-1.5 text-[13.5px] leading-[1.55] text-[#435066]">
+            <li>You and the CISO go through the Company Priorities: no change, changed or added, within a week.</li>
+            <li>&ldquo;Tell everyone&rdquo;: each person and each reviewer get the check-in on Needs you and by email.</li>
+            <li>Each reviewer books the meeting, within the next week.</li>
+            <li>Together they tick the goals done, adjust or add goals and leave notes; the reviewer finishes it, within three weeks.</li>
+          </ol>
+          <div className="flex justify-end gap-2.5 pt-1">
+            <button type="button" className={BTN.white} onClick={() => setAskCheckin(false)}>Cancel</button>
+            <button type="button" disabled={busy} className={`${BTN.navy} disabled:opacity-50`} onClick={() => { setAskCheckin(false); void go(() => api!.startCheckin!({ cycleId: checkin.cycleId })) }}>Start the check-in</button>
+          </div>
+        </Modal>
+      )}
+      {checkin?.progress && <ProgressBlock year={year} p={checkin.progress} title={`${year} reviews: 6-month check-in`} canDates={false} busy={busy} onWho={setWho} onMoveUp={() => {}} onDates={() => {}} />}
+
       {progress && <ProgressBlock year={year} p={progress} canDates={!!dates} busy={busy} onWho={setWho} onMoveUp={key => void go(() => api!.moveDatesUp({ year, key }))} onDates={() => setDatesOpen(true)} />}
       {who && <WhoWindow row={who} canRemind={!!api} busy={busy} onClose={() => setWho(null)} onRemind={(id, part) => void go(() => api!.remindNow({ reviewId: id, part }))} />}
       {datesOpen && dates && <DatesWindow dates={dates} busy={busy} onClose={() => setDatesOpen(false)} onSave={patch => { setDatesOpen(false); void go(() => api!.saveReviewDates({ year, dates: patch })) }} />}
@@ -250,13 +281,13 @@ export function ReviewList({ year, years, intro, rows, imports, canPriorities, k
 const STATE_PILL: Record<ProgressRow['state'], [string, PillToneName]> = { done: ['Done', 'green'], now: ['In progress', 'amber'], late: ['Late', 'red'], later: ['Later', 'gray'] }
 
 /** The year's steps on top of Reviews (owner, 10 November 2026). */
-function ProgressBlock({ year, p, canDates, busy, onWho, onMoveUp, onDates }: { year: number; p: Progress; canDates: boolean; busy: boolean; onWho: (r: ProgressRow) => void; onMoveUp: (k: DateKey) => void; onDates: () => void }) {
+function ProgressBlock({ year, p, title, canDates, busy, onWho, onMoveUp, onDates }: { year: number; p: Progress; title?: string; canDates: boolean; busy: boolean; onWho: (r: ProgressRow) => void; onMoveUp: (k: DateKey) => void; onDates: () => void }) {
   return (
     <div className={`${CARD} overflow-hidden`}>
       <div className="px-[22px] py-4 flex flex-wrap items-center gap-4 border-b border-[var(--row-rule)]">
         <div className="flex-1 min-w-[240px] flex flex-col gap-0.5">
-          <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">{year} reviews</h2>
-          <span className="text-[12.5px] text-muted">Week {p.week} of {p.weeks}{p.lateCount ? ` · ${p.lateCount} ${p.lateCount === 1 ? 'person' : 'people'} late` : ' · on time'}</span>
+          <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">{title ?? `${year} reviews`}</h2>
+          <span className="text-[12.5px] text-muted">{p.weeks ? `Week ${p.week} of ${p.weeks}` : 'Four steps'}{p.lateCount ? ` · ${p.lateCount} ${p.lateCount === 1 ? 'person' : 'people'} late` : ' · on time'}</span>
         </div>
         <div className="min-w-[220px] flex flex-col gap-1.5">
           <span className="flex items-baseline gap-2"><b className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink tabular-nums">{p.pct}%</b><span className="text-[13px] text-muted">of the steps done</span></span>

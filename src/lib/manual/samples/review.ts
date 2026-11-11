@@ -99,7 +99,7 @@ function view(step: ReviewView['step'], role: ReviewView['role']): ReviewView {
       dates: { reviewSent: dates.reviewSent, agreed: dates.agreed, approved: dates.approved, approvedBy: dates.approvedBy },
       meeting, sentBack: null,
     }],
-    myPart: role === 'reviewer' ? 0 : null, goalsOpen: true, approvedSeen: true,
+    myPart: role === 'reviewer' ? 0 : null, goalsOpen: true, approvedSeen: true, checkin: null,
     person: { id: 'p-alex', name: 'Alex Rivera', title: 'Writer', teamName: 'Writers', hireDate: '2024-11-18', avatarUrl: null, teamLeaderName: 'Jordan Lee' },
     reviewer: { id: 'p-jordan', name: 'Jordan Lee' },
     role, waitsFor: null,

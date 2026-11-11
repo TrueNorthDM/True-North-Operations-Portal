@@ -15,6 +15,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { CARD, FIELD_LABEL, PAGE_TITLE } from '@/lib/ui/type'
 import { INPUT, TEXTAREA } from '@/lib/ui/fields'
 import { Pill } from '@/components/ui/Pill'
+import { Segmented } from '@/components/ui/Segmented'
 import { Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { fmtTime, fmtInstantDay, initials } from '@/lib/review/format'
 import { useAutosave } from './parts'
@@ -25,13 +26,19 @@ export interface TeamRow { teamId: string; name: string; leader: string; written
 /** One writer's block: the CISO's Company Priorities or the VP of Operations'. */
 export interface Block { kind: 'company' | 'vp'; title: string; writer: string; canEdit: boolean; ready: string | null; due: string | null; rows: PriorityRow[] }
 
-export function PrioritiesPage({ cycleId, year, intro, notice, blocks, teams, noLeader, log, api }: {
+/** Mid-year (the 6-month check-in): each company priority kept, changed or added. */
+export interface MidYear { started: string; told: string | null; due: string | null; canEdit: boolean; canTell: boolean; rows: { id: number; title: string; kind: 'company' | 'vp'; status: 'same' | 'changed' | 'added' | null; note: string }[] }
+
+export function PrioritiesPage({ cycleId, year, intro, notice, blocks, teams, noLeader, log, api, mid = null }: {
   cycleId: number; year: number; intro: string; notice: string | null
   blocks: Block[]; teams: TeamRow[]; noLeader: string[]; log: { who: string; text: string; at: string }[]
+  mid?: MidYear | null
   api: {
     savePriority(i: { cycleId: number; id?: number | null; teamId?: string | null; kind?: 'company' | 'vp'; title?: string; body?: string }): Promise<Res>
     removePriority(i: { id: number }): Promise<Res>
     markPrioritiesReady(i: { cycleId: number; kind: 'company' | 'vp' }): Promise<Res>
+    setPriorityMid?(i: { id: number; status?: 'same' | 'changed' | 'added' | null; note?: string }): Promise<Res>
+    tellCheckin?(i: { cycleId: number }): Promise<Res>
   }
 }) {
   const router = useRouter()
@@ -61,6 +68,27 @@ export function PrioritiesPage({ cycleId, year, intro, notice, blocks, teams, no
       <div className="flex gap-5 items-start flex-wrap min-[1100px]:flex-nowrap">
         <div className="flex-1 min-w-0 flex flex-col gap-3.5 w-full">
           {notice && <div className="flex items-center gap-3 rounded-[12px] bg-[#eaf4f4] px-4 py-3 text-[13.5px] text-[#12585a]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="flex-none" aria-hidden="true"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>{notice}</div>}
+
+          {mid && (
+            <section id="mid" className="flex flex-col gap-2.5 pt-1.5 scroll-mt-[120px]">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className={H2}>The priorities at mid-year</h2>
+                {mid.told ? <Pill tone="green" text="Everyone told" /> : <Pill tone="amber" text={mid.due ? `Due ${mid.due}` : 'To check'} />}
+                <span className="text-[12.5px] text-muted">The 6-month check-in started {mid.started}. Go through each one with the CISO: no change, changed (say what and why) or added. What you record here shows at the top of every check-in.</span>
+              </div>
+              <div className="rounded-[14px] border border-[#e4e7ec] overflow-hidden flex flex-col gap-px bg-[#f1f3f6]">
+                {mid.rows.map(r => <MidRow key={r.id} r={r} canEdit={mid.canEdit && !mid.told} api={api} onSaved={setSaved} onError={e => say(e, true)} />)}
+                {!mid.rows.length && <p className="m-0 bg-white px-[18px] py-3.5 text-[13px] text-muted">No company priorities.</p>}
+              </div>
+              {mid.canEdit && !mid.told && (
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button type="button" disabled={busy} className={BTN.smallWhite} onClick={() => run(() => api.savePriority({ cycleId, teamId: null, kind: 'company', title: '', body: '' }))}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Add a priority</button>
+                  <span className="flex-1" />
+                  {mid.canTell && api.tellCheckin && <button type="button" disabled={busy || mid.rows.some(r => !r.status)} className={`${BTN.navy} disabled:opacity-50`} onClick={() => run(() => api.tellCheckin!({ cycleId }))}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Priorities checked, tell everyone</button>}
+                </div>
+              )}
+            </section>
+          )}
 
           {blocks.map(b => (
             <section key={b.kind} className="flex flex-col gap-2.5 pt-1.5">
@@ -134,6 +162,30 @@ function EditRow({ n, p, scope, cycleId, api, onSaved, onError, onRemove }: {
       <button type="button" aria-label="Remove this priority" title="Remove" className={BTN.icon} onClick={onRemove}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
       </button>
+    </div>
+  )
+}
+
+function MidRow({ r, canEdit, api, onSaved, onError }: { r: MidYear['rows'][number]; canEdit: boolean; api: { setPriorityMid?(i: { id: number; status?: 'same' | 'changed' | 'added' | null; note?: string }): Promise<Res> }; onSaved: (a: string) => void; onError: (e: string) => void }) {
+  const note = useAutosave(r.note, x => api.setPriorityMid!({ id: r.id, note: x }), onSaved, onError)
+  const [status, setStatus] = useState(r.status)
+  const set = async (st: 'same' | 'changed' | 'added') => {
+    setStatus(st)
+    const x = await api.setPriorityMid!({ id: r.id, status: st })
+    if (x.ok) onSaved(x.savedAt ?? ''); else onError(x.error)
+  }
+  const MID = { same: ['No change', 'green'], changed: ['Changed', 'blue'], added: ['Added', 'blue'] } as const
+  return (
+    <div className="bg-white grid gap-3 items-start px-[18px] py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="flex flex-col gap-1.5 min-w-0">
+        <span className="text-[14px] font-extrabold text-tn-ink">{r.title || 'Untitled'}{r.kind === 'vp' && <span className="ml-2 text-[12px] font-normal text-muted">VP of Operations</span>}</span>
+        {canEdit && status !== 'same' && status !== null
+          ? <textarea value={note.value} onChange={e => note.change(e.target.value)} onBlur={note.blur} rows={2} maxLength={2000} placeholder={status === 'changed' ? 'What changed, and why' : 'Why it was added'} className={`${TEXTAREA} w-full`} />
+          : r.note && <span className="text-[13px] text-[#435066]">{r.note}</span>}
+      </div>
+      {canEdit
+        ? <Segmented label="Mid-year" value={status} options={[{ key: 'same', label: 'No change' }, { key: 'changed', label: 'Changed' }, { key: 'added', label: 'Added' }]} onChange={k => void set(k)} />
+        : status ? <Pill tone={MID[status][1]} text={MID[status][0]} /> : <Pill tone="gray" text="Not checked" />}
     </div>
   )
 }

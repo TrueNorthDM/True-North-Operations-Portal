@@ -4,8 +4,8 @@
  * (the VP of Operations, the CISO, HR and Super Admins).
  */
 
-import { computeProgress, type Progress } from './progress'
-import { loadParts, loadPriorities, loadReviews, nameIn, reviewToday, rosterParticipants, type Cycle, type HrSettings, type Roster } from './data'
+import { computeCheckinProgress, computeProgress, type Progress } from './progress'
+import { loadAllCheckins, loadParts, loadPriorities, loadReviews, nameIn, reviewToday, rosterParticipants, type Cycle, type HrSettings, type Roster } from './data'
 import { partsOf } from './parts'
 import { fmtDay } from './format'
 
@@ -32,6 +32,23 @@ export async function loadProgress(cycle: Cycle, roster: Roster, settings: HrSet
       company: priorities.filter(p => !p.team_id && (p.kind ?? 'company') === 'company' && p.title.trim()).length,
       vp: priorities.filter(p => !p.team_id && p.kind === 'vp' && p.title.trim()).length,
     },
+    fmt: d => fmtDay(d).replace(/^\w+, /, ''),
+  })
+}
+
+/** The 6-month check-in's four steps, for the progress block. */
+export async function loadCheckinProgress(cycle: Cycle, roster: Roster, now = new Date()): Promise<Progress> {
+  const [reviews, priorities, checkins] = await Promise.all([loadReviews(cycle.id), loadPriorities(cycle.id), loadAllCheckins(cycle.id)])
+  const approved = reviews.filter(r => r.step === 'approved')
+  const extra = await loadParts(approved.map(r => r.id))
+  const company = priorities.filter(p => !p.team_id)
+  return computeCheckinProgress({
+    today: reviewToday(now), cycle,
+    priorities: { total: company.length, checked: company.filter(p => p.mid_status).length },
+    items: approved.flatMap(r => partsOf(r, extra, r.team_id ? roster.teams.get(r.team_id)?.name ?? '' : '').map(p => {
+      const ck = checkins.find(x => x.person_id === r.person_id && x.part === p.no)
+      return { reviewId: r.id, personId: r.person_id, name: nameIn(roster, r.person_id), reviewer: nameIn(roster, p.reviewerId), area: p.area, part: p.no, booked: ck?.starts_at ?? null, finished: ck?.finished_at ?? null }
+    })),
     fmt: d => fmtDay(d).replace(/^\w+, /, ''),
   })
 }

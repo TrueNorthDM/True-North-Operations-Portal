@@ -26,7 +26,7 @@ import {
 } from '@/lib/review/data'
 import { ownKeys, managerKeys, templateFor, JOB_KEYS } from '@/lib/review/template'
 import { isLeadPositionName, type GoalResult, type GoalStatus } from '@/lib/review/rules'
-import { everyPartApproved, partBack, partsOf, type PartNo, type PartRow, type PartStep } from '@/lib/review/parts'
+import { everyPartApproved, partBack, partsOf, type PartNo, type PartStep } from '@/lib/review/parts'
 import { checkinPlanFrom, goalsOpen, moveUp, orderProblems, planFrom, sixMonthsAfter, type DateKey } from '@/lib/review/schedule'
 import { fmtDay } from '@/lib/review/format'
 import { firstName, noticeOnce } from '@/lib/review/notify'
@@ -930,41 +930,175 @@ export async function commentGoal(input: { goalId: number; body: string; checkin
   return { ok: true, toast: 'Comment saved.' }
 }
 
-/** Links the check-in booked in the Agenda's drawer. */
-export async function linkCheckin(input: { personId: string; eventId: string }): Promise<Done> {
+// ── The 6-month check-in (owner, 10 November 2026) ──────────────────────────
+
+/** "Start the 6-month check-in" (the VP of Operations, a Super Admin as back-up), six months after the kickoff. */
+export async function startCheckin(input: { cycleId: number }): Promise<Done> {
+  const x = await onCycle(input?.cycleId)
+  if ('error' in x) return no(x.error!)
+  if (!x.a.viewer.isVp && !x.a.access.isSuperAdmin) return no('Only the VP of Operations starts the check-in.')
+  if (!x.c.started_at) return no('The reviews have not started.')
+  if (x.c.checkin_started_at) return no('The check-in has already started.')
+  const today = reviewToday()
+  const u = await rdb().from('review_cycles').update({ checkin_started_at: stamp(), checkin_started_by: x.a.me, ...checkinPlanFrom(today), updated_at: stamp() }).eq('id', x.c.id).is('checkin_started_at', null).select('id')
+  if (u.error || !u.data?.length) return no('The check-in has already started.')
+  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'checkin_started', text: `${nameIn(x.a.roster, x.a.me)} started the 6-month check-in.` })
+  refresh()
+  return { ok: true, toast: 'The check-in started. Go through the priorities with the CISO, then tell everyone.' }
+}
+
+/** Mid-year, each company priority is kept, changed (what and why) or added: the VP of Operations and the CISO. */
+export async function setPriorityMid(input: { id: number; status?: 'same' | 'changed' | 'added' | null; note?: string }): Promise<Done> {
   const a = await actor()
   if (!a) return no('Sign in again to do this.')
-  if (!a.viewer.reports.has(String(input?.personId))) return no('Only the person they report to books the check-in.')
-  const run = await runningCycleOf(String(input.personId))
-  if (!run) return no('There are no agreed goals to check in on.')
-  const ev = await ownEventWith(a.me, String(input.personId), input?.eventId)
+  if (!a.viewer.leads) return no('Only the VP of Operations and the CISO check the priorities.')
+  const p = (await rdb().from('review_priorities').select('id, cycle_id, team_id').eq('id', Number(input?.id)).maybeSingle()).data as { id: number; cycle_id: number; team_id: string | null } | null
+  if (!p || p.team_id) return no('That is not one of the company priorities.')
+  const c = (await rdb().from('review_cycles').select('checkin_started_at').eq('id', p.cycle_id).maybeSingle()).data as { checkin_started_at: string | null } | null
+  if (!c?.checkin_started_at) return no('The check-in has not started.')
+  if (input.status !== undefined && input.status !== null && !['same', 'changed', 'added'].includes(input.status)) return no('Pick: no change, changed or added.')
+  const patch: Record<string, unknown> = { updated_at: stamp() }
+  if (input.status !== undefined) { patch.mid_status = input.status; patch.mid_at = input.status ? stamp() : null; patch.mid_by = input.status ? a.me : null }
+  if (input.note !== undefined) patch.mid_note = clean(input.note, 2000)
+  const r = await rdb().from('review_priorities').update(patch).eq('id', p.id)
+  if (r.error) return no(NOT_SAVED)
+  return { ok: true, savedAt: patch.updated_at as string }
+}
+
+/** "Priorities checked, tell everyone": each person and each reviewer get the check-in on Needs you and by email. */
+export async function tellCheckin(input: { cycleId: number }): Promise<Done> {
+  const x = await onCycle(input?.cycleId)
+  if ('error' in x) return no(x.error!)
+  if (!x.a.viewer.isVp && !x.a.access.isSuperAdmin) return no('Only the VP of Operations tells everyone.')
+  if (!x.c.checkin_started_at) return no('Start the check-in first.')
+  if (x.c.checkin_told_at) return no('Everyone has been told already.')
+  const company = (await loadPriorities(x.c.id)).filter(p => !p.team_id)
+  const left = company.filter(p => !p.mid_status)
+  if (left.length) return no(`${left.length} ${left.length === 1 ? 'priority is' : 'priorities are'} not gone through yet: mark each one no change, changed or added.`)
+  const u = await rdb().from('review_cycles').update({ checkin_told_at: stamp(), updated_at: stamp() }).eq('id', x.c.id).is('checkin_told_at', null).select('id')
+  if (u.error || !u.data?.length) return no('Everyone has been told already.')
+  await addLog({ cycle_id: x.c.id, actor_id: x.a.me, kind: 'checkin_told', text: `${nameIn(x.a.roster, x.a.me)} checked the priorities with the CISO and told everyone about the check-in.` })
+  const reviews = (await rdb().from('reviews').select('*').eq('cycle_id', x.c.id).eq('step', 'approved')).data as ReviewRow[] | null
+  const extra = await loadParts((reviews ?? []).map(r => r.id))
+  let n = 0
+  for (const r of reviews ?? []) {
+    const url = (o: string) => `${reviewUrl(o, r.id)}?tab=checkin`
+    const parts = partsOf(r, extra)
+    const who = nameIn(x.a.roster, r.person_id)
+    if (await noticeOnce(`ck:${x.c.id}:${r.id}:told:person`, x.a.roster, r.person_id, o => reviewMails.checkinTime({ year: x.c.year, first: firstName(who), with: parts.map(p => nameIn(x.a.roster, p.reviewerId)).join(' and '), reviewer: false, by: x.c.ck_done_due ?? null, url: url(o) }))) n++
+    for (const p of parts) {
+      if (await noticeOnce(`ck:${x.c.id}:${r.id}:told:${p.no}`, x.a.roster, p.reviewerId, o => reviewMails.checkinTime({ year: x.c.year, first: firstName(nameIn(x.a.roster, p.reviewerId)), with: who, reviewer: true, by: x.c.ck_book_due ?? null, url: url(o) }))) n++
+    }
+  }
+  refresh()
+  return { ok: true, toast: `Everyone is told: ${n} ${n === 1 ? 'email' : 'emails'} sent, and the check-in is on their Needs you.` }
+}
+
+/** The approved review this check-in belongs to, with the actor's place on it; `part` picks the reviewer's part. */
+async function onCheckin(reviewId: unknown, part: unknown) {
+  const x = await onReview(reviewId, part)
+  if ('error' in x) return x
+  if (x.r.step !== 'approved') return { error: 'The check-in comes after the review is approved.' } as const
+  if (!x.cycle.checkin_told_at) return { error: 'The check-in has not started yet.' } as const
+  const ck = (await rdb().from('review_checkins').select('*').eq('cycle_id', x.cycle.id).eq('person_id', x.r.person_id).eq('part', x.part).maybeSingle()).data as { id: number; event_id: string | null; starts_at: string | null; finished_at: string | null } | null
+  if (ck?.finished_at) return { error: 'This check-in is finished.' } as const
+  return { ...x, ck }
+}
+
+/** Ticks a goal done at the check-in, or back to where it was (the person or the reviewer of its part). */
+export async function checkinGoalDone(input: { goalId: number; done: boolean }): Promise<Done> {
+  const g = await loadGoal(input?.goalId)
+  if (!g?.review_id) return no('This goal is not there any more. Reload the page.')
+  const x = await onCheckin(g.review_id, g.part ?? undefined)
+  if ('error' in x) return no(x.error!)
+  if (!x.isPerson && !(x.isReviewer && goalIsTheirs(x, g))) return no('Only the person and the reviewer of this goal tick it.')
+  const status = input.done ? 'done' : 'on_track'
+  const u = await rdb().from('review_goals').update({ status, updated_at: stamp() }).eq('id', g.id)
+  if (u.error) return no(NOT_SAVED)
+  await rdb().from('review_goal_updates').insert({ goal_id: g.id, author_id: x.a.me, kind: 'checkin', status, body: input.done ? 'Completed at the 6-month check-in.' : 'Reopened at the 6-month check-in.' })
+  refresh()
+  return { ok: true }
+}
+
+/** Adjusts a goal at the check-in: the reviewer of its part changes what, how or by when, and the original stays. */
+export async function checkinAdjustGoal(input: { goalId: number; what?: string; how?: string; byMonth?: string | null }): Promise<Done> {
+  const g = await loadGoal(input?.goalId)
+  if (!g?.review_id) return no('This goal is not there any more. Reload the page.')
+  const x = await onCheckin(g.review_id, g.part ?? undefined)
+  if ('error' in x) return no(x.error!)
+  if (!x.isReviewer || !goalIsTheirs(x, g)) return no('Only the reviewer of this goal adjusts it.')
+  const patch: Record<string, unknown> = { updated_at: stamp(), changed_by: x.a.me }
+  if (!g.original) patch.original = { what: g.what, how: g.how, by_month: g.by_month, term: g.term, priority_id: g.priority_id }
+  if (input.what !== undefined) patch.what = clean(input.what, 500)
+  if (input.how !== undefined) patch.how = clean(input.how, 1000)
+  if (input.byMonth !== undefined) {
+    if (input.byMonth !== null && !/^\d{4}-\d{2}-01$/.test(input.byMonth)) return no('Pick a month and a year.')
+    patch.by_month = input.byMonth
+  }
+  const u = await rdb().from('review_goals').update(patch).eq('id', g.id)
+  if (u.error) return no(NOT_SAVED)
+  return { ok: true, savedAt: patch.updated_at as string }
+}
+
+/** Adds a goal at the check-in (the reviewer of a part), marked as added then. */
+export async function checkinAddGoal(input: { reviewId: number; part?: PartNo }): Promise<Done> {
+  const x = await onCheckin(input?.reviewId, input?.part)
+  if ('error' in x) return no(x.error!)
+  if (!x.isReviewer) return no('Only a reviewer adds a goal at the check-in.')
+  const count = (await rdb().from('review_goals').select('id', { count: 'exact', head: true }).eq('review_id', x.r.id)).count ?? 0
+  if (count >= 20) return no('Twenty goals is the most a year can have.')
+  const r = await rdb().from('review_goals').insert({ person_id: x.r.person_id, review_id: x.r.id, goal_year: x.cycle.year + 1, position: count, added_by: x.a.me, added_by_reviewer: true, term: '6m', part: x.parts.length > 1 ? x.part : null }).select('id').single()
+  if (r.error) return no(NOT_SAVED)
+  await rdb().from('review_goal_updates').insert({ goal_id: r.data.id, author_id: x.a.me, kind: 'checkin', status: 'not_started', body: 'Added at the 6-month check-in.' })
+  refresh()
+  return { ok: true, id: r.data.id }
+}
+
+/** Each side's notes on the check-in: the person's, and the reviewer's. */
+export async function saveCheckinNote(input: { reviewId: number; part?: PartNo; note: string }): Promise<Done> {
+  const x = await onCheckin(input?.reviewId, input?.part)
+  if ('error' in x) return no(x.error!)
+  if (!x.isPerson && !x.isReviewer) return no('Only the person and their reviewer write here.')
+  const col = x.isPerson ? 'person_note' : 'manager_note'
+  const now = stamp()
+  const r = await rdb().from('review_checkins').upsert({ cycle_id: x.cycle.id, person_id: x.r.person_id, part: x.part, manager_id: x.p.reviewerId, [col]: clean(input?.note, 4000) }, { onConflict: 'cycle_id,person_id,part' })
+  if (r.error) return no(NOT_SAVED)
+  return { ok: true, savedAt: now }
+}
+
+/** Links the check-in meeting booked in the Agenda's drawer to this reviewer's part (both parts when the other reviewer is a guest). */
+export async function linkCheckin(input: { reviewId?: number; personId?: string; eventId: string; part?: PartNo }): Promise<Done> {
+  const reviewId = input?.reviewId ?? (input?.personId ? (await rdb().from('reviews').select('id').eq('person_id', input.personId).eq('step', 'approved').order('approved_at', { ascending: false }).limit(1).maybeSingle()).data?.id : null)
+  const x = await onCheckin(reviewId, input?.part)
+  if ('error' in x) return no(x.error!)
+  if (!x.isReviewer) return no('Only the reviewer books the check-in.')
+  const ev = await ownEventWith(x.a.me, x.r.person_id, input?.eventId)
   if (!ev) return no('The check-in was not found in the Agenda. Try booking it again.')
-  const r = await rdb().from('review_checkins').upsert({ cycle_id: run, person_id: input.personId, manager_id: a.me, event_id: ev.id, starts_at: ev.starts_at }, { onConflict: 'cycle_id,person_id' })
+  const row = (part: PartNo, manager: string | null) => ({ cycle_id: x.cycle.id, person_id: x.r.person_id, part, manager_id: manager, event_id: ev.id, starts_at: ev.starts_at })
+  const r = await rdb().from('review_checkins').upsert(row(x.part, x.a.me), { onConflict: 'cycle_id,person_id,part' })
   if (r.error) return no(NOT_SAVED)
+  const other = x.parts.find(p => p.no !== x.part)
+  if (other?.reviewerId) {
+    const guest = await rdb().from('agenda_event_guests').select('id').eq('event_id', ev.id).eq('person_id', other.reviewerId).limit(1)
+    const theirs = (await rdb().from('review_checkins').select('starts_at, finished_at').eq('cycle_id', x.cycle.id).eq('person_id', x.r.person_id).eq('part', other.no).maybeSingle()).data as { starts_at: string | null; finished_at: string | null } | null
+    if (guest.data?.length && !theirs?.starts_at && !theirs?.finished_at) await rdb().from('review_checkins').upsert(row(other.no, other.reviewerId), { onConflict: 'cycle_id,person_id,part' })
+  }
   refresh()
-  return { ok: true, toast: 'Booked. It is on both Agendas and both Google Calendars.' }
+  return { ok: true, toast: 'Booked. It is on the Agendas and the Google Calendars.' }
 }
 
-/** "Finish the check-in": the person gets the comments by email and in Needs you. */
-export async function finishCheckin(input: { personId: string }): Promise<Done> {
-  const a = await actor()
-  if (!a) return no('Sign in again to do this.')
-  const personId = String(input?.personId ?? '')
-  if (!a.viewer.reports.has(personId)) return no('Only the person they report to finishes the check-in.')
-  const run = await runningCycleOf(personId)
-  if (!run) return no('There are no agreed goals to check in on.')
-  const year = (await rdb().from('review_cycles').select('year').eq('id', run).maybeSingle()).data?.year ?? new Date().getFullYear()
-  const r = await rdb().from('review_checkins').upsert({ cycle_id: run, person_id: personId, manager_id: a.me, finished_at: stamp() }, { onConflict: 'cycle_id,person_id' })
+/** "Finish the check-in": this reviewer's part is done; the person gets the notes by email and in Needs you. */
+export async function finishCheckin(input: { reviewId?: number; personId?: string; part?: PartNo }): Promise<Done> {
+  const reviewId = input?.reviewId ?? (input?.personId ? (await rdb().from('reviews').select('id').eq('person_id', input.personId).eq('step', 'approved').order('approved_at', { ascending: false }).limit(1).maybeSingle()).data?.id : null)
+  const x = await onCheckin(reviewId, input?.part)
+  if ('error' in x) return no(x.error!)
+  if (!x.isReviewer) return no('Only the reviewer finishes the check-in.')
+  const r = await rdb().from('review_checkins').upsert({ cycle_id: x.cycle.id, person_id: x.r.person_id, part: x.part, manager_id: x.a.me, finished_at: stamp() }, { onConflict: 'cycle_id,person_id,part' })
   if (r.error) return no(NOT_SAVED)
-  await noticeOnce(`checkin:${run}:${personId}:done`, a.roster, personId, o => reviewMails.checkinDone({ year, manager: nameIn(a.roster, a.me), url: `${o}/human-resources?tab=goals` }))
+  await addLog({ cycle_id: x.cycle.id, review_id: x.r.id, actor_id: x.a.me, kind: 'checkin_done', text: `${nameIn(x.a.roster, x.a.me)} finished the 6-month check-in.` })
+  await noticeOnce(`checkin:${x.cycle.id}:${x.r.person_id}:${x.part}:done`, x.a.roster, x.r.person_id, o => reviewMails.checkinDone({ year: x.cycle.year, manager: nameIn(x.a.roster, x.a.me), url: `${reviewUrl(o, x.r.id)}?tab=checkin` }))
   refresh()
-  return { ok: true, toast: `Done. ${firstName(nameIn(a.roster, personId))} gets your comments.` }
-}
-
-/** The cycle whose agreed goals run now for a person: their latest approved review's. */
-async function runningCycleOf(personId: string): Promise<number | null> {
-  const r = (await rdb().from('reviews').select('cycle_id, approved_at').eq('person_id', personId).eq('step', 'approved').order('approved_at', { ascending: false }).limit(1).maybeSingle()).data as { cycle_id: number } | null
-  return r?.cycle_id ?? null
+  return { ok: true, toast: `Done. ${firstName(nameIn(x.a.roster, x.r.person_id))} gets your notes.` }
 }
 
 // ── For the page: keeps a started year current on every visit ──────────────

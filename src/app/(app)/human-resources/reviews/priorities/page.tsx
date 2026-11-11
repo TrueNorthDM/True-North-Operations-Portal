@@ -6,13 +6,13 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { PrioritiesPage, type Block, type TeamRow } from '@/components/review/PrioritiesPage'
+import { PrioritiesPage, type Block, type MidYear, type TeamRow } from '@/components/review/PrioritiesPage'
 import { reviewContext } from '@/lib/review/page-context'
 import { requireSurface } from '@/lib/access/resolve'
 import { ensureCurrentCycle, loadLog, loadPriorities, nameIn } from '@/lib/review/data'
 import { leadersOf } from '@/lib/review/rules'
 import { fmtDay, fmtInstantDay, fmtTime } from '@/lib/review/format'
-import { markPrioritiesReady, removePriority, savePriority } from '../../actions'
+import { markPrioritiesReady, removePriority, savePriority, setPriorityMid, tellCheckin } from '../../actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Priorities' }
@@ -46,6 +46,11 @@ export default async function PrioritiesRoute() {
     })
   }
   teams.sort((a, b) => Number(!!a.written) - Number(!!b.written) || a.name.localeCompare(b.name))
+  const mid: MidYear | null = cycle.checkin_started_at ? {
+    started: fmtInstantDay(cycle.checkin_started_at), told: cycle.checkin_told_at ? fmtInstantDay(cycle.checkin_told_at) : null, due: cycle.ck_priorities_due ? fmtDay(cycle.ck_priorities_due) : null,
+    canEdit: viewer.leads, canTell: viewer.isVp || viewer.isSuperAdmin,
+    rows: all.filter(p => !p.team_id).map(p => ({ id: p.id, title: p.title, kind: p.kind === 'vp' ? 'vp' as const : 'company' as const, status: p.mid_status, note: p.mid_note ?? '' })),
+  } : null
   const notice = cycle.started_at
     ? `The ${cycle.year} reviews started ${fmtInstantDay(cycle.started_at)}. The goals for ${cycle.year + 1} open in every self-review when both are marked ready${cycle.vp_due ? `, or after ${fmtDay(cycle.vp_due)}` : ''}.`
     : `The ${cycle.year} reviews have not started. The priorities can be written now; the goals open once both are ready.`
@@ -56,7 +61,7 @@ export default async function PrioritiesRoute() {
         intro="The CISO writes the Company Priorities, the VP of Operations adds theirs, and each Team Leader writes their team's first thing in their self-review. Every review shows the Company Priorities and the VP's; a person also sees their own team's."
         blocks={blocks} teams={teams} noLeader={noLeader}
         log={log.filter(l => l.kind.startsWith('priorit') || l.kind.startsWith('team')).map(l => ({ who: nameIn(roster, l.actor_id), text: l.text, at: l.created_at }))}
-        api={{ savePriority, removePriority, markPrioritiesReady }} />
+        mid={mid} api={{ savePriority, removePriority, markPrioritiesReady, setPriorityMid, tellCheckin }} />
     </div>
   )
 }

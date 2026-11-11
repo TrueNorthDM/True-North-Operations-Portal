@@ -21,6 +21,7 @@ import { Pill } from '@/components/ui/Pill'
 import { StatusIcon } from '@/components/ui/StatusIcon'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import { PdfPages } from '@/components/ui/PdfPages'
+import { MonthField } from '@/components/ui/DateField'
 import { Modal, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { EventDrawer, type DrawerApi } from '@/components/agenda/EventDrawer'
 import type { StatusState } from '@/lib/ui/status-icons'
@@ -48,6 +49,12 @@ export interface ReviewApi extends GoalApi {
   approveReview(i: { reviewId: number; part?: PartNo }): Promise<Res>
   retryReviewDrive(i: { reviewId: number }): Promise<Res>
   markApprovedSeen(i: { reviewId: number }): Promise<Res>
+  checkinGoalDone(i: { goalId: number; done: boolean }): Promise<Res>
+  checkinAdjustGoal(i: { goalId: number; what?: string; how?: string; byMonth?: string | null }): Promise<Res>
+  checkinAddGoal(i: { reviewId: number; part?: PartNo }): Promise<Res>
+  saveCheckinNote(i: { reviewId: number; part?: PartNo; note: string }): Promise<Res>
+  linkCheckin(i: { reviewId: number; eventId: string; part?: PartNo }): Promise<Res>
+  finishCheckin(i: { reviewId: number; part?: PartNo }): Promise<Res>
   savePriority(i: { cycleId: number; id?: number | null; teamId?: string | null; title?: string; body?: string }): Promise<Res>
   removePriority(i: { id: number }): Promise<Res>
 }
@@ -57,9 +64,13 @@ type PV = ReviewView['parts'][number]
 const partAfter = (p: PV) => p.step === 'meeting' || p.step === 'approval' || p.step === 'approved'
 const RANK: Record<PV['step'], number> = { waiting: 0, review: 1, meeting: 2, approval: 3, approved: 4 }
 
-export function ReviewPage({ v, api, booking, drawerApi, today, showApproved = false }: { v: ReviewView; api: ReviewApi; booking: Booking | null; drawerApi: DrawerApi | null; today: string
+export function ReviewPage({ v, api, booking, drawerApi, today, showApproved = false, checkinBooking = null, openCheckin = false }: { v: ReviewView; api: ReviewApi; booking: Booking | null; drawerApi: DrawerApi | null; today: string
   /** Opened from Home's "Your review is approved": the window that says what comes next (owner, 10 November 2026). */
-  showApproved?: boolean }) {
+  showApproved?: boolean
+  /** The Agenda drawer filled in for the 6-month check-in, when the viewer's part has none booked. */
+  checkinBooking?: Booking | null
+  /** Opened from Needs you's check-in row: scroll to the check-in. */
+  openCheckin?: boolean }) {
   const router = useRouter()
   const [toast, setToast] = useState<ToastState | null>(null)
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -73,6 +84,8 @@ export function ReviewPage({ v, api, booking, drawerApi, today, showApproved = f
   const [editingGoal, setEditingGoal] = useState<number | null>(null)
   const [openSec, setOpenSec] = useState<Record<string, boolean>>({})
   const [approvedOpen, setApprovedOpen] = useState(showApproved && v.role === 'person' && v.step === 'approved' && !v.approvedSeen)
+  const [bookingCk, setBookingCk] = useState(false)
+  useEffect(() => { if (openCheckin) setTimeout(() => document.getElementById('checkin')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }, [openCheckin])
   const say = (text: string, error = false) => { setToast({ text, error }); setTimeout(() => setToast(null), 5000) }
   const onSaved = (at: string) => setSavedAt(at || new Date().toISOString())
   const onError = (e: string) => say(e, true)
@@ -301,6 +314,12 @@ export function ReviewPage({ v, api, booking, drawerApi, today, showApproved = f
     if (mp?.step === 'approval') {
       nav.push({ id: 'approve', label: 'Approval', state: 'turn' })
       blocks.push(<ApprovalBox key="approve" v={v} p={mp} two={two} busy={busy} onBack={() => setBackOpen(true)} onApprove={() => setApproving(true)} />)
+    }
+    if (v.checkin) {
+      const mine = v.checkin.parts.find(p => p.no === mp?.no) ?? (isPerson ? null : v.checkin.parts[0])
+      const allDone = v.checkin.parts.every(p => p.finishedAt)
+      nav.push({ id: 'checkin', label: '6-month check-in', state: allDone ? 'done' : (isPerson || (mine && !mine.finishedAt)) ? 'turn' : 'progress' })
+      blocks.push(<CheckinSection key="checkin" v={v} api={api} isPerson={isPerson} myPart={mp?.no ?? null} busy={busy} run={run} onSaved={onSaved} onError={onError} canBook={!!checkinBooking && !!drawerApi} onBook={() => setBookingCk(true)} editingId={editingGoal} setEditingId={setEditingGoal} owners={owners} />)
     }
     if (v.step === 'approved') {
       nav.push({ id: 'pdf', label: 'The PDF', state: 'done' })
@@ -541,6 +560,16 @@ export function ReviewPage({ v, api, booking, drawerApi, today, showApproved = f
           }} />
       )}
 
+      {bookingCk && checkinBooking && drawerApi && (
+        <EventDrawer setup={checkinBooking.setup} preset={checkinBooking.preset} note={checkinBooking.note} free={checkinBooking.free} today={today} api={drawerApi}
+          onClose={() => setBookingCk(false)}
+          onDone={async (t, id) => {
+            setBookingCk(false)
+            if (id) await run(() => api.linkCheckin({ reviewId: v.id, eventId: String(id), part: mp?.no }))
+            else say(t)
+          }} />
+      )}
+
       {approvedOpen && (
         <Modal label={`Your ${v.year} review is approved`} width={520} gap={12} onClose={() => { setApprovedOpen(false); void api.markApprovedSeen({ reviewId: v.id }) }}><div className="contents" style={APR_COLORS}>
           <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink">Your {v.year} review is approved</h2>
@@ -760,4 +789,100 @@ function timeRange(from: string, to: string | null): string {
   if (!b) return a
   const am = (x: string) => x.slice(-2)
   return am(a) === am(b) ? `${a.slice(0, -3)} to ${b}` : `${a} to ${b}`
+}
+
+/**
+ * The 6-month check-in part of an approved review (owner, 10 November 2026):
+ * the priorities as checked mid-year, the goals to tick done, adjust or add,
+ * each side's notes, the meeting, and Finish. With two reviewers, one block
+ * per reviewer's part.
+ */
+function CheckinSection({ v, api, isPerson, myPart, busy, run, onSaved, onError, canBook, onBook, editingId, setEditingId, owners }: {
+  v: ReviewView; api: ReviewApi; isPerson: boolean; myPart: 0 | 1 | null; busy: boolean
+  run: (go: () => Promise<Res>, after?: (r: Res) => void) => Promise<void>; onSaved: (a: string) => void; onError: (e: string) => void
+  canBook: boolean; onBook: () => void; editingId: number | null; setEditingId: (id: number | null) => void; owners?: { no: 0 | 1; label: string }[]
+}) {
+  const ck = v.checkin!
+  const two = ck.parts.length > 1
+  const first = v.person.name.split(' ')[0]
+  const MID = { same: ['No change', 'green'], changed: ['Changed', 'blue'], added: ['Added', 'blue'] } as const
+  return (
+    <Section id="checkin" title={<span className="inline-flex items-center gap-2.5">6-month check-in{ck.parts.every(p => p.finishedAt) ? <Pill tone="green" text="Done" /> : <Pill tone="amber" text="Open" />}</span>}
+      sub={`Halfway through ${v.year + 1}: tick the goals done, adjust or add goals, and leave notes on each side.${ck.dueDone ? ` Due ${fmtDay(ck.dueDone)}.` : ''}`}>
+      {ck.priorities.length > 0 && (
+        <div className="rounded-[10px] bg-[#eaf4f4] px-3.5 py-2.5 flex flex-col gap-1.5 text-[13px] text-tn-ink">
+          <span className="font-(family-name:--font-display) font-extrabold text-[12.5px]">The Company Priorities, checked mid-year</span>
+          {ck.priorities.map((p, i) => <span key={i} className="flex items-center gap-2 flex-wrap"><Pill tone={MID[p.status][1]} text={MID[p.status][0]} /><span className="font-bold">{p.title}</span>{p.note && <span className="text-[#435066]">{p.note}</span>}</span>)}
+        </div>
+      )}
+      {ck.parts.map(p => {
+        const mine = myPart === p.no
+        const canEditGoals = mine && !p.finishedAt
+        const goals = v.goals.filter(g => !two || g.part === null || g.part === p.no)
+        return (
+          <div key={p.no} className={`flex flex-col gap-3 ${two ? 'rounded-[12px] border border-[var(--panel-border)] px-4 py-3.5' : ''}`}>
+            {two && <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">With {p.reviewer}{p.area ? ` · ${p.area}` : ''}</span>}
+            <div className="flex items-center gap-3 flex-wrap text-[13.5px] text-[#435066]">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-tn-teal"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
+              <span className="flex-1 min-w-[200px]">{p.finishedAt ? `Finished ${fmtInstantDay(p.finishedAt)}.` : p.startsAt ? `Meeting with ${p.reviewer}, ${fmtWhen(p.startsAt)}.` : `${p.reviewer} books the meeting${ck.dueBook ? ` by ${fmtDay(ck.dueBook)}` : ''}.`}</span>
+              {mine && !p.startsAt && !p.finishedAt && (canBook ? <button type="button" className={BTN.smallNavy} onClick={onBook}>Book the check-in</button> : <span className="text-[12.5px] text-muted">The new Agenda is not open yet.</span>)}
+            </div>
+            <div className="flex flex-col">
+              {goals.map(g => (
+                canEditGoals && editingId === g.id
+                  ? <CheckinGoalEdit key={g.id} g={g} api={api} onSaved={onSaved} onError={onError} onDone={() => setEditingId(null)} />
+                  : <div key={g.id} className="flex gap-3 py-2.5 border-t border-[var(--row-rule)] first:border-t-0 items-start">
+                      <input type="checkbox" className="mt-1 w-4 h-4 accent-[#012358]" checked={g.status === 'done'} disabled={busy || p.finishedAt !== null || !(isPerson || mine)} aria-label={`${g.what} done`}
+                        onChange={e => void run(() => api.checkinGoalDone({ goalId: g.id, done: e.target.checked }))} />
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <span className={`font-(family-name:--font-display) font-extrabold text-[14.5px] ${g.status === 'done' ? 'text-muted line-through' : 'text-tn-ink'}`}>{g.what || 'Untitled goal'}</span>
+                        <span className="flex flex-wrap gap-1.5 items-center text-[12.5px] text-muted">{g.byLabel && <span>By {g.byLabel}</span>}{g.changedByName && <Pill tone="blue" text={`Adjusted by ${g.changedByName}`} />}{two && owners && <span>For {owners.find(o => o.no === (g.part ?? 0))?.label}</span>}</span>
+                      </div>
+                      {canEditGoals && g.status !== 'done' && <button type="button" className={BTN.link} onClick={() => setEditingId(g.id)}>Adjust</button>}
+                    </div>
+              ))}
+              {!goals.length && <p className="m-0 text-[13px] text-muted">No goals.</p>}
+            </div>
+            {canEditGoals && <div><button type="button" disabled={busy} className={BTN.smallWhite} onClick={() => run(() => api.checkinAddGoal({ reviewId: v.id, part: p.no }), r => { if (r.ok && r.id) setEditingId(r.id) })}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Add a goal</button></div>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <CheckinNote label={`${first}'s notes`} initial={p.personNote} editable={isPerson && !p.finishedAt} save={n => api.saveCheckinNote({ reviewId: v.id, part: p.no, note: n })} onSaved={onSaved} onError={onError} />
+              <CheckinNote label={`${p.reviewer.split(' ')[0]}'s notes`} initial={p.managerNote} editable={mine && !p.finishedAt} save={n => api.saveCheckinNote({ reviewId: v.id, part: p.no, note: n })} onSaved={onSaved} onError={onError} />
+            </div>
+            {mine && !p.finishedAt && (
+              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#f1f3f6]">
+                <span className="flex-1 min-w-[220px] text-[12.5px] text-muted">Finishing sends {first} your notes, by email and on Needs you. The goals stay on their profile.</span>
+                <button type="button" disabled={busy} className={`${BTN.navy} disabled:opacity-50`} onClick={() => run(() => api.finishCheckin({ reviewId: v.id, part: p.no }))}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Finish the check-in</button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </Section>
+  )
+}
+
+function CheckinNote({ label, initial, editable, save, onSaved, onError }: { label: string; initial: string; editable: boolean; save: (n: string) => Promise<Res>; onSaved: (a: string) => void; onError: (e: string) => void }) {
+  const a = useAutosave(initial, save, onSaved, onError)
+  return (
+    <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>{label}</span>
+      {editable
+        ? <textarea value={a.value} onChange={e => a.change(e.target.value)} onBlur={a.blur} rows={3} maxLength={4000} placeholder="Write your notes" className={`${TEXTAREA} w-full`} />
+        : <p className={`m-0 rounded-[10px] bg-[#f8f7f3] px-3.5 py-2.5 text-[13.5px] leading-[1.55] whitespace-pre-wrap min-h-[60px] ${initial ? 'text-[#435066]' : 'text-muted italic'}`}>{initial || 'No notes yet.'}</p>}
+    </label>
+  )
+}
+
+function CheckinGoalEdit({ g, api, onSaved, onError, onDone }: { g: ReviewView['goals'][number]; api: ReviewApi; onSaved: (a: string) => void; onError: (e: string) => void; onDone: () => void }) {
+  const what = useAutosave(g.what, x => api.checkinAdjustGoal({ goalId: g.id, what: x }), onSaved, onError)
+  const how = useAutosave(g.how, x => api.checkinAdjustGoal({ goalId: g.id, how: x }), onSaved, onError)
+  const [by, setBy] = useState(g.byMonth?.slice(0, 7) ?? '')
+  return (
+    <div className="rounded-[12px] border border-tn-teal px-4 py-3.5 flex flex-col gap-3 my-2">
+      <div className="flex items-center gap-2"><span className={FIELD_LABEL}>Adjust goal {g.n}</span><span className="flex-1" /><button type="button" className={BTN.link} onClick={onDone}>Done</button></div>
+      <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>What</span><input value={what.value} onChange={e => what.change(e.target.value)} onBlur={what.blur} maxLength={500} className={`${INPUT} w-full font-semibold`} /></label>
+      <label className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>How it is measured</span><input value={how.value} onChange={e => how.change(e.target.value)} onBlur={how.blur} maxLength={1000} className={`${INPUT} w-full`} /></label>
+      <div className="flex flex-col gap-1.5 max-w-[220px]"><span className={FIELD_LABEL}>By when · month and year</span>
+        <MonthField value={by} onChange={v => { setBy(v); void api.checkinAdjustGoal({ goalId: g.id, byMonth: v ? `${v}-01` : null }).then(r => r.ok ? onSaved(r.savedAt ?? '') : onError(r.error)) }} ariaLabel="By when" /></div>
+    </div>
+  )
 }

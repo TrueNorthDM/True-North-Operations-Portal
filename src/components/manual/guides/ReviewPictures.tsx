@@ -25,6 +25,7 @@ const API: ReviewApi = {
   saveGoal: noop, removeGoal: noop, saveAnswer: noop, copyJobDescription: noop, undoCopyJob: noop, addGoal: noop, markGoal: noop,
   submitSelf: noop, sendBack: noop, finishReview: noop, linkMeeting: noop, saveMeetingNotes: noop, agreeReview: noop, approveReview: noop,
   retryReviewDrive: noop, markApprovedSeen: noop, savePriority: noop, removePriority: noop,
+  checkinGoalDone: noop, checkinAdjustGoal: noop, checkinAddGoal: noop, saveCheckinNote: noop, linkCheckin: noop, finishCheckin: noop,
 }
 
 const VIEWS = { self: selfReviewSample, review: managerReviewSample, agree: agreeSample, approval: approvalSample } as const

@@ -9,7 +9,7 @@ import {
   dueOf, isLeadPositionName, monthLabel, type GoalResult, type GoalStatus, type Step,
 } from './rules'
 import {
-  canSeePerson, loadAnswers, loadCycle, loadHrSettings, loadGoals, loadImports, loadLog, loadParts, loadPersonReviews, loadPriorities, loadReview, loadTeamStates,
+  canSeePerson, loadAllCheckins, loadAnswers, loadCycle, loadHrSettings, loadGoals, loadImports, loadLog, loadParts, loadPersonReviews, loadPriorities, loadReview, loadTeamStates,
   nameIn, prioritiesFor, type Cycle, type Goal, type ImportRow, type ReviewRow, type ReviewViewer, type Roster, type TeamPriorityState,
 } from './data'
 import { rdb } from './data'
@@ -73,6 +73,10 @@ export interface ReviewView {
   goalsOpen: boolean
   /** The person has read the "approved" window. */
   approvedSeen: boolean
+  /** The 6-month check-in (owner, 10 November 2026), once the VP told everyone; one entry per reviewer's part. */
+  checkin: { dueBook: string | null; dueDone: string | null; parts: { no: PartNo; reviewer: string; area: string; startsAt: string | null; finishedAt: string | null; personNote: string; managerNote: string }[]
+    /** The company priorities as checked mid-year. */
+    priorities: { title: string; status: 'same' | 'changed' | 'added'; note: string }[] } | null
   /** HR by name and the Drive folder the approved PDF goes to, for the approval's words (design handoff, E3). */
   hr: string | null; driveFolder: string | null
   lastImport: (ImportRow & { url: string }) | null
@@ -173,6 +177,15 @@ export async function loadReviewView(id: number, viewer: ReviewViewer | 'server'
       sentBack: x.sentBack ? { at: x.sentBack.at, by: nameIn(roster, x.sentBack.by), reason: x.sentBack.reason, from: x.sentBack.from } : null,
     }
   }))
+  let checkin: ReviewView['checkin'] = null
+  if (r.step === 'approved' && cycle.checkin_told_at) {
+    const cks = await loadAllCheckins(cycle.id, [r.person_id])
+    checkin = {
+      dueBook: cycle.ck_book_due ?? null, dueDone: cycle.ck_done_due ?? null,
+      parts: partViews.map(p => { const ck = cks.find(x => x.part === p.no); return { no: p.no, reviewer: p.reviewer.name, area: p.area, startsAt: ck?.starts_at ?? null, finishedAt: ck?.finished_at ?? null, personNote: ck?.person_note ?? '', managerNote: ck?.manager_note ?? '' } }),
+      priorities: priorities.filter(x => !x.team_id && x.mid_status).map(x => ({ title: x.title, status: x.mid_status!, note: x.mid_note ?? '' })),
+    }
+  }
   // Who the review waits for now: the person in the self-review, else the first part still open.
   const open = partViews.find(x => x.step !== 'approved' && x.waitsFor)
   return {
@@ -192,6 +205,7 @@ export async function loadReviewView(id: number, viewer: ReviewViewer | 'server'
     myPart,
     goalsOpen: goalsOpen(cycle, todayIn(now)),
     approvedSeen: !!r.approved_seen_at,
+    checkin,
     hr: hrSet.hrId ? nameIn(roster, hrSet.hrId) : null, driveFolder: hrSet.driveFolderName,
     approvers: teamBlocks.length ? await loadHrSettings().then(h => [h.vpId, h.cisoId].filter((x): x is string => !!x && x !== r.person_id).map(x => nameIn(roster, x))) : [],
     lastImport: lastImport ? { ...lastImport, url: `/human-resources/imports/${lastImport.id}/file` } : null,

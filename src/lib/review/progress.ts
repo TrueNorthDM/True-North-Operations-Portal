@@ -140,3 +140,42 @@ export function computeProgress(i: ProgressInput): Progress {
   const lateCount = new Set(out.flatMap(r => r.items.filter(x => x.late).map(x => x.personId))).size
   return { rows: out, pct: total ? Math.round((done / total) * 100) : 0, week: Math.min(week, weeks || week), weeks, lateCount }
 }
+
+// ── The 6-month check-in (owner, 10 November 2026): four steps ─────────────
+
+export interface CheckinInput {
+  today: string
+  cycle: { checkin_started_at?: string | null; checkin_told_at?: string | null; ck_priorities_due?: string | null; ck_book_due?: string | null; ck_done_due?: string | null }
+  priorities: { total: number; checked: number }
+  /** Every approved review's parts, with that part's check-in. */
+  items: { reviewId: number; personId: string; name: string; reviewer: string; area: string; part: PartNo; booked: string | null; finished: string | null }[]
+  fmt: (day: string) => string
+}
+
+export function computeCheckinProgress(i: CheckinInput): Progress {
+  const { cycle: c, today, fmt } = i
+  const late = (due: string | null | undefined, done: boolean) => !done && !!due && today > due
+  const rows: Omit<ProgressRow, 'state' | 'moveUp'>[] = []
+  rows.push({ key: 'ck-start', label: 'Start the check-in', who: 'VP of Operations', due: null, dateKey: null, done: c.checkin_started_at ? 1 : 0, total: 1, note: c.checkin_started_at ? `Started ${fmt(c.checkin_started_at.slice(0, 10))}` : null, items: [] })
+  rows.push({ key: 'ck-pri', label: 'Check the priorities', who: 'VP of Operations with the CISO', due: c.ck_priorities_due ?? null, dateKey: null, done: c.checkin_told_at ? 1 : 0, total: 1, note: `${i.priorities.checked} of ${i.priorities.total} gone through${c.checkin_told_at ? ', everyone told' : ''}`, items: [] })
+  const item = (x: CheckinInput['items'][number], done: boolean, where: string, due: string | null | undefined, key: string): ProgressItem => ({
+    key: `${key}:${x.reviewId}:${x.part}`, personId: x.personId, name: x.name, reviewer: x.reviewer, area: x.area, where, done, late: late(due, done), reviewId: x.reviewId, part: x.part,
+  })
+  const book = i.items.map(x => item(x, !!x.booked || !!x.finished, x.finished ? 'Done' : x.booked ? `Booked for ${fmt(x.booked.slice(0, 10))}` : 'Meeting to book', c.ck_book_due, 'ck-book'))
+  rows.push({ key: 'ck-book', label: 'Book the meetings', who: 'VP with Team Leaders, Team Leaders with members', due: c.ck_book_due ?? null, dateKey: null, done: book.filter(x => x.done).length, total: book.length, note: null, items: book })
+  const done = i.items.map(x => item(x, !!x.finished, x.finished ? `Finished ${fmt(x.finished.slice(0, 10))}` : x.booked ? `Booked for ${fmt(x.booked.slice(0, 10))}` : 'Not booked yet', c.ck_done_due, 'ck-done'))
+  rows.push({ key: 'ck-done', label: 'Fill in the check-in', who: 'Each person and their reviewer', due: c.ck_done_due ?? null, dateKey: null, done: done.filter(x => x.done).length, total: done.length, note: null, items: done })
+  for (const r of rows) r.items.sort((a, b) => Number(a.done) - Number(b.done) || Number(b.late) - Number(a.late) || a.name.localeCompare(b.name))
+  const open = rows.filter(r => r.total > 0 && r.done < r.total)
+  const firstDue = open.map(r => r.due).filter((d): d is string => !!d).sort()[0] ?? null
+  const out: ProgressRow[] = rows.map((r, idx) => {
+    const complete = r.total > 0 && r.done >= r.total
+    const isLate = !complete && (r.items.some(x => x.late) || (!!r.due && today > r.due && r.total > 0))
+    const prevDone = idx === 0 || (rows[idx - 1].total > 0 && rows[idx - 1].done >= rows[idx - 1].total)
+    const state: RowState = complete ? 'done' : isLate ? 'late' : (r.done > 0 || (firstDue && r.due === firstDue) || prevDone) && !!c.checkin_started_at ? 'now' : 'later'
+    return { ...r, state, moveUp: null }
+  })
+  const total = out.reduce((n, r) => n + r.total, 0)
+  const doneN = out.reduce((n, r) => n + Math.min(r.done, r.total), 0)
+  return { rows: out, pct: total ? Math.round((doneN / total) * 100) : 0, week: 0, weeks: 0, lateCount: new Set(out.flatMap(r => r.items.filter(x => x.late).map(x => x.personId))).size }
+}

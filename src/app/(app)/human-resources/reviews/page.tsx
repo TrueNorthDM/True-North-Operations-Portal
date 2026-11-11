@@ -16,9 +16,9 @@ import { defaultYear, ensureYearCycle, loadCycles, loadImports, loadParts, loadP
 import { dueOf, dueWords } from '@/lib/review/rules'
 import { partsOf, partWaitsFor } from '@/lib/review/parts'
 import { PLAN, planFrom, type DateKey } from '@/lib/review/schedule'
-import { loadProgress } from '@/lib/review/progress-data'
+import { loadCheckinProgress, loadProgress } from '@/lib/review/progress-data'
 import { fmtDay } from '@/lib/review/format'
-import { approveAll, moveDatesUp, remindNow, saveReviewDates, startCycle } from '../actions'
+import { approveAll, moveDatesUp, remindNow, saveReviewDates, startCheckin, startCycle } from '../actions'
 import { Tabs } from '@/components/ui/Tabs'
 import { hrTabs } from '@/lib/review/hr-tabs'
 import { loadHistory, loadTeamGoals } from '@/lib/review/mine'
@@ -31,7 +31,7 @@ const WHO: Record<DateKey, string> = {
   leaders_meeting_due: 'VP and each Team Leader', meeting_due: 'Each Team Leader and their members', leaders_approval_due: 'VP of Operations', approval_due: 'Team Leaders',
 }
 
-export default async function ReviewsRoute({ searchParams }: { searchParams: Promise<{ year?: string; start?: string }> }) {
+export default async function ReviewsRoute({ searchParams }: { searchParams: Promise<{ year?: string; start?: string; checkin?: string }> }) {
   const ctx = await reviewContext(await requireSurface('human-resources'))
   const { viewer, roster, settings, access } = ctx
   const canStart = viewer.isVp || access.can('hr-start')
@@ -137,6 +137,9 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
   const mineToApprove = me ? reviews.filter(r => partsOf(r, extra).some(p => p.reviewerId === me && p.step === 'approval')) : []
   const approvals = mineToApprove.length ? { ids: mineToApprove.map(r => r.id), names: mineToApprove.map(r => nameIn(roster, r.person_id)).sort() } : null
 
+  // The 6-month check-in: the VP may start it from six months after the kickoff; its progress once started.
+  const ckCanStart = !!cycle.started_at && !cycle.checkin_started_at && !!cycle.checkins_by && today >= cycle.checkins_by && (viewer.isVp || access.isSuperAdmin)
+  const checkin = cycle.started_at && (sees || ckCanStart) ? { cycleId: cycle.id, canStart: ckCanStart, due: cycle.checkins_by, progress: cycle.checkin_started_at && sees ? await loadCheckinProgress(cycle, roster, now) : null } : null
   const intro = cycle.started_at
     ? `Annual performance reviews. The ${year} reviews started on ${fmtDay(cycle.started_at.slice(0, 10))}${cycle.approval_due ? `; everything is due by ${fmtDay(cycle.approval_due)}` : ''}.`
     : `The ${year} reviews have not started.`
@@ -144,8 +147,8 @@ export default async function ReviewsRoute({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-4">
       {crumbs}
       <ReviewList year={year} years={years} intro={intro} rows={cycle.started_at ? rows : []} imports={null} canPriorities={viewer.leads || viewer.seesAll}
-        kickoff={kickoff} progress={progress} dates={dates} approvals={approvals} openStart={sp.start === '1'}
-        api={{ startCycle, moveDatesUp, saveReviewDates, approveAll, remindNow }} tabs={tabs} />
+        kickoff={kickoff} progress={progress} dates={dates} approvals={approvals} openStart={sp.start === '1'} checkin={checkin} openCheckin={sp.checkin === '1'}
+        api={{ startCycle, moveDatesUp, saveReviewDates, approveAll, remindNow, startCheckin }} tabs={tabs} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeProgress, type ProgressInput } from './progress'
+import { computeCheckinProgress, computeProgress, type ProgressInput } from './progress'
 import { planFrom } from './schedule'
 import type { Part } from './parts'
 
@@ -50,5 +50,26 @@ describe('the progress block', () => {
     expect(p.weeks).toBe(6)
     expect(p.pct).toBeGreaterThan(0)
     expect(p.pct).toBeLessThan(100)
+  })
+})
+
+describe('the 6-month check-in block', () => {
+  const items = [
+    { reviewId: 1, personId: 'a', name: 'Amy', reviewer: 'Lead', area: '', part: 0 as const, booked: '2027-05-18T15:00:00Z', finished: null },
+    { reviewId: 2, personId: 'k', name: 'Kathleen', reviewer: 'Arnaldo', area: 'Social Media', part: 0 as const, booked: null, finished: null },
+    { reviewId: 2, personId: 'k', name: 'Kathleen', reviewer: 'Jeannette', area: 'SEO', part: 1 as const, booked: '2027-05-12T15:00:00Z', finished: '2027-05-12T16:00:00Z' },
+  ]
+  const cycle = { checkin_started_at: '2027-05-10T14:00:00Z', checkin_told_at: '2027-05-13T14:00:00Z', ck_priorities_due: '2027-05-14', ck_book_due: '2027-05-21', ck_done_due: '2027-06-04' }
+  it('has four steps and counts each reviewer\'s part', () => {
+    const p = computeCheckinProgress({ today: '2027-05-17', cycle, priorities: { total: 3, checked: 3 }, items, fmt: d => d })
+    expect(p.rows.map(r => [r.key, r.done, r.total, r.state])).toEqual([
+      ['ck-start', 1, 1, 'done'], ['ck-pri', 1, 1, 'done'], ['ck-book', 2, 3, 'now'], ['ck-done', 1, 3, 'now'],
+    ])
+    expect(p.rows[2].items[0]).toMatchObject({ name: 'Kathleen', reviewer: 'Arnaldo', done: false })
+  })
+  it('is late after the booking date', () => {
+    const p = computeCheckinProgress({ today: '2027-05-24', cycle, priorities: { total: 3, checked: 3 }, items, fmt: d => d })
+    expect(p.rows[2].state).toBe('late')
+    expect(p.lateCount).toBe(1)
   })
 })
