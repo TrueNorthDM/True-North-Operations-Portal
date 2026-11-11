@@ -15,8 +15,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { budgetStatus } from '@/lib/tsheets/i7-view'
-import { BUDGET_GRADIENT, BUDGET_PILL } from './budget-style'
+import { budgetPace, budgetStatus, type BudgetPace } from '@/lib/tsheets/i7-view'
+import { BUDGET_GRADIENT, BUDGET_PILL, PACE_PILL } from './budget-style'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
 import { MONTH_LONG } from '@/lib/format/months'
@@ -49,7 +49,9 @@ export function BudgetBalanceCard(
   },
 ) {
   const neg = c.totalLeft < 0
-  const pill = PILL[statusOf(c.monthUsed, c.totalAvailable)]
+  // One month: read against its pace by working days (owner, 11 November 2026); a range keeps the plain status.
+  const pace = !multi && /^\d{4}-\d{2}$/.test(month) ? budgetPace(c, month) : null
+  const pill = pace ? PACE_PILL[pace.status] : PILL[statusOf(c.monthUsed, c.totalAvailable)]
   return (
     <div className={`${CARD} overflow-hidden`}>
       {/* navy header */}
@@ -80,7 +82,8 @@ export function BudgetBalanceCard(
             <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums ${neg ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{moneySigned(c.totalLeft)}</div>
           </div>
         </div>
-        <Meter label="Budget used" actual={c.monthUsed} budget={c.totalAvailable} />
+        <Meter label="Budget used" actual={c.monthUsed} budget={c.totalAvailable} pace={pace} />
+        {pace && pace.status !== 'none' && pace.status !== 'bad' && <PaceNote p={pace} />}
       </div>
     </div>
   )
@@ -111,7 +114,7 @@ const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 // a grey mask reveals it up to the used %. On mount it fills from 0 → used while
 // the $ counts up (ease-out), and a soft shimmer sweeps the filled part. All of
 // it is skipped under prefers-reduced-motion.
-function Meter({ label, actual, budget }: { label: string; actual: number; budget: number | null }) {
+function Meter({ label, actual, budget, pace }: { label: string; actual: number; budget: number | null; pace?: BudgetPace | null }) {
   const has = budget != null && budget > 0
   const finalPct = has ? actual / budget! : 0
   const finalFill = Math.min(100, Math.max(0, finalPct * 100))
@@ -168,11 +171,17 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
             </div>
           )}
         </div>
+        {/* Where it should be by today (owner, 11 November 2026). */}
+        {has && pace && pace.gone > 0 && pace.share < 1 && (
+          <div className="absolute bottom-[-5px] top-[15px] w-0.5 bg-tn-primary rounded-full" style={{ left: `${pace.share * 100}%` }} aria-hidden="true">
+            <span className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 rounded-[5px] bg-tn-primary px-1.5 py-px text-[10.5px] font-bold text-[#ffffff] tabular-nums whitespace-nowrap">Pace {money(pace.expected)}</span>
+          </div>
+        )}
       </div>
       <div className="flex justify-between mt-1.5 text-xs">
         {has ? (
           <>
-            <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{Math.round(shownPct * 100)}% used</span>
+            <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{Math.round(shownPct * 100)}% used{pace && pace.share < 1 ? ` · ${Math.round(pace.share * 100)}% of working days gone` : ''}</span>
             <span className={shownRemaining < 0 ? 'text-[#c2410c] font-semibold' : 'text-muted'}>
               {shownRemaining < 0 ? `${money(-shownRemaining)} over` : `${money(shownRemaining)} remaining`}
             </span>
@@ -183,4 +192,16 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
       </div>
     </div>
   )
+}
+
+/** The line under the bar: how far behind or ahead of today's pace, and what catching up takes. */
+function PaceNote({ p }: { p: BudgetPace }) {
+  const days = `${p.gone} of ${p.days} working day${p.days === 1 ? '' : 's'} gone`
+  const text = p.share >= 1
+    ? `The month is over: ${money(Math.abs(p.diff))} ${p.diff < 0 ? 'under' : 'over'} its whole budget.`
+    : p.status === 'onpace' ? `On pace: ${days}, within 10% of where it should be by today.`
+      : p.status === 'behind' ? `${money(-p.diff)} behind pace: ${days}. To catch up, about ${money(p.perDayToCatchUp)} a working day for the ${p.days - p.gone} left.`
+        : `${money(p.diff)} ahead of pace: ${days}.`
+  const tone = p.status === 'onpace' ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#fdf8e7] text-[#8a6d1a]'
+  return <p className={`m-0 mt-3 rounded-[10px] px-3 py-2 text-[12.5px] font-semibold leading-[1.45] ${tone}`}>{text}</p>
 }
