@@ -111,8 +111,11 @@ export async function ensureCurrentCycle(): Promise<Cycle> {
 export async function ensureYearCycle(year: number): Promise<Cycle> {
   const have = await loadCycle(year)
   if (have) return have
-  await rdb().from('review_cycles').upsert({ year }, { onConflict: 'year', ignoreDuplicates: true })
-  const made = await loadCycle(year)
+  // The row comes back from the write itself. A second loadCycle(year) would be the same GET as the
+  // one above, and Next.js reuses that answer (empty) within one render. Without ignoreDuplicates the
+  // upsert returns the row even when it already exists, rewriting only its year with the same value.
+  const r = await rdb().from('review_cycles').upsert({ year }, { onConflict: 'year' }).select(CYCLE_COLUMNS).single()
+  const made = one<Cycle>(r, 'The review year could not be made')
   if (!made) throw new Error('The review year could not be made')
   return made
 }
