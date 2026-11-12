@@ -105,7 +105,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
         </Section>
         <Section title="About">
           <div className="flex flex-col gap-3.5 pt-2">
-            <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={dateFieldCls} clearable /></Field>
+            <Field label="Date of birth"><DateField id="pp-dob" value={d.dateOfBirth} onChange={v => set('dateOfBirth', v)} className={dateFieldCls} clearable emptyOpensOn="years" /></Field>
             {/* The address is where they live and sets their time zone (owner, 9 November 2026): the country first, then the rest. */}
             <div className="flex flex-col gap-1.5">
               <span className={FIELD_LABEL}>Address</span>

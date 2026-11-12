@@ -8,9 +8,13 @@
  * navy, today ringed in teal, days outside min/max struck through, Today and
  * (when the field may be empty) Clear at the foot.
  *
+ * The month and year at the top open the months of that year, and the year
+ * there opens twelve years at a time (12 November 2026, for a date of birth):
+ * a year leads to its months, a month back to its days.
+ *
  * Keyboard: Enter, Space or Down open it; the arrows move the day (Page Up and
- * Page Down the month), Enter picks, Escape closes. Values are "YYYY-MM-DD",
- * '' for none, like <input type="date">.
+ * Page Down the month), Enter picks, Escape closes (or goes back to the days).
+ * Values are "YYYY-MM-DD", '' for none, like <input type="date">.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -45,6 +49,18 @@ export function monthGrid(day: string): string[] {
   return out
 }
 
+/** The twelve years shown together around `year`: 2016 to 2027, 2028 to 2039. Pure. */
+export function yearBlock(year: number): number[] {
+  const first = year - (((year % 12) + 12) % 12)
+  return Array.from({ length: 12 }, (_, i) => first + i)
+}
+
+/** Whether any day of a month ("YYYY-MM") or year sits inside min/max. Pure. */
+export function spanOpen(from: string, to: string, min?: string, max?: string): boolean {
+  return (!min || to >= min) && (!max || from <= max)
+}
+const monthEnd = (m: string) => iso(new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)))
+
 /**
  * Where an open popover sits: under its field, or above it when there is no
  * room below; it follows scrolling and closes on a click outside.
@@ -74,10 +90,18 @@ const ARROW = 'w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text
 const Chevron = ({ d }: { d: string }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 const CalIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-[#5b6b82]"><path d="M4 5h16v16H4zM4 10h16M9 3v4M15 3v4" /></svg>
 
+const TITLE = 'h-8 px-2 border-0 rounded-[8px] bg-transparent cursor-pointer inline-flex items-center gap-1 font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums lining-nums hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal'
+/** A month or year in the picker: chosen navy, now ringed teal, outside min/max struck through (as MonthField). */
+const cell = (sel: boolean, can: boolean, now: boolean) => `h-9 border-0 rounded-[9px] text-[12.5px] font-bold cursor-pointer disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal ${
+  sel ? 'bg-tn-primary text-[#ffffff]'
+  : !can ? 'bg-transparent text-[#cbd2da] line-through'
+  : now ? 'bg-transparent text-tn-teal shadow-[inset_0_0_0_1.5px_var(--color-tn-teal)] hover:bg-tn-teal-soft'
+  : 'bg-transparent text-tn-ink hover:bg-tn-teal-soft'}`
+
 /** The official closed look: the portal's field (lib/ui/fields.ts), full width. */
 export const DATE_FIELD = `${DATE_FIELD_CLASS} w-full`
 
-export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a day', clearable = false, disabled = false, className = DATE_FIELD, id }: {
+export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a day', clearable = false, disabled = false, className = DATE_FIELD, id, emptyOpensOn = 'days' }: {
   value: string
   onChange: (value: string) => void
   min?: string
@@ -90,25 +114,40 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
   /** The closed field's box (height, width, border, corners); DATE_FIELD when left out. */
   className?: string
   id?: string
+  /** Where an empty field opens: its days (the default) or twelve years at a time (a date of birth). */
+  emptyOpensOn?: 'days' | 'years'
 }) {
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(value || localToday())
+  const [view, setView] = useState<'days' | 'months' | 'years'>('days')
   const btn = useRef<HTMLButtonElement>(null)
   const pop = useRef<HTMLDivElement>(null)
   const today = localToday()
   const ok = (d: string) => (!min || d >= min) && (!max || d <= max)
 
-  const show = () => { if (disabled) return; setCursor(value || (ok(today) ? today : min ?? max ?? today)); setOpen(true) }
+  const show = () => {
+    if (disabled) return
+    setCursor(value || (ok(today) ? today : min ?? max ?? today))
+    setView(!value && emptyOpensOn === 'years' ? 'years' : 'days')
+    setOpen(true)
+  }
   const pick = (d: string) => { if (!ok(d)) return; onChange(d); setOpen(false); btn.current?.focus() }
 
   const pos = usePlaced(open, btn, pop, () => setOpen(false), 330)
 
   // The focused day follows the cursor, so the arrow keys read out where they are.
+  // In the months and years, the cursor's month or year takes the focus.
   useEffect(() => {
-    if (open && pos) pop.current?.querySelector<HTMLElement>(`[data-day="${cursor}"]`)?.focus({ preventScroll: true })
-  }, [open, pos, cursor])
+    if (!open || !pos) return
+    const key = view === 'days' ? `[data-day="${cursor}"]` : view === 'months' ? `[data-month="${cursor.slice(0, 7)}"]` : `[data-year="${cursor.slice(0, 4)}"]`
+    pop.current?.querySelector<HTMLElement>(key)?.focus({ preventScroll: true })
+  }, [open, pos, cursor, view])
 
   const onKey = (e: React.KeyboardEvent) => {
+    if (view !== 'days') {
+      if (e.key === 'Escape') { e.preventDefault(); setView('days') }
+      return
+    }
     const move: Record<string, () => string> = {
       ArrowLeft: () => add(cursor, -1), ArrowRight: () => add(cursor, 1), ArrowUp: () => add(cursor, -7), ArrowDown: () => add(cursor, 7),
       PageUp: () => addMonths(cursor, -1), PageDown: () => addMonths(cursor, 1),
@@ -119,37 +158,73 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
   }
 
   const month = cursor.slice(0, 7)
+  const year = Number(cursor.slice(0, 4))
+  const years = yearBlock(year)
   const popover = open && pos ? createPortal(
     <div ref={pop} role="dialog" aria-label={ariaLabel ? `${ariaLabel}: pick a day` : 'Pick a day'} onKeyDown={onKey}
       style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
       className={POPOVER}>
-      <div className="flex items-center justify-between mb-1.5">
-        <button type="button" aria-label="Previous month" onClick={() => setCursor(addMonths(cursor, -1))} className="w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-        <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink" aria-live="polite">{MONTHS[Number(month.slice(5)) - 1]} {month.slice(0, 4)}</span>
-        <button type="button" aria-label="Next month" onClick={() => setCursor(addMonths(cursor, 1))} className="w-8 h-8 border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-        </button>
-      </div>
-      <div className="grid grid-cols-7 text-center" aria-hidden="true">
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="py-1 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] text-muted">{d}</span>)}
-      </div>
-      <div className="grid grid-cols-7" role="grid">
-        {monthGrid(cursor).map(d => {
-          const can = ok(d), sel = d === value, now = d === today, inMonth = d.startsWith(month)
-          return (
-            <button key={d} type="button" data-day={d} tabIndex={d === cursor ? 0 : -1} disabled={!can} aria-label={dateLabel(d)} aria-pressed={sel} aria-current={now ? 'date' : undefined}
-              onClick={() => pick(d)} className="h-[34px] border-0 bg-transparent p-0 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed group focus:outline-none">
-              <span className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[12.5px] font-bold tabular-nums lining-nums group-focus-visible:ring-2 group-focus-visible:ring-tn-teal ${
-                sel ? 'bg-tn-primary text-[#ffffff]'
-                : !can ? 'text-[#cbd2da] line-through'
-                : now ? 'text-tn-teal shadow-[inset_0_0_0_1.5px_var(--color-tn-teal)] group-hover:bg-tn-teal-soft'
-                : inMonth ? 'text-tn-ink group-hover:bg-tn-teal-soft' : 'text-[#cbd2da] group-hover:bg-subtle'}`}>{Number(d.slice(8))}</span>
-            </button>
-          )
-        })}
-      </div>
+      {view === 'days' && <>
+        <div className="flex items-center justify-between mb-1.5">
+          <button type="button" aria-label="Previous month" onClick={() => setCursor(addMonths(cursor, -1))} className={ARROW}><Chevron d="M15 18l-6-6 6-6" /></button>
+          <button type="button" aria-label={`${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}: pick another month or year`} onClick={() => setView('months')} className={TITLE} aria-live="polite">
+            {MONTHS[Number(month.slice(5)) - 1]} {month.slice(0, 4)}<Chevron d="M6 9l6 6 6-6" />
+          </button>
+          <button type="button" aria-label="Next month" onClick={() => setCursor(addMonths(cursor, 1))} className={ARROW}><Chevron d="M9 6l6 6-6 6" /></button>
+        </div>
+        <div className="grid grid-cols-7 text-center" aria-hidden="true">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="py-1 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] text-muted">{d}</span>)}
+        </div>
+        <div className="grid grid-cols-7" role="grid">
+          {monthGrid(cursor).map(d => {
+            const can = ok(d), sel = d === value, now = d === today, inMonth = d.startsWith(month)
+            return (
+              <button key={d} type="button" data-day={d} tabIndex={d === cursor ? 0 : -1} disabled={!can} aria-label={dateLabel(d)} aria-pressed={sel} aria-current={now ? 'date' : undefined}
+                onClick={() => pick(d)} className="h-[34px] border-0 bg-transparent p-0 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed group focus:outline-none">
+                <span className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[12.5px] font-bold tabular-nums lining-nums group-focus-visible:ring-2 group-focus-visible:ring-tn-teal ${
+                  sel ? 'bg-tn-primary text-[#ffffff]'
+                  : !can ? 'text-[#cbd2da] line-through'
+                  : now ? 'text-tn-teal shadow-[inset_0_0_0_1.5px_var(--color-tn-teal)] group-hover:bg-tn-teal-soft'
+                  : inMonth ? 'text-tn-ink group-hover:bg-tn-teal-soft' : 'text-[#cbd2da] group-hover:bg-subtle'}`}>{Number(d.slice(8))}</span>
+              </button>
+            )
+          })}
+        </div>
+      </>}
+      {view === 'months' && <>
+        <div className="flex items-center justify-between mb-2">
+          <button type="button" aria-label="Previous year" onClick={() => setCursor(addMonths(cursor, -12))} className={ARROW}><Chevron d="M15 18l-6-6 6-6" /></button>
+          <button type="button" aria-label={`${year}: pick another year`} onClick={() => setView('years')} className={TITLE} aria-live="polite">{year}<Chevron d="M6 9l6 6 6-6" /></button>
+          <button type="button" aria-label="Next year" onClick={() => setCursor(addMonths(cursor, 12))} className={ARROW}><Chevron d="M9 6l6 6-6 6" /></button>
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {MON.map((name, i) => {
+            const m = `${year}-${String(i + 1).padStart(2, '0')}`, can = spanOpen(`${m}-01`, monthEnd(m), min, max)
+            return (
+              <button key={m} type="button" data-month={m} disabled={!can} aria-pressed={value.startsWith(m)} aria-current={today.startsWith(m) ? 'date' : undefined} aria-label={`${MONTHS[i]} ${year}`}
+                onClick={() => { setCursor(`${m}-${String(Math.min(Number(cursor.slice(8)), Number(monthEnd(m).slice(8)))).padStart(2, '0')}`); setView('days') }}
+                className={cell(value.startsWith(m), can, today.startsWith(m))}>{name}</button>
+            )
+          })}
+        </div>
+      </>}
+      {view === 'years' && <>
+        <div className="flex items-center justify-between mb-2">
+          <button type="button" aria-label="Earlier years" onClick={() => setCursor(addMonths(cursor, -144))} className={ARROW}><Chevron d="M15 18l-6-6 6-6" /></button>
+          <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums lining-nums" aria-live="polite">{years[0]} to {years[11]}</span>
+          <button type="button" aria-label="Later years" onClick={() => setCursor(addMonths(cursor, 144))} className={ARROW}><Chevron d="M9 6l6 6-6 6" /></button>
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {years.map(y => {
+            const can = spanOpen(`${y}-01-01`, `${y}-12-31`, min, max)
+            return (
+              <button key={y} type="button" data-year={y} disabled={!can} aria-pressed={value.startsWith(`${y}-`)} aria-current={today.startsWith(`${y}-`) ? 'date' : undefined}
+                onClick={() => { setCursor(addMonths(cursor, (y - year) * 12)); setView('months') }}
+                className={`${cell(value.startsWith(`${y}-`), can, today.startsWith(`${y}-`))} tabular-nums lining-nums`}>{y}</button>
+            )
+          })}
+        </div>
+      </>}
       <div className="flex items-center justify-between border-t border-[#f1f3f6] mt-2 pt-2.5">
         <button type="button" disabled={!ok(today)} onClick={() => pick(today)} className="border-0 bg-transparent p-0 cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline">Today</button>
         {clearable && <button type="button" onClick={() => { onChange(''); setOpen(false); btn.current?.focus() }} className="border-0 bg-transparent p-0 cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-muted hover:text-tn-ink">Clear</button>}

@@ -26,6 +26,7 @@ import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from 
 import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-terms'
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
+import { startOfPerson } from './waves-data'
 import { loadWindows, statusOf } from './allowance-limit'
 import { windowName } from './allowance'
 import { STOP_AFTER_LABEL } from './safety'
@@ -517,7 +518,8 @@ async function submitBlockFor(dir: Directory, personId: string, label: { label: 
 
 /**
  * The period the person's Submit button sends: the oldest recent one with
- * Clocky time that was never sent, else today's (periodToSubmit).
+ * Clocky time that was never sent and did not end before their North Time
+ * start, else today's (periodToSubmit).
  */
 async function submitTarget(c: Db, personId: string, today: string, rules: CadenceRules, subs: readonly SubmittedPeriod[]): Promise<Period> {
   let from = periodContaining(today, rules).start
@@ -525,7 +527,13 @@ async function submitTarget(c: Db, personId: string, today: string, rules: Caden
   const { data, error } = await c.from('tc_entries').select('entry_date').eq('person_id', personId).eq('source', 'portal')
     .gte('entry_date', from).lt('entry_date', periodContaining(today, rules).start).limit(1000)
   if (error) throw new Error(`Your periods could not be read: ${error.message}`)
-  return periodToSubmit(today, rules, subs, new Set(((data ?? []) as { entry_date: string }[]).map(r => r.entry_date)))
+  // Months closed in QuickBooks Time before the person's start are never asked for (closedBeforeStart).
+  // Unread, the window still opens, as it did before the start date counted.
+  const startsOn = await startOfPerson(c, personId).then(s => s.startsOn).catch(e => {
+    console.error('[clocky submit] start date:', e instanceof Error ? e.message : e)
+    return null
+  })
+  return periodToSubmit(today, rules, subs, new Set(((data ?? []) as { entry_date: string }[]).map(r => r.entry_date)), startsOn)
 }
 
 /**

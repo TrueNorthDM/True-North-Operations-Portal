@@ -441,10 +441,11 @@ export const SUBMIT_LOOKBACK = 6
  * approved, else today's. So once a month or pay period rolls over, the one
  * left behind can still be sent. Time imported from QuickBooks Time never
  * needs sending from here, so `recordedDays` lists only Clocky's own days.
+ * Periods that ended before `startsOn` are never sent from here (closedBeforeStart).
  */
 export function periodToSubmit(
   today: string, rules: CadenceRules, submissions: readonly SubmittedPeriod[], recordedDays: ReadonlySet<string>,
-  lookback = SUBMIT_LOOKBACK,
+  startsOn: string | null = null, lookback = SUBMIT_LOOKBACK,
 ): Period {
   const current = periodContaining(today, rules)
   const earlier: Period[] = []
@@ -455,5 +456,16 @@ export function periodToSubmit(
   }
   const sent = (x: Period) => submissions.some(s => s.start === x.start && s.end === x.end && isSent(s.state))
   const hasTime = (x: Period) => [...recordedDays].some(d => x.start <= d && d <= x.end)
-  return earlier.find(x => hasTime(x) && !sent(x)) ?? current
+  return earlier.find(x => !closedBeforeStart(x, startsOn) && hasTime(x) && !sent(x)) ?? current
+}
+
+/**
+ * Whether a period ended before the person's North Time start date (12 November
+ * 2026). Those periods were closed in QuickBooks Time, so neither the Submit
+ * button nor the late reminder ever asks for them, even when a few of their
+ * days hold time typed in the portal (hours added by hand for someone, a
+ * correction). With no start date, nothing is set aside.
+ */
+export function closedBeforeStart(period: Pick<Period, 'end'>, startsOn: string | null): boolean {
+  return !!startsOn && period.end < startsOn
 }

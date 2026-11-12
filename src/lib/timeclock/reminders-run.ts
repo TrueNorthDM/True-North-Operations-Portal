@@ -39,11 +39,11 @@ import { loadReminders } from './company-settings'
 import { localDate, localMinutes, monthLong } from './format'
 import { loadPayTerms } from './pay-terms'
 import { loadInvoicesToSend } from './send-invoice-data'
-import { addDays, daysBetween, isSent, periodContaining, periodLabel, rangeText } from './periods'
+import { addDays, closedBeforeStart, daysBetween, isSent, periodContaining, periodLabel, rangeText } from './periods'
 import { formatDuration } from './rounding'
 import { notifyClockyReminders } from '@/lib/notifications/run'
 import { applyTypeChanges } from './type-change'
-import { loadNoWave } from './waves-data'
+import { loadNoWave, loadStartDates } from './waves-data'
 import { loadBirthDates } from '@/lib/hr/contact'
 import { loadCelebrationOptOuts } from '@/lib/settings/person'
 
@@ -74,6 +74,11 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
     return new Set<string>()
   })
   const atNine = people.filter(p => Math.floor(localMinutes(now, p.zone) / 60) === 9 && !noWave.has(p.id))
+  // A month closed in QuickBooks Time before someone's start is never late here (closedBeforeStart).
+  const startDates = atNine.length ? await loadStartDates(c).catch(e => {
+    console.error('[reminders] start dates:', e instanceof Error ? e.message : e)
+    return new Map<string, string>()
+  }) : new Map<string, string>()
   if (atNine.length && (on.contractor_due || on.pay_period_ends || on.late)) {
     const prevOf = new Map(atNine.map(p => {
       const today = localDate(now, p.zone)
@@ -98,7 +103,7 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
         reminders.push({ personId: p.id, key: `ends:${cur.start}`, text: `Your pay period ends Saturday (${rangeText(cur.start, cur.end)}).` })
       }
       const clocky = used.some(u => u.person_id === p.id && u.entry_date >= prev.start && u.entry_date <= prev.end)
-      if (on.late && clocky && !sent(prev.start, prev.end)) {
+      if (on.late && clocky && !sent(prev.start, prev.end) && !closedBeforeStart(prev, startDates.get(p.id) ?? null)) {
         const n = daysBetween(prev.end, today)
         const pl = periodLabel(prev)
         if (n >= 1) reminders.push({ personId: p.id, key: `late:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} day${n === 1 ? '' : 's'} late.` })

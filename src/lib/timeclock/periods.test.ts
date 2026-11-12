@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { periodFor, shiftMonth, monthName, whatCanIDo } from './periods'
 import {
   anchorMove, cadenceChange, cadenceLine, cadenceOn, companyPayPeriods, gridPeriod, isLocked, lockedBy, lockedMessage,
-  payPeriodStart, periodContaining, periodLabel, periodsBetween, periodToSubmit, type AnchorChange, type CadenceRules,
+  closedBeforeStart, payPeriodStart, periodContaining, periodLabel, periodsBetween, periodToSubmit, type AnchorChange, type CadenceRules,
 } from './periods'
 
 describe('periodFor', () => {
@@ -292,5 +292,21 @@ describe('periodToSubmit (the Submit button)', () => {
   it('the oldest first, and never further back than the lookback', () => {
     expect(periodToSubmit('2026-11-03', monthly, [], days('2026-09-10', '2026-10-20'))).toMatchObject({ start: '2026-09-01' })
     expect(periodToSubmit('2026-11-03', monthly, [], days('2017-03-01'))).toMatchObject({ start: '2026-11-01' })
+  })
+
+  it('never a period that ended before the person started on North Time (Submit August, 12 Nov 2026)', () => {
+    // Hours typed in the portal on Aug 30 and Oct 29, before a Nov 8 start: both months were closed in QuickBooks Time.
+    expect(periodToSubmit('2026-11-12', monthly, [], days('2026-08-30', '2026-10-29'), '2026-11-08')).toMatchObject({ start: '2026-11-01' })
+    // The month holding the start date still counts once it is over.
+    expect(periodToSubmit('2026-12-03', monthly, [], days('2026-11-20'), '2026-11-08')).toMatchObject({ start: '2026-11-01' })
+    // No start date: as before.
+    expect(periodToSubmit('2026-11-12', monthly, [], days('2026-10-29'), null)).toMatchObject({ start: '2026-10-01' })
+  })
+
+  it('closedBeforeStart', () => {
+    expect(closedBeforeStart({ end: '2026-10-31' }, '2026-11-08')).toBe(true)
+    expect(closedBeforeStart({ end: '2026-11-30' }, '2026-11-08')).toBe(false)
+    expect(closedBeforeStart({ end: '2026-11-07' }, '2026-11-08')).toBe(true)
+    expect(closedBeforeStart({ end: '2026-10-31' }, null)).toBe(false)
   })
 })
