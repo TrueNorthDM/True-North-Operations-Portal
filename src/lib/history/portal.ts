@@ -82,6 +82,7 @@ export const BUILT: { when: string; what: string; how: string; isNew?: boolean }
   { when: 'Jul to Sep 2026', what: 'The True North look', how: 'The whole portal rebranded to True North Digital Marketing\'s identity.' },
   { when: 'October 2026', what: 'A home of its own', how: 'Its own server and address, sign-in by invitation with a second step on the phone, nightly backups, and a staging copy where every change is tried before the team sees it.', isNew: true },
   { when: 'November 2026', what: 'Topic Studio', how: 'The SEO team\'s topic brief tool, built as a Claude Artifact, began moving into the portal on November 5, first on the staging copy: topics imported from the Artifact, for the SEO and Writers teams, with the writer workshop and the brief to follow.' },
+  { when: 'November 2026', what: 'Payroll summary', how: 'On November 12, in place of a connection to Rippling, North Time began making the payroll report Finance sends to Rippling: each US employee\'s regular hours and paid time off for a pay period, a month or any days, with the hours to check marked, and the same file TSheets used to export.' },
 ]
 
 /** Chapter 4: the move, phase by phase. */
