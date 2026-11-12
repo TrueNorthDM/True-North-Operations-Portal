@@ -9,7 +9,8 @@
  *
  * The page fills its width (owner, 12 November 2026): three groups, Company,
  * Your connections and Your availability, with the cards that belong together
- * side by side on a desktop and a tablet and in one column on a phone. Zoom
+ * side by side, split at the middle of the page, on a desktop and a tablet,
+ * and in one column on a phone. Zoom
  * sits beside the Google accounts, with the person's default link under both.
  */
 
@@ -119,27 +120,25 @@ export function AgendaSettings({ data, notice, api, only }: { data: AgendaSettin
     <div className="flex flex-col gap-6">
       {notice && <Notice notice={notice} />}
       <Group label="Company">
-        <div className={`grid grid-cols-1 gap-[18px] ${data.superAdmin ? `md:grid-cols-2 ${WIDE_NARROW}` : ''}`}>
+        <div className={`${data.superAdmin ? HALVES : 'grid grid-cols-1'}`}>
           <TeamCalendarCard data={data} busy={busy} run={run} api={api} />
           {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
         </div>
       </Group>
       <Group label="Your connections">
-        <div className={`grid grid-cols-1 gap-[18px] md:grid-cols-2 ${WIDE_NARROW}`}>
+        <div className={HALVES}>
           <AccountsCard data={data} busy={busy} run={run} api={api} />
           <ZoomCard zoom={data.zoom} busy={busy} run={run} api={api} />
         </div>
         {data.zoom.ready && <MeetingLinkCard zoom={data.zoom} busy={busy} run={run} api={api} />}
       </Group>
       <Group label="Your availability">
-        <div className="grid grid-cols-1 gap-[18px] items-start lg:grid-cols-2">
+        <div className={`${HALVES} items-start`}>
           <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />
           <div className="flex flex-col gap-[18px] min-w-0">
             <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />
-            <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2">
-              <HolidaysCard country={data.country} />
-              <YourTimeCard zone={data.zone} />
-            </div>
+            <HolidaysCard country={data.country} />
+            <YourTimeCard zone={data.zone} />
           </div>
         </div>
       </Group>
@@ -148,8 +147,12 @@ export function AgendaSettings({ data, notice, api, only }: { data: AgendaSettin
   )
 }
 
-/** On a desktop the first card of a pair is the wider one; on a tablet they share the row evenly. */
-const WIDE_NARROW = 'lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
+/**
+ * Every pair splits at the middle of the page (owner, 12 November 2026), so the
+ * gap between the cards runs in one line down all three groups. One column
+ * under a tablet's width.
+ */
+const HALVES = 'grid grid-cols-1 gap-[18px] md:grid-cols-2'
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
