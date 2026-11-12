@@ -10,7 +10,8 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { allRows, db, loadCatalog, loadClockySettings } from './clocky-context'
+import { allRows, db, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
+import { teamColour } from '@/lib/directory/team-colour'
 import { localDate } from './format'
 import { loadRouteSettings, seesAllMoney } from './pay-terms'
 import { loadSubmissions } from './clocky-store'
@@ -26,6 +27,8 @@ export interface PayrollPage {
   /** 8 h a weekday in the range: 80 for a pay period. */
   expected: number
   lines: PayrollLine[]
+  /** For the page only, never the file: each person's picture, team and its colour. */
+  looks: Record<string, { avatarUrl: string | null; team: string | null; color: string }>
   /** "payroll-summary-2026-10-25-to-2026-11-07" */
   file: string
 }
@@ -54,7 +57,7 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
     (a, b) => c.from('people').select('id, full_name, last_name, status').eq('employment_type', 'us').order('id').range(a, b),
     'People could not be read')
   const ids = people.map(p => p.id)
-  const [entries, catalog, subs] = await Promise.all([
+  const [entries, catalog, subs, dir] = await Promise.all([
     ids.length ? allRows<{ person_id: string; jobcode_id: number | null; entry_date: string; duration_seconds: number; state: string | null }>(
       (a, b) => c.from('tc_entries').select('person_id, jobcode_id, entry_date, duration_seconds, state')
         
@@ -63,6 +66,7 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
       'The hours could not be read') : Promise.resolve([]),
     loadCatalog(),
     loadSubmissions(c, ids),
+    loadDirectory(),
   ])
 
   const approvedByTimesheet = (personId: string, date: string) =>
@@ -80,7 +84,13 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
     .map(p => ({ id: p.id, fullName: p.full_name, lastName: p.last_name }))
 
   const expected = expectedHours(from, to)
+  const looks: PayrollPage['looks'] = {}
+  for (const p of pool) {
+    const d = dir.people.get(p.id), t = d?.teamId ? dir.teams.get(d.teamId) : undefined
+    looks[p.id] = { avatarUrl: d?.avatarUrl ?? null, team: t?.name ?? null, color: teamColour(t?.color, t?.name) }
+  }
   return {
+    looks,
     query: { ...query, from, to }, from, to, label, expected,
     lines: buildPayroll(pool, rows, expected),
     file: `payroll-summary-${from}-to-${to}`,
