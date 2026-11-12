@@ -4,7 +4,7 @@
  * Who: Super Admins and Finance (seesAllMoney), the people who run payroll.
  * Whose hours: every US employee (people.employment_type 'us') who is active
  * or has hours in the period, contractors never (owner, 12 November 2026).
- * Which hours: everything recorded and finished, approved or not; what is not
+ * Which hours: everything recorded except a clock still running, approved or not; what is not
  * approved yet is counted apart so Tina can wait for it.
  */
 
@@ -59,7 +59,9 @@ export async function loadPayroll(start: string | undefined, now = new Date()): 
   const [entries, catalog, subs] = await Promise.all([
     ids.length ? allRows<{ person_id: string; jobcode_id: number | null; entry_date: string; duration_seconds: number; state: string | null }>(
       (a, b) => c.from('tc_entries').select('person_id, jobcode_id, entry_date, duration_seconds, state')
-        .in('person_id', ids).not('ended_at', 'is', null).gte('entry_date', from).lte('entry_date', to).order('id').range(a, b),
+        
+        // Leaves out only a clock still running: manual entries and all time off have no start or end.
+        .in('person_id', ids).or('ended_at.not.is.null,started_at.is.null').gte('entry_date', from).lte('entry_date', to).order('id').range(a, b),
       'The hours could not be read') : Promise.resolve([]),
     loadCatalog(),
     loadSubmissions(c, ids),
