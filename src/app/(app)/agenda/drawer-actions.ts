@@ -8,7 +8,9 @@
  * Google account (Send from): on an account signed in with Google it goes to
  * that Google Calendar, which sends the invitations and makes the Meet link
  * (lib/agenda/google-events.ts); on a sample account it stays in the portal
- * with a sample Meet link. Refused while the new Agenda is closed (migration
+ * with a sample Meet link. An online event by Zoom (owner, 12 November 2026)
+ * gets its meeting on the creator's own Zoom account first
+ * (lib/agenda/zoom-app.ts), and Google carries that link. Refused while the new Agenda is closed (migration
  * 134) and during a View Stage preview.
  */
 
@@ -28,11 +30,14 @@ import { answerOnGoogle, readFromGoogle, removeFromGoogle, sendToGoogle, type Gu
 import { answerOf, type Answer } from '@/lib/agenda/model'
 import { endBefore, fromRRule, instanceId, lastDay, restFrom, toRRule, type Scope } from '@/lib/agenda/recurrence'
 import { occurrenceOf } from '@/lib/agenda/series'
+import { removeZoomMeeting, syncZoomMeeting, zoomAccountOf } from '@/lib/agenda/zoom-app'
+import { isZoomLink } from '@/lib/agenda/zoom-oauth'
 
 /** `id`: the event, for a page that books one and links to it (the annual review). */
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
 const NOT_SAVED = 'Not saved. Try again in a moment.'
+const NO_ZOOM = 'Your Zoom account is not connected. Connect Zoom in Agenda settings, or pick Google Meet.'
 const isDone = (x: unknown): x is Done => !!x && typeof x === 'object' && 'ok' in x
 
 async function writer(): Promise<{ access: Access & { personId: string }; viewer: Viewer } | Done> {
@@ -82,28 +87,37 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
     if (!acct) return no('That account is no longer connected. Select another one to send from.')
     google = acct.source === 'google'
   }
+  const viaZoom = r.row.online_via === 'zoom'
   // Where the row came from: Google, the portal alone, or a sample account.
   const source = google ? 'google' : noInvites ? 'portal' : 'sample'
   let eventId = id
   let before: { accountId: number | null; googleEventId: string | null } | undefined
   if (id != null) {
-    const { data: old } = await c.from('agenda_events').select('id, audience, audience_team_ids, created_by, team_id, meet_link, sent_from_account_id, google_event_id, series_id').eq('id', id).maybeSingle()
+    const { data: old } = await c.from('agenda_events').select('id, audience, audience_team_ids, created_by, team_id, meet_link, sent_from_account_id, google_event_id, series_id, zoom_meeting_id').eq('id', id).maybeSingle()
     if (!old || !old.audience) return no('That event is no longer on the Agenda.')
     if (!mayManage(old as Parameters<typeof mayManage>[0], viewer)) return no('Only who created it can change this event.')
+    // A new Zoom meeting needs the person's own Zoom; one the event already has (its own, or its series') is kept.
+    if (viaZoom && !old.zoom_meeting_id && !isZoomLink(old.meet_link) && (await zoomAccountOf(access.personId))?.status !== 'connected') return no(NO_ZOOM)
     before = { accountId: old.sent_from_account_id, googleEventId: old.google_event_id }
     // One occurrence changed on its own stays one occurrence: it never becomes a series of its own.
     if (old.series_id) { r.row.recurrence = null; r.row.recur_until = null }
     // On Google the link is Google's own (sendToGoogle sets it); a sample account keeps a sample one.
-    const meet = r.row.how !== 'online' ? null : google ? old.meet_link : (old.meet_link || sampleMeet(`${id}`))
+    // By Zoom the link is Zoom's (syncZoomMeeting sets it), and a link of the other kind never stays.
+    const kept = old.meet_link && isZoomLink(old.meet_link) === viaZoom ? old.meet_link : null
+    const meet = r.row.how !== 'online' ? null : viaZoom || google ? kept : (kept || sampleMeet(`${id}`))
     const { error } = await c.from('agenda_events').update({ ...r.row, meet_link: meet, source }).eq('id', id)
     if (error) { console.error('[agenda drawer] update:', error.message); return no(NOT_SAVED) }
     const { error: delErr } = await c.from('agenda_event_guests').delete().eq('event_id', id)
     if (delErr) { console.error('[agenda drawer] guests:', delErr.message); return no(NOT_SAVED) }
   } else {
-    const { data, error } = await c.from('agenda_events').insert({ ...r.row, created_by: access.personId, add_to_google: false, source, ...extra }).select('id').single()
+    const inherited = typeof extra.meet_link === 'string' ? extra.meet_link : null
+    if (viaZoom && !isZoomLink(inherited) && (await zoomAccountOf(access.personId))?.status !== 'connected') return no(NO_ZOOM)
+    // One occurrence of a series keeps the series' link only when it is of the kind chosen.
+    const row = { ...r.row, created_by: access.personId, add_to_google: false, source, ...extra, ...(inherited && isZoomLink(inherited) !== viaZoom ? { meet_link: null } : {}) }
+    const { data, error } = await c.from('agenda_events').insert(row).select('id').single()
     if (error || !data) { console.error('[agenda drawer] create:', error?.message); return no(NOT_SAVED) }
     eventId = data.id as number
-    if (r.row.how === 'online' && !google) await c.from('agenda_events').update({ meet_link: sampleMeet(`${eventId}`) }).eq('id', eventId)
+    if (r.row.how === 'online' && !google && !viaZoom) await c.from('agenda_events').update({ meet_link: sampleMeet(`${eventId}`) }).eq('id', eventId)
   }
   // These are seen through Who it's for (lib/agenda/event-rules.ts seesEvent), never sent to anyone.
   const list = noInvites ? [] : invitees(r.row.audience, r.row.audience_team_ids ?? [], r.guests, await invitablePeople(), access.personId)
@@ -116,6 +130,8 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
     await removeFromGoogle(before.accountId, before.googleEventId)
     await c.from('agenda_events').update({ google_event_id: null, calendar_state: null }).eq('id', eventId as number)
   }
+  // Zoom first: the meeting is made, changed or taken away, so Google carries the right link.
+  const zoomFailed = (await syncZoomMeeting(eventId as number, access.personId)) === 'failed'
   const sent = google ? await sendToGoogle(eventId as number, before) : true
   revalidatePath('/agenda')
   revalidatePath('/')
@@ -125,6 +141,7 @@ async function save(input: DrawerInput, id: number | null, extra: Record<string,
     if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but ${where} did not take it. Open it and save again, or reconnect the account in Agenda settings.` }
     return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${google ? ` and on ${where}, with no invitations` : ''}.` }
   }
+  if (zoomFailed) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but Zoom did not make the meeting, so it has no link. Reconnect Zoom in Agenda settings, then open the event and save it again.` }
   if (!sent) return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda, but Google did not take it, so no invitation went out. Open it and save again, or reconnect the account in Agenda settings.` }
   return { ok: true, id: eventId as number, toast: `${r.row.title} is on the Agenda${n ? `. Google invitation sent to ${n} ${n === 1 ? 'person' : 'people'}` : ''}.` }
 }
@@ -133,8 +150,8 @@ export async function createDrawerEvent(input: DrawerInput): Promise<Done> {
   return save(input, null)
 }
 
-const SERIES_COLS = 'id, title, type, audience, audience_team_ids, created_by, team_id, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, sent_from_account_id, google_event_id, meet_link'
-type SeriesOld = { id: number; title: string; type: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; team_id: string | null; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; time_zone: string | null; recurrence: string | null; skip_days: string[] | null; sent_from_account_id: number | null; google_event_id: string | null; meet_link: string | null }
+const SERIES_COLS = 'id, title, type, audience, audience_team_ids, created_by, team_id, start_date, end_date, starts_at, ends_at, time_zone, recurrence, skip_days, sent_from_account_id, google_event_id, meet_link, zoom_meeting_id, zoom_person_id'
+type SeriesOld = { zoom_meeting_id?: string | null; zoom_person_id?: string | null; id: number; title: string; type: string | null; audience: string | null; audience_team_ids: string[] | null; created_by: string | null; team_id: string | null; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; time_zone: string | null; recurrence: string | null; skip_days: string[] | null; sent_from_account_id: number | null; google_event_id: string | null; meet_link: string | null }
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 864e5)
 const plusDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
 
@@ -238,6 +255,8 @@ export async function deleteDrawerEvent(input: { id: number; occurrence?: { day:
   }
   const { error } = await c.from('agenda_events').delete().eq('id', id)
   if (error) { console.error('[agenda drawer] delete:', error.message); return no(NOT_SAVED) }
+  // The Zoom meeting the portal made for it goes too (best effort: the event is already gone).
+  await removeZoomMeeting(old.zoom_person_id ?? null, old.zoom_meeting_id ?? null)
   revalidatePath('/agenda')
   revalidatePath('/')
   return { ok: true, toast: `${old.title} was deleted.${old.type === 'reminder' ? '' : " The guests get Google's cancellation."}` }

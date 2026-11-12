@@ -1,5 +1,6 @@
 // Agenda settings (owner, 30 October 2026): the team calendar, the person's
-// Google accounts, working hours, holidays and time zone. Not found while the
+// Google accounts and Zoom, working hours, holidays and time zone, across
+// the page's full width (owner, 12 November 2026). Not found while the
 // new Agenda is closed (migration 134), for Super Admins too.
 
 import { notFound } from 'next/navigation'
@@ -8,14 +9,15 @@ import { agendaViewer } from '@/lib/agenda/data'
 import { agendaGoogleOpen } from '@/lib/agenda/google-lock'
 import { loadAgendaSettings } from '@/lib/agenda/settings-data'
 import { connectNotice } from '@/lib/agenda/google-oauth'
+import { zoomNotice } from '@/lib/agenda/zoom-oauth'
 import { AgendaSettings } from '@/components/agenda/settings/AgendaSettings'
-import { connectAccount, connectTeamCalendar, disconnectAccount, disconnectTeamCalendar, saveBookingLink, saveWorkingHours, setAllLevels, setInviteAccount } from './actions'
+import { connectAccount, connectTeamCalendar, disconnectAccount, disconnectTeamCalendar, disconnectZoom, saveBookingLink, saveMeetingLink, saveWorkingHours, setAllLevels, setInviteAccount } from './actions'
 import { PAGE_TITLE } from '@/lib/ui/type'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Agenda settings' }
 
-type Props = { searchParams: Promise<{ google?: string; email?: string }> }
+type Props = { searchParams: Promise<{ google?: string; zoom?: string; email?: string }> }
 
 export default async function AgendaSettingsRoute({ searchParams }: Props) {
   const access = await requireSurface('agenda')
@@ -25,14 +27,14 @@ export default async function AgendaSettingsRoute({ searchParams }: Props) {
   const data = await loadAgendaSettings(v.id, v.superAdmin)
   // What Google's sign-in came back with (/api/agenda/google/callback).
   const sp = await searchParams
-  const notice = connectNotice(sp.google, sp.email)
+  const notice = connectNotice(sp.google, sp.email) ?? zoomNotice(sp.zoom, sp.email)
   return (
-    <div className="max-w-[880px] flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <h1 className={PAGE_TITLE}>Agenda settings</h1>
-        <p className="m-0 text-[14px] text-foreground">Your Google accounts and how the portal uses them.</p>
+        <p className="m-0 text-[14px] text-foreground">Your accounts, your availability and how the portal uses them.</p>
       </div>
-      <AgendaSettings data={data} notice={notice} api={{ connectAccount, disconnectAccount, setInviteAccount, saveWorkingHours, connectTeamCalendar, disconnectTeamCalendar, setAllLevels, saveBookingLink }} />
+      <AgendaSettings data={data} notice={notice} api={{ connectAccount, disconnectAccount, setInviteAccount, saveWorkingHours, connectTeamCalendar, disconnectTeamCalendar, setAllLevels, saveBookingLink, disconnectZoom, saveMeetingLink }} />
     </div>
   )
 }

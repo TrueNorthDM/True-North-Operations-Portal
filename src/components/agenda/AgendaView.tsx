@@ -12,7 +12,7 @@
  * hide what is here.
  */
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -21,7 +21,8 @@ import { Select } from '@/components/ui/Select'
 import { Segmented } from '@/components/ui/Segmented'
 import { useModal } from '@/components/ui/useModal'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
-import { MeetIcon } from '@/components/ui/MeetIcon'
+import { CallIcon } from '@/components/ui/MeetIcon'
+import { isZoomLink } from '@/lib/agenda/zoom-oauth'
 import { DetailFoot, DetailTop } from './EventDetail'
 import { ScopeChoice } from './ScopeChoice'
 import type { Scope } from '@/lib/agenda/recurrence'
@@ -38,7 +39,7 @@ import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import type { EventEdit } from '@/lib/agenda/events'
 import { NewEventDialog, type NewEventSetup, type CreateEvent, type DeleteEvent, type UpdateEvent } from './NewEventDialog'
-import { EventDrawer, type DrawerApi } from './EventDrawer'
+import { DRAFT_KEY, EventDrawer, type DrawerApi } from './EventDrawer'
 import type { DrawerSetup } from '@/lib/agenda/drawer-data'
 import type { Answer, DrawerEdit } from '@/lib/agenda/model'
 import { MODAL_BACKDROP, MODAL_PANEL } from '@/lib/ui/modal'
@@ -61,6 +62,8 @@ export interface AgendaData {
   /** Design checks: a card or the new event dialog already open. */
   startCard?: string
   startNew?: boolean
+  /** Back from connecting Zoom in the drawer: it opens again on Zoom, with what was typed (this tab's draft). */
+  startVia?: 'zoom'
   /** Design checks: the open card already asking to confirm Delete, or its Edit form open. */
   startConfirm?: boolean
   startEdit?: boolean
@@ -79,6 +82,9 @@ const Anni = ({ yrs, size, compact = false }: { yrs: number; size: number; compa
 
 const VIEW_OPTS = [{ key: 'month', label: 'Month' }, { key: 'week', label: 'Week' }, { key: 'list', label: 'List' }] as const
 
+const noStore = () => () => {}
+const readDraft = (): string | null => { try { return sessionStorage.getItem(DRAFT_KEY) } catch { return null } }
+
 export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data: AgendaData; api: CreateEvent; edit?: EventEditApi; drawerApi?: DrawerApi; linked?: boolean }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -90,6 +96,17 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
   const [creating, setCreating] = useState(!!data.startNew)
   const [editing, setEditing] = useState<EventEdit | null>(() => (data.startEdit && data.items.find(x => x.id === data.startCard)?.edit) || null)
   const [drawerEdit, setDrawerEdit] = useState<DrawerEdit | null>(null)
+  // Back from Zoom's sign-in: the draft kept in this tab before leaving is read in the browser only (the server has no session storage).
+  const rawDraft = useSyncExternalStore(noStore, () => (data.startVia ? readDraft() : null), () => null)
+  const [draftDone, setDraftDone] = useState(false)
+  const draft = useMemo<Partial<Omit<DrawerEdit, 'id' | 'occurrence'>> | null>(() => {
+    if (!data.startVia || draftDone) return null
+    try {
+      const d = rawDraft ? JSON.parse(rawDraft) as Partial<Omit<DrawerEdit, 'id' | 'occurrence'>> : null
+      return d && typeof d === 'object' ? { ...d, via: 'zoom' } : { via: 'zoom' }
+    } catch { return { via: 'zoom' } }
+  }, [data.startVia, draftDone, rawDraft])
+  const dropDraft = () => { setDraftDone(true); try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* nothing kept */ } }
   const drawer = drawerApi && data.drawer ? data.drawer : null
   const [toast, setToast] = useState<ToastState | null>(null)
   // A phone: the month in dots, and the day picked listed under it (no phone design in the handoff).
@@ -189,9 +206,9 @@ export function AgendaView({ data, api, edit, drawerApi, linked = true }: { data
           } : undefined} />
       )}
       {drawer && drawerApi && (creating || drawerEdit) && (
-        <EventDrawer key={drawerEdit?.id ?? 'new'} setup={drawer} editing={drawerEdit} today={data.today} api={drawerApi}
-          onClose={() => { setCreating(false); setDrawerEdit(null) }}
-          onDone={t => { setCreating(false); setDrawerEdit(null); say({ text: t }); if (linked) router.refresh() }} />
+        <EventDrawer key={drawerEdit?.id ?? (draft?.title != null ? 'draft' : 'new')} setup={drawer} editing={drawerEdit} preset={drawerEdit ? null : draft} today={data.today} api={drawerApi}
+          onClose={() => { setCreating(false); setDrawerEdit(null); dropDraft() }}
+          onDone={t => { setCreating(false); setDrawerEdit(null); dropDraft(); say({ text: t }); if (linked) router.refresh() }} />
       )}
       {!drawer && creating && data.create && (
         <NewEventDialog setup={data.create} api={api} onClose={() => setCreating(false)}
@@ -235,7 +252,7 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
                 style={{ background: it.look.bg, color: it.look.fg }}>
                 {it.look.yrs ? <Anni yrs={it.look.yrs} size={14} compact /> : it.look.flag ? <span className="flex-none text-[11px] leading-none">{it.look.flag}</span> : it.look.d && <Icon d={it.look.d} size={11} width={2.4} className="flex-none" />}
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
-                {it.meet && <MeetIcon size={13} className="ml-auto flex-none" />}
+                {it.meet && <CallIcon zoom={it.zoom} size={13} className="ml-auto flex-none" />}
               </button>
             ))}
             {d.more > 0 && <button type="button" onClick={() => onMore(d.day)} className="border-0 bg-transparent px-1.5 py-px text-left text-[11.5px] font-bold leading-[normal] text-tn-teal cursor-pointer">+{d.more} more</button>}
@@ -276,17 +293,17 @@ function WeekCard({ e, onOpen }: { e: WeekEvent; onOpen: (id: string) => void })
           {icon}
           <span className="flex-1 min-w-0 text-[11.5px] font-bold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis">{e.title}</span>
           {w >= 170 && <span className="flex-none text-[10.5px] leading-[normal] opacity-85 whitespace-nowrap">{e.start}</span>}
-          {meet && <MeetIcon size={14} className="flex-none" />}
+          {meet && <CallIcon zoom={e.zoom} size={14} className="flex-none" />}
         </span>
       ) : (
         <>
           <span className="flex items-start gap-1.5 min-w-0">
             {icon && <span className="flex-none mt-px">{icon}</span>}
             <span className="flex-1 min-w-0 text-[11.5px] font-bold leading-[1.25] line-clamp-2 break-words">{e.title}</span>
-            {meet && e.height < 90 && <MeetIcon size={15} className="flex-none" />}
+            {meet && e.height < 90 && <CallIcon zoom={e.zoom} size={15} className="flex-none" />}
           </span>
           {e.lanes === 1 && w >= 90 && <span className="text-[10.5px] leading-[normal] opacity-85 whitespace-nowrap overflow-hidden text-ellipsis">{e.time}</span>}
-          {meet && e.height >= 90 && <MeetIcon size={16} className="absolute right-[5px] bottom-[5px]" />}
+          {meet && e.height >= 90 && <CallIcon zoom={e.zoom} size={16} className="absolute right-[5px] bottom-[5px]" />}
         </>
       )}
     </button>
@@ -420,7 +437,7 @@ function Rows({ rows, onOpen }: { rows: ListDay['rows']; onOpen: (id: string) =>
             <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink overflow-hidden text-ellipsis">{it.label}</span>
             <span className="text-[12px] text-muted overflow-hidden text-ellipsis">{it.sub}</span>
           </span>
-          {it.meet && <MeetIcon size={20} className="flex-none" />}
+          {it.meet && <CallIcon zoom={it.zoom} size={20} className="flex-none" />}
           <span className="text-[12px] text-foreground whitespace-nowrap tabular-nums lining-nums">{it.time}</span>
         </button>
       ))}
@@ -670,9 +687,9 @@ function ItemCard({ item, me, today, holidays, onClose, manage, google, startCon
           {c.meet && !c.detail && (
             <a href={c.meet} target="_blank" rel="noopener noreferrer"
               className="group flex items-center gap-[13px] rounded-[14px] border border-[var(--panel-border)] bg-[#f8f9fb] px-4 py-3.5 no-underline hover:border-tn-teal">
-              <MeetIcon size={34} className="flex-none" />
+              <CallIcon zoom={isZoomLink(c.meet)} size={34} className="flex-none" />
               <span className="min-w-0 flex-1 flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-muted">Join with Google Meet</span>
+                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-muted">{isZoomLink(c.meet) ? 'Join with Zoom' : 'Join with Google Meet'}</span>
                 <span className="truncate text-[14px] font-semibold text-tn-ink group-hover:underline">{c.meet.replace(/^https?:\/\//, '')}</span>
               </span>
               <Icon d="M7 17L17 7M7 7h10v10" size={15} color="#8593a4" width={2} className="flex-none" />

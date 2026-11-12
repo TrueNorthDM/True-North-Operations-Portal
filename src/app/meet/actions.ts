@@ -14,6 +14,7 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto'
+import { syncZoomMeeting, zoomChoiceOf } from '@/lib/agenda/zoom-app'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -165,10 +166,12 @@ export async function confirmBooking(input: { token: string }): Promise<Confirme
 
   const { data: acct } = await c.from('agenda_accounts').select('source').eq('id', host.accountId).maybeSingle()
   const day = localOf(start, DC).date
+  // The host's own default link (owner, 12 November 2026): Zoom when they chose it and are connected, else Google Meet.
+  const via = (await zoomChoiceOf(host.personId)).preferred
   const { data: ev, error: evErr } = await c.from('agenda_events').insert({
     kind: 'event', type: 'meeting', audience: 'guests', title: bookingTitle(b.name, host.name),
     start_date: day, end_date: day, starts_at: b.starts_at, ends_at: b.ends_at, time_zone: DC,
-    how: 'online', place: null, audience_team_ids: null, client: null,
+    how: 'online', online_via: via, place: null, audience_team_ids: null, client: null,
     description: [b.note, `Booked by ${b.name} (${b.email}) on ${host.name}'s booking link.`].filter(Boolean).join('\n\n'),
     sent_from_account_id: host.accountId, created_by: host.personId, add_to_google: false,
     source: acct?.source === 'google' ? 'google' : 'sample',
@@ -180,7 +183,7 @@ export async function confirmBooking(input: { token: string }): Promise<Confirme
   }
   const eventId = ev.id as number
   const onGoogle = acct?.source === 'google'
-  if (!onGoogle) await c.from('agenda_events').update({ meet_link: sampleMeetLink(`${eventId}`) }).eq('id', eventId)
+  if (!onGoogle && via === 'meet') await c.from('agenda_events').update({ meet_link: sampleMeetLink(`${eventId}`) }).eq('id', eventId)
   const guests = [b.email as string, ...((b.guests ?? []) as string[])]
   const { data: known } = await c.from('people').select('id, email_true_north, email_goodnews').eq('status', 'active')
   const personOf = new Map<string, string>()
@@ -190,6 +193,8 @@ export async function confirmBooking(input: { token: string }): Promise<Confirme
   const { error: gErr } = await c.from('agenda_event_guests').insert(guests.map(email => ({ event_id: eventId, email, person_id: personOf.get(email) ?? null, via: 'guest' })))
   if (gErr) console.error('[booking] guests:', gErr.message)
   await c.from('agenda_bookings').update({ event_id: eventId }).eq('id', b.id)
+  // By Zoom, the meeting is made on the host's Zoom first, so the invitation carries its link.
+  if (via === 'zoom' && (await syncZoomMeeting(eventId, host.personId)) === 'failed') console.error(`[booking] event ${eventId} has no Zoom meeting`)
   // On a Google account the meeting goes to the host's Google Calendar: Google invites the guests and makes the Meet link.
   if (onGoogle && !(await sendToGoogle(eventId))) console.error(`[booking] event ${eventId} is in the portal but not on Google`)
   try {

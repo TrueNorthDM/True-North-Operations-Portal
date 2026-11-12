@@ -64,6 +64,9 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   )
 }
 
+/** A New event draft kept while its author connects Zoom (this tab only). */
+export const DRAFT_KEY = 'tn_event_draft'
+
 export function EventDrawer({ setup, editing, preset, note, free = false, today, api, onClose, onDone }: {
   setup: DrawerSetup
   editing?: DrawerEdit | null
@@ -93,6 +96,10 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
   const [from, setFrom] = useState(seed?.from ?? hour)
   const [to, setTo] = useState(seed?.to ?? hour + 60)
   const [how, setHow] = useState<'online' | 'in_person'>(seed?.how ?? 'online')
+  // Google Meet or Zoom (owner, 12 November 2026): the event's own when it has one, else the person's default.
+  const [via, setVia] = useState<'meet' | 'zoom'>(seed?.via ?? setup.zoom.preferred)
+  // An event already on Zoom keeps its link whoever edits it; a new Zoom meeting needs the editor's own Zoom.
+  const zoomNeedsConnect = via === 'zoom' && !setup.zoom.connected && !(start && start.via === 'zoom')
   const [place, setPlace] = useState(seed?.place ?? '')
   const [audience, setAudience] = useState<Audience>(seed?.audience && setup.audiences.includes(seed.audience) ? seed.audience : 'guests')
   const [teams, setTeams] = useState<string[]>(seed?.teams ?? [])
@@ -113,7 +120,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
   const [busy, setBusy] = useState(false)
   const [finding, setFinding] = useState(false)
   const [asking, setAsking] = useState(false)
-  const [repeat, setRepeat] = useState<Repeat | null>(start?.repeat ?? null)
+  const [repeat, setRepeat] = useState<Repeat | null>(start?.repeat ?? preset?.repeat ?? null)
   // One occurrence of a series: Save and Delete first ask which ones.
   const [scopeFor, setScopeFor] = useState<'save' | 'delete' | null>(null)
 
@@ -126,6 +133,8 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
   // Reminder, Block time and Absence invite nobody. A Reminder picks who sees it and takes no account; Block time may name its own
   // account or stay in the portal; an Absence is seen by everyone and goes on the team calendar (owner, 10 November 2026).
   const noInvites = reminder || block || absence
+  // Zoom was chosen for an online meeting but cannot make one yet: the banner says why and Save waits.
+  const zoomBlocked = zoomNeedsConnect && t.meet && how === 'online' && when === 'time'
   const accountRequired = !noInvites
   const setType = (x: EventType) => {
     setTypeRaw(x); setWhen(typeOf(x).when); setTypeOpen(false)
@@ -182,9 +191,15 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
     if (s) setGErr(EMAIL.test(s) ? 'That email is already on the meeting.' : 'Type a name from the team, or a full email address.')
   }
 
+  // Connect Zoom leaves the page: what was typed waits in this tab and comes back with the drawer (AgendaView).
+  const keepDraft = () => {
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, type, when, date, end, from, to, how, via: 'zoom', place, audience, teams, guests, client, description: desc, accountId: account, repeat }))
+    } catch { /* no storage: the drawer opens empty, on Zoom */ }
+  }
   const input = (): DrawerInput => ({
     type, when, title, date, end: when === 'range' ? end : undefined, from: when === 'time' ? from : undefined, to: when === 'time' ? to : undefined,
-    how, place, audience, teams: audience === 'teams' ? teams : [], guests: noInvites ? [] : guests, client, description: desc, accountId: reminder || absence ? null : account,
+    how, via, place, audience, teams: audience === 'teams' ? teams : [], guests: noInvites ? [] : guests, client, description: desc, accountId: reminder || absence ? null : account,
     repeat: when === 'range' ? null : repeat,
   })
   const save = async (scope?: Scope) => {
@@ -331,16 +346,29 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
               {how === 'online' && when === 'time' && (
                 <div className="flex flex-col gap-2 flex-1 basis-[240px]">
                   <span className={LBL}>Video call</span>
-                  <div className="h-10 flex items-center gap-2.5 px-3 rounded-[10px] bg-subtle text-[13px] text-foreground">
-                    <span className="w-7 h-7 rounded-[8px] bg-white flex items-center justify-center"><Icon d={TYPE_ICON.meeting} size={16} color="#1E7D7F" width={2} /></span>
-                    Google Meet link, created when you save
-                  </div>
+                  {setup.zoom.ready || via === 'zoom' ? (
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <Segmented label="Video call" options={[{ key: 'meet', label: 'Google Meet' }, { key: 'zoom', label: 'Zoom' }] as const} value={via} onChange={k => setVia(k)} />
+                      <span className="text-[12.5px] text-muted">{via === 'zoom' ? 'A Zoom meeting on your account, made when you save.' : 'A Google Meet link, made when you save.'}</span>
+                    </div>
+                  ) : (
+                    <div className="h-10 flex items-center gap-2.5 px-3 rounded-[10px] bg-subtle text-[13px] text-foreground">
+                      <span className="w-7 h-7 rounded-[8px] bg-white flex items-center justify-center"><Icon d={TYPE_ICON.meeting} size={16} color="#1E7D7F" width={2} /></span>
+                      Google Meet link, created when you save
+                    </div>
+                  )}
                 </div>
               )}
               {how === 'in_person' && (
                 <label className="flex flex-col gap-2 flex-1 basis-[240px]"><span className={LBL}>Place <span className={OPT}>(optional)</span></span>
                   <input value={place} onChange={e => setPlace(e.target.value)} placeholder="An address or a room" maxLength={300} className={INPUT} /></label>
               )}
+            </div>
+          )}
+          {zoomBlocked && (
+            <div role="status" className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[#f1dba8] bg-[#fff8e6] px-3.5 py-3 text-[13px] text-[#8a5a00]">
+              <span className="flex-1 min-w-[200px] font-semibold">{setup.zoom.ready ? 'Your Zoom account is not connected yet.' : 'Zoom is not set up in the portal yet. Pick Google Meet for now.'}</span>
+              {setup.zoom.ready && <a href="/api/agenda/zoom/connect?from=agenda" onClick={keepDraft} className={BTN.navy}>Connect Zoom</a>}
             </div>
           )}
 
@@ -451,7 +479,7 @@ export function EventDrawer({ setup, editing, preset, note, free = false, today,
           {start && <button type="button" disabled={busy} onClick={() => (start.occurrence ? setScopeFor('delete') : setAsking(true))} className={BTN.whiteDanger}>Delete</button>}
           <span className="flex gap-2.5 ml-auto">
             <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
-            <button type="button" disabled={busy || (setup.accounts.length === 0 && accountRequired)} onClick={() => void save()}
+            <button type="button" disabled={busy || zoomBlocked || (setup.accounts.length === 0 && accountRequired)} onClick={() => void save()}
               className={`inline-flex items-center gap-2 border-0 rounded-[12px] px-5 py-2.5 font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] cursor-pointer disabled:opacity-50 ${account || !accountRequired ? 'bg-tn-primary hover:bg-[#0a2f6b]' : 'bg-[#97a3b8]'}`}>
               <span className="text-[#F2C40A]">{start ? '✓' : '+'}</span>{start ? 'Save changes' : `Create ${word}`}
             </button>

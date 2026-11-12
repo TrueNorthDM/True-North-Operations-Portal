@@ -9,6 +9,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isZoomLink, withoutZoomLine } from './zoom-oauth'
 import { accessTokenFor } from './google-app'
 import { answersIn } from './google-events'
 import { DC, localOf } from './time'
@@ -71,9 +72,12 @@ export function fieldsOf(g: GoogleItem): {
   place: string | null; how: 'online' | 'in_person' | null; meet_link: string | null; description: string | null
 } | null {
   const title = (g.summary ?? '').trim().slice(0, 160) || '(No title)'
-  const place = g.location?.trim() || null
-  const how = g.hangoutLink ? 'online' as const : place ? 'in_person' as const : null
-  const common = { title, place, how, meet_link: g.hangoutLink ?? null, description: g.description?.trim() || null }
+  const where = g.location?.trim() || null
+  // A Zoom link as the place (the portal's own Zoom events, or one made with Zoom's add-on): an online event on that link.
+  const zoom = !g.hangoutLink && isZoomLink(where) ? where : null
+  const place = zoom ? null : where
+  const how = g.hangoutLink || zoom ? 'online' as const : place ? 'in_person' as const : null
+  const common = { title, place, how, meet_link: g.hangoutLink ?? zoom, description: zoom ? withoutZoomLine(g.description) : g.description?.trim() || null }
   if (g.start?.dateTime && g.end?.dateTime) {
     const zone = g.start.timeZone || DC
     const a = Date.parse(g.start.dateTime), b = Date.parse(g.end.dateTime)

@@ -12,6 +12,7 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
+import { zoomChoiceOf } from './zoom-app'
 import type { AccessLevel } from '@/lib/access/catalogue'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -41,6 +42,8 @@ export interface DrawerSetup {
   accounts: DrawerAccount[]
   allCount: number
   clients: string[]
+  /** Zoom beside Google Meet (owner, 12 November 2026): offered when the app is set up; `preferred` is the person's default link. */
+  zoom: { ready: boolean; connected: boolean; preferred: 'meet' | 'zoom' }
 }
 
 type PersonRow = { id: string; full_name: string; status: string | null; email_true_north: string | null; email_goodnews: string | null; email_coe: string | null; email_personal: string | null }
@@ -87,8 +90,8 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
   const me = access.personId, level = access.level as AccessLevel
   const dir = await loadDirectory()
   const contractor = (await loadRoutes([me])).get(me)?.isContractor === true
-  const [{ people, accounts }, levels, teamRes] = await Promise.all([addressBook(dir), allLevels(),
-    createAdminClient().from('agenda_accounts').select('id, email').eq('team_calendar', true).maybeSingle()])
+  const [{ people, accounts }, levels, teamRes, zoom] = await Promise.all([addressBook(dir), allLevels(),
+    createAdminClient().from('agenda_accounts').select('id, email').eq('team_calendar', true).maybeSingle(), zoomChoiceOf(me)])
   const led = dir.led.get(me) ?? new Set<string>()
   const allTeams = [...dir.teams.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
   const mine = new Set(teamsFor(level, led, allTeams.map(t => t.id)))
@@ -105,6 +108,7 @@ export async function loadDrawerSetup(access: Pick<Access, 'personId' | 'level'>
       ...(teamRes.data ? [{ id: teamRes.data.id as number, email: teamRes.data.email as string, team: true }] : [])],
     allCount: people.filter(p => p.id !== me).length,
     clients,
+    zoom,
   }
 }
 

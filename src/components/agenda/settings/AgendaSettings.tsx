@@ -6,6 +6,11 @@
  * accounts, their working hours, the holidays they see and their time zone.
  * What only a Super Admin changes is a white card with buttons; what everyone
  * else only reads sits in a beige block, with no "view only" badge.
+ *
+ * The page fills its width (owner, 12 November 2026): three groups, Company,
+ * Your connections and Your availability, with the cards that belong together
+ * side by side on a desktop and a tablet and in one column on a phone. Zoom
+ * sits beside the Google accounts, with the person's default link under both.
  */
 
 import { CARD as CARD_BOX } from '@/lib/ui/type'
@@ -15,6 +20,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import { Select } from '@/components/ui/Select'
+import { Segmented } from '@/components/ui/Segmented'
+import { FIELD_LABEL } from '@/lib/ui/type'
 import { pillClass } from '@/components/ui/Pill'
 import { BTN } from '@/lib/ui/buttons'
 import { failText } from '@/lib/ui/action-error'
@@ -35,6 +42,8 @@ export interface AgendaSettingsApi {
   disconnectTeamCalendar(): Promise<Done>
   setAllLevels(i: { levels: string[] }): Promise<Done>
   saveBookingLink(i: LinkInput): Promise<Done>
+  disconnectZoom(): Promise<Done>
+  saveMeetingLink(i: { link: 'meet' | 'zoom' }): Promise<Done>
 }
 
 const CARD = `${CARD_BOX} p-5 flex flex-col gap-3.5`
@@ -94,11 +103,10 @@ export function AgendaSettings({ data, notice, api, only }: { data: AgendaSettin
     }
   }
   const show = (c: AgendaSettingsCard) => !only || only.includes(c)
-  return (
+  // The manual pictures one card at a time: plain, one under the other.
+  if (only) return (
     <div className="flex flex-col gap-[18px]">
-      {notice && <Notice notice={notice} />}
       {show('team') && <TeamCalendarCard data={data} busy={busy} run={run} api={api} />}
-      {!only && data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
       {show('accounts') && <AccountsCard data={data} busy={busy} run={run} api={api} />}
       {show('hours') && <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />}
       {show('link') && <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />}
@@ -106,6 +114,100 @@ export function AgendaSettings({ data, notice, api, only }: { data: AgendaSettin
       {show('time') && <YourTimeCard zone={data.zone} />}
       <Toast toast={toast} />
     </div>
+  )
+  return (
+    <div className="flex flex-col gap-6">
+      {notice && <Notice notice={notice} />}
+      <Group label="Company">
+        <div className={`grid grid-cols-1 gap-[18px] ${data.superAdmin ? `md:grid-cols-2 ${WIDE_NARROW}` : ''}`}>
+          <TeamCalendarCard data={data} busy={busy} run={run} api={api} />
+          {data.superAdmin && <AllLevelsCard levels={data.allLevels} busy={busy} run={run} api={api} />}
+        </div>
+      </Group>
+      <Group label="Your connections">
+        <div className={`grid grid-cols-1 gap-[18px] md:grid-cols-2 ${WIDE_NARROW}`}>
+          <AccountsCard data={data} busy={busy} run={run} api={api} />
+          <ZoomCard zoom={data.zoom} busy={busy} run={run} api={api} />
+        </div>
+        {data.zoom.ready && <MeetingLinkCard zoom={data.zoom} busy={busy} run={run} api={api} />}
+      </Group>
+      <Group label="Your availability">
+        <div className="grid grid-cols-1 gap-[18px] items-start lg:grid-cols-2">
+          <WorkingHoursCard hours={data.hours} zone={data.zone.name} busy={busy} run={run} api={api} />
+          <div className="flex flex-col gap-[18px] min-w-0">
+            <BookingLinkCard data={data} busy={busy} run={run} api={api} say={say} />
+            <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2">
+              <HolidaysCard country={data.country} />
+              <YourTimeCard zone={data.zone} />
+            </div>
+          </div>
+        </div>
+      </Group>
+      <Toast toast={toast} />
+    </div>
+  )
+}
+
+/** On a desktop the first card of a pair is the wider one; on a tablet they share the row evenly. */
+const WIDE_NARROW = 'lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
+
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-[18px] min-w-0">
+      <h2 className={`${FIELD_LABEL} m-0`}>{label}</h2>
+      {children}
+    </div>
+  )
+}
+
+const CONNECT_ZOOM = '/api/agenda/zoom/connect?from=settings'
+
+/** The person's own Zoom account: events they make on Zoom are meetings on it. */
+function ZoomCard({ zoom, busy, run, api }: { zoom: AgendaSettingsData['zoom']; busy: boolean; run: Run; api: AgendaSettingsApi }) {
+  const a = zoom.account
+  return (
+    <section className={CARD} aria-label="Zoom">
+      <div>
+        <div className={TITLE}>Zoom</div>
+        <p className={`${SUB} m-0 mt-1`}>Connect your Zoom account so an online event can take a Zoom link in place of Google Meet. The portal only makes, changes and deletes the meetings it created.</p>
+      </div>
+      {a ? (
+        <div className="flex flex-wrap items-center gap-3 border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3">
+          <span className="flex-1 min-w-[160px] flex flex-col gap-0.5">
+            <b className="text-[14px] text-tn-ink font-bold break-all">{a.email}</b>
+            <span className="text-[12px] text-muted">Connected {when(a.connectedAt)}</span>
+          </span>
+          {a.status === 'needs_reconnect' ? <span className={PILL_WARN}>Needs reconnect</span> : <span className={PILL_OK}>Connected</span>}
+          {a.status === 'needs_reconnect' && zoom.ready && <a href={CONNECT_ZOOM} className={LINK}>Reconnect</a>}
+          <button type="button" className={LINK_RED} disabled={busy} onClick={() => void run(api.disconnectZoom())}>Disconnect</button>
+        </div>
+      ) : zoom.ready ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-dashed border-[#c9d0da] rounded-[12px] px-3.5 py-3">
+          <span className={SUB}>Not connected yet.</span>
+          <a href={CONNECT_ZOOM} className={BTN_N}>Connect Zoom</a>
+        </div>
+      ) : (
+        <div className={`${BEIGE} ${SUB}`}>Zoom is not set up in the portal yet. A Super Admin adds the Zoom app in Company settings, Integrations.</div>
+      )}
+      {a?.status === 'needs_reconnect' && <p className={`${SUB} m-0`}>Zoom stopped answering for your account. Your events keep their links; connect again to make new ones.</p>}
+    </section>
+  )
+}
+
+/** The link a new online event starts with; it can still be switched on each event. */
+function MeetingLinkCard({ zoom, busy, run, api }: { zoom: AgendaSettingsData['zoom']; busy: boolean; run: Run; api: AgendaSettingsApi }) {
+  const connected = zoom.account?.status === 'connected'
+  return (
+    <section className={`${CARD_BOX} p-5 flex flex-wrap items-center gap-x-5 gap-y-3`} aria-label="Meeting link for new online events">
+      <div className="flex-1 min-w-[240px]">
+        <div className={TITLE}>Meeting link for new online events</div>
+        <p className={`${SUB} m-0 mt-1`}>Your default, for the events you create and the meetings booked on your booking link. You can still switch it on each event.{connected ? '' : ' Connect Zoom to choose it.'}</p>
+      </div>
+      <div className={busy || !connected ? 'opacity-60' : ''}>
+        <Segmented label="Meeting link" options={[{ key: 'meet', label: 'Google Meet' }, { key: 'zoom', label: 'Zoom' }] as const} value={zoom.preferred}
+          onChange={k => { if (!busy && k !== zoom.preferred) void run(api.saveMeetingLink({ link: k })) }} />
+      </div>
+    </section>
   )
 }
 
@@ -204,7 +306,7 @@ function AccountsCard({ data, busy, run, api }: { data: AgendaSettingsData; busy
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex-1 min-w-[240px]">
           <div className={TITLE}>Your Google accounts</div>
-          <p className={`${SUB} m-0 mt-1`}>Events you create are made on one of these, with the Google Meet link, and Find a time and your booking link read when they are busy. Connect as many as you like.</p>
+          <p className={`${SUB} m-0 mt-1`}>Events you create are made on one of these, and Find a time and your booking link read when they are busy. Connect as many as you like.</p>
         </div>
         {data.googleReady ? <a href={CONNECT_ME} className={`${BTN_N}`}>+ Connect a Google account</a>
           : <button type="button" className={BTN_N} disabled={busy} onClick={() => setAsking(true)}>+ Connect a Google account</button>}
@@ -392,7 +494,7 @@ function BookingLinkCard({ data, busy, run, api, say }: { data: AgendaSettingsDa
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className={TITLE}>Your booking link</div>
-          <p className={`${SUB} m-0 mt-1`}>Send it to anyone, inside or outside True North. They pick a free time and the meeting is created on your Google account, with a Meet link, and both of you get the invitation.</p>
+          <p className={`${SUB} m-0 mt-1`}>Send it to anyone, inside or outside True North. They pick a free time and the meeting is created on your Google account, with your default meeting link (Google Meet or Zoom), and both of you get the invitation.</p>
         </div>
         <button type="button" role="switch" aria-checked={data.link.on} aria-label="Booking link on" disabled={busy || noAccount}
           onClick={() => void run(api.saveBookingLink({ ...d, on: !data.link.on }))}

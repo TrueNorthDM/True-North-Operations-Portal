@@ -11,7 +11,8 @@
 
 import { useState } from 'react'
 import { Icon } from '@/components/clocky/entries/ui'
-import { MeetIcon } from '@/components/ui/MeetIcon'
+import { CallIcon } from '@/components/ui/MeetIcon'
+import { isZoomLink } from '@/lib/agenda/zoom-oauth'
 import { GoogleIcon } from '@/components/ui/GoogleIcon'
 import { answerCounts, countsLabel, fday, type Answer, type DetailGuest, type EventDetail } from '@/lib/agenda/model'
 
@@ -67,9 +68,9 @@ export function DetailTop({ detail, meet, answers }: { detail: EventDetail; meet
         <div className="flex gap-2 items-stretch">
           <a href={meet} target="_blank" rel="noopener noreferrer"
             className="group flex-1 min-w-0 flex items-center gap-[13px] rounded-[14px] border border-[var(--panel-border)] bg-[#f8f9fb] px-4 py-3.5 no-underline hover:border-tn-teal">
-            <MeetIcon size={34} className="flex-none" />
+            <CallIcon zoom={isZoomLink(meet)} size={34} className="flex-none" />
             <span className="min-w-0 flex-1 flex flex-col gap-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-muted">Join with Google Meet</span>
+              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-muted">{isZoomLink(meet) ? 'Join with Zoom' : 'Join with Google Meet'}</span>
               <span className="truncate text-[14px] font-semibold text-tn-ink group-hover:underline">{meet.replace(/^https?:\/\//, '')}</span>
             </span>
             <Icon d="M7 17L17 7M7 7h10v10" size={15} color="#8593a4" width={2} className="flex-none" />

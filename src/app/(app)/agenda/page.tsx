@@ -23,7 +23,7 @@ export const metadata = { title: 'Agenda' }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 
-export default async function AgendaRoute({ searchParams }: { searchParams: Promise<{ view?: string; d?: string; e?: string }> }) {
+export default async function AgendaRoute({ searchParams }: { searchParams: Promise<{ view?: string; d?: string; e?: string; new?: string }> }) {
   const access = await requireSurface('agenda')
   const v = await agendaViewer(access)
   if (!v) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Your login is not linked to anyone in the Directory.</p>
@@ -55,6 +55,8 @@ export default async function AgendaRoute({ searchParams }: { searchParams: Prom
       edit={{ update: updateAgendaEvent, remove: deleteAgendaEvent }}
       data={{
         view, anchor, today, items, teams, drawer,
+        // Back from Zoom's sign-in, started in the drawer: it opens again on Zoom.
+        ...(sp.new === 'zoom' && drawer ? { startNew: true, startVia: 'zoom' as const } : {}),
         // From Home: the event's card opens (owner, 9 November 2026).
         ...(sp.e && items.some(x => x.id === sp.e) ? { startCard: sp.e } : {}),
         me: { id: v.id, superAdmin: v.superAdmin, zone: v.zone, hours },

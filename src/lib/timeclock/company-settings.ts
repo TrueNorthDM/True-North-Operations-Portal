@@ -31,6 +31,8 @@ export interface IntegrationsData {
   google: { connected: boolean; saved: boolean; viaOffice: boolean; account: string | null; who: string; teamCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
   /** The portal's own Google app (migration 139): what Agenda's Google sign-in uses. Secrets show only their last four characters. */
   googleApp: { saved: boolean; clientId: string; secretEnd: string | null; pickerEnd: string | null; who: string }
+  /** The portal's Zoom app (migration 167): what Connect Zoom in Agenda settings uses. `redirect`: the address to allow in the Zoom app. */
+  zoomApp?: { saved: boolean; clientId: string; secretEnd: string | null; who: string; redirect: string }
   /** Drive through office@: `ready` when office@ is connected with Drive and the Picker key is saved; `why` when not. `copies`: how the copies are doing (null when they could not be read). */
   drive: { ready: boolean; why: string | null; folder: string | null; who: string; rootIsDocs: boolean; copies: DriveStatus | null }
 }
@@ -85,7 +87,7 @@ export async function countRetryable(now = new Date()): Promise<number> {
 
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
   const [conn, dir, list, appRes, teamRes] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now),
-    createAdminClient().from('app_settings').select('google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at, drive_folder_id, drive_folder_name, drive_folder_by, drive_folder_at').eq('singleton_id', 1).maybeSingle(),
+    createAdminClient().from('app_settings').select('zoom_client_id, zoom_client_secret, zoom_saved_by, zoom_saved_at, google_oauth_client_id, google_oauth_client_secret, google_picker_key, google_oauth_saved_by, google_oauth_saved_at, drive_folder_id, drive_folder_name, drive_folder_by, drive_folder_at').eq('singleton_id', 1).maybeSingle(),
     createAdminClient().from('agenda_accounts').select('email, status, connected_by, connected_at').eq('team_calendar', true).eq('source', 'google').maybeSingle()])
   const office = teamRes.data
   const driveAcc = await driveAccount()
@@ -137,6 +139,15 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
       who: app?.google_oauth_client_id && app.google_oauth_client_secret
         ? `Saved${by(app.google_oauth_saved_by ?? null, app.google_oauth_saved_at ?? null)}. People connect their Google accounts in Agenda settings.`
         : 'Not set up. Paste the Client ID and Client secret of the "Portal web" client, and the Picker key.',
+    },
+    zoomApp: {
+      saved: !!app?.zoom_client_id && !!app.zoom_client_secret,
+      clientId: app?.zoom_client_id ?? '',
+      secretEnd: app?.zoom_client_secret ? app.zoom_client_secret.slice(-4) : null,
+      who: app?.zoom_client_id && app.zoom_client_secret
+        ? `Saved${by(app.zoom_saved_by ?? null, app.zoom_saved_at ?? null)}. People connect their own Zoom in Agenda settings.`
+        : 'Not set up. Paste the Client ID and Client secret of the portal\'s app in the Zoom App Marketplace.',
+      redirect: `${await portalOrigin()}/api/agenda/zoom/callback`,
     },
     drive: {
       ready: driveAcc.ok && !!app?.google_picker_key,

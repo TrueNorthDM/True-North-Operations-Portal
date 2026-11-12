@@ -123,6 +123,8 @@ export interface DrawerInput {
   from?: number
   to?: number
   how: 'online' | 'in_person'
+  /** The link an online event takes (owner, 12 November 2026): Google Meet unless Zoom is chosen. */
+  via?: 'meet' | 'zoom'
   place?: string
   audience: Audience
   teams: string[]
@@ -148,6 +150,8 @@ export interface DrawerRow {
   ends_at: string | null
   time_zone: string | null
   how: 'online' | 'in_person' | null
+  /** 'meet' or 'zoom' for an online event, else null. */
+  online_via: 'meet' | 'zoom' | null
   place: string | null
   audience_team_ids: string[] | null
   client: string | null
@@ -219,7 +223,7 @@ export function checkDrawer(input: DrawerInput, r: DrawerRights): { ok: true; ro
     row: {
       kind: t.id === 'milestone' ? 'milestone' : 'event', type: t.id, audience, title,
       start_date, end_date, starts_at, ends_at, time_zone: starts_at ? DC : null,
-      how, place: how === 'in_person' ? clean(input.place, 300) || null : null,
+      how, online_via: how === 'online' ? (input.via === 'zoom' ? 'zoom' : 'meet') : null, place: how === 'in_person' ? clean(input.place, 300) || null : null,
       audience_team_ids: teams.length ? teams : null,
       client: t.client ? clean(input.client, 160) || null : null,
       description: clean(input.description, 2000) || null,

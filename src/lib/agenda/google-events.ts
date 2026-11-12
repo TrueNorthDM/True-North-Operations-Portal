@@ -10,6 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accessTokenFor } from './google-app'
 import { DC, localOf } from './time'
+import { isZoomLink, withZoomLine } from './zoom-oauth'
 
 const API = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 
@@ -48,8 +49,10 @@ const nextDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 864e5).to
  * What Google is sent for an event. `organizer` is left out of the guests:
  * Google adds the calendar's owner on its own. `meet` asks Google for a new
  * Meet link (an online event that has none yet); `dropMeet` takes it off.
+ * `zoomLink`: the event meets on Zoom, so its link is the invitation's place
+ * and the last line of its description, and it takes no Meet link.
  */
-export function eventBody(e: EventForGoogle, guests: string[], organizer: string, opts: { meet: boolean; dropMeet: boolean; clearRepeat?: boolean }): Record<string, unknown> {
+export function eventBody(e: EventForGoogle, guests: string[], organizer: string, opts: { meet: boolean; dropMeet: boolean; clearRepeat?: boolean; zoomLink?: string | null }): Record<string, unknown> {
   const timed = e.starts_at && e.ends_at
   const seen = new Set<string>([organizer.toLowerCase()])
   const attendees = guests.map(g => g.trim()).filter(g => {
@@ -60,8 +63,8 @@ export function eventBody(e: EventForGoogle, guests: string[], organizer: string
   }).map(email => ({ email }))
   const body: Record<string, unknown> = {
     summary: e.title,
-    description: [e.description, e.client ? `Client: ${e.client}` : null].filter(Boolean).join('\n\n') || undefined,
-    location: e.how === 'in_person' && e.place ? e.place : undefined,
+    description: (opts.zoomLink ? withZoomLine([e.description, e.client ? `Client: ${e.client}` : null].filter(Boolean).join('\n\n'), opts.zoomLink) : [e.description, e.client ? `Client: ${e.client}` : null].filter(Boolean).join('\n\n')) || undefined,
+    location: opts.zoomLink ? opts.zoomLink : e.how === 'in_person' && e.place ? e.place : undefined,
     start: timed ? { dateTime: e.starts_at, timeZone: e.time_zone ?? undefined } : { date: e.start_date },
     end: timed ? { dateTime: e.ends_at, timeZone: e.time_zone ?? undefined } : { date: nextDay(e.end_date) },
     attendees,
@@ -117,7 +120,7 @@ export async function removeFromGoogle(accountId: number, googleEventId: string)
 export async function sendToGoogle(eventId: number, before?: { accountId: number | null; googleEventId: string | null }): Promise<boolean> {
   const c = createAdminClient()
   const { data: e, error } = await c.from('agenda_events')
-    .select('id, title, start_date, end_date, starts_at, ends_at, time_zone, how, place, description, client, sent_from_account_id, google_event_id, meet_link, recurrence, skip_days, series_id')
+    .select('id, title, start_date, end_date, starts_at, ends_at, time_zone, how, place, description, client, sent_from_account_id, google_event_id, meet_link, recurrence, skip_days, series_id, online_via')
     .eq('id', eventId).maybeSingle()
   if (error || !e) { console.error('[agenda google] event to send:', error?.message ?? 'missing'); return false }
   const fail = async (why: string) => {
@@ -147,17 +150,21 @@ export async function sendToGoogle(eventId: number, before?: { accountId: number
     const online = e.how === 'online'
     // A copy made by the portal before had Google's Meet link; a sample link is never kept.
     const hasMeet = !!googleId && !!e.meet_link && e.meet_link.startsWith('https://meet.google.com/')
-    const body = eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online && !hasMeet, dropMeet: !online && !!googleId, clearRepeat: !!googleId && !e.series_id })
+    // By Zoom (lib/agenda/zoom-app.ts made the meeting first): its link rides in the invitation and Google makes no Meet link.
+    // When Zoom did not make one, the event goes without a link rather than with a Meet nobody chose.
+    const byZoom = online && e.online_via === 'zoom'
+    const zoomLink = byZoom && isZoomLink(e.meet_link) ? e.meet_link : null
+    const body = eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online && !byZoom && !hasMeet, dropMeet: (!online || byZoom) && !!googleId, clearRepeat: !!googleId && !e.series_id, zoomLink })
     let r = googleId
       ? await call(token, 'PATCH', `${API}/${encodeURIComponent(googleId)}?conferenceDataVersion=1&sendUpdates=all`, body)
       : await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, body)
     // Deleted straight in Google: make it again (never one occurrence of a series, which lives only inside it).
-    if (googleId && !e.series_id && (r.status === 404 || r.status === 410)) r = await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online, dropMeet: false }))
+    if (googleId && !e.series_id && (r.status === 404 || r.status === 410)) r = await call(token, 'POST', `${API}?conferenceDataVersion=1&sendUpdates=all`, eventBody(e as EventForGoogle, ((guests ?? []) as { email: string }[]).map(g => g.email), acct.email, { meet: online && !byZoom, dropMeet: false, zoomLink }))
     const id = (r.json as { id?: unknown } | null)?.id
     if (r.status >= 300 || typeof id !== 'string') return fail(`Google answered ${r.status}`)
     const g = r.json as { htmlLink?: unknown; iCalUID?: unknown }
     const { error: upErr } = await c.from('agenda_events').update({
-      google_event_id: id, calendar_state: 'done', meet_link: online ? (meetOf(r.json) ?? null) : null,
+      google_event_id: id, calendar_state: 'done', meet_link: byZoom ? zoomLink : online ? (meetOf(r.json) ?? null) : null,
       google_html_link: typeof g.htmlLink === 'string' ? g.htmlLink : null, google_ical_uid: typeof g.iCalUID === 'string' ? g.iCalUID : null,
     }).eq('id', eventId)
     if (upErr) console.error('[agenda google] save Google id:', upErr.message)

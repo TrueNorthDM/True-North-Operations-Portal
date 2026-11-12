@@ -25,6 +25,8 @@ import { checkHours } from '@/lib/agenda/working-hours'
 import { checkLink, type LinkInput } from '@/lib/agenda/booking'
 import { ensureLink } from '@/lib/agenda/booking-data'
 import { revoke } from '@/lib/agenda/google-oauth'
+import { loadZoomApp } from '@/lib/agenda/zoom-app'
+import { revokeZoom } from '@/lib/agenda/zoom-oauth'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -158,4 +160,36 @@ export async function saveBookingLink(input: LinkInput): Promise<Done> {
   }).eq('person_id', m.personId)
   if (error) { console.error('[agenda settings] booking link:', error.message); return no(NOT_SAVED) }
   return done(l.on ? 'Your booking link is on.' : 'Your booking link is off.')
+}
+
+/**
+ * Disconnects the person's own Zoom (owner, 12 November 2026): Zoom is told,
+ * the tokens go, and their default goes back to Google Meet. Events already
+ * made keep their Zoom links; the portal just can no longer change them.
+ */
+export async function disconnectZoom(): Promise<Done> {
+  const m = await me(); if (isDone(m)) return m
+  const c = createAdminClient()
+  const { data: t } = await c.from('agenda_zoom_accounts').select('refresh_token').eq('person_id', m.personId).maybeSingle()
+  if (!t) return done('Zoom is not connected.')
+  const app = await loadZoomApp()
+  if (app) await revokeZoom(app, t.refresh_token)
+  const { error } = await c.from('agenda_zoom_accounts').delete().eq('person_id', m.personId)
+  if (error) { console.error('[agenda settings] zoom:', error.message); return no(NOT_SAVED) }
+  await c.from('agenda_person_settings').update({ meeting_link: 'meet', updated_at: new Date().toISOString() }).eq('person_id', m.personId)
+  return done('Zoom is disconnected. Events you already made keep their Zoom links.')
+}
+
+/** The link a new online event starts with: Google Meet, or Zoom once the person's Zoom is connected. */
+export async function saveMeetingLink(input: { link: 'meet' | 'zoom' }): Promise<Done> {
+  const m = await me(); if (isDone(m)) return m
+  const link = input?.link === 'zoom' ? 'zoom' : 'meet'
+  const c = createAdminClient()
+  if (link === 'zoom') {
+    const { data } = await c.from('agenda_zoom_accounts').select('status').eq('person_id', m.personId).maybeSingle()
+    if (data?.status !== 'connected') return no('Connect your Zoom account first.')
+  }
+  const { error } = await c.from('agenda_person_settings').upsert({ person_id: m.personId, meeting_link: link, updated_at: new Date().toISOString() }, { onConflict: 'person_id' })
+  if (error) { console.error('[agenda settings] meeting link:', error.message); return no(NOT_SAVED) }
+  return done(link === 'zoom' ? 'Saved. New online events start on Zoom.' : 'Saved. New online events start on Google Meet.')
 }

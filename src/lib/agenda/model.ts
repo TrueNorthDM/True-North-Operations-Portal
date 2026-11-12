@@ -13,6 +13,7 @@
  */
 
 import { addDays } from '@/lib/timeclock/periods'
+import { isZoomLink } from './zoom-oauth'
 import type { EventEdit } from './events'
 import { typeOf, type EventType } from './event-rules'
 import type { Repeat } from './recurrence'
@@ -21,7 +22,7 @@ import type { Weekday, WorkingHours } from './working-hours'
 /** The drawer, filled from a stored event (Edit opens it with these). */
 export interface DrawerEdit {
   id: number; type: EventType; when: 'time' | 'day' | 'range'; title: string; date: string; end: string; from: number; to: number
-  how: 'online' | 'in_person'; place: string; audience: 'guests' | 'teams' | 'all'; teams: string[]
+  how: 'online' | 'in_person'; via?: 'meet' | 'zoom'; place: string; audience: 'guests' | 'teams' | 'all'; teams: string[]
   guests: { personId: string | null; email: string }[]; client: string; description: string; accountId: number | null
   /** The series' rule, when it repeats. */
   repeat: Repeat | null
@@ -341,7 +342,7 @@ export function filterItems(items: readonly AgendaItem[], on: ReadonlySet<Agenda
 
 // ── 8A Month ──────────────────────────────────────────────────────────────────
 
-export interface CellItem { id: string; label: string; title: string; look: Look; meet: boolean }
+export interface CellItem { id: string; label: string; title: string; look: Look; meet: boolean; zoom?: boolean }
 export interface MonthCell {
   day: string; n: number; inMonth: boolean; today: boolean
   out: { id: string; ini: string; color: string }[]; outTip: string
@@ -363,7 +364,7 @@ export function monthCells(items: readonly AgendaItem[], anchor: string, today: 
       day: d, n: Number(d.slice(8)), inMonth: d.slice(0, 7) === anchor.slice(0, 7), today: d === today,
       out: outs.slice(0, 3).map(x => ({ id: x.id, ini: ini(x.who?.name ?? ''), color: x.who?.color ?? '#9CA3AF' })),
       outTip: outs.map(label).join(' · '),
-      items: its.slice(0, cap).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x), meet: !!meetOf(x) })),
+      items: its.slice(0, cap).map(x => ({ id: x.id, label: (x.s != null ? `${cellTime(x.s)} ` : '') + label(x), title: label(x), look: look(x), meet: !!meetOf(x), zoom: isZoomLink(meetOf(x)) })),
       more: Math.max(0, its.length - cap),
     })
   }
@@ -378,7 +379,7 @@ export interface WeekBar { id: string; col: string; row: number; label: string; 
  * share the day's width side by side, as Google Calendar does (owner, 31
  * October 2026). `short`: too low for two lines, so title and start share one.
  */
-export interface WeekEvent { id: string; title: string; time: string; start: string; top: number; height: number; look: Look; meet: boolean; lane: number; lanes: number; short: boolean }
+export interface WeekEvent { id: string; title: string; time: string; start: string; top: number; height: number; look: Look; meet: boolean; zoom?: boolean; lane: number; lanes: number; short: boolean }
 
 /** Side-by-side lanes for overlapping events: each takes the first lane free, and a group of overlapping events shares one lane count. */
 export function lanesOf(evs: readonly { s: number; e: number }[]): { lane: number; lanes: number }[] {
@@ -482,7 +483,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
           const height = Math.max(22, ((x.e ?? x.s! + 1) - x.s!) * WEEK_ROW - 4)
           return {
             id: x.id, title: x.title ?? '', time: `${hourLabel(x.s!)} to ${hourLabel(x.e ?? x.s! + 1)}`, start: hourLabel(x.s!),
-            top: (x.s! - first) * WEEK_ROW + 2, height, look: look(x), meet: !!meetOf(x), ...ln[i], short: height < 44,
+            top: (x.s! - first) * WEEK_ROW + 2, height, look: look(x), meet: !!meetOf(x), zoom: isZoomLink(meetOf(x)), ...ln[i], short: height < 44,
           }
         })
       })(),
@@ -492,7 +493,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
 
 // ── 8C List ───────────────────────────────────────────────────────────────────
 
-export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string; flag: string; yrs?: number; meet: boolean }
+export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string; flag: string; yrs?: number; meet: boolean; zoom?: boolean }
 /** The kinds on a day, in the chips' order: the dots of the month on a phone. PTO skips weekends, as the list does. */
 export function dayKinds(items: readonly AgendaItem[], d: string): AgendaKind[] {
   return KINDS.filter(k => items.some(x => x.k === k && covers(x, d) && !(k === 'pto' && isWeekend(d))))
@@ -520,7 +521,7 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
           // The same tile as everywhere else: an event keeps its type's icon and colour (it was a clock, and navy for company events).
           bg: L.bg, fg: L.fg,
           d: x.k === 'pto' ? AG_ICON.cal : x.k === 'hol' ? AG_ICON.flag : L.d || AG_ICON.star,
-          flag: L.flag, yrs: L.yrs, meet: !!meetOf(x),
+          flag: L.flag, yrs: L.yrs, meet: !!meetOf(x), zoom: isZoomLink(meetOf(x)),
         }
       }),
     })
@@ -570,7 +571,8 @@ export function backOn(end: string, holidays: ReadonlySet<string>): string {
 }
 
 /** The Google Meet link of an event, when it has one: the card shows the Meet icon for it. */
-export const meetOf = (x: AgendaItem): string | null => (x.k === 'event' && x.link && /^https:\/\/meet\.google\.com\//.test(x.link) ? x.link : null)
+/** The event's call link: Google Meet's or Zoom's (owner, 12 November 2026). */
+export const meetOf = (x: AgendaItem): string | null => (x.k === 'event' && x.link && (/^https:\/\/meet\.google\.com\//.test(x.link) || isZoomLink(x.link)) ? x.link : null)
 
 /** "America/New_York" -> "New York" */
 export const cityOf = (zone: string): string => (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
@@ -627,8 +629,8 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
       ...base,
       rows: [
         x.s != null ? { d: AG_ICON.clock, b: `${fday(x.a)}, ${hourLabel(x.s)} to ${hourLabel(x.e ?? x.s + 1)}`, t: ` in your time zone (${cityOf(v.zone)})`, bold: true } : when(),
-        // A Meet link shows as its own box, so "Google Meet" is not said twice.
-        ...(x.place && !(meet && x.place === 'Google Meet') ? [{ d: AG_ICON.video, b: '', t: x.place, bold: false }] : []),
+        // A Meet or Zoom link shows as its own box, so its name is not said twice.
+        ...(x.place && !(meet && (x.place === 'Google Meet' || x.place === 'Zoom')) ? [{ d: AG_ICON.video, b: '', t: x.place, bold: false }] : []),
         { d: AG_ICON.people, b: '', t: `Who sees it: ${x.teams ?? 'Everyone'}`, bold: false },
         ...(x.by ? [{ d: AG_ICON.edit, b: '', t: `Created by ${x.by}`, bold: false }] : []),
       ],

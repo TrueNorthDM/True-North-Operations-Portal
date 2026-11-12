@@ -122,10 +122,15 @@ describe('8D cards', () => {
     expect(c.meet).toBe('https://meet.google.com/tnd-allh-ands')
     expect(c.button).toBeNull()
   })
-  it('keeps the button for a call that is not Google Meet', () => {
+  it('gives a Zoom call its own join box, as Google Meet has (owner, 12 November 2026)', () => {
     const c = cardOf({ ...items.find(x => x.id === 'e1')!, link: 'https://zoom.us/j/1' }, v)
+    expect(c.meet).toBe('https://zoom.us/j/1')
+    expect(c.button).toBeNull()
+  })
+  it('keeps the button for a call that is neither Google Meet nor Zoom', () => {
+    const c = cardOf({ ...items.find(x => x.id === 'e1')!, link: 'https://teams.example.com/l/1' }, v)
     expect(c.meet).toBeNull()
-    expect(c.button).toEqual({ label: 'Join the call', href: 'https://zoom.us/j/1' })
+    expect(c.button).toEqual({ label: 'Join the call', href: 'https://teams.example.com/l/1' })
   })
 })
 

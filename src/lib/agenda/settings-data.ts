@@ -19,6 +19,7 @@ import { ensureLink } from './booking-data'
 import { portalOrigin } from '@/lib/timeclock/clocky-notify'
 import { loadGoogleApp } from './google-app'
 import { personHref } from '@/lib/directory/page-rights'
+import { loadZoomApp, zoomAccountOf, type ZoomAccount } from './zoom-app'
 
 export interface AgendaAccount { id: number; email: string; sample: boolean; needsReconnect: boolean; connectedAt: string }
 
@@ -38,6 +39,8 @@ export interface AgendaSettingsData {
   country: { code: string; name: string; flag: string } | null
   /** Who may invite all of True North (a Super Admin chooses). */
   allLevels: string[]
+  /** Zoom (owner, 12 November 2026): `ready` once the portal's Zoom app is saved; their own account; their default link for a new online event. */
+  zoom: { ready: boolean; account: ZoomAccount | null; preferred: 'meet' | 'zoom' }
   /** Their booking link (made, off, the first time they open the page). */
   link: { url: string; slug: string; on: boolean; lengths: number[]; gap: number; noticeMin: number; windowDays: number; accountId: number | null }
 }
@@ -47,15 +50,17 @@ const account = (r: AccountRow): AgendaAccount => ({ id: r.id, email: r.email, s
 
 export async function loadAgendaSettings(personId: string, superAdmin: boolean, now = Date.now()): Promise<AgendaSettingsData> {
   const c = createAdminClient()
-  const [dir, accRes, setRes, personRes, appRes, link, origin, googleApp] = await Promise.all([
+  const [dir, accRes, setRes, personRes, appRes, link, origin, googleApp, zoomApp, zoomAccount] = await Promise.all([
     loadDirectory(),
     c.from('agenda_accounts').select('id, person_id, email, source, status, connected_at, connected_by').or(`person_id.eq.${personId},team_calendar.eq.true`).order('connected_at'),
-    c.from('agenda_person_settings').select('working_hours, invite_account_id').eq('person_id', personId).maybeSingle(),
+    c.from('agenda_person_settings').select('working_hours, invite_account_id, meeting_link').eq('person_id', personId).maybeSingle(),
     c.from('people').select('email_true_north, address').eq('id', personId).maybeSingle(),
     c.from('app_settings').select('agenda_all_levels').eq('singleton_id', 1).maybeSingle(),
     ensureLink(personId),
     portalOrigin(),
     loadGoogleApp(),
+    loadZoomApp(),
+    zoomAccountOf(personId),
   ])
   for (const r of [accRes, setRes, personRes]) if (r.error) throw new Error(`Agenda settings could not be read: ${r.error.message}`)
   const rows = (accRes.data ?? []) as AccountRow[]
@@ -75,6 +80,7 @@ export async function loadAgendaSettings(personId: string, superAdmin: boolean, 
     hours: setRes.data ? readHours(setRes.data.working_hours) : readHours(null),
     zone: { name: zoneLabel(zone), versus: dcVersus(zone, now), isDc: zone === DC, profileHref: personHref(personId, 'personal') },
     country: cc && cc !== 'US' ? { code: cc, name: countryName(cc), flag: flagOf(cc) } : null,
+    zoom: { ready: !!zoomApp, account: zoomAccount, preferred: zoomAccount?.status === 'connected' && setRes.data?.meeting_link === 'zoom' ? 'zoom' : 'meet' },
     allLevels: (appRes.data?.agenda_all_levels as string[] | null) ?? ['super_admin', 'admin'],
     link: {
       url: `${origin}/meet/${link.slug}`, slug: link.slug, on: link.is_on, lengths: [...link.lengths].sort((a, b) => a - b),

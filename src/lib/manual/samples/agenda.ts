@@ -50,6 +50,7 @@ export function agendaSettingsSample(): AgendaSettingsData {
   return {
     superAdmin: false,
     googleReady: true,
+    zoom: { ready: true, account: null, preferred: 'meet' },
     teamCalendar: { id: 1, email: `office@${TN}`, sample: false, needsReconnect: false, connectedAt: '2026-10-30T15:00:00Z', by: 'Chris Taylor' },
     accounts: [
       { id: 2, email: `alex.rivera@${TN}`, sample: false, needsReconnect: false, connectedAt: '2026-11-02T14:00:00Z' },

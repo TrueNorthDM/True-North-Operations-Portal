@@ -14,6 +14,7 @@ const noop = async () => EXAMPLE
 const SETTINGS_API: AgendaSettingsApi = {
   connectAccount: noop, disconnectAccount: noop, setInviteAccount: noop, saveWorkingHours: noop,
   connectTeamCalendar: noop, disconnectTeamCalendar: noop, setAllLevels: noop, saveBookingLink: noop,
+  disconnectZoom: noop, saveMeetingLink: noop,
 }
 
 export function AgendaPicture({ view }: { view: AgendaData['view'] }) {

@@ -518,6 +518,9 @@ export type Database = {
       }
       agenda_events: {
         Row: {
+          online_via: string | null
+          zoom_meeting_id: string | null
+          zoom_person_id: string | null
           audience: string | null
           how: string | null
           meet_link: string | null
@@ -553,6 +556,9 @@ export type Database = {
           title: string
         }
         Insert: {
+          online_via?: string | null
+          zoom_meeting_id?: string | null
+          zoom_person_id?: string | null
           audience?: string | null
           how?: string | null
           meet_link?: string | null
@@ -588,6 +594,9 @@ export type Database = {
           title: string
         }
         Update: {
+          online_via?: string | null
+          zoom_meeting_id?: string | null
+          zoom_person_id?: string | null
           audience?: string | null
           how?: string | null
           meet_link?: string | null
@@ -639,18 +648,21 @@ export type Database = {
       }
       agenda_person_settings: {
         Row: {
+          meeting_link: string
           invite_account_id: number | null
           person_id: string
           updated_at: string
           working_hours: Json
         }
         Insert: {
+          meeting_link?: string
           invite_account_id?: number | null
           person_id: string
           updated_at?: string
           working_hours?: Json
         }
         Update: {
+          meeting_link?: string
           invite_account_id?: number | null
           person_id?: string
           updated_at?: string
@@ -658,8 +670,48 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_zoom_accounts: {
+        Row: {
+          access_expires_at: string | null
+          access_token: string | null
+          connected_at: string
+          email: string
+          person_id: string
+          refresh_token: string
+          status: string
+          updated_at: string
+          zoom_user_id: string
+        }
+        Insert: {
+          access_expires_at?: string | null
+          access_token?: string | null
+          connected_at?: string
+          email: string
+          person_id: string
+          refresh_token: string
+          status?: string
+          updated_at?: string
+          zoom_user_id: string
+        }
+        Update: {
+          access_expires_at?: string | null
+          access_token?: string | null
+          connected_at?: string
+          email?: string
+          person_id?: string
+          refresh_token?: string
+          status?: string
+          updated_at?: string
+          zoom_user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
+          zoom_client_id: string | null
+          zoom_client_secret: string | null
+          zoom_saved_at: string | null
+          zoom_saved_by: string | null
           drive_copy_from: string
           clocky_reminders: Json
           google_checked_at: string | null
@@ -689,6 +741,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          zoom_client_id?: string | null
+          zoom_client_secret?: string | null
+          zoom_saved_at?: string | null
+          zoom_saved_by?: string | null
           drive_copy_from?: string
           clocky_reminders?: Json
           google_checked_at?: string | null
@@ -718,6 +774,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          zoom_client_id?: string | null
+          zoom_client_secret?: string | null
+          zoom_saved_at?: string | null
+          zoom_saved_by?: string | null
           drive_copy_from?: string
           clocky_reminders?: Json
           google_checked_at?: string | null

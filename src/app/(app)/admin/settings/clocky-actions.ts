@@ -98,6 +98,7 @@ export async function testGoogle(): Promise<Done> {
 
 const CLIENT_ID = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/
 const BLANK_KEY = /^[A-Za-z0-9_-]{20,}$/
+const ZOOM_KEY = /^[A-Za-z0-9_-]{16,}$/
 
 /**
  * The portal's own Google app (migration 139): the "Portal web" client of the
@@ -134,6 +135,40 @@ export async function removeGoogleApp(): Promise<Done> {
   await logChange('google_oauth_app', 'removed')
   refresh()
   return { ok: true, toast: 'Removed. Nobody can connect a Google account until the keys are saved again; accounts already connected keep their access until then.' }
+}
+
+/**
+ * The portal's Zoom app (migration 167, owner, 12 November 2026): a General
+ * app, user-managed, in True North's Zoom account. A blank secret keeps the
+ * one saved, so the Client ID can be fixed alone.
+ */
+export async function saveZoomApp(input: { clientId: string; clientSecret?: string }): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  const clientId = String(input.clientId ?? '').trim()
+  const secret = String(input.clientSecret ?? '').trim()
+  if (!ZOOM_KEY.test(clientId)) return no('Paste the whole Client ID from the Zoom app\'s App Credentials.')
+  if (secret && !ZOOM_KEY.test(secret)) return no('Paste the whole Client secret from the Zoom app\'s App Credentials.')
+  const c = createAdminClient()
+  const { data: before, error: readError } = await c.from('app_settings').select('zoom_client_secret').eq('singleton_id', 1).maybeSingle()
+  if (readError) { console.error('[settings] zoom app read:', readError.message); return no(NOT_SAVED) }
+  if (!secret && !before?.zoom_client_secret) return no('Paste the Client secret too.')
+  const me = await getRealPerson()
+  const patch: { zoom_client_id: string; zoom_saved_by: string | null; zoom_saved_at: string; updated_at: string; zoom_client_secret?: string } = { zoom_client_id: clientId, zoom_saved_by: me?.id ?? null, zoom_saved_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  if (secret) patch.zoom_client_secret = secret
+  const { error } = await c.from('app_settings').update(patch).eq('singleton_id', 1)
+  if (error) { console.error('[settings] zoom app:', error.message); return no(NOT_SAVED) }
+  await logChange('zoom_app', secret ? 'saved' : 'client id changed')
+  refresh()
+  return { ok: true, toast: 'Saved. People can now connect their Zoom in Agenda settings.' }
+}
+
+export async function removeZoomApp(): Promise<Done> {
+  if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins change the integrations.')
+  const { error } = await createAdminClient().from('app_settings').update({ zoom_client_id: null, zoom_client_secret: null, zoom_saved_by: null, zoom_saved_at: null, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (error) { console.error('[settings] zoom app:', error.message); return no(NOT_SAVED) }
+  await logChange('zoom_app', 'removed')
+  refresh()
+  return { ok: true, toast: 'Removed. Nobody can connect Zoom or make a new Zoom meeting until the keys are saved again; events keep the links they have.' }
 }
 
 /**

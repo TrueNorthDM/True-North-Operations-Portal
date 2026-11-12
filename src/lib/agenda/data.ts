@@ -14,6 +14,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isZoomLink } from './zoom-oauth'
 import type { Access } from '@/lib/access/resolve'
 import { loadCelebrationPeople } from '@/lib/hr/celebrations'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -59,10 +60,10 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     loadCatalog(),
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, calendar_state').eq('state', 'approved').lte('start_date', to).gte('end_date', from).limit(2000),
     // A day either side: a timed event can fall on another day in the viewer's zone.
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, online_via, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).is('recurrence', null).limit(2000),
     // Series that began before the range and still run in it (owner, 30 October 2026).
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by, type, audience, how, meet_link, online_via, sent_from_account_id, created_at, google_html_link, recurrence, skip_days, series_id')
       .not('recurrence', 'is', null).lte('start_date', addDays(to, 1)).or(`recur_until.is.null,recur_until.gte.${addDays(from, -1)}`).limit(500),
     // Where people live, for the national holidays.
     c.from('people').select('id, address').limit(5000),
@@ -124,7 +125,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
     if (b < from || a > to) continue
     items.push({
       id: occ ? `ev:${e.id}:${occ}` : `ev:${e.id}`, k: e.kind === 'milestone' ? 'ms' : 'event', a, b, s, e: en, title: e.title,
-      place: isNew && e.how === 'online' ? 'Google Meet' : e.place, link: e.meet_link || linkIn(e.place),
+      place: isNew && e.how === 'online' ? (isZoomLink(e.meet_link) ? 'Zoom' : 'Google Meet') : e.place, link: e.meet_link || linkIn(e.place),
       teams: isNew && e.audience === 'guests' ? `${gs.length} guest${gs.length === 1 ? '' : 's'}` : audience.length ? audience.map(t => dir.teams.get(t)?.name).filter(Boolean).join(', ') : 'Everyone',
       ...(isNew && e.type ? { evType: e.type as EventType } : {}),
       team: team ? { id: team.id, name: team.name, color: teamColour(team.color, team.name) } : null,
@@ -198,7 +199,7 @@ export function detailOf(
   }
 }
 
-type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null; recurrence?: string | null }
+type DrawerRowIn = { id: number; type: string | null; title: string; start_date: string; end_date: string; starts_at: string | null; ends_at: string | null; how: string | null; place: string | null; audience: string | null; audience_team_ids: string[] | null; client: string | null; description: string | null; sent_from_account_id: number | null; recurrence?: string | null; online_via?: string | null; meet_link?: string | null }
 
 /** The drawer's form from a stored event, in Washington time. */
 export function drawerEditOf(e: DrawerRowIn, guests: { person_id: string | null; email: string }[], occurrence: string | null = null): DrawerEdit {
@@ -208,7 +209,7 @@ export function drawerEditOf(e: DrawerRowIn, guests: { person_id: string | null;
     id: e.id, type: (e.type ?? 'meeting') as EventType, title: e.title,
     when: s ? 'time' : e.end_date > e.start_date ? 'range' : 'day',
     date: occurrence ?? s?.date ?? e.start_date, repeat: fromRRule(e.recurrence), occurrence, end: e.end_date, from: s?.minutes ?? 600, to: en ? (en.date === s?.date ? en.minutes : 1440) : 660,
-    how: e.how === 'in_person' ? 'in_person' : 'online', place: e.place ?? '',
+    how: e.how === 'in_person' ? 'in_person' : 'online', via: e.online_via === 'zoom' || isZoomLink(e.meet_link) ? 'zoom' : 'meet', place: e.place ?? '',
     audience: (e.audience ?? 'guests') as DrawerEdit['audience'], teams: e.audience_team_ids ?? [],
     guests: guests.map(g => ({ personId: g.person_id, email: g.email })), client: e.client ?? '', description: e.description ?? '', accountId: e.sent_from_account_id,
   }
