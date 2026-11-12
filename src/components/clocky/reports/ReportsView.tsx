@@ -9,6 +9,7 @@
 import { DATE_FIELD_CLASS } from '@/lib/ui/fields'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { PdfWindow } from '@/components/clocky/invoices/InvoicePdfModal'
@@ -28,7 +29,7 @@ const TONE = { ink: 'text-tn-ink', ok: 'text-[#0d7a4f]', bad: 'text-[#c8323d]' }
 /** A whole day the report can read: a typed year passes through 0002 and 0202 before 2026, so those wait. */
 const fullDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '2000-01-01' && !Number.isNaN(Date.parse(d))
 
-export function ReportsView({ page, made, startPdf = false, linked = true, canExport = true }: { page: ReportPage; made: string; startPdf?: boolean; linked?: boolean; canExport?: boolean }) {
+export function ReportsView({ page, made, startPdf = false, linked = true, canExport = true, payroll = false }: { page: ReportPage; made: string; startPdf?: boolean; linked?: boolean; canExport?: boolean; payroll?: boolean }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [pdf, setPdf] = useState(startPdf)
@@ -79,9 +80,12 @@ export function ReportsView({ page, made, startPdf = false, linked = true, canEx
           <h1 className={PAGE_TITLE}>Reports</h1>
           <p className="m-0 mt-1 text-[13.5px] text-muted">{page.scopeLine}</p>
         </div>
-        {canExport && <div className="flex gap-2">
+        {(canExport || payroll) && <div className="flex gap-2">
+          {payroll && <Link href={withViewAs('/clocky-hours/reports/payroll')} className={WHITE_BTN}>Payroll summary</Link>}
+          {canExport && <>
           <button type="button" onClick={() => void csv()} className={WHITE_BTN}><Icon d="M12 3v12M7 10l5 5 5-5M5 21h14" size={15} color="#1E9E6A" width={2.2} />CSV</button>
           <button type="button" onClick={() => setPdf(true)} className={WHITE_BTN}><Icon d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" size={15} color="#1E9E6A" width={2.2} />Preview PDF</button>
+          </>}
         </div>}
       </div>
 
