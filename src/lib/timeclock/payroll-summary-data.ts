@@ -1,5 +1,6 @@
 /**
- * Reads the payroll summary (payroll-summary.ts) for one pay period.
+ * Reads the payroll summary (payroll-summary.ts) for a pay period, a month, a
+ * quarter or any days, with the same period choice as Reports.
  *
  * Who: Super Admins and Finance (seesAllMoney), the people who run payroll.
  * Whose hours: every US employee (people.employment_type 'us') who is active
@@ -10,26 +11,25 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { allRows, db, loadCatalog, loadClockySettings } from './clocky-context'
-import { addDays, payPeriodStart, PAY_PERIOD_DAYS } from './periods'
 import { localDate } from './format'
 import { loadRouteSettings, seesAllMoney } from './pay-terms'
 import { loadSubmissions } from './clocky-store'
-import { rangeText } from './reports'
-import { buildPayroll, type PayrollEntry, type PayrollLine } from './payroll-summary'
+import { periodOf } from './reports'
+import { buildPayroll, expectedHours, type PayrollEntry, type PayrollLine, type PayrollQuery } from './payroll-summary'
+export type { PayrollQuery }
 
 export interface PayrollPage {
+  query: PayrollQuery
   from: string
   to: string
   label: string
-  /** The period before and after, null when there is none to go to. */
-  prev: string
-  next: string | null
+  /** 8 h a weekday in the range: 80 for a pay period. */
+  expected: number
   lines: PayrollLine[]
   /** "payroll-summary-2026-10-25-to-2026-11-07" */
   file: string
 }
 
-const ISO = /^\d{4}-\d{2}-\d{2}$/
 /** Timesheet states whose hours count as approved. */
 const HOURS_OK = new Set(['hours_approved', 'approved', 'recorded'])
 
@@ -39,17 +39,15 @@ export async function canSeePayroll(access: Pick<Access, 'personId' | 'can'>): P
 }
 
 /**
- * The pay period: the one starting on (or holding) `start`, else the last one
- * that has ended. Never one that has not started.
+ * The period on screen, read the way Reports reads it (reports.ts periodOf):
+ * the last month, pay period or quarter that has ended, or the days chosen.
  */
-export async function loadPayroll(start: string | undefined, now = new Date()): Promise<PayrollPage | null> {
+export async function loadPayroll(query: PayrollQuery, now = new Date()): Promise<PayrollPage | null> {
   const settings = await loadClockySettings()
   if (!settings.anchor) return null
   const today = localDate(now, settings.companyZone)
-  const current = payPeriodStart(today, settings.anchor)
-  const asked = start && ISO.test(start) ? payPeriodStart(start, settings.anchor) : addDays(current, -PAY_PERIOD_DAYS)
-  const from = asked > current ? current : asked
-  const to = addDays(from, PAY_PERIOD_DAYS - 1)
+  const custom = query.kind === 'custom' && query.from && query.to && query.from <= query.to ? { from: query.from, to: query.to } : null
+  const { from, to, label } = periodOf(query.kind, today, settings.anchor, custom)
 
   const c = db()
   const people = await allRows<{ id: string; full_name: string; last_name: string | null; status: string | null }>(
@@ -81,11 +79,10 @@ export async function loadPayroll(start: string | undefined, now = new Date()): 
   const pool = people.filter(p => p.status === 'active' || withHours.has(p.id))
     .map(p => ({ id: p.id, fullName: p.full_name, lastName: p.last_name }))
 
-  const next = addDays(from, PAY_PERIOD_DAYS)
+  const expected = expectedHours(from, to)
   return {
-    from, to, label: rangeText(from, to),
-    prev: addDays(from, -PAY_PERIOD_DAYS), next: next > current ? null : next,
-    lines: buildPayroll(pool, rows),
+    query: { ...query, from, to }, from, to, label, expected,
+    lines: buildPayroll(pool, rows, expected),
     file: `payroll-summary-${from}-to-${to}`,
   }
 }

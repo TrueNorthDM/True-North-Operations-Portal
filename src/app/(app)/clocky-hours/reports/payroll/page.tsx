@@ -1,13 +1,13 @@
 // North Time > Reports > Payroll summary (owner and Tina, 12 November 2026):
-// each US employee's REG and PTO hours for a pay period, and the file Tina
+// each US employee's REG and PTO hours for a pay period (or a month, quarter or any days), and the file Tina
 // sends to Rippling. Super Admins and Finance only (payroll-summary-data.ts).
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { canSeePayroll, loadPayroll } from '@/lib/timeclock/payroll-summary-data'
-import { gapText } from '@/lib/timeclock/payroll-summary'
+import { gapText, parsePayrollQuery, payrollSearch } from '@/lib/timeclock/payroll-summary'
+import { PayrollFilters } from '@/components/clocky/reports/PayrollFilters'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { BTN } from '@/lib/ui/buttons'
 import { CARD, PAGE_TITLE } from '@/lib/ui/type'
@@ -21,12 +21,11 @@ const TD = 'py-2 px-3'
 export default async function PayrollRoute({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const access = await requireSurface('clocky-reports')
   if (!(await canSeePayroll(access))) redirect(await previewHref('/clocky-hours/reports'))
-  const page = await loadPayroll((await searchParams).start)
+  const page = await loadPayroll(parsePayrollQuery(await searchParams))
   if (!page) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">The company pay period start is not set (North Time settings).</p>
 
   const flagged = page.lines.filter(l => l.gap !== 0).length
   const pending = Math.round(page.lines.reduce((n, l) => n + l.pending, 0) * 100) / 100
-  const at = (start: string) => `/clocky-hours/reports/payroll?start=${start}`
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
@@ -34,15 +33,12 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
         <div>
           <Breadcrumb parents={['/clocky-hours', { href: '/clocky-hours/reports', label: 'Reports' }]} now="Payroll summary" />
           <h1 className={PAGE_TITLE}>Payroll summary</h1>
-          <p className="m-0 mt-1 text-[13.5px] text-muted">US employees, the hours recorded in the pay period. Nothing is topped up or capped: rows that are not 80 hours are marked to check.</p>
+          <p className="m-0 mt-1 text-[13.5px] text-muted">US employees, the hours recorded in the period. Nothing is topped up or capped: a row that is not 8 hours a weekday (80 in a pay period) is marked to check.</p>
         </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          <Link href={at(page.prev)} className={BTN.white} aria-label="Pay period before">&lt;</Link>
-          <span className="text-[14px] font-semibold text-tn-ink px-1">{page.label}</span>
-          {page.next ? <Link href={at(page.next)} className={BTN.white} aria-label="Pay period after">&gt;</Link> : null}
-          <a href={`/clocky-hours/reports/payroll/csv?start=${page.from}`} className={BTN.white} download>Download CSV</a>
-        </div>
+        <a href={`/clocky-hours/reports/payroll/csv?${payrollSearch(page.query)}`} className={BTN.white} download>Download CSV</a>
       </div>
+
+      <PayrollFilters query={page.query} from={page.from} to={page.to} label={page.label} />
 
       <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
         <div className={`${CARD} p-3.5`}><div className="text-[12.5px] text-muted">US employees</div><div className="text-[22px] font-semibold text-tn-ink">{page.lines.length}</div></div>
@@ -55,7 +51,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
           <thead><tr><th className={TH}>type</th><th className={TH}>hours</th><th className={TH}>fname</th><th className={TH}>lname</th><th className={TH}>Check</th></tr></thead>
           <tbody>
             {page.lines.flatMap(l => {
-              const check = [gapText(l.gap), l.pending ? `${l.pending} h not approved yet` : null].filter(Boolean).join(' · ')
+              const check = [gapText(l.gap, page.expected), l.pending ? `${l.pending} h not approved yet` : null].filter(Boolean).join(' · ')
               const rows = [
                 <tr key={`${l.personId}-reg`} className="border-t border-[var(--panel-border)]">
                   <td className={TD}>REG</td><td className={TD}>{l.reg}</td><td className={TD}>{l.fname}</td><td className={TD}>{l.lname}</td>
