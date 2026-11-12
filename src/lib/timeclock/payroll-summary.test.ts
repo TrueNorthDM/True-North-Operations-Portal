@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPayroll, expectedHours, gapText, payrollCsv, splitName, type PayrollEntry } from './payroll-summary'
+import { buildPayroll, expectedHours, gapText, parsePayrollQuery, payrollCsv, payrollPeriod, payrollSearch, splitName, type PayrollEntry } from './payroll-summary'
 
 const H = 3600
 const e = (personId: string, hours: number, sort: PayrollEntry['sort'] = 'work', approved = true): PayrollEntry =>
@@ -13,6 +13,28 @@ describe('splitName', () => {
   it('falls back to the last word when no last name is kept', () => {
     expect(splitName('Rock Kai', null)).toEqual({ fname: 'Rock', lname: 'Kai' })
     expect(splitName('Cher', null)).toEqual({ fname: 'Cher', lname: '' })
+  })
+})
+
+describe('payrollPeriod', () => {
+  const today = '2026-11-12', anchor = '2026-09-27'
+  it('opens on the current pay period and steps 14 days', () => {
+    const p = payrollPeriod({ kind: 'pp' }, today, anchor)
+    expect(p).toEqual({ from: '2026-11-08', to: '2026-11-21', label: 'Nov 8 to 21, 2026', prev: '2026-10-25', next: '2026-11-22' })
+    expect(payrollPeriod({ kind: 'pp', at: p.prev! }, today, anchor)).toMatchObject({ from: '2026-10-25', to: '2026-11-07', label: 'Oct 25 to Nov 7, 2026' })
+  })
+  it('opens on the current month and quarter, across the year', () => {
+    expect(payrollPeriod({ kind: 'month' }, today, anchor)).toEqual({ from: '2026-11-01', to: '2026-11-30', label: 'November 2026', prev: '2026-10-01', next: '2026-12-01' })
+    expect(payrollPeriod({ kind: 'month', at: '2027-01-01' }, today, anchor)).toMatchObject({ label: 'January 2027', prev: '2026-12-01' })
+    expect(payrollPeriod({ kind: 'quarter' }, today, anchor)).toMatchObject({ from: '2026-10-01', to: '2026-12-31', label: 'Q4 2026 (Oct to Dec)', next: '2027-01-01' })
+  })
+  it('keeps the custom days, with no arrows', () => {
+    expect(payrollPeriod({ kind: 'custom', from: '2026-10-01', to: '2026-10-15' }, today, anchor)).toMatchObject({ from: '2026-10-01', to: '2026-10-15', prev: null, next: null })
+  })
+  it('reads and writes the address', () => {
+    expect(parsePayrollQuery({})).toEqual({ kind: 'pp', at: undefined, from: undefined, to: undefined })
+    expect(payrollSearch({ kind: 'month', at: '2026-10-01' })).toBe('period=month&at=2026-10-01')
+    expect(payrollSearch({ kind: 'custom', from: '2026-10-01', to: '2026-10-15', at: 'x' })).toBe('period=custom&from=2026-10-01&to=2026-10-15')
   })
 })
 

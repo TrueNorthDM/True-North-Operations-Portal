@@ -14,24 +14,67 @@
  * Plain data only: who is in it and the rows come from payroll-summary-data.ts.
  */
 
-import type { PeriodKind } from './reports'
+import { addDays, payPeriodStart, PAY_PERIOD_DAYS } from './periods'
+import { rangeText, type PeriodKind } from './reports'
 
-/** The same periods as Reports (Month, Pay period, Quarter, Custom); a pay period unless chosen. */
-export interface PayrollQuery { kind: PeriodKind; from?: string; to?: string }
+/**
+ * The period on screen (owner, 12 November 2026): the one holding `at`, the
+ * current one when none is chosen, and the arrows step one period back or on.
+ * Custom is the From and To days.
+ */
+export interface PayrollQuery { kind: PeriodKind; at?: string; from?: string; to?: string }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
+const day = (v: string | undefined) => (v && ISO.test(v) && !Number.isNaN(Date.parse(v)) ? v : undefined)
 
 export function parsePayrollQuery(sp: Record<string, string | undefined>): PayrollQuery {
   const kind = (['month', 'pp', 'quarter', 'custom'] as const).find(k => k === sp.period) ?? 'pp'
-  return { kind, from: sp.from && ISO.test(sp.from) ? sp.from : undefined, to: sp.to && ISO.test(sp.to) ? sp.to : undefined }
+  return { kind, at: day(sp.at), from: day(sp.from), to: day(sp.to) }
 }
 
 /** The address of a period: always says which kind, since the default here is not Reports' default. */
 export function payrollSearch(q: PayrollQuery): string {
   const p = new URLSearchParams({ period: q.kind })
-  if (q.kind === 'custom' && q.from) p.set('from', q.from)
-  if (q.kind === 'custom' && q.to) p.set('to', q.to)
+  if (q.kind === 'custom') {
+    if (q.from) p.set('from', q.from)
+    if (q.to) p.set('to', q.to)
+  } else if (q.at) p.set('at', q.at)
   return p.toString()
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10)
+
+export interface PayrollPeriod {
+  from: string
+  to: string
+  /** "Nov 8 to 21, 2026", "November 2026", "Q4 2026 (Oct to Dec)": the kind is on the switch beside it. */
+  label: string
+  /** A day in the period before and after, for the arrows; null for Custom. */
+  prev: string | null
+  next: string | null
+}
+
+/** The month, pay period or quarter holding `at` (today when none), or the custom days. */
+export function payrollPeriod(q: PayrollQuery, today: string, anchor: string): PayrollPeriod {
+  const at = q.at ?? today
+  const [y, m] = at.split('-').map(Number)
+  if (q.kind === 'custom') {
+    const from = q.from && q.to && q.from <= q.to ? q.from : ymd(y, m - 1, 1)
+    const to = q.from && q.to && q.from <= q.to ? q.to : at
+    return { from, to, label: rangeText(from, to), prev: null, next: null }
+  }
+  if (q.kind === 'pp') {
+    const from = payPeriodStart(at, anchor), to = addDays(from, PAY_PERIOD_DAYS - 1)
+    return { from, to, label: rangeText(from, to), prev: addDays(from, -PAY_PERIOD_DAYS), next: addDays(from, PAY_PERIOD_DAYS) }
+  }
+  if (q.kind === 'quarter') {
+    const q0 = Math.floor((m - 1) / 3) * 3
+    const from = ymd(y, q0, 1), to = ymd(y, q0 + 3, 0)
+    return { from, to, label: `Q${q0 / 3 + 1} ${y} (${MONTHS[q0].slice(0, 3)} to ${MONTHS[q0 + 2].slice(0, 3)})`, prev: ymd(y, q0 - 3, 1), next: ymd(y, q0 + 3, 1) }
+  }
+  const from = ymd(y, m - 1, 1), to = ymd(y, m, 0)
+  return { from, to, label: `${MONTHS[m - 1]} ${y}`, prev: ymd(y, m - 2, 1), next: ymd(y, m, 1) }
 }
 
 /** The hours a salaried US employee is paid for each weekday. */

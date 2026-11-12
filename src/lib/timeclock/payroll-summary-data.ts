@@ -15,8 +15,7 @@ import { teamColour } from '@/lib/directory/team-colour'
 import { localDate } from './format'
 import { loadRouteSettings, seesAllMoney } from './pay-terms'
 import { loadSubmissions } from './clocky-store'
-import { periodOf } from './reports'
-import { buildPayroll, expectedHours, type PayrollEntry, type PayrollLine, type PayrollQuery } from './payroll-summary'
+import { buildPayroll, expectedHours, payrollPeriod, type PayrollEntry, type PayrollLine, type PayrollQuery } from './payroll-summary'
 export type { PayrollQuery }
 
 export interface PayrollPage {
@@ -24,6 +23,9 @@ export interface PayrollPage {
   from: string
   to: string
   label: string
+  /** A day in the period before and after (null for Custom). */
+  prev: string | null
+  next: string | null
   /** 8 h a weekday in the range: 80 for a pay period. */
   expected: number
   lines: PayrollLine[]
@@ -42,15 +44,14 @@ export async function canSeePayroll(access: Pick<Access, 'personId' | 'can'>): P
 }
 
 /**
- * The period on screen, read the way Reports reads it (reports.ts periodOf):
- * the last month, pay period or quarter that has ended, or the days chosen.
+ * The period on screen (payroll-summary.ts payrollPeriod): the current month,
+ * pay period or quarter unless another is chosen, or the days chosen.
  */
 export async function loadPayroll(query: PayrollQuery, now = new Date()): Promise<PayrollPage | null> {
   const settings = await loadClockySettings()
   if (!settings.anchor) return null
   const today = localDate(now, settings.companyZone)
-  const custom = query.kind === 'custom' && query.from && query.to && query.from <= query.to ? { from: query.from, to: query.to } : null
-  const { from, to, label } = periodOf(query.kind, today, settings.anchor, custom)
+  const { from, to, label, prev, next } = payrollPeriod(query, today, settings.anchor)
 
   const c = db()
   const people = await allRows<{ id: string; full_name: string; last_name: string | null; status: string | null }>(
@@ -91,7 +92,7 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
   }
   return {
     looks,
-    query: { ...query, from, to }, from, to, label, expected,
+    query: { ...query, from, to }, from, to, label, prev, next, expected,
     lines: buildPayroll(pool, rows, expected),
     file: `payroll-summary-${from}-to-${to}`,
   }

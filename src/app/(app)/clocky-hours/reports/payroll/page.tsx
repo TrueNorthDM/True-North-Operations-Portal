@@ -63,7 +63,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
         <a href={`/clocky-hours/reports/payroll/csv?${payrollSearch(page.query)}`} className={BTN.white} download>Download CSV</a>
       </div>
 
-      <PayrollFilters query={page.query} from={page.from} to={page.to} label={page.label} />
+      <PayrollFilters query={page.query} from={page.from} to={page.to} label={page.label} prev={page.prev} next={page.next} />
 
       <div className="grid grid-cols-4 gap-3.5 max-lg:grid-cols-2">
         {stats.map(s => (
