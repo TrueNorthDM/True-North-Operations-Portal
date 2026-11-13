@@ -226,7 +226,8 @@ function PersonRow({ row: r, menuOpen, onMenu, onClockOut }: { row: WorkingRow; 
     <div className={`relative grid grid-cols-[38px_minmax(0,1fr)_auto] gap-3 items-center py-2.5 px-2 rounded-[11px] hover:bg-[var(--row-hover)] ${r.warn ? 'bg-[#fdf8e7]' : ''}`}>
       <div className="relative w-9 h-9">
         <Avatar name={p.name} avatarUrl={p.avatarUrl} size={36} color="#012358" />
-        <span title={r.status} className="absolute -right-px -bottom-px w-4 h-4 rounded-full border-2 border-white" style={{ background: r.dot }} />
+        {/* Lower left, as on the person page, where the camera holds the lower right (owner, 13 Nov 2026). */}
+        <span title={r.status} className="absolute -left-px -bottom-px w-4 h-4 rounded-full border-2 border-white" style={{ background: r.dot }} />
       </div>
       <div className="min-w-0 flex flex-col gap-[3px]">
         <div className="flex items-center gap-[7px] flex-wrap">

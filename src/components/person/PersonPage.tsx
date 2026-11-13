@@ -137,8 +137,8 @@ function Cover({ data }: { data: PersonPageData }) {
           {data.rights.own
             ? <ProfileAvatar name={data.name} avatarUrl={data.avatarUrl} color={data.color} size={98} />
             : <Avatar name={data.name} avatarUrl={data.avatarUrl} size={98} color={data.color} dimmed={!data.active} />}
-          {/* On your own page the camera (Change photo) holds the lower right, so the dot moves left (owner, 13 Nov 2026). */}
-          <span title={data.active ? 'Active' : 'Inactive'} className={`absolute ${data.rights.own ? 'left-1' : 'right-1'} bottom-1 w-[18px] h-[18px] rounded-full border-[3px] border-white ${data.active ? 'bg-[#1E9E6A]' : 'bg-[#c9cfd8]'}`} />
+          {/* The camera (Change photo) holds the lower right, so the dot sits lower left, as in Who's working (owner, 13 Nov 2026). */}
+          <span title={data.active ? 'Active' : 'Inactive'} className={`absolute left-1 bottom-1 w-[18px] h-[18px] rounded-full border-[3px] border-white ${data.active ? 'bg-[#1E9E6A]' : 'bg-[#c9cfd8]'}`} />
         </div>
         <div className="min-w-0">
           <h1 className={`${PAGE_TITLE} max-sm:text-[26px] [text-wrap:balance]`}>{data.name}</h1>
