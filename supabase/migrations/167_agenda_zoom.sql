@@ -47,7 +47,12 @@ ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS zoom_person_id  UUID REFERENC
 ALTER TABLE agenda_events DROP CONSTRAINT IF EXISTS agenda_events_online_via_check;
 ALTER TABLE agenda_events ADD CONSTRAINT agenda_events_online_via_check CHECK (online_via IN ('meet', 'zoom'));
 
--- The daily check watches the new table too.
+-- The daily check watches the new table too. This is the check as production
+-- has it (migration 153) plus agenda_zoom_accounts. Staging also watches the
+-- Topic Studio tables (migrations 155 to 158, staging only so far): there the
+-- check is 158's plus agenda_zoom_accounts, applied by hand on 15 November
+-- 2026. When Topic Studio goes to production, its check must keep
+-- 'agenda_zoom_accounts' in the list.
 CREATE OR REPLACE FUNCTION public.db_protections_check()
 RETURNS TEXT[]
 LANGUAGE SQL STABLE SECURITY DEFINER
@@ -80,8 +85,7 @@ AS $$
                         'hr_settings','review_cycles','review_priorities','review_team_priorities','reviews',
                         'review_answers','review_goals','review_goal_updates','review_checkins',
                         'review_imports','review_log','review_notices',
-                        'invoice_sends','reimbursement_changes',
-                        'ts_clients','ts_topics','ts_pages','ts_topic_history']) t,
+                        'invoice_sends','reimbursement_changes']) t,
            unnest(ARRAY['anon','authenticated']) r
      WHERE has_table_privilege(r, 'public.' || t, 'SELECT')
     UNION ALL
@@ -109,7 +113,7 @@ AS $$
                         'my_work_list(bigint[],bigint[],bigint[],boolean,timestamptz,integer)',
                         'tc_job_field_defaults(date,text[])','next_document_number(text)',
                         'agenda_booking_hold(uuid,timestamptz,timestamptz,integer,text,text,text[],text,text,text,text,timestamptz)',
-                        'agenda_booking_confirm(text,integer)','ts_import_topic(jsonb,uuid)','ts_patch_topic(uuid,jsonb,jsonb,uuid)','ts_save_page(uuid,jsonb,uuid)']) f,
+                        'agenda_booking_confirm(text,integer)']) f,
            unnest(ARRAY['anon','authenticated']) r
      WHERE has_function_privilege(r, f, 'EXECUTE')
   ) open
