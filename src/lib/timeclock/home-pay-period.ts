@@ -224,14 +224,14 @@ export function buildPayPeriod(src: PayPeriodSource): PayPeriodView {
     return {
       state, band: null, label: 'Pay period', range: cur,
       chip: prevChip(src.prev, src.today, true), meter: null,
-      footer: { text: `Your invoice is created on ${md(addDays(src.current.end, 1))}.`, icon: 'invoice' },
+      footer: { text: `Send your invoice from ${md(addDays(src.current.end, 1))}.`, icon: 'invoice' },
       nextLine: null,
     }
   }
 
   const footer: PayPeriodView['footer'] = src.employee
     ? { text: `Goes to payroll when it closes on ${dayLabel(src.current.end)}.`, icon: 'arrow' }
-    : { text: src.approver ? `When it closes, ${src.approver} approves it and it becomes your invoice.` : 'When it closes, it is recorded and becomes your invoice.', icon: 'invoice' }
+    : { text: src.approver ? `When it closes, submit it and send your invoice. ${src.approver} approves your hours.` : 'When it closes, submit it and send your invoice.', icon: 'invoice' }
 
   const shown = src.due ? src.due.period : src.current
   const f = periodFigures(src, shown)

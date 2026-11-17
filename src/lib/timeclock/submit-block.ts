@@ -1,7 +1,8 @@
 /**
- * The block in the Submit window that says what submitting makes
- * (Invoices.dc.html 6A and 6B): a contractor's invoice, with the same lines
- * the invoice will have (buildInvoiceLines), or an employee's payroll
+ * The block in the Submit window that says what follows submitting
+ * (Invoices.dc.html 6A and 6B): what a contractor's invoice comes to by their
+ * timesheet (buildInvoiceLines; they make and send the invoice themselves,
+ * since 4 November 2026, so nothing here says the portal makes it), or an employee's payroll
  * summary (worked hours and time off, for payroll when approved).
  * Pure: clocky-entries.ts brings the person's terms and names.
  */
@@ -46,9 +47,9 @@ export function buildSubmitBlock(x: {
     return {
       kind: 'invoice', title: 'Your invoice', lines: rows, sumLabel: 'Total', sum: usd(total),
       note: x.hoursBy && x.hoursBy === x.invoiceBy
-        ? `Created when you submit. ${x.hoursBy} approves your hours and this invoice together.`
-        : `Created when you submit. ${x.hoursBy ?? 'Your approver'} approves your hours, then ${x.invoiceBy ?? 'the invoice approver'} the invoice.`,
-      confirm: `We will also create your invoice for ${x.label}: ${what}${plus}. You can see it after you submit.`,
+        ? `You send your invoice after you submit. ${x.hoursBy} approves your hours and your invoice.`
+        : `You send your invoice after you submit. ${x.hoursBy ?? 'Your approver'} approves your hours, then ${x.invoiceBy ?? 'the invoice approver'} your invoice.`,
+      confirm: `Next, send your invoice for ${x.label}. By your timesheet it comes to ${what}${plus}.`,
     }
   }
   const off = x.timeOff.reduce((n, t) => n + t.seconds, 0)

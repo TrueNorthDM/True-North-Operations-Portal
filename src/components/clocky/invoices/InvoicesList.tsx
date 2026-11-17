@@ -117,7 +117,7 @@ export function InvoicesList({ data, api, initial, extra }: {
     ? [['Number'], ['Period'], ['Pays as'], ['Total', true], ['State'], ['Paid'], ['']]
     : [['Number'], ['Person'], ['Period'], ['Pays as'], ['Total', true], ['State'], ['Paid'], ...(drive ? [['Drive']] as [string][] : []), ['']]
   const title = mine || data.mode === 'none' ? 'My invoices' : 'Invoices'
-  const sub = mine ? 'One invoice a month, made when you submit your timesheet. You never type hours or the rate; Finance pays and marks it paid.'
+  const sub = mine ? 'You make and send your own invoice after each timesheet: your own PDF, or one you build here. Finance pays it and marks it paid.'
     : data.mode === 'none' ? ''
       : data.finance ? 'Every contractor invoice. You are Finance: you mark approved invoices paid, after paying them outside Rippling.'
         : 'Every contractor invoice. Made when a timesheet is submitted, approved with the hours (one or two steps), paid by Finance outside Rippling.'
@@ -196,7 +196,7 @@ export function InvoicesList({ data, api, initial, extra }: {
 
       {data.mode !== 'none' && shown.length === 0 && (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-11 text-center text-[13.5px] text-muted">
-          {data.rows.length ? 'No invoices match these filters.' : mine ? 'No invoices yet. The first one is made when you submit your timesheet.' : 'No invoices yet. They are made when contractors submit their timesheets.'}
+          {data.rows.length ? 'No invoices match these filters.' : mine ? 'No invoices yet. Send your first one after you submit your timesheet.' : 'No invoices yet. Contractors send them after they submit their timesheets.'}
         </div>
       )}
 

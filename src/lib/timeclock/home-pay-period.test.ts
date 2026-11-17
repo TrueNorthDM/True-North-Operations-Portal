@@ -77,7 +77,7 @@ describe('the Pay period card', () => {
 
   it('shows fixed pay the month and when its invoice is made, with no hours', () => {
     const v = buildPayPeriod(src('Fixed pay, no timesheet'))
-    expect(v).toMatchObject({ range: 'October', meter: null, band: null, footer: { text: 'Your invoice is created on Nov 1.', icon: 'invoice' } })
+    expect(v).toMatchObject({ range: 'October', meter: null, band: null, footer: { text: 'Send your invoice from Nov 1.', icon: 'invoice' } })
   })
 
   it('draws 50px for 8h, a stub on an empty working day, nothing on a weekend, and outlines today', () => {

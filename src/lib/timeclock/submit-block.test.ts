@@ -15,8 +15,8 @@ describe('the Submit window block (6A, 6B)', () => {
     expect(b.title).toBe('Your invoice')
     expect(b.lines).toEqual([{ k: '162h 30m × $14.00/h', v: '$2,275.00' }, { k: 'Reimbursement: Internet, October', v: '$35.00' }])
     expect(b.sum).toBe('$2,310.00')
-    expect(b.note).toBe('Created when you submit. Arnaldo Oliveira approves your hours and this invoice together.')
-    expect(b.confirm).toBe('We will also create your invoice for October: 162h 30m at $14.00/h, plus 1 reimbursement. You can see it after you submit.')
+    expect(b.note).toBe('You send your invoice after you submit. Arnaldo Oliveira approves your hours and your invoice.')
+    expect(b.confirm).toBe('Next, send your invoice for October. By your timesheet it comes to 162h 30m at $14.00/h, plus 1 reimbursement.')
   })
 
   it('two steps name both approvers', () => {
@@ -24,7 +24,7 @@ describe('the Submit window block (6A, 6B)', () => {
       isContractor: true, paysAs: 'hourly', hourlyRate: 20, fixedAmount: null, periodName: 'October 2026', label: 'October',
       byClient: [{ client: 'x', seconds: 10 * H }], reimbursements: [], timeOff: [], workedSeconds: 10 * H, hoursBy: 'Wendy Cacka', invoiceBy: 'Arnaldo Oliveira',
     })
-    expect(b.note).toBe('Created when you submit. Wendy Cacka approves your hours, then Arnaldo Oliveira the invoice.')
+    expect(b.note).toBe('You send your invoice after you submit. Wendy Cacka approves your hours, then Arnaldo Oliveira your invoice.')
   })
 
   it('an employee: the payroll summary with the time off (6B)', () => {
