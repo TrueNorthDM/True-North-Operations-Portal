@@ -5,21 +5,9 @@ const d = (s: string) => new Date(s)
 const launch = d('2026-10-01T00:00:00Z')
 
 describe('twoStepDeadline', () => {
-  it('gives someone who joins after launch a week from their first sign-in', () => {
-    const got = twoStepDeadline({ accountCreated: d('2026-10-05T10:00:00Z'), launch, cutoff: null })
-    expect(got?.toISOString()).toBe('2026-10-12T10:00:00.000Z')
-  })
-
-  it('gives someone already here no deadline until the cutoff is set', () => {
-    expect(twoStepDeadline({ accountCreated: d('2026-09-08T00:00:00Z'), launch, cutoff: null })).toBeNull()
-  })
-
-  it('gives someone already here a week from the cutoff', () => {
-    const got = twoStepDeadline({ accountCreated: d('2026-09-08T00:00:00Z'), launch, cutoff: d('2026-11-02T12:00:00Z') })
-    expect(got?.toISOString()).toBe('2026-11-09T12:00:00.000Z')
-  })
-
-  it('has a grace of seven days', () => {
+  it('gives nobody a deadline: two-step sign-in is optional (owner, 17 November 2026)', () => {
+    expect(twoStepDeadline({ accountCreated: d('2026-10-05T10:00:00Z'), launch, cutoff: null })).toBeNull()
+    expect(twoStepDeadline({ accountCreated: d('2026-09-08T00:00:00Z'), launch, cutoff: d('2026-11-02T12:00:00Z') })).toBeNull()
     expect(GRACE_DAYS).toBe(7)
   })
 })
@@ -38,7 +26,7 @@ describe('twoStepNeed', () => {
   it('requires setup once the week is over', () => {
     expect(twoStepNeed({ hasFactor: false, aal: 'aal1', deadline: d('2026-10-07T00:00:00Z'), now })).toBe('enroll-required')
   })
-  it('asks nothing of someone with no deadline yet', () => {
+  it('asks nothing of someone who never set it up, which is everyone without an app now', () => {
     expect(twoStepNeed({ hasFactor: false, aal: 'aal1', deadline: null, now })).toBe('ok')
   })
 })

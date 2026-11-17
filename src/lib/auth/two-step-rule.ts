@@ -1,10 +1,12 @@
 /**
- * When two-step sign-in is required (plan step p4-2fa, migration 090). Pure, so
+ * When two-step sign-in is asked for (plan step p4-2fa, migration 090). Pure, so
  * it is tested without a database; lib/auth/two-step.ts feeds it.
  *
- * Everyone gets a week to set it up: people who join after it ships count from
- * their first sign-in, people who were already here count from the cutoff set
- * after the move. Whoever has set it up is asked for the code at every sign-in.
+ * Optional since 17 November 2026 (owner): nobody has to set it up and nobody
+ * is reminded. Whoever turned it on in Settings is asked for the code at every
+ * sign-in, until they turn it off there. Before that date it was compulsory
+ * after a week (from the first sign-in, or from the cutoff after the move); the
+ * launch and cutoff dates stay in portal_settings as that history.
  */
 
 export const GRACE_DAYS = 7
@@ -19,10 +21,8 @@ export interface TwoStepFacts {
   cutoff: Date | null
 }
 
-/** The day the second step becomes required, or null while there is none. */
-export function twoStepDeadline(f: TwoStepFacts): Date | null {
-  if (f.launch && f.accountCreated >= f.launch) return new Date(f.accountCreated.getTime() + GRACE_DAYS * DAY)
-  if (f.cutoff) return new Date(f.cutoff.getTime() + GRACE_DAYS * DAY)
+/** The day the second step becomes required: none, since it is optional (owner, 17 November 2026). */
+export function twoStepDeadline(_f: TwoStepFacts): Date | null {
   return null
 }
 
@@ -30,8 +30,7 @@ export function twoStepDeadline(f: TwoStepFacts): Date | null {
  * What a signed-in session needs now.
  *   ok               nothing: the code was given this session, or no deadline yet
  *   challenge        they have an app set up: ask for its code
- *   enroll-required  no app, and the week is over: set it up before going on
- *   enroll-optional  no app, the week is running: offer it, let them skip
+ *   enroll-required, enroll-optional  no longer given: with no deadline, nobody is sent to set it up
  */
 export type TwoStepNeed = 'ok' | 'challenge' | 'enroll-required' | 'enroll-optional'
 

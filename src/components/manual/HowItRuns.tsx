@@ -309,7 +309,7 @@ export function HowItRuns() {
               ['See who has 2FA', 'Directory, Portal access tab, Two-step column', ''],
             ]}
           />
-          <P>Sign-in rules: a 6-digit code by email, then the code from the authenticator app. A session lasts up to 2 months, or 15 days without use. People signing in for the first time have 7 days to set up 2FA. On staging, people and invitations are those of production at the last refresh; inviting someone or resetting 2FA there changes only staging.</P>
+          <P>Sign-in rules: a 6-digit code by email. Two-step sign-in (2FA, a code from an authenticator app) is optional since November 17, 2026: each person turns it on or off in their Settings, and whoever has it on is asked for the app code too. A session lasts up to 2 months, or 15 days without use. On staging, people and invitations are those of production at the last refresh; inviting someone or resetting 2FA there changes only staging.</P>
           <Sub>On GitHub</Sub>
           <Bullets items={[
             <><B>Invite:</B> in <A href="https://github.com/orgs/TrueNorthDM/people">People</A>, click Invite member, use the email or username and choose <B>Member</B>, never Owner.</>,

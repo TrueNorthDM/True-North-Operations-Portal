@@ -10,11 +10,13 @@
  * - verifyTwoStep: the code at every sign-in after that.
  * - skipTwoStep: "Skip for now", while their week to set it up runs.
  * - moveTwoStep: from My profile, to set it up again on a new phone.
+ * - turnOffTwoStep: from Settings; it is optional since 17 November 2026.
  *
  * The admin's side (Reset in the Directory) is resetTwoStep in admin/people/actions.
  */
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
@@ -113,6 +115,29 @@ export async function skipTwoStep(): Promise<void> {
   if (!user) redirect('/login')
   ;(await cookies()).set(SKIP_COOKIE, user.id, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' })
   redirect(await landing())
+}
+
+/**
+ * Turn two-step sign-in off, from Settings (optional since 17 November 2026).
+ * Only from a session that has given the app's code (aal2), so a session
+ * someone else got into cannot take the second step away. Refused in a View
+ * Stage preview, as moving it is.
+ */
+export async function turnOffTwoStep(): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to change your two-step sign-in.' }
+  const supabase = await createClient()
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (aal?.currentLevel !== 'aal2') return { ok: false, error: 'Sign in with your app\'s code first.' }
+  const { data } = await supabase.auth.mfa.listFactors()
+  for (const f of data?.all ?? []) {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id })
+    if (error) {
+      console.error('[two-step] turn off:', error.message)
+      return { ok: false, error: 'Could not turn it off. Try again in a moment.' }
+    }
+  }
+  revalidatePath('/settings')
+  return { ok: true }
 }
 
 /**

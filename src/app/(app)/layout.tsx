@@ -46,9 +46,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // page it opens. The route handler does the sign-out, since a layout cannot
   // clear cookies while it renders.
   if (portal === 'denied') redirect('/auth/no-access')
-  // Two-step sign-in (p4-2fa, lib/auth/two-step-rule.ts): an app that is set up
-  // asks for its code; without one, the setup screen comes up once per browser
-  // session while the week runs (skippable), and for good once it is over.
+  // Two-step sign-in (p4-2fa, lib/auth/two-step-rule.ts), optional since 17 November 2026: an app that is
+  // set up asks for its code; without one nothing is asked (the two enroll lines below no longer fire).
   if (twoStep.need === 'challenge') redirect('/auth/two-step')
   if (twoStep.need === 'enroll-required') redirect('/auth/two-step/setup')
   if (twoStep.need === 'enroll-optional' && !twoStep.skipped) redirect('/auth/two-step/setup')

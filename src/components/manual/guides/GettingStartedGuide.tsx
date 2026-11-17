@@ -166,7 +166,6 @@ export function ProfileSettingsGuide() {
           <li><strong>Settings</strong>: how the portal works for you.</li>
           <li><strong>Sign out</strong>.</li>
         </ul>
-        <p className="m-0">While your week to set up two-step sign-in runs, the menu also has <strong>Two-step sign-in</strong> with the days left, and the avatar a small amber dot.</p>
       </Step>
 
       <Step n={2} title="Keep your profile up to date" picture={<Picture caption="Your page, on its Personal tab." height={620}><ProfilePicture /></Picture>}>
@@ -185,7 +184,7 @@ export function ProfileSettingsGuide() {
       </Step>
 
       <Step n={4} title="Sign-in and security" picture={<Picture caption="Settings, Sign-in and security."><SettingsPicture only={['security']} /></Picture>}>
-        <p className="m-0">See the address your sign-in codes go to, set up or move <strong>Two-step sign-in</strong> (a 6-digit code from an app on your phone), and <strong>Sign out on all devices</strong> after using a shared computer.</p>
+        <p className="m-0">See the address your sign-in codes go to, turn <strong>Two-step sign-in</strong> on or off (optional: a 6-digit code from an app on your phone at every sign-in), and <strong>Sign out on all devices</strong> after using a shared computer.</p>
       </Step>
 
       <Step n={5} title="Your time zone and start page" picture={<Picture caption="Settings, Time and region."><SettingsPicture only={['time']} /></Picture>}>

@@ -2,7 +2,8 @@
 
 /**
  * Two-step sign-in in Settings (plan step p4-2fa): whether it is on, and the
- * way to set it up, or to move it to a new phone. A lost phone is not handled
+ * way to set it up, to move it to a new phone, or to turn it off. It is
+ * optional since 17 November 2026 (owner). A lost phone is not handled
  * here: without the old app nobody gets this far, so that is an admin's Reset.
  * In a View Stage preview nothing here acts: it would act on the Super
  * Admin's own account, not the person on screen.
@@ -11,24 +12,42 @@
 import { staleOr } from '@/lib/ui/action-error'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { moveTwoStep } from '@/app/auth/two-step-actions'
+import { moveTwoStep, turnOffTwoStep } from '@/app/auth/two-step-actions'
+import { useRouter } from 'next/navigation'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { formatDate } from '@/lib/directory/people-types'
 import { pillClass } from '@/components/ui/Pill'
 import { BTN } from '@/lib/ui/buttons'
 
 
-export function TwoStepSelf({ since, daysLeft, blocked }: {
+export function TwoStepSelf({ since, blocked }: {
   /** When their app was set up; null if it is not. */
   since: string | null
-  /** Days left of their week to set it up, when that week is running. */
-  daysLeft: number | null
+  /** No longer used: there is no week to set it up since it became optional. */
+  daysLeft?: number | null
   /** Why nothing here can be done (View Stage). */
   blocked?: string
 }) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [confirmDialog, confirm] = useConfirm()
+  const router = useRouter()
+
+  async function turnOff() {
+    if (blocked) return
+    const yes = await confirm({
+      title: 'Turn off two-step sign-in?',
+      body: 'The portal stops asking for the code from your app. You sign in with the code sent to your email only. You can turn it on again here any time.',
+      action: 'Turn it off',
+    })
+    if (!yes) return
+    setError(null)
+    start(async () => {
+      const res = await turnOffTwoStep().catch(e => ({ ok: false as const, error: staleOr(e, 'Could not turn it off. Try again in a moment.') }))
+      if (res.ok) router.refresh()
+      else setError(res.error)
+    })
+  }
 
   async function move() {
     if (blocked) return
@@ -50,21 +69,20 @@ export function TwoStepSelf({ since, daysLeft, blocked }: {
       {confirmDialog}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
-          <span className={pillClass(since ? 'green' : 'amber')}>
-            {since ? 'On' : 'Not set up'}
+          <span className={pillClass(since ? 'green' : 'gray')}>
+            {since ? 'On' : 'Off'}
           </span>
           <span className="text-[13px] text-muted">
             {since
               ? `Since ${formatDate(since)}. Every sign-in asks for the code from your authenticator app.`
-              : daysLeft !== null
-                ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left to set it up.`
-                : 'A code from an app on your phone at every sign-in. It takes a minute.'}
+              : 'Optional: a code from an app on your phone at every sign-in, on top of the code by email. It takes a minute.'}
           </span>
         </div>
         {since ? (
-          <button type="button" onClick={move} disabled={pending || !!blocked} title={blocked} className={`${BTN.smallWhite} disabled:opacity-50`}>
-            {pending ? 'Moving…' : 'Move to a new phone'}
-          </button>
+          <span className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={move} disabled={pending || !!blocked} title={blocked} className={`${BTN.smallWhite} disabled:opacity-50`}>Move to a new phone</button>
+            <button type="button" onClick={turnOff} disabled={pending || !!blocked} title={blocked} className={`${BTN.smallWhite} disabled:opacity-50`}>Turn it off</button>
+          </span>
         ) : (
           blocked
             ? <span title={blocked} className={`${BTN.smallNavy} opacity-50 cursor-not-allowed`}>Set it up</span>
