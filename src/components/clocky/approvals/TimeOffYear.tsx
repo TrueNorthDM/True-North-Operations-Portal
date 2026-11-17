@@ -6,13 +6,15 @@
  */
 
 import { pillClass } from '@/components/ui/Pill'
-import { daysLabel, hoursLabel, offKind, PARTIAL_NOTE, type YearCount, type YearLine } from '@/lib/timeclock/time-off-year'
+import { DAY_NOTE, daysLabel, hmLabel, offKind, PARTIAL_NOTE, plusLabel, type YearCount, type YearLine } from '@/lib/timeclock/time-off-year'
 import type { RequestCard } from '@/lib/timeclock/request-cards'
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const NOTE = 'Company holidays are not counted.'
+const NOTE = `${DAY_NOTE} Company holidays are not counted.`
+/** "2.72 days", "0 days": the days beside the hours. */
+const daysText = (seconds: number) => (seconds > 0 ? daysLabel(seconds) : '0 days')
 
 const Dot = ({ color }: { color: string | null }) => (color ? <span className="inline-block w-2 h-2 rounded-full mr-[7px] align-[1px]" style={{ background: color }} /> : null)
 const firstName = (who: string) => who.split(' ')[0]
@@ -23,9 +25,9 @@ function Tile({ l }: { l: YearLine }) {
     <div className={`bg-subtle rounded-[11px] px-3 py-2.5 flex flex-col gap-0.5 min-w-0 ${l.adds ? 'outline outline-1 outline-tn-teal' : ''}`}>
       <span className="text-[12px] text-muted"><Dot color={l.color} />{l.label}</span>
       <span className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink tabular-nums lining-nums leading-[1.2]">
-        {daysLabel(l.seconds)}{plus > 0 && <span className="text-[13px] text-tn-teal"> +{daysLabel(plus).replace(/ days?$/, '')}</span>}
+        {hmLabel(l.seconds)}{plus > 0 && <span className="text-[13px] text-tn-teal"> {plusLabel(plus)}</span>}
       </span>
-      <span className="text-[11.5px] text-muted tabular-nums lining-nums">{hoursLabel(l.seconds)}{plus > 0 ? `, ${hoursLabel(l.withSeconds)} with this request` : ''}</span>
+      <span className="text-[11.5px] text-muted tabular-nums lining-nums">{daysText(l.seconds)}{plus > 0 ? `, ${daysLabel(l.withSeconds).replace(/ days?$/, '')} with this request` : ''}</span>
     </div>
   )
 }
@@ -64,6 +66,11 @@ export function YearTiles({ count, who, heading = true }: { count: YearCount; wh
   )
 }
 
+/** Hours, with the days they make under them when there are any. */
+function Amount({ seconds }: { seconds: number }) {
+  return <>{hmLabel(seconds)}{seconds > 0 && <span className="block text-[11px] font-normal text-muted">{daysLabel(seconds)}</span>}</>
+}
+
 /** Home's drawer: the same count as a small table, taken and with this request. */
 export function YearTable({ count, who }: { count: YearCount; who: string }) {
   const adding = count.total.adds
@@ -83,8 +90,8 @@ export function YearTable({ count, who }: { count: YearCount; who: string }) {
           return (
             <div key={l.key} className="contents">
               <span className={`${cell} ${strong ? 'font-bold text-tn-ink' : 'text-foreground'}`}><Dot color={l.color} />{l.label}</span>
-              <span className={`${cell} text-right ${l.key === 'all' ? 'font-bold text-tn-ink' : 'text-foreground'}`}>{daysLabel(l.seconds)}</span>
-              {adding && <span className={`${cell} text-right ${l.adds && l.key !== 'all' ? 'font-bold text-tn-teal' : l.key === 'all' ? 'font-bold text-tn-ink' : 'text-foreground'}`}>{daysLabel(l.withSeconds)}</span>}
+              <span className={`${cell} text-right ${l.key === 'all' ? 'font-bold text-tn-ink' : 'text-foreground'}`}><Amount seconds={l.seconds} /></span>
+              {adding && <span className={`${cell} text-right ${l.adds && l.key !== 'all' ? 'font-bold text-tn-teal' : l.key === 'all' ? 'font-bold text-tn-ink' : 'text-foreground'}`}><Amount seconds={l.withSeconds} /></span>}
             </div>
           )
         })}

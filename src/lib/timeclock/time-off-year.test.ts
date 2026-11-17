@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysLabel, hoursLabel, offKindOf, offRuns, yearCount, type OffEntry } from './time-off-year'
+import { daysLabel, hmLabel, hoursLabel, offKindOf, offRuns, perDayText, plusLabel, yearCount, type OffEntry } from './time-off-year'
 
 const H = 3600
 const e = (date: string, hours: number, kind: OffEntry['kind']): OffEntry => ({ date, seconds: hours * H, kind })
@@ -22,6 +22,18 @@ describe('labels', () => {
     expect(daysLabel(12 * H)).toBe('1.5 days')
     expect(daysLabel(0)).toBe('0')
     expect(hoursLabel(11.25 * H)).toBe('11.25h')
+  })
+  it('writes hours and minutes, the main figure', () => {
+    expect(hmLabel(5.75 * H)).toBe('5h 45m')
+    expect(hmLabel(16 * H)).toBe('16h 00m')
+    expect(hmLabel(0)).toBe('0h')
+    expect(plusLabel(16 * H)).toBe('+16h')
+    expect(plusLabel(5.75 * H)).toBe('+5h 45m')
+  })
+  it('says each day of a range, and nothing for one day', () => {
+    expect(perDayText([{ date: '2026-10-26', seconds: 8 * H }, { date: '2026-10-27', seconds: 8 * H }])).toBe('8h 00m each day')
+    expect(perDayText([{ date: '2026-10-26', seconds: 8 * H }, { date: '2026-10-27', seconds: 4 * H }])).toBe('Mon 8h 00m, Tue 4h 00m')
+    expect(perDayText([{ date: '2026-10-26', seconds: 8 * H }])).toBeNull()
   })
 })
 

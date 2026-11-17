@@ -6,13 +6,16 @@
  * Counted from the time entries (tc_entries, kind 'absence'): the history
  * that came from TSheets and everything approved in North Time, which writes
  * its hours there. Company holidays are not time off someone took, so they
- * are left out. A day is 8 hours. No balance: balances are kept in Rippling.
+ * are left out. Shown in hours, with days (8 hours each) beside them. No
+ * balance: balances are kept in Rippling.
  *
  * 2026 is partial: before North Time, some time off was never recorded in
  * TSheets (Tina added it at payroll), so the year reads low and says so.
  *
  * Plain data only: the reads are in time-off-year-data.ts.
  */
+
+import { formatDuration } from './rounding'
 
 export type OffKind = 'vacation' | 'sick' | 'unpaid' | 'other'
 
@@ -54,6 +57,15 @@ export function daysLabel(seconds: number): string {
 }
 /** "48h", "11.25h". */
 export const hoursLabel = (seconds: number): string => `${round2(seconds / 3600)}h`
+/**
+ * "21h 45m", "0h": the hours as the portal writes every duration. The count's
+ * main figure (owner, 17 November 2026), so a part of a day reads as what it
+ * was (5h 45m) and not only as a share of a day (0.72).
+ */
+export const hmLabel = (seconds: number): string => (seconds > 0 ? formatDuration(seconds) : '0h')
+/** "+16h", "+5h 45m": what a request adds, short. */
+export const plusLabel = (seconds: number): string => `+${formatDuration(seconds).replace(/ 00m$/, '')}`
+export const DAY_NOTE = 'A day is 8 hours.'
 
 export interface YearLine {
   key: OffKind | 'all'
@@ -109,7 +121,15 @@ export function yearCount(entries: readonly OffEntry[], year: number, add?: { ki
 }
 
 export interface OffRunIn { date: string; seconds: number; kind: OffKind; source: string }
-export interface OffRun { from: string; to: string; kind: OffKind; seconds: number; source: string }
+export interface OffRun { from: string; to: string; kind: OffKind; seconds: number; source: string; /** Each day's own hours, in order. */ days: { date: string; seconds: number }[] }
+
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+/** Under a range's dates: "8h 00m each day", or each day when they differ ("Mon 8h 00m, Tue 4h 00m"). Null for one day. */
+export function perDayText(days: OffRun['days']): string | null {
+  if (days.length < 2) return null
+  if (days.every(d => d.seconds === days[0].seconds)) return `${hmLabel(days[0].seconds)} each day`
+  return days.map(d => `${WEEKDAY[new Date(`${d.date}T00:00:00Z`).getUTCDay()]} ${hmLabel(d.seconds)}`).join(', ')
+}
 
 const nextWorkday = (iso: string): string => {
   const d = new Date(`${iso}T00:00:00Z`)
@@ -131,8 +151,8 @@ export function offRuns(entries: readonly OffRunIn[]): OffRun[] {
   const runs: OffRun[] = []
   for (const e of byDay.values()) {
     const last = runs.findLast(r => r.kind === e.kind && r.source === e.source)
-    if (last && (last.to === e.date || nextWorkday(last.to) === e.date)) { last.to = e.date; last.seconds += e.seconds }
-    else runs.push({ from: e.date, to: e.date, kind: e.kind, seconds: e.seconds, source: e.source })
+    if (last && (last.to === e.date || nextWorkday(last.to) === e.date)) { last.to = e.date; last.seconds += e.seconds; last.days.push({ date: e.date, seconds: e.seconds }) }
+    else runs.push({ from: e.date, to: e.date, kind: e.kind, seconds: e.seconds, source: e.source, days: [{ date: e.date, seconds: e.seconds }] })
   }
   return runs.sort((a, b) => b.from.localeCompare(a.from))
 }

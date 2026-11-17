@@ -8,7 +8,7 @@
 import { allRows, db, loadCatalog, loadDirectory } from './clocky-context'
 import { dateLabel, rangeLabel } from './format'
 import { holidaysBetween, offDays } from './time-off'
-import { daysLabel, offKind, offKindOf, offRuns, yearCount, type OffKind, type YearCount } from './time-off-year'
+import { daysLabel, hmLabel, offKind, offKindOf, offRuns, perDayText, yearCount, type OffKind, type YearCount } from './time-off-year'
 
 export interface TimeOffLine {
   key: string
@@ -17,6 +17,10 @@ export interface TimeOffLine {
   kind: OffKind
   label: string
   color: string
+  /** "16h 00m" */
+  hours: string
+  /** Under a range: "8h 00m each day", or each day when they differ. */
+  perDay: string | null
   /** "2 days" */
   days: string
   /** "North Time" or "TSheets" */
@@ -63,7 +67,7 @@ export async function loadTimeOffRecord(personId: string, asked: number | undefi
     // The request that wrote these days, when there is one: its approver.
     const req = r.source === 'portal' ? approved.find(q => q.start_date <= r.to && q.end_date >= r.from) : undefined
     return {
-      key: `e-${r.from}-${r.kind}-${r.source}`, dates: span(r.from, r.to), kind: r.kind, label: k.label, color: k.color, days: daysLabel(r.seconds),
+      key: `e-${r.from}-${r.kind}-${r.source}`, dates: span(r.from, r.to), kind: r.kind, label: k.label, color: k.color, hours: hmLabel(r.seconds), perDay: perDayText(r.days), days: daysLabel(r.seconds),
       source: r.source === 'tsheets' ? 'TSheets' : 'North Time', by: req?.decided_by ? dir.nameOf(req.decided_by) : null, waiting: false,
     }
   })
@@ -73,7 +77,8 @@ export async function loadTimeOffRecord(personId: string, asked: number | undefi
     if (!kind) return []
     const k = offKind(kind)
     const days = offDays(r.start_date, r.end_date, holidays).days.length
-    return [{ key: `w-${r.id}`, dates: span(r.start_date, r.end_date), kind, label: k.label, color: k.color, days: daysLabel(days * Number(r.hours_per_day) * 3600), source: 'North Time', by: 'Waiting', waiting: true }]
+    const each = Number(r.hours_per_day) * 3600
+    return [{ key: `w-${r.id}`, dates: span(r.start_date, r.end_date), kind, label: k.label, color: k.color, hours: hmLabel(days * each), perDay: days > 1 ? `${hmLabel(each)} each day` : null, days: daysLabel(days * each), source: 'North Time', by: 'Waiting', waiting: true }]
   })
   return {
     year, prev: year > firstYear ? year - 1 : null, next: year < thisYear ? year + 1 : null,

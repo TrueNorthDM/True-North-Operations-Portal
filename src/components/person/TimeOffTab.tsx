@@ -14,7 +14,7 @@ import type { TimeOffRecord } from '@/lib/timeclock/time-off-year-data'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] leading-[normal] uppercase text-muted'
 const ARROW = 'w-[32px] h-[32px] rounded-[10px] border border-[var(--panel-border)] bg-white text-tn-ink flex items-center justify-center hover:bg-subtle no-underline'
-const GRID = 'minmax(130px,1.5fr) minmax(90px,.9fr) minmax(70px,.6fr) minmax(90px,.9fr) minmax(110px,1.1fr)'
+const GRID = 'minmax(140px,1.5fr) minmax(90px,.9fr) minmax(80px,.7fr) minmax(60px,.5fr) minmax(90px,.9fr) minmax(110px,1.1fr)'
 
 export function TimeOffTab({ personId, record }: { personId: string; record: TimeOffRecord }) {
   const at = (year: number) => `${personHref(personId, 'timeoff')}&year=${year}`
@@ -32,15 +32,19 @@ export function TimeOffTab({ personId, record }: { personId: string; record: Tim
       </section>
 
       <section className={`${CARD} overflow-x-auto`} aria-label="Each time off">
-        <div className="min-w-[560px]">
+        <div className="min-w-[640px]">
           <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: GRID }}>
-            <span className={HEAD}>Dates</span><span className={HEAD}>Type</span><span className={`${HEAD} text-right`}>Days</span><span className={HEAD}>Recorded in</span><span className={HEAD}>Approved by</span>
+            <span className={HEAD}>Dates</span><span className={HEAD}>Type</span><span className={`${HEAD} text-right`}>Hours</span><span className={`${HEAD} text-right`}>Days</span><span className={HEAD}>Recorded in</span><span className={HEAD}>Approved by</span>
           </div>
           {record.lines.map((l, i) => (
             <div key={l.key} className={`grid gap-3.5 items-center px-[22px] py-[12px] text-[13px] ${i ? 'border-t border-slate-200' : ''}`} style={{ gridTemplateColumns: GRID }}>
-              <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink">{l.dates}</span>
+              <span className="flex flex-col gap-0.5 min-w-0">
+                <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink">{l.dates}</span>
+                {l.perDay && <span className="text-[11.5px] text-muted tabular-nums lining-nums">{l.perDay}</span>}
+              </span>
               <span className="text-foreground"><span className="inline-block w-2 h-2 rounded-full mr-[7px] align-[1px]" style={{ background: l.color }} />{l.label}</span>
-              <span className="text-right text-tn-ink font-semibold tabular-nums lining-nums">{l.days.replace(/ days?$/, '')}</span>
+              <span className="text-right text-tn-ink font-bold tabular-nums lining-nums">{l.hours}</span>
+              <span className="text-right text-muted tabular-nums lining-nums">{l.days.replace(/ days?$/, '')}</span>
               <span className={l.source === 'TSheets' ? 'text-muted' : 'text-foreground'}>{l.source}</span>
               {l.waiting ? <span><span className={pillClass('amber')}>Waiting</span></span> : <span className={l.by ? 'text-foreground' : 'text-muted'}>{l.by ?? '-'}</span>}
             </div>
