@@ -23,6 +23,11 @@ export interface ManualPage {
   superOnly?: boolean
   /** Admins and Super Admins only (the Admin guides). */
   adminOnly?: boolean
+  /**
+   * The page's tutorial video on Vimeo (owner, 17 November 2026): the number at
+   * the end of its vimeo.com link. It plays above the guide; no number, no player.
+   */
+  video?: string
 }
 
 /** Who reads the manual: what their level lets them see of it. */
@@ -69,6 +74,7 @@ export const PAGES: readonly ManualPage[] = [
   // North Time's pages follow the rules leadership decided on 4 November 2026.
   g('North Time', 'north-time', 'North Time'),
   g('North Time', 'north-time-quick-start', 'North Time quick start'),
+  g('North Time', 'send-an-invoice', 'Sending an invoice without the portal', 3),
   { slug: 'overview', tab: 'behind', group: 'How the portal works', title: 'Overview' },
   { slug: 'pages-and-sections', tab: 'behind', group: 'How the portal works', title: 'Pages & sections' },
   { slug: 'access-model', tab: 'behind', group: 'How the portal works', title: 'Access model' },

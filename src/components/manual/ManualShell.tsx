@@ -84,10 +84,25 @@ export function ManualShell({ tab, page, viewer, children }: { tab: ManualTab; p
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-10 items-start">
         <div className="hidden lg:block lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto"><Drawer tab={tab} page={page} viewer={viewer} /></div>
         <article className="min-w-0 flex flex-col gap-6">
+          {page.video && <ManualVideo id={page.video} title={page.title} />}
           {children}
           <NextPrev tab={tab} page={page} viewer={viewer} />
         </article>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The page's tutorial video (owner, 17 November 2026): Vimeo's player, 16:9,
+ * above the guide. dnt=1 keeps Vimeo from tracking the viewer.
+ */
+function ManualVideo({ id, title }: { id: string; title: string }) {
+  if (!/^\d+$/.test(id)) return null
+  return (
+    <div className="relative w-full overflow-hidden rounded-[16px] border border-[var(--panel-border)] bg-[#0B2447] aspect-video">
+      <iframe src={`https://player.vimeo.com/video/${id}?dnt=1&title=0&byline=0&portrait=0`} title={`${title}: video tutorial`}
+        className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" />
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { HrefLinksGuide } from './guides/HrefLinksGuide'
 import { ApprovalsGuide, ExtraHoursGuide, ReimbursementsGuide, TimeOffGuide } from './guides/RequestsGuide'
 import { DirectoryGuide, HistoryGuide, HumanResourcesGuide, OrganizationGuide } from './guides/PeopleGuide'
 import { AnnualReviewGuide } from './guides/AnnualReviewGuide'
+import { SendInvoiceGuide } from './guides/SendInvoiceGuide'
 import { AccessLevelsGuide, CompanySettingsGuide, MondayAndAutomationsGuide, NotificationRulesGuide } from './guides/AdminGuide'
 
 /** The guides, by slug. */
@@ -46,6 +47,7 @@ const GUIDE: Record<string, () => ReactNode> = {
   'access-levels': AccessLevelsGuide,
   'notification-rules': NotificationRulesGuide,
   'monday-and-automations': MondayAndAutomationsGuide,
+  'send-an-invoice': SendInvoiceGuide,
 }
 
 /** The one-page manual's section each page not yet rewritten shows, by slug. */
