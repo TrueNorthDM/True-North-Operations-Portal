@@ -7,6 +7,8 @@
  */
 
 import type { QueueRow } from '@/lib/timeclock/approval-queue'
+import type { RequestCard } from '@/lib/timeclock/request-cards'
+import type { YearCount } from '@/lib/timeclock/time-off-year'
 import { NOTE_TO_APPROVE } from '@/lib/timeclock/entry-rules'
 import { dateLabel } from '@/lib/timeclock/format'
 
@@ -70,6 +72,9 @@ export interface Panel {
    * its file to open in the window (owner, 10 November 2026), and their total.
    */
   receipts?: { items: PanelReceipt[]; total: string }
+  /** A time off request (owner, 17 November 2026): who on the team is also out those days, and the person's year by type. */
+  also?: NonNullable<RequestCard['also']> & { who: string }
+  year?: { count: YearCount; who: string }
   note: string | null
   /** "Open in Approvals", with the page the row belongs to: a button over the two (owner, 10 November 2026). */
   link: { label: string; href: string }

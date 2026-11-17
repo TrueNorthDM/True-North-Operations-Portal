@@ -28,6 +28,8 @@ import { loadPayTerms, loadRequestDeciders, loadRoutes, seesMoney, type InvoiceS
 import { orList } from './routing'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays, readsOffReason } from './time-off'
+import { offKindOf, yearCount, type OffEntry, type YearCount } from './time-off-year'
+import { teamColour } from '@/lib/directory/team-colour'
 import { usd } from './invoice-doc'
 import { receiptsText, reportTitle, rmbVersion, totalsText, type Amount } from './reimbursement-reports'
 import { DESCRIPTION_LABEL, MEAL_OVER_FLAG, overMealCap } from './reimbursement-rules'
@@ -65,7 +67,16 @@ export interface RequestCard {
   items?: ReportItem[]
   facts: { k: string; v: string }[]
   allow: string | null
-  cal: { label: string; days: string[]; rows: { name: string; sub: string; color: string; cells: ('req' | 'out' | 'hol' | null)[] }[] } | null
+  /**
+   * Who is out around the request (owner, 17 November 2026): the request, the
+   * person's own team, the other teams and the company holidays. The window
+   * opens on the team and a switch shows everyone. 'ask': asked, not approved yet.
+   */
+  cal: { label: string; team?: string | null; days: string[]; rows: { name: string; sub: string; color: string; group?: 'req' | 'team' | 'others' | 'hol'; cells: ('req' | 'out' | 'ask' | 'hol' | null)[] }[] } | null
+  /** Home's drawer: who on the person's team is also out on the request's days; null when they have no team. */
+  also?: { team: string; people: { name: string; initials: string; color: string; when: string; asked: boolean }[]; warn: string | null } | null
+  /** The person's time off this year, by type, and what it becomes with this request. */
+  year?: YearCount | null
   after: string
   canDecide: boolean
   roText: string | null
@@ -203,8 +214,39 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
     const lo = offRows.reduce((m, r) => (r.start_date < m ? r.start_date : m), '9999-12-31')
     const hi = offRows.reduce((m, r) => (r.end_date > m ? r.end_date : m), '0000-01-01')
     const holidays = holidaysBetween(addDays(lo, -7), addDays(hi, 7))
-    const approved = await allRows<{ person_id: string; start_date: string; end_date: string }>((a, b) => c.from('tc_absence_requests').select('person_id, start_date, end_date')
-      .eq('state', 'approved').lte('start_date', addDays(hi, 7)).gte('end_date', addDays(lo, -7)).order('id').range(a, b), 'Time off could not be read')
+    const winLo = addDays(lo, -7), winHi = addDays(hi, 7)
+    const years = [...new Set(offRows.map(r => r.start_date.slice(0, 4)))].sort()
+    const askers = [...new Set(offRows.map(r => r.person_id))]
+    // Who is out in those weeks, whoever they are: time off in the entries (the TSheets history and what North Time
+    // approved), requests still waiting, and the absences contractors put on the Agenda. And the askers' own year.
+    const [outEntries, waitingOff, agendaOut, yearEntries] = await Promise.all([
+      allRows<{ person_id: string; entry_date: string; jobcode_id: number | null }>((a, b) => c.from('tc_entries').select('person_id, entry_date, jobcode_id')
+        .eq('kind', 'absence').gte('entry_date', winLo).lte('entry_date', winHi).order('id').range(a, b), 'Time off could not be read'),
+      allRows<{ id: number; person_id: string; start_date: string; end_date: string; state: string }>((a, b) => c.from('tc_absence_requests').select('id, person_id, start_date, end_date, state')
+        .in('state', ['pending', 'approved']).lte('start_date', winHi).gte('end_date', winLo).order('id').range(a, b), 'Time off could not be read'),
+      allRows<{ created_by: string | null; start_date: string; end_date: string }>((a, b) => c.from('agenda_events').select('created_by, start_date, end_date')
+        .eq('type', 'absence').lte('start_date', winHi).gte('end_date', winLo).order('id').range(a, b), 'Absences could not be read'),
+      allRows<{ person_id: string; entry_date: string; duration_seconds: number; jobcode_id: number | null }>((a, b) => c.from('tc_entries').select('person_id, entry_date, duration_seconds, jobcode_id')
+        .eq('kind', 'absence').in('person_id', askers).gte('entry_date', `${years[0]}-01-01`).lte('entry_date', `${years[years.length - 1]}-12-31`).order('id').range(a, b), 'Time off could not be read'),
+    ])
+    const kindOfJob = (id: number | null) => offKindOf(id != null ? catalog.jobs.get(id) : null)
+    // person -> day -> out, or only asked. Approved wins over asked; a company holiday is nobody's time off.
+    const outBy = new Map<string, Map<string, 'out' | 'ask'>>()
+    const mark = (pid: string | null, day: string, how: 'out' | 'ask') => {
+      if (!pid) return
+      const m = outBy.get(pid) ?? outBy.set(pid, new Map()).get(pid)!
+      if (how === 'out' || !m.has(day)) m.set(day, how)
+    }
+    for (const e of outEntries) if (kindOfJob(e.jobcode_id)) mark(e.person_id, e.entry_date, 'out')
+    for (const o of [...waitingOff.map(w => ({ pid: w.person_id, from: w.start_date, to: w.end_date, how: w.state === 'approved' ? 'out' as const : 'ask' as const, id: w.id })),
+      ...agendaOut.map(a => ({ pid: a.created_by, from: a.start_date, to: a.end_date, how: 'out' as const, id: -1 }))]) {
+      for (let d = o.from < winLo ? winLo : o.from; d <= o.to && d <= winHi; d = addDays(d, 1)) mark(o.pid, d, o.how)
+    }
+    const yearOf = new Map<string, OffEntry[]>()
+    for (const e of yearEntries) {
+      const kind = kindOfJob(e.jobcode_id)
+      if (kind) (yearOf.get(e.person_id) ?? yearOf.set(e.person_id, []).get(e.person_id)!).push({ date: e.entry_date, seconds: Number(e.duration_seconds) || 0, kind })
+    }
     for (const r of offRows) {
       const who = person(r.person_id)
       const kind = catalog.jobs.get(r.jobcode_id)?.short ?? 'Time off'
@@ -218,17 +260,39 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const lastDay = addDays(r.end_date, (5 - new Date(`${r.end_date}T00:00:00Z`).getUTCDay() + 7) % 7)
       const week: string[] = []
       for (let d = monday; d <= lastDay && week.length < 10; d = addDays(d, 1)) { const w = new Date(`${d}T00:00:00Z`).getUTCDay(); if (w > 0 && w < 6) week.push(d) }
-      const mates = approved.filter(o => o.person_id !== r.person_id && dir.people.get(o.person_id)?.teamId === who.teamId && who.teamId && o.start_date <= week[week.length - 1] && o.end_date >= week[0])
+      // Everyone else out in those weeks: on a team the person is on, or on another one.
+      const myTeams = new Set(dir.people.get(r.person_id)?.teamIds ?? [])
+      const sharesTeam = (pid: string) => (dir.people.get(pid)?.teamIds ?? []).some(t => myTeams.has(t))
+      const away = [...outBy.entries()].filter(([pid, m]) => pid !== r.person_id && dir.people.has(pid) && week.some(d => m.has(d)))
+        .map(([pid, m]) => ({ pid, days: m, mate: sharesTeam(pid), name: dir.nameOf(pid) })).sort((a, b) => a.name.localeCompare(b.name))
+      const mates = away.filter(a => a.mate), others = away.filter(a => !a.mate)
+      const teamOf = (pid: string) => { const t = dir.people.get(pid)?.teamId; return t ? dir.teams.get(t)?.name ?? 'No team' : 'No team' }
+      const rowOf = (a: typeof away[number], group: 'team' | 'others') => {
+        const asksOnly = week.every(d => a.days.get(d) !== 'out')
+        return { name: a.name, sub: group === 'others' ? `${teamOf(a.pid)}${asksOnly ? ', asked' : ''}` : asksOnly ? 'Asked, not approved yet' : 'Out', color: group === 'team' ? '#1E7D7F' : '#85B7EB', group, cells: week.map(d => a.days.get(d) ?? null) }
+      }
       const hols = week.filter(d => holidays.has(d))
       const calRows: NonNullable<RequestCard['cal']>['rows'] = [
-        { name: who.name, sub: 'This request', color: who.team?.color ?? '#9CA3AF', cells: week.map(d => (days.includes(d) ? 'req' : null)) },
-        ...[...new Set(mates.map(m => m.person_id))].map(pid => {
-          const mine = mates.filter(m => m.person_id === pid)
-          return { name: dir.nameOf(pid), sub: `Out (approved)${who.team ? `, ${who.team.name}` : ''}`, color: '#A99BD4', cells: week.map(d => (mine.some(m => d >= m.start_date && d <= m.end_date) ? 'out' as const : null)) }
-        }),
-        ...[...new Set(hols.map(d => holidays.get(d)!))].map(name => ({ name, sub: 'Company holiday', color: '#e4e7ec', cells: week.map(d => (holidays.get(d) === name ? 'hol' as const : null)) })),
+        { name: who.name, sub: 'This request', color: who.team?.color ?? '#9CA3AF', group: 'req', cells: week.map(d => (days.includes(d) ? 'req' : null)) },
+        ...mates.map(a => rowOf(a, 'team')),
+        ...others.map(a => rowOf(a, 'others')),
+        ...[...new Set(hols.map(d => holidays.get(d)!))].map(name => ({ name, sub: 'Company holiday', color: '#e4e7ec', group: 'hol' as const, cells: week.map(d => (holidays.get(d) === name ? 'hol' as const : null)) })),
       ]
-      const clash = mates.flatMap(m => days.filter(d => d >= m.start_date && d <= m.end_date).map(d => ({ who: dir.nameOf(m.person_id), d })))
+      // Approved time off on the request's own days: the row's flag, and Home's "also out".
+      const clash = mates.flatMap(a => days.filter(d => a.days.get(d) === 'out').map(d => ({ who: a.name, d })))
+      const spanText = (ds: string[]) => (ds.length === 1 ? dayLabel(ds[0]) : daysText(ds[0], ds[ds.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to '))
+      const alsoPeople = mates.map(a => ({ a, on: days.filter(d => a.days.has(d)) })).filter(x => x.on.length)
+        .map(({ a, on }) => ({ name: a.name, initials: initials(a.name), color: teamColour(who.team?.color, who.team?.name), when: spanText(week.filter(d => a.days.has(d))), asked: on.every(d => a.days.get(d) === 'ask') }))
+      const teamSize = [...dir.people.values()].filter(p => p.active && p.teamIds.some(t => myTeams.has(t))).length
+      const worst = days.map(d => ({ d, n: mates.filter(a => a.days.get(d) === 'out').length })).sort((x, y) => y.n - x.n)[0]
+      const also: RequestCard['also'] = who.team ? {
+        team: who.team.name, people: alsoPeople,
+        warn: worst && worst.n >= 2 ? `${worst.n} of ${teamSize} on ${who.team.name} are already out on ${dayLabel(worst.d)}.` : null,
+      } : null
+      // Their year by type; a request still waiting is shown as what the year becomes with it.
+      const offKindHere = kindOfJob(r.jobcode_id)
+      const year = offKindHere ? yearCount(yearOf.get(r.person_id) ?? [], Number(r.start_date.slice(0, 4)),
+        r.state === 'pending' ? { kind: offKindHere, seconds, date: r.start_date } : null) : null
       const own = r.person_id === v.personId
       const { canDecide, decides, owner, ownerName } = routed('off', r.person_id, pending)
       const label = daysText(r.start_date, r.end_date)
@@ -263,7 +327,8 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             ...(cancelAsk ? (cancelReason ? [{ k: 'Why cancel', v: `"${cancelReason}"` }] : []) : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
           ],
           allow: null,
-          cal: { label: `Team calendar, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
+          also, year,
+          cal: { team: who.team?.name ?? null, label: `Who is out, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
           after: cancelAsk
             ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off the team calendar. Keep it, with a reason, and it stays.`
             : `On approval, by itself: the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day (${formatDuration(seconds)} of ${kind}) into their time entries. Finance takes it to payroll.`,

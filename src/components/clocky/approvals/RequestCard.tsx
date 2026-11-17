@@ -22,6 +22,8 @@ import { MEAL_OVER_FLAG } from '@/lib/timeclock/reimbursement-rules'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
 import { SEG_BOX, SEG_OFF, SEG_ON, SEG_OPT } from '@/lib/ui/segmented'
 import { PILL, pillClass } from '@/components/ui/Pill'
+import { Segmented } from '@/components/ui/Segmented'
+import { YearTiles } from './TimeOffYear'
 
 const TYPE: Record<Card['kind'], { bg: string; fg: string }> = {
   off: { bg: '#eef1fb', fg: '#3b4fa8' }, 'off-cancel': { bg: '#eef1fb', fg: '#3b4fa8' }, rmb: { bg: '#fbf3e4', fg: '#8a5a12' }, 'rmb-report': { bg: '#fbf3e4', fg: '#8a5a12' }, xh: { bg: '#f0edfb', fg: '#5847c9' },
@@ -104,28 +106,8 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
           {card.allow && <div className="border border-[#f0e2a8] bg-[var(--warn-bg)] rounded-[11px] px-[13px] py-[11px] text-[12.5px] text-[#8a6d1a] leading-[1.5] font-semibold tabular-nums lining-nums">{card.allow}</div>}
         </div>
       </div>
-      {card.cal && (
-        <div className="flex flex-col gap-2">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{card.cal.label}</span>
-          {/* The names column is 180px in the window; on a phone it gives the days room. */}
-          <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden [--cal-name:104px] md:[--cal-name:180px]">
-            <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: `var(--cal-name) repeat(${card.cal.days.length},minmax(0,1fr))` }}>
-              <div />
-              {card.cal.days.map(d => <div key={d} className="px-1 py-2 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase text-muted text-center">{d}</div>)}
-            </div>
-            {card.cal.rows.map(r => (
-              <div key={r.name} className="grid items-center border-b border-[var(--row-rule)]" style={{ gridTemplateColumns: `var(--cal-name) repeat(${card.cal!.days.length},minmax(0,1fr))` }}>
-                <div className="px-3 py-[7px] flex flex-col gap-px"><span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{r.name}</span><span className="text-[11.5px] text-muted">{r.sub}</span></div>
-                {r.cells.map((c, i) => (
-                  <div key={i} className="px-[3px] py-2">
-                    <div className="h-[22px] rounded-[6px] box-border" style={{ background: !c ? 'transparent' : c === 'hol' ? '#e4e7ec' : c === 'req' ? r.color : 'rgba(169,155,212,.45)', border: c === 'req' ? '2px solid #012358' : '0' }} />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {card.year && <YearTiles count={card.year} who={who} />}
+      {card.cal && <WhoIsOut cal={card.cal} />}
       <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] bg-subtle rounded-[11px] px-[13px] py-[11px] [text-wrap:pretty]">{card.after}</div>
       {card.canDecide && (
         <>
@@ -161,6 +143,68 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       {card.roText && <div className="text-[12.5px] text-[#5b6b82] bg-[var(--chip-neutral-bg)] rounded-[10px] px-3 py-2.5">{card.roText}</div>}
       {viewing && <FileViewer files={viewing.files} start={viewing.at} onClose={() => setViewing(null)} />}
     </Modal>
+  )
+}
+
+const CAL_HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+const CELL: Record<'req' | 'out' | 'ask' | 'hol', (color: string) => React.CSSProperties> = {
+  req: color => ({ background: color, border: '2px solid #012358' }),
+  out: color => ({ background: color }),
+  // Asked, not approved yet: the same colour as an outline, not filled.
+  ask: color => ({ background: 'transparent', border: `2px dashed ${color}` }),
+  hol: () => ({ background: '#e4e7ec' }),
+}
+
+/**
+ * Who is out around the request (owner, 17 November 2026): the request, the
+ * person's team, the other teams and the company holidays. It opens on the
+ * team; the switch shows everyone. Only that someone is out, never the type.
+ */
+function WhoIsOut({ cal }: { cal: NonNullable<Card['cal']> }) {
+  const others = cal.rows.filter(r => r.group === 'others')
+  const [all, setAll] = useState(false)
+  const cols = { gridTemplateColumns: `var(--cal-name) repeat(${cal.days.length},minmax(0,1fr))` }
+  const groups: { key: string; label: string | null; rows: typeof cal.rows }[] = [
+    { key: 'req', label: null, rows: cal.rows.filter(r => !r.group || r.group === 'req') },
+    { key: 'team', label: cal.team ? `${cal.team}, ${cal.rows.filter(r => r.group === 'team').length || 'nobody'} else out` : null, rows: cal.rows.filter(r => r.group === 'team') },
+    ...(all ? [{ key: 'others', label: `Other teams, ${others.length || 'nobody'} out`, rows: others }] : []),
+    { key: 'hol', label: cal.rows.some(r => r.group === 'hol') ? 'Company holidays' : null, rows: cal.rows.filter(r => r.group === 'hol') },
+  ]
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className={`${CAL_HEAD} flex-1`}>{cal.label}</span>
+        {cal.team && <Segmented label="Whose time off" options={[{ key: 'team', label: cal.team }, { key: 'all', label: others.length ? `Everyone (${others.length} more)` : 'Everyone' }] as const} value={all ? 'all' : 'team'} onChange={k => setAll(k === 'all')} />}
+      </div>
+      {/* The names column is 180px in the window; on a phone it gives the days room. */}
+      <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden [--cal-name:104px] md:[--cal-name:180px]">
+        <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={cols}>
+          <div />
+          {cal.days.map(d => <div key={d} className={`px-1 py-2 ${CAL_HEAD} !tracking-[.06em] text-center`}>{d}</div>)}
+        </div>
+        {groups.map(g => (
+          <div key={g.key}>
+            {g.label && <div className={`px-3 py-[6px] bg-subtle border-b border-[var(--row-rule)] ${CAL_HEAD}`}>{g.label}</div>}
+            {g.rows.map((r, n) => (
+              <div key={`${r.name}-${n}`} className="grid items-center border-b border-[var(--row-rule)]" style={cols}>
+                <div className="px-3 py-[7px] flex flex-col gap-px min-w-0"><span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink truncate">{r.name}</span><span className="text-[11.5px] text-muted truncate">{r.sub}</span></div>
+                {r.cells.map((c, i) => (
+                  <div key={i} className="px-[3px] py-2">
+                    <div className="h-[22px] rounded-[6px] box-border" title={c === 'ask' ? 'Asked, not approved yet' : undefined} style={c ? CELL[c](r.color) : undefined} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-muted">
+        <span><span className="inline-block w-3 h-2.5 rounded-[3px] align-[-1px] mr-1.5" style={{ background: '#1E7D7F' }} />Same team</span>
+        {all && <span><span className="inline-block w-3 h-2.5 rounded-[3px] align-[-1px] mr-1.5" style={{ background: '#85B7EB' }} />Other teams</span>}
+        <span><span className="inline-block w-3 h-2.5 rounded-[3px] align-[-1px] mr-1.5 box-border" style={{ border: '2px dashed #1E7D7F' }} />Asked, not approved yet</span>
+        <span><span className="inline-block w-3 h-2.5 rounded-[3px] align-[-1px] mr-1.5" style={{ background: '#e4e7ec' }} />Holiday</span>
+      </div>
+    </div>
   )
 }
 

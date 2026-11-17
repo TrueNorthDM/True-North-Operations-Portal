@@ -37,6 +37,8 @@ import type { Cadence } from '@/lib/timeclock/periods'
 import type { PaysAs } from '@/lib/timeclock/routing'
 import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights'
 import type { PaymentsData } from '@/lib/timeclock/payments-view'
+import type { TimeOffRecord } from '@/lib/timeclock/time-off-year-data'
+import { TimeOffTab } from './TimeOffTab'
 import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { BTN } from '@/lib/ui/buttons'
@@ -58,7 +60,7 @@ const btnNavy = BTN.navy
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 
-export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null, payments = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
+export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null, payments = null, timeOff = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
@@ -68,6 +70,8 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
   pay?: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean; typeChange?: TypeChangeView | null; typeApi?: TypeChangeApi } | null
   /** The Payments tab (Clocky part 2, 10P): null when it is not open, or not the tab shown. */
   payments?: PaymentsProp | null
+  /** The Time off tab (owner, 17 November 2026): null when it is not the tab shown, or could not be read. */
+  timeOff?: TimeOffRecord | null
   /** Design check only: the cadence preview and save without the server. */
   cadenceActions?: CadenceActions
   /** Design check only: a tab already in Edit, with this cadence picked. */
@@ -100,7 +104,7 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
         })}
       </nav>
       {/* Keyed by tab: moving to another tab leaves any edit behind. */}
-      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} pay={pay} payments={payments} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
+      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} pay={pay} payments={payments} timeOff={timeOff} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
     </div>
   )
 }
@@ -177,13 +181,14 @@ function Cover({ data }: { data: PersonPageData }) {
 
 // ── One tab ─────────────────────────────────────────────────────────────────
 
-function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActions, startEditing, startCadence }: {
+function TabPanel({ data, tab, canRemove, timesheet, pay, payments, timeOff, cadenceActions, startEditing, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
   timesheet: PersonTimesheetView | null
   pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean; typeChange?: TypeChangeView | null; typeApi?: TypeChangeApi } | null
   payments: PaymentsProp | null
+  timeOff: TimeOffRecord | null
   cadenceActions: CadenceActions
   startEditing: Editable | null
   startCadence?: Cadence
@@ -261,6 +266,12 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActio
     return payments
       ? <div className="leading-[normal]"><PaymentsTab data={payments.data} api={payments.api} initial={payments.initial} /></div>
       : <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Payments could not be read. Try again in a moment.</p>
+  }
+
+  if (tab === 'timeoff') {
+    return timeOff
+      ? <TimeOffTab personId={data.id} record={timeOff} />
+      : <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Time off could not be read. Try again in a moment.</p>
   }
 
   let rule: { kind: 'edit' | 'view' | 'hidden'; text: string; edit?: { label: string; on: Editable } } | null = null

@@ -32,6 +32,7 @@
  */
 
 import { INPUT, TEXTAREA } from '@/lib/ui/fields'
+import { AlsoOut, YearTable } from '@/components/clocky/approvals/TimeOffYear'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
@@ -183,6 +184,8 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
               </div>
             ))}
           </div>}
+          {p.also && <AlsoOut also={p.also} />}
+          {p.year && <YearTable count={p.year.count} who={p.year.who} />}
           {p.note && <div className="bg-[#f4f2ec] rounded-[12px] px-4 py-[14px] text-[13.5px] text-foreground leading-[1.55]">{p.note}</div>}
           {p.payForm && (
             <div className="flex flex-col gap-3">

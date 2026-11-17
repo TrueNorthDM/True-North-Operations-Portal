@@ -18,7 +18,9 @@ import { cancelEmployeeChange, scheduleEmployee } from './type-actions'
 import { getInvoiceDoc } from '@/app/(app)/clocky-hours/invoices/actions'
 import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
-import { loadInvoiceSettings, seesMoney } from '@/lib/timeclock/pay-terms'
+import { loadInvoiceSettings, loadRequestDeciders, seesMoney } from '@/lib/timeclock/pay-terms'
+import { loadTimeOffRecord } from '@/lib/timeclock/time-off-year-data'
+import { localDate } from '@/lib/timeclock/format'
 import { loadPayments } from '@/lib/timeclock/payments-view'
 import { northTimeOpen } from '@/lib/timeclock/north-time-lock'
 
@@ -31,7 +33,7 @@ export default async function PersonRoute({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; year?: string }>
 }) {
   const { id } = await params
   if (!UUID.test(id)) notFound()
@@ -43,7 +45,7 @@ export default async function PersonRoute({
   const data = await loadPersonPage(db, id, access, await loadLedMemberIds(db, access.personId))
   // Closed and missing look the same, so a closed page says nothing about who exists.
   if (!data) notFound()
-  const { tab } = await searchParams
+  const { tab, year } = await searchParams
   // The Work tab's Timesheet section (Clocky, 16 October 2026): read only with
   // the Work tab, changed with Edit work by whoever may change the periods.
   // While North Time is closed (migration 132) the Timesheet section and Payments are a Super Admin's only.
@@ -54,8 +56,15 @@ export default async function PersonRoute({
   // Payments (Clocky part 2, 10P): money, so their own, someone else's with p-payments (Super Admins
   // only) and Finance's; never a Team Leader or an Admin who is not Finance (owner, 5 November 2026).
   data.rights.payments = ntShown && (access.can('p-payments') || seesMoney(access, id, await loadInvoiceSettings()))
+  // Time off (owner, 17 November 2026) names sick leave: their own, whoever has HR and access on this page,
+  // and whoever approves their time off (routing.ts requestDeciders); never another Team Leader or Admin.
+  data.rights.timeoff = ntShown && (data.rights.own || data.rights.hr
+    || (!!access.personId && (await loadRequestDeciders([id]))('off', id).includes(access.personId)))
   const shown = resolvePageTab(tab, data.rights)
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
+  const timeOff = shown === 'timeoff'
+    ? await loadTimeOffRecord(id, year && /^\d{4}$/.test(year) ? Number(year) : undefined, localDate(new Date(), zone)).catch(e => { console.error('[person time off]', e instanceof Error ? e.message : e); return null })
+    : null
   const payments = shown === 'payments'
     ? await loadPayments(id, access, zone).catch(e => { console.error('[person payments]', e instanceof Error ? e.message : e); return null })
     : null
@@ -72,6 +81,7 @@ export default async function PersonRoute({
         timesheet={sheet && { ...sheet, links: { rates: access.can('directory') && access.can('d-rates'), settings: access.can('cs-periods') } }}
         pay={pay && { ...pay, save: savePayTerms.bind(null, id), typeApi: { schedule: scheduleEmployee.bind(null, id), cancel: cancelEmployeeChange.bind(null, id) } }}
         payments={payments && { data: payments, api: { getInvoiceDoc, getPayDoc } }}
+        timeOff={timeOff}
       />
       {/* The annual reviews (handoff, G2): under HR, or under Work for whoever has no HR tab. */}
       {(shown === 'hr' || (shown === 'work' && !data.rights.hr)) && <PersonReviews access={access} personId={id} />}

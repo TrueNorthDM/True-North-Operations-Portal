@@ -7,6 +7,7 @@
  *   HR and access  never shown to the person themselves, unless their access
  *                  opens it on everyone's page (Admin, Super Admin)
  *   Reports        who reports to the person
+ *   Time off       their time off by year: the person, HR and their approver
  *
  * Someone else's page opens with "Open anyone's page" (p-any), or with "Open
  * the pages of people on the teams they lead" (p-led) for a person on one of
@@ -43,17 +44,25 @@ export interface PageRights {
    * Off here; the page turns it on after asking.
    */
   payments: boolean
+  /**
+   * Time off (owner, 17 November 2026): the person's time off by year and
+   * type. It names sick leave, so it opens for the person, for whoever has
+   * HR and access on the page, and for whoever approves their time off; never
+   * another Team Leader or Admin. Off here; the page turns it on after asking.
+   */
+  timeoff: boolean
   /** Inside HR and access: invite, send again, revoke (d-invite). */
   invite: boolean
   /** Inside HR and access: reset the second step (d-2fa). */
   resetTwoStep: boolean
 }
 
-export type PageTab = 'personal' | 'work' | 'payments' | 'hr' | 'reports'
+export type PageTab = 'personal' | 'work' | 'payments' | 'timeoff' | 'hr' | 'reports'
 export const PAGE_TABS: readonly { key: PageTab; label: string }[] = [
   { key: 'personal', label: 'Personal' },
   { key: 'work', label: 'Work' },
   { key: 'payments', label: 'Payments' },
+  { key: 'timeoff', label: 'Time off' },
   { key: 'hr', label: 'HR and access' },
   { key: 'reports', label: 'Reports' },
 ]
@@ -78,6 +87,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
       hrEdit: hr && can('p-hr-edit'),
       reports: true,
       payments: false,
+      timeoff: false,
       invite: false,
       resetTwoStep: false,
     }
@@ -101,6 +111,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
     hrEdit: hr && can('p-hr-edit'),
     reports,
     payments: false,
+    timeoff: false,
     invite: hr && can('d-invite'),
     resetTwoStep: hr && can('d-2fa'),
   }

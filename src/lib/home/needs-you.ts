@@ -351,6 +351,8 @@ function decisionRow(r: CardRow, today: string): HomeRow {
       ...(card.allow ? [{ k: 'Allowance', v: card.allow }] : []),
     ],
     ...(receipts ? { receipts } : {}),
+    ...(card.also ? { also: { ...card.also, who: r.name } } : {}),
+    ...(card.year ? { year: { count: card.year, who: r.name } } : {}),
     note: card.after,
     link: { label: 'Open in Approvals', href: APPROVALS },
     primary: { label: card.approveLabel, op: decide('approve'), icon: 'check' },
