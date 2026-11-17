@@ -146,7 +146,8 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
           <div className="text-[14px] text-[#5b6b82] leading-[1.5] tabular-nums">{p.sub}</div>
         </div>
 
-        <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-[18px]">
+        {/* The blocks keep their own height and the drawer scrolls: a tall panel must never squash one of them. */}
+        <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-[18px] [&>*]:shrink-0">
           {p.receipts && (
             <div className="flex flex-col gap-2.5">
               <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Receipts</span>
