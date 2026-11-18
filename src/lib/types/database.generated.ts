@@ -706,6 +706,27 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_sign_in_exceptions: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          email: string
+          person_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          email: string
+          person_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          email?: string
+          person_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           zoom_client_id: string | null

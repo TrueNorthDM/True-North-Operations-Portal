@@ -25,6 +25,7 @@ import { toolsByTeam } from '@/lib/access/team-tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
+import { loadSignInExceptions } from '@/lib/auth/sign-in-exceptions'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 import { isFinance, loadInvoiceSettings, loadRatesPay } from '@/lib/timeclock/pay-terms'
 import { loadHiddenColumns } from '@/lib/settings/columns'
@@ -115,6 +116,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const people = (pRows ?? []) as unknown as PRow[]
   // Invitations and two-step sign-in: Portal access (d-portal, d-invite, d-2fa).
   const invites = level >= 3 && rights.portal ? await loadInvitesByPerson(supabase) : new Map<string, string>()
+  // Sign-in exceptions (migration 168): shown with the sign-in address, so with the same gate.
+  const exceptions = level >= 3 && rights.portal ? await loadSignInExceptions() : new Map<string, string>()
   // Two-step sign-in by account (migration 090); null before it runs, and the
   // Directory then leaves the two-step column and row out.
   const twoStepByAccount = level >= 3 && (rights.portal || rights.resetTwoStep) ? await loadTwoStepByAccount() : null
@@ -260,6 +263,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           trueNorth: seesEmails ? str(p.email_true_north) : null,
           goodnews: seesLogin ? str(p.email_goodnews) : null,
           coe: seesEmails ? str(p.email_coe) : null,
+          signIn: seesLogin ? exceptions.get(p.id) ?? null : null,
         },
         accountId: str(p.profile_id),
         accountEmail: seesLogin && str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
@@ -440,6 +444,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
         startTab={startTab}
         hiddenColumns={hiddenColumns}
+        signInExceptions={access.isSuperAdmin}
       />
     </div>
   )

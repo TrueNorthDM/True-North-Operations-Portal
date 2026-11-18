@@ -6,6 +6,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
+import { signInExceptionOf } from '@/lib/auth/sign-in-exceptions'
 import { isLeadPosition } from '@/lib/access/catalogue'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
@@ -100,6 +101,8 @@ export interface PersonPageData {
     invitedAt: string | null
     hasAccount: boolean
     goodnews: string | null
+    /** Their sign-in exception (migration 168), when a Super Admin listed one. */
+    signIn?: string | null
     /** Undefined before two-step sign-in exists (migration 090). */
     twoStepSince: string | null | undefined
     lastAccessAt: string | null
@@ -233,7 +236,7 @@ export async function loadPersonPage(
     const lastRow = last as { accessed_at: string; user_agent: string | null } | null
     hr = {
       onboarding: str(p.onboarding_status), offboarding: str(p.offboarding_status),
-      invitedAt: str(p.portal_invited_at), hasAccount: !!profileId, goodnews: str(p.email_goodnews),
+      invitedAt: str(p.portal_invited_at), hasAccount: !!profileId, goodnews: str(p.email_goodnews), signIn: await signInExceptionOf(personId),
       twoStepSince: twoStep ? (profileId ? twoStep.get(profileId) ?? null : null) : undefined,
       lastAccessAt: lastRow?.accessed_at ?? null, lastAccessAgent: lastRow?.user_agent ?? null,
       hasTsheets: p.tsheets_user_id != null,

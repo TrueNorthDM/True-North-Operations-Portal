@@ -7,6 +7,8 @@ const contact = vi.fn()
 const twoStep = vi.fn()
 vi.mock('@/lib/hr/contact', () => ({ loadContactByPerson: (...a: unknown[]) => contact(...a) }))
 vi.mock('@/lib/auth/two-step', () => ({ loadTwoStepByAccount: (...a: unknown[]) => twoStep(...a) }))
+// Sign-in exceptions (migration 168) are read with the server's own client: none in these tests.
+vi.mock('@/lib/auth/sign-in-exceptions', () => ({ signInExceptionOf: async () => null }))
 
 const { loadPersonPage, loadLedMemberIds } = await import('./person-page-data')
 

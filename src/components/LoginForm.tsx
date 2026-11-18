@@ -14,7 +14,7 @@ import { INPUT } from '@/lib/ui/fields'
 import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { sendMagicLink, verifyCode } from '@/app/auth/actions'
-import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, NOT_INVITED_MESSAGE } from '@/lib/auth-constants'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 
 const LOGIN_ERRORS: Record<string, string> = {
@@ -41,7 +41,9 @@ export function LoginForm() {
   const trimmed = email.trim().toLowerCase()
   const looksLikeEmail = /\S+@\S+\.\S+/.test(trimmed)
   const domainOk = looksLikeEmail && isAllowedEmail(trimmed)
-  const canSubmit = domainOk && !sending
+  // Any address may be tried (owner, 18 November 2026): one outside GoodNews can be someone's sign-in
+  // exception. The hint under the field says which address most people use; the server decides.
+  const canSubmit = looksLikeEmail && !sending
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -143,13 +145,12 @@ export function LoginForm() {
           placeholder={`you@${ALLOWED_EMAIL_DOMAINS[0]}`}
           autoComplete="email"
           autoFocus
-          aria-invalid={looksLikeEmail && !domainOk ? true : undefined}
           aria-describedby={looksLikeEmail && !domainOk ? 'email-hint' : undefined}
           className={`w-full ${INPUT} text-center`}
         />
         {looksLikeEmail && !domainOk && (
           <p id="email-hint" className="mt-2 text-center text-xs text-amber-700">
-            {SHAPE_MESSAGE}
+            Most people sign in with their @goodnewsadvocates.org address. Use another one only if an admin set it up for you.
           </p>
         )}
       </div>

@@ -42,6 +42,7 @@ export function DirectoryTabs({
   startTab = 'people',
   hiddenColumns = {},
   saveColumns = saveHiddenColumns,
+  signInExceptions = false,
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -56,6 +57,8 @@ export function DirectoryTabs({
   hiddenColumns?: HiddenColumns
   /** Design check only: saves a Columns choice without the server. */
   saveColumns?: SaveHidden
+  /** Super Admins: the Sign-in exceptions box on Portal access (owner, 18 November 2026). */
+  signInExceptions?: boolean
 }) {
   const columns = useColumnChoices(hiddenColumns, saveColumns)
   const [tab, setTab] = useState<Tab>(() => (startTab === 'people' || !(['emails', 'teams', 'access', 'portal'] as string[]).includes(startTab) || (allowed && !allowed.includes(startTab)) ? 'people' : startTab as Tab))
@@ -177,7 +180,7 @@ export function DirectoryTabs({
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} columns={columns('directory-access')} />}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={twoStep} columns={columns('directory-portal')} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} columns={columns('directory-portal')} canInvite={rights.invite} canExceptions={signInExceptions} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
       )}
       </div>
 

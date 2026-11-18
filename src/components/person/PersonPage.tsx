@@ -491,7 +491,7 @@ function HrView({ data }: { data: PersonPageData }) {
         <dl className="m-0">
           <Row label="Invitation">
             <PortalAccessControl
-              p={{ id: data.id, full_name: data.name, status: data.active ? 'active' : 'inactive', portalInvitedAt: h.invitedAt, accountId: h.hasAccount ? 'yes' : null, emails: { goodnews: h.goodnews } }}
+              p={{ id: data.id, full_name: data.name, status: data.active ? 'active' : 'inactive', portalInvitedAt: h.invitedAt, accountId: h.hasAccount ? 'yes' : null, emails: { goodnews: h.goodnews, signIn: h.signIn ?? null } }}
               canInvite={r.invite}
             />
           </Row>

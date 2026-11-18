@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import { invitePerson } from '@/app/(app)/admin/people/actions'
 import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rule'
+import { SignInExceptions } from './SignInExceptions'
 import { formatDate, initialsOf, type PersonView } from '@/lib/directory/people-types'
 import { pillClass, type PillColor } from '@/components/ui/Pill'
 import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
@@ -72,7 +73,7 @@ function ago(iso: string | null): string {
   return formatDate(iso) ?? 'Never'
 }
 
-export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, showLastSignIn = false, columns: given }: {
+export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, canExceptions = false, showLastSignIn = false, columns: given }: {
   /** Active people only. */
   people: PersonView[]
   /** Second step by person id, for people with an account. Null until two-step sign-in ships. */
@@ -81,6 +82,8 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
   onOpen?: (id: string) => void
   /** d-invite: the checkboxes and "Invite selected". */
   canInvite?: boolean
+  /** Super Admins: the Sign-in exceptions box (owner, 18 November 2026). */
+  canExceptions?: boolean
   /** d-log: the Last sign-in column. Without it the column would only ever say "Never". */
   showLastSignIn?: boolean
   /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
@@ -104,7 +107,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
 
   const rows = useMemo(() => people.map(p => {
     const invitedAt = justInvited[p.id] ?? p.portalInvitedAt
-    const state = portalAccessState({ status: p.status, email_goodnews: p.emails.goodnews, portal_invited_at: invitedAt, hasAccount: !!p.accountId })
+    const state = portalAccessState({ status: p.status, email_goodnews: p.emails.signIn ?? p.emails.goodnews, portal_invited_at: invitedAt, hasAccount: !!p.accountId })
     const second: TwoStep | null = p.accountId ? (twoStep?.[p.id] ?? 'none') : null
     return { p, invitedAt, state, second }
   }), [people, twoStep, justInvited])
@@ -123,7 +126,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
     return rows
       .filter(r => filter === 'all'
         || (filter === 'no-two-step' ? r.state === 'signed-in' && r.second !== 'on' : r.state === filter))
-      .filter(r => !term || `${r.p.full_name} ${r.p.title ?? ''} ${r.p.emails.goodnews ?? ''}`.toLowerCase().includes(term))
+      .filter(r => !term || `${r.p.full_name} ${r.p.title ?? ''} ${r.p.emails.signIn ?? r.p.emails.goodnews ?? ''}`.toLowerCase().includes(term))
       .sort((a, b) => a.p.full_name.localeCompare(b.p.full_name))
   }, [rows, filter, q])
 
@@ -179,8 +182,10 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
     <div>
       {confirmDialog}
       <p className="text-[13.5px] text-muted mb-[18px] leading-relaxed">
-        Who can get into the portal. People sign in with their GoodNews address after an admin invites them; the chips count each group and filter the list. Tick people to invite them, or send the invitation again, in one go.
+        Who can get into the portal. People sign in with their GoodNews address after an admin invites them (or with the address listed for them under Sign-in exceptions); the chips count each group and filter the list. Tick people to invite them, or send the invitation again, in one go.
       </p>
+
+      {canExceptions && <SignInExceptions people={people} />}
 
       {/* the counts, which are also the filters */}
       <div className="flex flex-wrap gap-2.5 mb-[18px]">
@@ -262,7 +267,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
                 <span className="block text-xs text-muted truncate">{r.p.title ?? '-'}</span>
               </span>
             </span>
-            {show.has('signsIn') && <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.goodnews ?? r.p.accountEmail ?? undefined}>{r.p.emails.goodnews ?? r.p.accountEmail ?? <span className="text-slate-300">-</span>}</span>}
+            {show.has('signsIn') && <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.signIn ?? r.p.emails.goodnews ?? r.p.accountEmail ?? undefined}>{r.p.emails.signIn ?? r.p.emails.goodnews ?? r.p.accountEmail ?? <span className="text-slate-300">-</span>}</span>}
             <span className="inline-flex flex-col items-start gap-0.5">
               {pill(ACCESS_PILL[r.state])}
               {r.invitedAt && r.state !== 'no-address' && <span className="text-[11px] text-muted">Invited {formatDate(r.invitedAt)}</span>}

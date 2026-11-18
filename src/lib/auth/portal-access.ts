@@ -4,8 +4,10 @@
  * A person may sign in, and keep using the portal, while all of this holds:
  *   - they are active in the Directory;
  *   - an admin has invited them (people.portal_invited_at);
- *   - they sign in with their GoodNews mailbox (people.email_goodnews).
- * The founding account, arnaldo.oliveira@me.com, is the one exception.
+ *   - they sign in with their GoodNews mailbox (people.email_goodnews), or with
+ *     the address a Super Admin listed as their exception (migration 168,
+ *     lib/auth/sign-in-exceptions.ts; owner, 18 November 2026).
+ * The founding account, arnaldo.oliveira@me.com, is one of those exceptions.
  *
  * The rule itself lives in the database (portal_can_sign_in), where the sign-up
  * trigger uses it too. This module asks it before a sign-in link is sent, and
@@ -18,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionUser } from '@/lib/auth/session'
 import { isAllowedEmail } from '@/lib/auth-constants'
 import { isFounding, mayUsePortal, type PortalPerson } from '@/lib/auth/portal-rule'
+import { personOfException } from '@/lib/auth/sign-in-exceptions'
 
 /** Postgres "undefined column / function": migration 089 has not run yet. */
 function isMissingMigration(error: { code?: string; message?: string } | null): boolean {
@@ -31,11 +34,12 @@ function isMissingMigration(error: { code?: string; message?: string } | null): 
  * always did, so deploying the code first locks nobody out.
  */
 export async function canSignIn(email: string): Promise<boolean> {
-  if (!isAllowedEmail(email)) return false
+  // The database decides: a GoodNews mailbox, or the address a Super Admin listed as that person's
+  // exception (migration 168). An address of neither kind is simply not invited.
   const db = createAdminClient()
   const { data, error } = await db.rpc('portal_can_sign_in', { p_email: email })
   if (error) {
-    if (isMissingMigration(error)) return true
+    if (isMissingMigration(error)) return isAllowedEmail(email)
     console.error('[portal-access] portal_can_sign_in failed:', error.message)
     return false
   }
@@ -77,6 +81,11 @@ async function portalAnswer(user: { id: string; email?: string | null }, onError
     // address must not match any character.
     const exact = user.email.replace(/[\\%_]/g, c => `\\${c}`)
     res = await db.from('people').select(cols).ilike('email_goodnews', exact).limit(1)
+    // Or the address is someone's sign-in exception (migration 168).
+    if (!res.error && !res.data?.length) {
+      const personId = await personOfException(user.email)
+      if (personId) res = await db.from('people').select(cols).eq('id', personId).limit(1)
+    }
   }
   if (res.error) {
     if (isMissingMigration(res.error)) return 'ok'

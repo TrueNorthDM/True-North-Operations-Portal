@@ -20,7 +20,7 @@
 
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { isAllowedEmail, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { looksLikeEmail } from '@/lib/auth/sign-in-exceptions'
 import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
 import { withStartPage } from '@/lib/auth/start-page'
@@ -46,7 +46,9 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   // Layer 2 of defense-in-depth: the address must be a GoodNews mailbox of an
   // active, invited person (or the founding account). Layer 1 is the shape check
   // in the client UI; layer 3 is the DB trigger on auth.users (migration 089).
-  if (!isAllowedEmail(email)) return { ok: false, error: SHAPE_MESSAGE }
+  // The shape no longer refuses by itself: an address outside GoodNews may be someone's sign-in exception
+  // (migration 168), and saying which shapes are let in would tell a stranger about them. canSignIn decides.
+  if (!looksLikeEmail(email)) return { ok: false, error: 'Enter your email address.' }
   // Before anything is looked up or sent (lib/auth/send-limit.ts).
   const visitor = visitorFrom(await headers())
   // Per visitor only when we know who they are: an unknown address shared by

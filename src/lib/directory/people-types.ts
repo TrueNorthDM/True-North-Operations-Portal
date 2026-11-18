@@ -13,6 +13,8 @@ export interface PersonEmails {
   trueNorth: string | null
   goodnews: string | null
   coe: string | null
+  /** Their sign-in exception (migration 168): the address they sign in with in place of a GoodNews one. Absent for most. */
+  signIn?: string | null
 }
 
 /** One of a person's team memberships + their POSITION in that team (migration

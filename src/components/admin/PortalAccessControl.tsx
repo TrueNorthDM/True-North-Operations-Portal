@@ -30,7 +30,7 @@ const btn =
   'font-(family-name:--font-display) font-extrabold text-[12px] rounded-[8px] px-3 py-1.5 transition-all disabled:opacity-50'
 
 /** What the control needs to know about the person (a PersonView carries it too). */
-export type PortalPerson = Pick<PersonView, 'id' | 'full_name' | 'status' | 'portalInvitedAt' | 'accountId'> & { emails: Pick<PersonView['emails'], 'goodnews'> }
+export type PortalPerson = Pick<PersonView, 'id' | 'full_name' | 'status' | 'portalInvitedAt' | 'accountId'> & { emails: Pick<PersonView['emails'], 'goodnews' | 'signIn'> }
 
 export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvite: boolean }) {
   const router = useRouter()
@@ -45,7 +45,8 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
   const [invitedAt, setInvitedAt] = useState<string | null>(p.portalInvitedAt)
   const state = portalAccessState({
     status: p.status,
-    email_goodnews: p.emails.goodnews,
+    // Their sign-in exception counts as their address (migration 168).
+    email_goodnews: p.emails.signIn ?? p.emails.goodnews,
     portal_invited_at: invitedAt,
     hasAccount: !!p.accountId,
   })
@@ -115,7 +116,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
         )}
       </span>
       {state === 'no-address' && (
-        <span className="text-[11.5px] text-muted max-w-[240px] text-right">Add a @goodnewsadvocates.org address to invite them: it is the one they sign in with.</span>
+        <span className="text-[11.5px] text-muted max-w-[240px] text-right">Add a @goodnewsadvocates.org address to invite them: it is the one they sign in with. Without one, a Super Admin lists another address under Sign-in exceptions (Directory, Portal access).</span>
       )}
       {note && <span className="text-[11.5px] text-tn-teal font-semibold max-w-[240px] text-right">{note}</span>}
       {error && <span className="text-[11.5px] text-[#c8323d] max-w-[240px] text-right">{error}</span>}

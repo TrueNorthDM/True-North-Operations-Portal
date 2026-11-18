@@ -44,6 +44,7 @@
 import { reviewNeedsRows } from '@/lib/review/needs'
 import { loadAccess, type Access } from '@/lib/access/resolve'
 import { portalAccessState } from '@/lib/auth/portal-rule'
+import { loadSignInExceptions } from '@/lib/auth/sign-in-exceptions'
 import { latestHealth } from '@/lib/health/checks'
 import { healthSummary } from '@/lib/health/summary'
 import { loadWorklist } from '@/lib/monday/worklist/data'
@@ -226,16 +227,18 @@ async function accessRows(access: Access, zone: string, today: string): Promise<
     loadDirectory(),
   ])
   if (error) throw new Error(error.message)
+  // A sign-in exception is the address they were invited at (migration 168).
+  const exceptions = await loadSignInExceptions()
   const canInvite = access.can('d-invite')
   type P = { id: string; full_name: string; status: string | null; email_goodnews: string | null; portal_invited_at: string | null; profile_id: string | null; access_level: string | null }
   return ((data ?? []) as P[])
-    .filter(p => portalAccessState({ status: p.status, email_goodnews: p.email_goodnews, portal_invited_at: p.portal_invited_at, hasAccount: !!p.profile_id }) === 'invited')
+    .filter(p => portalAccessState({ status: p.status, email_goodnews: exceptions.get(p.id) ?? p.email_goodnews, portal_invited_at: p.portal_invited_at, hasAccount: !!p.profile_id }) === 'invited')
     .map(p => {
       const person = dir.people.get(p.id)
       const team = person?.teamId ? dir.teams.get(person.teamId)?.name ?? null : null
       const level = p.access_level === 'super_admin' ? 'Super Admin' : p.access_level === 'admin' ? 'Admin' : dir.led.has(p.id) ? 'Team Leader' : 'User'
       const sent = dayLabel(localDate(p.portal_invited_at!, zone))
-      const email = (p.email_goodnews ?? '').trim().toLowerCase()
+      const email = (exceptions.get(p.id) ?? p.email_goodnews ?? '').trim().toLowerCase()
       const title = `${p.full_name} has not accepted the invitation`
       const sub = `Sent ${sent}. Access level: ${level}.`
       const directory = '/directory?tab=portal'

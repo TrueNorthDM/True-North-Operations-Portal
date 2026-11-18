@@ -21,6 +21,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Json, TablesInsert } from '@/lib/types/database.types'
 import { allowedTo } from '@/lib/access/resolve'
 import { endSessions } from '@/lib/auth/portal-access'
+import { looksLikeEmail, signInExceptionOf } from '@/lib/auth/sign-in-exceptions'
+import { isFounding } from '@/lib/auth/portal-rule'
+import { isSuperAdmin } from '@/lib/access/resolve'
 import { requestOrigin } from '@/lib/auth/origin'
 import { getRealPerson } from '@/lib/auth/session'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -132,9 +135,11 @@ export async function invitePerson(id: string): Promise<Result<InviteResult>> {
   const p = person as { full_name: string; status: string | null; email_goodnews: string | null; portal_invited_at: string | null } | null
   if (!p) return fail('That person is not in the Directory.')
   if (p.status === 'inactive') return fail(`${p.full_name} is inactive. Make them active before inviting them.`)
-  const loginEmail = p.email_goodnews?.trim().toLowerCase() ?? ''
-  if (!loginEmail.endsWith('@goodnewsadvocates.org')) {
-    return fail(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first: it is the address they sign in with.`)
+  // Their sign-in exception when a Super Admin listed one (migration 168), else their GoodNews mailbox.
+  const exception = await signInExceptionOf(id)
+  const loginEmail = exception ?? p.email_goodnews?.trim().toLowerCase() ?? ''
+  if (!exception && !loginEmail.endsWith('@goodnewsadvocates.org')) {
+    return fail(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first, or a Super Admin lists another address for them under Sign-in exceptions (Directory, Portal access).`)
   }
   const { data: { user } } = await (await createClient()).auth.getUser()
   // Sending again keeps the date of the first invitation.
@@ -234,6 +239,86 @@ export async function resetTwoStep(id: string): Promise<Result> {
     if (delErr) return fail('Their two-step sign-in could not be reset. Try again.')
   }
   await endSessions(profileId)
+  revalidate()
+  return { ok: true }
+}
+
+// ── Sign-in exceptions (owner, 18 November 2026; migration 168) ─────────────
+
+const SUPER_ONLY = 'Only Super Admins change the sign-in exceptions.'
+
+/**
+ * The addresses a person has in the Directory, to pick their sign-in exception
+ * from (the personal one too). Super Admins only.
+ */
+export async function signInAddressesOf(personId: string): Promise<Result<{ addresses: { label: string; email: string }[] }>> {
+  if (!(await isSuperAdmin())) return fail(SUPER_ONLY)
+  if (!UUID.test(personId)) return fail('That person is not in the Directory.')
+  const { data, error } = await createAdminClient().from('people').select('email_true_north, email_goodnews, email_coe, email_personal').eq('id', personId).maybeSingle()
+  if (error || !data) return fail('The person could not be read. Try again.')
+  const rows: [string, string | null][] = [['True North', data.email_true_north], ['GoodNews', data.email_goodnews], ['COE', data.email_coe], ['Personal', data.email_personal]]
+  return { ok: true, addresses: rows.flatMap(([label, v]) => (v?.trim() ? [{ label, email: v.trim().toLowerCase() }] : [])) }
+}
+
+/**
+ * Lists an address as a person's sign-in exception: the one they sign in with
+ * in place of a GoodNews mailbox. It opens nothing by itself (they must still
+ * be active and invited). One address serves one person, and it cannot be an
+ * address the Directory has for someone else. Changing it for someone who has
+ * already signed in ends their sessions and frees their account link, so the
+ * next sign-in, with the new address, is tied to them.
+ */
+export async function setSignInException(input: { personId: string; email: string }): Promise<Result> {
+  if (!(await isSuperAdmin())) return fail(SUPER_ONLY)
+  const personId = String(input?.personId ?? '')
+  const email = String(input?.email ?? '').trim().toLowerCase()
+  if (!UUID.test(personId)) return fail('Pick a person.')
+  if (!looksLikeEmail(email) || email.length > 254) return fail('That does not look like an email address.')
+  if (email.endsWith('@goodnewsadvocates.org')) return fail('A GoodNews address is not an exception: add it as their GoodNews address in the Directory and invite them.')
+  const db = createAdminClient()
+  const { data: person, error: readErr } = await db.from('people').select('id, full_name, status, profile_id').eq('id', personId).maybeSingle()
+  if (readErr || !person) return fail('That person is not in the Directory.')
+  if (person.status === 'inactive') return fail(`${person.full_name} is inactive. Make them active first.`)
+  const { data: other } = await db.from('portal_sign_in_exceptions').select('person_id').eq('email', email).neq('person_id', personId).maybeSingle()
+  if (other) return fail('That address is already someone else\'s exception.')
+  if (await takenMailbox(db, [email], personId)) return fail('The Directory has that address for someone else.')
+  const { data: before } = await db.from('portal_sign_in_exceptions').select('email').eq('person_id', personId).maybeSingle()
+  if (before?.email === email) return { ok: true }
+  const me = await getRealPerson()
+  const { error } = await db.from('portal_sign_in_exceptions').upsert({ person_id: personId, email, added_by: me?.id ?? null, added_at: new Date().toISOString() }, { onConflict: 'person_id' })
+  if (error) { console.error('[sign-in exceptions] save:', error.message); return fail('Not saved. Try again in a moment.') }
+  // Their exception changed after they signed in with the old one: that account lets go, so the new address becomes theirs.
+  if (before && person.profile_id && personId !== me?.id) {
+    await endSessions(person.profile_id)
+    await db.from('people').update({ profile_id: null }).eq('id', personId)
+  }
+  revalidate()
+  return { ok: true }
+}
+
+/**
+ * Takes a person's sign-in exception away. If that is the address they signed
+ * in with, their sessions end and the account lets go of them. The founding
+ * account's exception stays, and nobody removes their own.
+ */
+export async function removeSignInException(personId: string): Promise<Result> {
+  if (!(await isSuperAdmin())) return fail(SUPER_ONLY)
+  if (!UUID.test(personId)) return fail('That person is not in the Directory.')
+  if (await isSelf(personId)) return fail('You cannot remove your own sign-in address.')
+  const db = createAdminClient()
+  const { data: row } = await db.from('portal_sign_in_exceptions').select('email').eq('person_id', personId).maybeSingle()
+  if (!row) return { ok: true }
+  if (isFounding(row.email)) return fail('The founding account keeps its address.')
+  const { error } = await db.from('portal_sign_in_exceptions').delete().eq('person_id', personId)
+  if (error) { console.error('[sign-in exceptions] remove:', error.message); return fail('Not removed. Try again in a moment.') }
+  const { data: person } = await db.from('people').select('profile_id').eq('id', personId).maybeSingle()
+  if (person?.profile_id) {
+    const { data: profile } = await db.from('profiles').select('email').eq('id', person.profile_id).maybeSingle()
+    if ((profile?.email ?? '').trim().toLowerCase() === row.email) {
+      await endSessions(person.profile_id)
+      await db.from('people').update({ profile_id: null }).eq('id', personId)
+    }
+  }
   revalidate()
   return { ok: true }
 }
