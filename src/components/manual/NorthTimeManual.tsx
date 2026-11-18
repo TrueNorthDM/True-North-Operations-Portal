@@ -30,17 +30,26 @@ export const NORTH_TIME_TOC = [
   { id: 'where', label: 'Where do I find...' },
 ] as const
 
-// A part can carry its tutorial video (owner, 18 November 2026): it plays under the part's text.
+// A part can carry its tutorial video (owner, 18 November 2026). That part takes the
+// whole row, its text on the left and the video on the right, and the grid fills
+// the holes (dense), so no part beside it is stretched into blank space.
 type Block = { t: string; d: string; video?: ManualVideoRef }
 
 function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
   return (
-    <div className={`grid grid-cols-1 ${cols === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
-      {items.map(c => (
+    <div className={`grid grid-cols-1 ${cols === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} grid-flow-row-dense gap-3`}>
+      {items.map(c => c.video ? (
+        <div key={c.t} className={`${card} p-4 sm:col-span-full grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_400px] gap-x-6 gap-y-3 items-start`}>
+          <div className="min-w-0">
+            <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{c.t}</div>
+            <div className="text-[13px] leading-relaxed text-muted mt-1.5"><Rich text={c.d} /></div>
+          </div>
+          <div className="min-w-0 max-w-[440px]"><VimeoPlayer video={c.video} title={c.t} /></div>
+        </div>
+      ) : (
         <div key={c.t} className={`${card} p-4`}>
           <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{c.t}</div>
           <div className="text-[13px] leading-relaxed text-muted mt-1.5"><Rich text={c.d} /></div>
-          {c.video && <div className="mt-3 max-w-[440px]"><VimeoPlayer video={c.video} title={c.t} /></div>}
         </div>
       ))}
     </div>
@@ -322,16 +331,23 @@ export function QuickStartSection() {
           <div key={a.id} id={a.id} className={`${card} p-5 scroll-mt-6`}>
             <div className="font-(family-name:--font-display) font-extrabold text-base text-tn-ink">{a.who}</div>
             <p className="text-[13px] leading-relaxed text-muted mt-1">{a.intro}</p>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 mt-4">
-              {a.topics.map(t => (
-                <div key={t.t} className="min-w-0">
-                  <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mb-1.5">{t.t}</div>
-                  <ol className="list-decimal pl-5 space-y-1 text-[13px] leading-relaxed text-foreground">
-                    {t.steps.map(s => <li key={s}><Rich text={s} /></li>)}
-                  </ol>
-                  {t.video && <div className="mt-3 max-w-[440px]"><VimeoPlayer video={t.video} title={t.t} /></div>}
-                </div>
-              ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 grid-flow-row-dense gap-x-6 gap-y-4 mt-4">
+              {a.topics.map(t => {
+                const text = (
+                  <div className="min-w-0">
+                    <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mb-1.5">{t.t}</div>
+                    <ol className="list-decimal pl-5 space-y-1 text-[13px] leading-relaxed text-foreground">
+                      {t.steps.map(s => <li key={s}><Rich text={s} /></li>)}
+                    </ol>
+                  </div>
+                )
+                return t.video ? (
+                  <div key={t.t} className="min-w-0 lg:col-span-2 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px] gap-x-6 gap-y-3 items-start">
+                    {text}
+                    <div className="min-w-0 max-w-[440px]"><VimeoPlayer video={t.video} title={t.t} /></div>
+                  </div>
+                ) : <div key={t.t} className="contents">{text}</div>
+              })}
             </div>
           </div>
         ))}
