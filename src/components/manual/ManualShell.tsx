@@ -98,10 +98,13 @@ export function ManualShell({ tab, page, viewer, children }: { tab: ManualTab; p
  * above the guide. dnt=1 keeps Vimeo from tracking the viewer.
  */
 function ManualVideo({ id, title }: { id: string; title: string }) {
-  if (!/^\d+$/.test(id)) return null
+  // "number" or "number/code": an unlisted video plays only with its code (h=).
+  const m = /^(\d+)(?:\/([0-9a-f]+))?$/.exec(id)
+  if (!m) return null
+  const src = `https://player.vimeo.com/video/${m[1]}?${m[2] ? `h=${m[2]}&` : ''}dnt=1&title=0&byline=0&portrait=0`
   return (
     <div className="relative w-full overflow-hidden rounded-[16px] border border-[var(--panel-border)] bg-[#0B2447] aspect-video">
-      <iframe src={`https://player.vimeo.com/video/${id}?dnt=1&title=0&byline=0&portrait=0`} title={`${title}: video tutorial`}
+      <iframe src={src} title={`${title}: video tutorial`}
         className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" />
     </div>
   )

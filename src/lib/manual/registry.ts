@@ -24,8 +24,9 @@ export interface ManualPage {
   /** Admins and Super Admins only (the Admin guides). */
   adminOnly?: boolean
   /**
-   * The page's tutorial video on Vimeo (owner, 17 November 2026): the number at
-   * the end of its vimeo.com link. It plays above the guide; no number, no player.
+   * The page's tutorial video on Vimeo (owner, 17 November 2026): the end of its
+   * vimeo.com link, the number and, for an unlisted video, its code after the
+   * slash ("1247981310/791d71cdbe"). It plays above the guide; none, no player.
    */
   video?: string
 }
@@ -58,7 +59,7 @@ export const PAGES: readonly ManualPage[] = [
   g('Tools', 'client-report-i7', 'i7 report', 6, { parent: 'client-reports' }),
   g('Tools', 'client-report-project-hours', 'Project Hours & Others', 5, { parent: 'client-reports' }),
   g('Tools', 'href-links', 'Href Links', 5),
-  g('Requests', 'time-off', 'Time off', 4),
+  g('Requests', 'time-off', 'Time off', 4, { video: '1247981310/791d71cdbe' }),
   g('Requests', 'reimbursements', 'Reimbursements', 5),
   g('Requests', 'extra-hours', 'Extra hours', 3),
   g('Requests', 'approvals', 'Approvals', 4),
