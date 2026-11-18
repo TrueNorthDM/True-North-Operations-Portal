@@ -6,16 +6,17 @@
  */
 
 import type { ReactNode } from 'react'
+import { GuideHeaderFrame } from './GuideVideos'
 
 const DISPLAY = 'font-(family-name:--font-display)'
 
 export function GuideHeader({ eyebrow, title, minutes, children }: { eyebrow: string; title: string; minutes?: number; children: ReactNode }) {
   return (
-    <header className="flex flex-col gap-2">
+    <GuideHeaderFrame>
       <div className={`${DISPLAY} font-extrabold text-[11px] uppercase tracking-[.09em] text-tn-teal`}>{eyebrow}{minutes ? ` · ${minutes} minutes` : ''}</div>
       <h2 className={`m-0 ${DISPLAY} font-black text-[28px] text-tn-ink leading-tight`}>{title}</h2>
       <div className="text-[15.5px] leading-[1.6] text-foreground">{children}</div>
-    </header>
+    </GuideHeaderFrame>
   )
 }
 

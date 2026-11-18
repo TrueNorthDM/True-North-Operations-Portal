@@ -9,6 +9,7 @@ import type { ReactNode } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { TAB_LIST, tabClass } from '@/lib/ui/tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
+import { GuideVideosProvider } from './GuideVideos'
 import { TAB_LABEL, drawerFor, pageHref, readingOrder, type ManualPage, type ManualTab, type ManualViewer } from '@/lib/manual/registry'
 
 const GROUP = 'font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-1.5'
@@ -84,28 +85,10 @@ export function ManualShell({ tab, page, viewer, children }: { tab: ManualTab; p
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-10 items-start">
         <div className="hidden lg:block lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto"><Drawer tab={tab} page={page} viewer={viewer} /></div>
         <article className="min-w-0 flex flex-col gap-6">
-          {page.video && <ManualVideo id={page.video} title={page.title} />}
-          {children}
+          <GuideVideosProvider videos={page.videos ?? []} title={page.title}>{children}</GuideVideosProvider>
           <NextPrev tab={tab} page={page} viewer={viewer} />
         </article>
       </div>
-    </div>
-  )
-}
-
-/**
- * The page's tutorial video (owner, 17 November 2026): Vimeo's player, 16:9,
- * above the guide. dnt=1 keeps Vimeo from tracking the viewer.
- */
-function ManualVideo({ id, title }: { id: string; title: string }) {
-  // "number" or "number/code": an unlisted video plays only with its code (h=).
-  const m = /^(\d+)(?:\/([0-9a-f]+))?$/.exec(id)
-  if (!m) return null
-  const src = `https://player.vimeo.com/video/${m[1]}?${m[2] ? `h=${m[2]}&` : ''}dnt=1&title=0&byline=0&portrait=0`
-  return (
-    <div className="relative w-full overflow-hidden rounded-[16px] border border-[var(--panel-border)] bg-[#0B2447] aspect-video">
-      <iframe src={src} title={`${title}: video tutorial`}
-        className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" />
     </div>
   )
 }

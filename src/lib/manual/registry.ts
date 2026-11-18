@@ -24,12 +24,19 @@ export interface ManualPage {
   /** Admins and Super Admins only (the Admin guides). */
   adminOnly?: boolean
   /**
-   * The page's tutorial video on Vimeo (owner, 17 November 2026): the end of its
-   * vimeo.com link, the number and, for an unlisted video, its code after the
-   * slash ("1247981310/791d71cdbe"). It plays above the guide; none, no player.
+   * The page's tutorial videos on Vimeo (owner, 17 and 18 November 2026). They
+   * play beside a guide's header (GuideHeader); North Time's videos sit in their
+   * own parts of NorthTimeManual instead.
    */
-  video?: string
+  videos?: readonly ManualVideoRef[]
 }
+
+/**
+ * One tutorial video: the end of its vimeo.com link, the number and, for an
+ * unlisted video, its code after the slash ("1247981310/791d71cdbe"), and an
+ * optional label above it when a page has videos for different people.
+ */
+export interface ManualVideoRef { vimeo: string; label?: string }
 
 /** Who reads the manual: what their level lets them see of it. */
 export interface ManualViewer { admin: boolean; superAdmin: boolean }
@@ -59,10 +66,10 @@ export const PAGES: readonly ManualPage[] = [
   g('Tools', 'client-report-i7', 'i7 report', 6, { parent: 'client-reports' }),
   g('Tools', 'client-report-project-hours', 'Project Hours & Others', 5, { parent: 'client-reports' }),
   g('Tools', 'href-links', 'Href Links', 5),
-  g('Requests', 'time-off', 'Time off', 4, { video: '1247981310/791d71cdbe' }),
-  g('Requests', 'reimbursements', 'Reimbursements', 5),
-  g('Requests', 'extra-hours', 'Extra hours', 3),
-  g('Requests', 'approvals', 'Approvals', 4),
+  g('Requests', 'time-off', 'Time off', 4, { videos: [{ vimeo: '1247981310/791d71cdbe' }] }),
+  g('Requests', 'reimbursements', 'Reimbursements', 5, { videos: [{ vimeo: '1247981307/1e85a093b9' }] }),
+  g('Requests', 'extra-hours', 'Extra hours', 3, { videos: [{ vimeo: '1247981235/a54bdea76c' }] }),
+  g('Requests', 'approvals', 'Approvals', 4, { videos: [{ vimeo: '1247981238/fa528c07d6' }] }),
   g('People', 'directory', 'Directory', 6),
   g('People', 'organization', 'Organization', 2),
   g('People', 'history', 'History', 2),
@@ -75,7 +82,10 @@ export const PAGES: readonly ManualPage[] = [
   // North Time's pages follow the rules leadership decided on 4 November 2026.
   g('North Time', 'north-time', 'North Time'),
   g('North Time', 'north-time-quick-start', 'North Time quick start'),
-  g('North Time', 'send-an-invoice', 'Sending an invoice without the portal', 3),
+  g('North Time', 'send-an-invoice', 'Sending an invoice without the portal', 3, { videos: [
+    { vimeo: '1247945675/5690e18968', label: 'For contractors' },
+    { vimeo: '1247981269/a3c7eef94e', label: 'For Admins' },
+  ] }),
   { slug: 'overview', tab: 'behind', group: 'How the portal works', title: 'Overview' },
   { slug: 'pages-and-sections', tab: 'behind', group: 'How the portal works', title: 'Pages & sections' },
   { slug: 'access-model', tab: 'behind', group: 'How the portal works', title: 'Access model' },

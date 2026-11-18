@@ -19,6 +19,8 @@
  */
 
 import { Eyebrow, Heading, Lede, Rich, SubHeading, card } from './ManualParts'
+import { VimeoPlayer } from './ManualVideo'
+import type { ManualVideoRef } from '@/lib/manual/registry'
 
 export const NORTH_TIME_TOC = [
   { id: 'home', label: 'Home' },
@@ -28,7 +30,8 @@ export const NORTH_TIME_TOC = [
   { id: 'where', label: 'Where do I find...' },
 ] as const
 
-type Block = { t: string; d: string }
+// A part can carry its tutorial video (owner, 18 November 2026): it plays under the part's text.
+type Block = { t: string; d: string; video?: ManualVideoRef }
 
 function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
   return (
@@ -37,6 +40,7 @@ function Cards({ items, cols = 2 }: { items: readonly Block[]; cols?: 2 | 3 }) {
         <div key={c.t} className={`${card} p-4`}>
           <div className="font-(family-name:--font-display) font-extrabold text-sm text-tn-ink">{c.t}</div>
           <div className="text-[13px] leading-relaxed text-muted mt-1.5"><Rich text={c.d} /></div>
+          {c.video && <div className="mt-3 max-w-[440px]"><VimeoPlayer video={c.video} title={c.t} /></div>}
         </div>
       ))}
     </div>
@@ -71,7 +75,7 @@ export function HomeSection() {
 
 const NT: Block[] = [
   { t: 'The clock', d: 'The clock button in the top bar opens the clock panel. Pick **Resume** (your last job), one of **My combinations**, a **Recent** one, or search under **Something else** (**Browse** shows every job). Check the details and press **Clock in**. **Switch to** ends one entry and starts the next at the same second. The clock has no break button: to take a break off the clock, clock out. Times are kept on the nearest 15 minutes.' },
-  { t: 'A clock left running', d: 'If you forget to clock out, the clock stops by itself after **12h 00m** on the clock, counted from the clock in across every switch. There is no question before it. You are always told, in the bell and by email (a notification nobody can turn off), and the clock button turns red until you confirm when you really stopped. Admins see every automatic stop in **Clock safety**.' },
+  { t: 'A clock left running', d: 'If you forget to clock out, the clock stops by itself after **12h 00m** on the clock, counted from the clock in across every switch. There is no question before it. You are always told, in the bell and by email (a notification nobody can turn off), and the clock button turns red until you confirm when you really stopped. Admins see every automatic stop in **Clock safety**.', video: { vimeo: '1247981265/3880c3eeb3', label: 'For Admins' } },
   { t: 'Breaks and lunch', d: 'Longer breaks are encouraged, never required. A break under 15 minutes needs no clock out. Contractors clock out for lunch; US employees, who are all salaried, do not have to. The portal does not watch your computer and never clocks you out for being idle.' },
   { t: 'The 2026 job structure', d: 'From the switch date you pick a project as **Client › Division › Project**, then its **Activity**, grouped by family. **Billable** comes from the project and shows read only, “from the project”. **Notes** are required for **Other** and **Meeting: Other**. Before the switch date you pick the TSheets jobs, as before. **Which job?** lists every job and when to use it, with the TSheets list one choice away for people still on TSheets.' },
   { t: 'Combinations', d: 'Your favourites: a job with its Activity and note, saved under a name. Use **Save as combination** in the details, or the star on a Recent row. The panel shows the first 6; **More** shows the rest. **Manage** reorders, edits and deletes them. A combination on a TSheets job stops showing from the switch date; it is not deleted.' },
@@ -95,7 +99,7 @@ export function NorthTimeSection() {
 
 // ── Quick start ─────────────────────────────────────────────────────────────
 
-type Topic = { t: string; steps: readonly string[] }
+type Topic = { t: string; steps: readonly string[]; video?: ManualVideoRef }
 type Audience = { id: string; who: string; intro: string; topics: readonly Topic[] }
 
 const QUICK: Audience[] = [
@@ -218,7 +222,7 @@ const QUICK: Audience[] = [
         'Open North Time, **Approvals**. **Waiting for you** lists the timesheets of the people who report to you.',
         'Press **Review** to open the timesheet: the summary by client and by day, and every entry.',
         'Press **Approve hours** for a contractor (the invoice approver then finishes it) or **Approve for payroll** for an employee (Finance then enters the hours and time off in Rippling). Or press **Send the hours back**, with a reason.',
-      ] },
+      ], video: { vimeo: '1247981239/66c9f06295' } },
       { t: 'Change your team’s hours', steps: [
         'On Time entries, set **Whose hours** to **My team** and pick the person.',
         'Use **Add time**, edit an entry, the **Week grid** or the **Day timeline**. Every change needs a reason and is kept in the history.',
@@ -253,13 +257,13 @@ const QUICK: Audience[] = [
         'When they match: **Approve both**.',
         'When they do not: **Send the invoice back** (the invoice alone, with your reason; the hours stay), **Approve the hours only**, or approve anyway with a reason under **To approve anyway, write why (required)**.',
         'The invoice PDF (preview, download and the Google Drive copy) ends with an **Invoice record** page: who made it, the check against the timesheet and the history.',
-      ] },
+      ], video: { vimeo: '1247981236/75d31dcaae' } },
       { t: 'Invoices to pay and Mark paid', steps: [
         'Home shows **Invoices to pay**; **Open Invoices** opens North Time, Invoices on the approved ones.',
         'Filter by state (**Waiting for approval**, **Approved, not paid**, **Paid** in the month), person and period; **Export CSV**; **Preview PDF**.',
         'Only Finance marks paid, after the money left: **Mark paid**, then **Paid on**, an optional reference and note. It can be done once.',
         'Super Admins who are not Finance see what waits, but do not mark it paid. Admins who are not Finance see no one else’s invoices or amounts.',
-      ] },
+      ], video: { vimeo: '1247981306/81a03d4298' } },
       { t: 'The invoice form (Send an invoice)', steps: [
         'For people who send True North invoices without signing in to the portal: freelancers paid a fixed amount, or by deliverables (one line a Monday item). They make their own invoice, like every contractor. One link for everyone, in Admin, **Company settings**, Invoices, **Send an invoice**: **Copy** it to share. The address is the same for good: truenorthportal.online/send.',
         'They write their name and email and press **Send me a code**: a 6-digit code by email, valid 10 minutes, 5 tries, **send it again** after a minute. The device then remembers their email for 30 days.',
@@ -325,6 +329,7 @@ export function QuickStartSection() {
                   <ol className="list-decimal pl-5 space-y-1 text-[13px] leading-relaxed text-foreground">
                     {t.steps.map(s => <li key={s}><Rich text={s} /></li>)}
                   </ol>
+                  {t.video && <div className="mt-3 max-w-[440px]"><VimeoPlayer video={t.video} title={t.t} /></div>}
                 </div>
               ))}
             </div>
