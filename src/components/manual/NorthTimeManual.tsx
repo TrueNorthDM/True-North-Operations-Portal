@@ -320,6 +320,32 @@ const QUICK: Audience[] = [
   },
 ]
 
+// Quick start's layout (owner, 18 November 2026): a topic with a video takes the
+// whole row, its steps on the left and the video on the right; the topics between
+// them flow in two columns that pack without gaps (CSS columns), in their order.
+type Run = { video: Topic; topics?: undefined } | { video?: undefined; topics: Topic[] }
+function runs(topics: readonly Topic[]): Run[] {
+  const out: Run[] = []
+  for (const t of topics) {
+    const last = out[out.length - 1]
+    if (t.video) out.push({ video: t })
+    else if (last?.topics) last.topics.push(t)
+    else out.push({ topics: [t] })
+  }
+  return out
+}
+
+function TopicText({ topic }: { topic: Topic }) {
+  return (
+    <div className="min-w-0">
+      <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mb-1.5">{topic.t}</div>
+      <ol className="list-decimal pl-5 space-y-1 text-[13px] leading-relaxed text-foreground">
+        {topic.steps.map(s => <li key={s}><Rich text={s} /></li>)}
+      </ol>
+    </div>
+  )
+}
+
 export function QuickStartSection() {
   return (
     <section id="quick-start" className="scroll-mt-6">
@@ -331,23 +357,19 @@ export function QuickStartSection() {
           <div key={a.id} id={a.id} className={`${card} p-5 scroll-mt-6`}>
             <div className="font-(family-name:--font-display) font-extrabold text-base text-tn-ink">{a.who}</div>
             <p className="text-[13px] leading-relaxed text-muted mt-1">{a.intro}</p>
-            <div className="grid grid-cols-1 lg:grid-cols-2 grid-flow-row-dense gap-x-6 gap-y-4 mt-4">
-              {a.topics.map(t => {
-                const text = (
-                  <div className="min-w-0">
-                    <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mb-1.5">{t.t}</div>
-                    <ol className="list-decimal pl-5 space-y-1 text-[13px] leading-relaxed text-foreground">
-                      {t.steps.map(s => <li key={s}><Rich text={s} /></li>)}
-                    </ol>
+            <div className="flex flex-col gap-4 mt-4">
+              {runs(a.topics).map(run => run.video
+                ? (
+                  <div key={run.video.t} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px] gap-x-6 gap-y-3 items-start">
+                    <TopicText topic={run.video} />
+                    {run.video.video && <div className="min-w-0 max-w-[440px]"><VimeoPlayer video={run.video.video} title={run.video.t} /></div>}
                   </div>
                 )
-                return t.video ? (
-                  <div key={t.t} className="min-w-0 lg:col-span-2 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px] gap-x-6 gap-y-3 items-start">
-                    {text}
-                    <div className="min-w-0 max-w-[440px]"><VimeoPlayer video={t.video} title={t.t} /></div>
+                : (
+                  <div key={run.topics[0].t} className={run.topics.length > 1 ? 'lg:columns-2 gap-x-6' : ''}>
+                    {run.topics.map(t => <div key={t.t} className="break-inside-avoid mb-4 last:mb-0"><TopicText topic={t} /></div>)}
                   </div>
-                ) : <div key={t.t} className="contents">{text}</div>
-              })}
+                ))}
             </div>
           </div>
         ))}
