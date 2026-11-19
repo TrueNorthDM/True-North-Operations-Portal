@@ -14,13 +14,15 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import { ChooseFields } from './ChooseFields'
 import { activityNeedsNotes, type FieldName, type MissingName } from '@/lib/timeclock/entry-rules'
-import { timeLabel } from '@/lib/timeclock/format'
+import { dayLabel, localDate, timeLabel } from '@/lib/timeclock/format'
 import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
   FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf, sortedOptions,
   overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, timerStart, valueOf, type Draft,
 } from './clock-model'
+import { EndTimeField } from './EndTimeField'
+import { endChoices } from '@/lib/timeclock/end-time'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 import { Pill, pillClass } from '@/components/ui/Pill'
 
@@ -564,20 +566,21 @@ export function SwitchBar({ now, picked, busy, onCancel, onSwitch }: {
 /** Whether a picked end is later than the automatic stop ("I was still working"). */
 export const isAfterStop = (end: string, stoppedAt: string): boolean => !!end && Date.parse(end) > Date.parse(stoppedAt)
 
-export function AutoView({ item, zone, end, busy, onEnd, onKeep, onConfirm }: {
+export function AutoView({ item, zone, end, busy, onEnd, onConfirm }: {
   item: ToConfirm
   zone: string
   end: string
   busy: boolean
   onEnd: (iso: string) => void
-  onKeep: () => void
   onConfirm: () => void
 }) {
   const stop = timeLabel(item.stoppedAt, zone)
-  // One list, later times first (Tina, 29 October 2026: a separate "I was still working until..." list hid
-  // the earlier times and confused people). A time after the stop is flagged for the approver.
-  const options = [...item.laterOptions, ...item.options].map(iso => ({ value: iso, label: timeLabel(iso, zone) }))
+  // One field to type in, which is also the list, earliest first, on the day it stopped (owner, 19 November
+  // 2026; lib/timeclock/end-time.ts). A time after the stop is still one list (Tina, 29 October 2026) and is
+  // flagged for the approver. Confirming the stop's own time keeps it, so there is no separate Keep button.
+  const choices = endChoices(item.options, item.laterOptions, item.stoppedAt, zone)
   const later = isAfterStop(end, item.stoppedAt)
+  const chosen = choices.find(c => c.iso === end)
   return (
     <>
       <div role="alert" className="border border-[#f3c6ca] bg-[#fdeeef] rounded-[14px] p-4 flex flex-col gap-3.5">
@@ -585,14 +588,11 @@ export function AutoView({ item, zone, end, busy, onEnd, onKeep, onConfirm }: {
           <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink leading-[1.35] tabular-nums lining-nums">Your clock stopped by itself.</div>
           <div className="text-[13px] text-foreground leading-[1.5] mt-1.5">{item.text}</div>
         </div>
-        <ClockField label="Real end time" value={end} options={options} onChange={onEnd} search />
-        {later && <div className="text-[12px] text-[#8a6d1a] font-semibold -mt-1.5">{`Later than ${stop}: you were still working. It is flagged for the approver.`}</div>}
-        <div className="flex justify-end gap-2 flex-wrap">
-          <button type="button" onClick={onKeep} disabled={busy} className={`${CK_BTN_WHITE} tabular-nums lining-nums disabled:opacity-60 ${FOCUS}`}>{`Keep ${stop}`}</button>
-          <button type="button" onClick={onConfirm} disabled={busy || !end} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
-            <Icon d={ICON.check} size={14} stroke={BTN_ICON.navy} sw={3} />Confirm
-          </button>
-        </div>
+        <EndTimeField label={`Real end time · ${dayLabel(localDate(item.stoppedAt, zone))}`} value={end} choices={choices} startedAt={item.startedAt} stoppedAt={item.stoppedAt} disabled={busy} onChange={onEnd} />
+        {later && <div className="text-[12px] text-[#8a6d1a] font-semibold text-center -mt-1.5">{`Later than ${stop}: you were still working. It is flagged for the approver.`}</div>}
+        <button type="button" onClick={onConfirm} disabled={busy || !chosen} className={`${CK_BTN_NAVY} w-full justify-center !h-12 !text-[15px] tabular-nums lining-nums disabled:opacity-60 ${FOCUS}`}>
+          <Icon d={ICON.check} size={16} stroke={BTN_ICON.navy} sw={3} />{chosen ? `Confirm ${timeLabel(chosen.iso, zone)}` : 'Confirm'}
+        </button>
       </div>
       <div className="text-[12px] text-muted leading-[1.5] px-0.5">The entry is marked Auto clocked out in Time entries, and the occurrence is logged in Clock safety.</div>
     </>

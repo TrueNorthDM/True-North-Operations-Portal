@@ -359,12 +359,12 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const pickedRow = ui.pick ? choiceRow(ui.pick.choice, ui.pick.key.startsWith('c')) : null
 
   // 1L
-  const autoEnd = auto ? ui.autoEnd ?? auto.options[0] ?? '' : ''
-  const confirmEnd = (keep: boolean) => {
+  // It opens on the time the clock stopped: confirming it as it is keeps that time.
+  const autoEnd = auto ? ui.autoEnd ?? auto.stoppedAt : ''
+  const confirmEnd = () => {
     if (!auto) return
-    const end = keep ? auto.stoppedAt : autoEnd
-    const stillWorking = !keep && isAfterStop(autoEnd, auto.stoppedAt)
-    void run(() => api.confirmEnd({ entryId: auto.entryId, end, stillWorking }), async r => {
+    const stillWorking = isAfterStop(autoEnd, auto.stoppedAt)
+    void run(() => api.confirmEnd({ entryId: auto.entryId, end: autoEnd, stillWorking }), async r => {
       toast({ text: r.toast })
       set({ ...PANEL_UI })
       await refresh()
@@ -465,8 +465,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         {mode === 'auto' && auto && (
           <AutoView item={auto} zone={zone} end={autoEnd} busy={busy}
             onEnd={iso => set({ autoEnd: iso })}
-            onKeep={() => confirmEnd(true)}
-            onConfirm={() => confirmEnd(false)} />
+            onConfirm={confirmEnd} />
         )}
       </Body>
 
