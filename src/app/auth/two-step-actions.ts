@@ -77,6 +77,9 @@ export async function startEnroll(): Promise<EnrollStart | { error: string }> {
 }
 
 const WRONG = 'That code is not right. Codes change every 30 seconds: type the one the app shows now.'
+// At sign-in the email code has just worked, and someone typing it here again is
+// the usual mistake (18 November 2026), so this one says which code is wanted.
+const WRONG_AT_SIGN_IN = 'That code is not right. Use the code from your authenticator app, not the one from your email. App codes change every 30 seconds: type the one it shows now.'
 const TOO_MANY = 'Too many codes tried. Wait five minutes, then type the one the app shows.'
 
 /** One more authenticator code tried by this account; false once the five minutes' allowance is used. */
@@ -103,7 +106,7 @@ export async function verifyTwoStep(code: string): Promise<{ ok: false; error: s
   if (!factor) redirect('/auth/two-step/setup')
   if (!(await mayTry())) return { ok: false, error: TOO_MANY }
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.replace(/\D/g, '') })
-  if (error) return { ok: false, error: WRONG }
+  if (error) return { ok: false, error: WRONG_AT_SIGN_IN }
   redirect(await landing())
 }
 
