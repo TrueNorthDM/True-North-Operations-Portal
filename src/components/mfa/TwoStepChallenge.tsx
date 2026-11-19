@@ -11,7 +11,7 @@
  * screen shows plainly that this is a second, different code.
  */
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { ERROR_BOX } from '@/lib/ui/feedback'
 import { CodeBoxes, CODE_LENGTH } from '@/components/ui/CodeBoxes'
 
@@ -40,6 +40,7 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const field = useRef<HTMLInputElement>(null)
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +48,13 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
     setError(null)
     start(async () => {
       const res = await verify(code)
-      if (res && !res.ok) setError(res.error)
+      if (res && !res.ok) {
+        // A wrong code is cleared and the cursor goes back to the first box,
+        // ready for the code the app shows now.
+        setError(res.error)
+        setCode('')
+        field.current?.focus()
+      }
     })
   }
 
@@ -80,7 +87,7 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
       <p className="text-sm text-foreground">
         Open your authenticator app and type the 6‑digit code next to <strong className="text-tn-ink">True North Portal</strong>.
       </p>
-      <CodeBoxes value={code} onChange={setCode} label="Code from the authenticator app" autoFocus disabled={pending} />
+      <CodeBoxes value={code} onChange={setCode} label="Code from the authenticator app" autoFocus readOnly={pending} inputRef={field} />
       {error && (
         <div role="alert" className={ERROR_BOX}>{error}</div>
       )}

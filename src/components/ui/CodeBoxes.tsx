@@ -8,7 +8,7 @@
  * holds. Digits only: spaces and anything else are dropped as they arrive.
  */
 
-import { useState } from 'react'
+import { useState, type Ref } from 'react'
 
 export interface CodeBoxesProps {
   value: string
@@ -16,12 +16,15 @@ export interface CodeBoxesProps {
   /** What a screen reader says for the field. */
   label: string
   autoFocus?: boolean
-  disabled?: boolean
+  /** While a code is being checked: it cannot change, but it keeps the focus (disabled would drop it). */
+  readOnly?: boolean
+  /** To put the cursor back in it, after a wrong code. */
+  inputRef?: Ref<HTMLInputElement>
 }
 
 export const CODE_LENGTH = 6
 
-export function CodeBoxes({ value, onChange, label, autoFocus, disabled }: CodeBoxesProps) {
+export function CodeBoxes({ value, onChange, label, autoFocus, readOnly, inputRef }: CodeBoxesProps) {
   const [focused, setFocused] = useState(false)
   const digits = value.replace(/\D/g, '').slice(0, CODE_LENGTH)
   // The box the next digit goes in; the last one stays lit once all six are in.
@@ -50,7 +53,8 @@ export function CodeBoxes({ value, onChange, label, autoFocus, disabled }: CodeB
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         autoFocus={autoFocus}
-        disabled={disabled}
+        readOnly={readOnly}
+        ref={inputRef}
         aria-label={label}
         className="absolute inset-0 h-full w-full cursor-text bg-transparent text-transparent caret-transparent outline-none selection:bg-transparent"
       />
