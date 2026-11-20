@@ -37,3 +37,21 @@ describe('a time zone from where a person lives', () => {
     }
   })
 })
+
+describe('states with two time zones (owner, 20 November 2026)', () => {
+  it('knows which states have two, and gives the two', async () => {
+    const { splitZones } = await import('./zone-from-place')
+    expect(splitZones('US', 'TN')).toEqual(['America/Chicago', 'America/New_York'])
+    expect(splitZones('US', 'Tennessee')).toEqual(['America/Chicago', 'America/New_York'])
+    expect(splitZones('US', 'Oregon')).toEqual(['America/Los_Angeles', 'America/Denver'])
+    expect(splitZones('US', 'Virginia')).toBeNull()
+    expect(splitZones('BR', 'TN')).toBeNull()
+  })
+  it('guesses Eastern for East Tennessee by city or ZIP, and nothing where it is not sure', async () => {
+    const { splitGuess } = await import('./zone-from-place')
+    expect(splitGuess('Tn', 'McDonald', '37353')).toBe('America/New_York')
+    expect(splitGuess('TN', 'Somewhere', '37421')).toBe('America/New_York')
+    expect(splitGuess('TN', 'Nashville', '37203')).toBeNull()
+    expect(splitGuess('TN', 'Tullahoma', '37388')).toBeNull()
+  })
+})

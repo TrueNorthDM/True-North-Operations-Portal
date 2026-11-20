@@ -4,7 +4,7 @@
 
 import { countryCode, countryName } from './countries'
 import { flagEmoji } from './phone'
-import { zoneMatch } from './settings/zone-from-place'
+import { splitGuess, splitZones, zoneMatch } from './settings/zone-from-place'
 import { zoneLabel } from './agenda/time'
 
 export interface PersonAddress {
@@ -14,6 +14,12 @@ export interface PersonAddress {
   line2?: string | null
   city?: string | null
   state?: string | null
+  /**
+   * Their time zone, only for a state that has two (owner, 20 November 2026):
+   * the state's name cannot tell which one, so the person says. One of that
+   * state's two zones (settings/zone-from-place.ts splitZones); ignored otherwise.
+   */
+  zone?: string | null
 }
 
 /** All fields as plain strings (never null) for controlled form inputs. */
@@ -24,9 +30,11 @@ export interface AddressForm {
   line2: string
   city: string
   state: string
+  /** The zone chosen in a state with two; empty or absent everywhere else. */
+  zone?: string
 }
 
-export const EMPTY_ADDRESS_FORM: AddressForm = { country: '', zip: '', line1: '', line2: '', city: '', state: '' }
+export const EMPTY_ADDRESS_FORM: AddressForm = { country: '', zip: '', line1: '', line2: '', city: '', state: '', zone: '' }
 
 export function toAddressForm(a: PersonAddress | null | undefined): AddressForm {
   return {
@@ -36,6 +44,7 @@ export function toAddressForm(a: PersonAddress | null | undefined): AddressForm 
     line2: a?.line2 ?? '',
     city: a?.city ?? '',
     state: a?.state ?? '',
+    zone: a?.zone ?? '',
   }
 }
 
@@ -43,7 +52,12 @@ export function toAddressForm(a: PersonAddress | null | undefined): AddressForm 
 export function normalizeAddress(f: AddressForm): PersonAddress | null {
   const t = (s: string) => (s.trim() ? s.trim() : undefined)
   const out: PersonAddress = { country: t(f.country), zip: t(f.zip), line1: t(f.line1), line2: t(f.line2), city: t(f.city), state: t(f.state) }
-  return Object.values(out).some(Boolean) ? out : null
+  if (!Object.values(out).some(Boolean)) return null
+  // A chosen zone is kept only where it is one of the state's two: anything else is dropped, not trusted.
+  const two = splitZones(countryCode(out.country), out.state)
+  const zone = (f.zone ?? '').trim()
+  if (two && two.includes(zone)) out.zone = zone
+  return out
 }
 
 export function isAddressEmpty(a: PersonAddress | null | undefined): boolean {
@@ -106,11 +120,23 @@ export interface AddressZone {
 export function zoneOfAddress(a: PersonAddress | null | undefined): AddressZone {
   const country = countryCode(a?.country)
   if (!country) return { zone: DEFAULT_PERSON_ZONE, country: null, decided: false, missing: 'country' }
+  // A state with two zones: the one the person chose, else what the city or ZIP is sure of, else the state's main one.
+  const two = splitZones(country, a?.state)
+  if (two) {
+    if (a?.zone && two.includes(a.zone)) return { zone: a.zone, country, decided: true, missing: null }
+    const guess = splitGuess(a?.state, a?.city, a?.zip)
+    if (guess) return { zone: guess, country, decided: true, missing: null }
+  }
   const m = zoneMatch(country, [a?.city, a?.state].filter(Boolean).join(', '))
   if (!m.zone) return { zone: DEFAULT_PERSON_ZONE, country, decided: false, missing: 'known-zone' }
   // A state that names no rule is the country's main zone (Virginia: Eastern); no state at all is a guess.
   const decided = !m.multi || m.byRule || !!a?.state?.trim()
   return { zone: m.zone, country, decided, missing: decided ? null : 'state' }
+}
+
+/** The two zones to choose from when the address is in a state that has two, else null. */
+export function addressZoneChoices(a: PersonAddress | null | undefined): [string, string] | null {
+  return splitZones(countryCode(a?.country), a?.state)
 }
 
 /** "Brasília time (BRT), Fortaleza", or "Eastern time (ET), New York (add the state to set it)". */

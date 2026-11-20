@@ -97,3 +97,51 @@ export function zoneMatch(country: string | null, place: string | null | undefin
 export function zoneFromPlace(country: string | null, place: string | null | undefined): string | null {
   return zoneMatch(country, place).zone
 }
+
+// ── States with two time zones (owner, 20 November 2026) ────────────────────
+
+const E = 'America/New_York', C = 'America/Chicago', M = 'America/Denver', P = 'America/Los_Angeles'
+
+/**
+ * The US states that sit in two time zones, with the two: a state's name does
+ * not say which one a person is in (McDonald, Tennessee is Eastern; Nashville
+ * is Central), so their address lets them say. The first zone is the one most
+ * of the state is in, which is what the state alone gives.
+ */
+const SPLIT_US: [RegExp, [string, string]][] = [
+  [/^(tennessee|tn)$/, [C, E]],
+  [/^(kentucky|ky)$/, [E, C]],
+  [/^(florida|fl)$/, [E, C]],
+  [/^(indiana|in)$/, [E, C]],
+  [/^(michigan|mi)$/, [E, C]],
+  [/^(texas|tx)$/, [C, M]],
+  [/^(kansas|ks)$/, [C, M]],
+  [/^(nebraska|ne)$/, [C, M]],
+  [/^(south dakota|sd)$/, [C, M]],
+  [/^(north dakota|nd)$/, [C, M]],
+  [/^(idaho|id)$/, [M, P]],
+  [/^(oregon|or)$/, [P, M]],
+]
+
+/** The two zones of a state that has two, or null for every other place. */
+export function splitZones(country: string | null, state: string | null | undefined): [string, string] | null {
+  if (country !== 'US') return null
+  const st = (state ?? '').trim().toLowerCase().replace(/\./g, '')
+  return SPLIT_US.find(([re]) => re.test(st))?.[1] ?? null
+}
+
+// East Tennessee is on Eastern time: its larger towns, and the ZIP codes that start 374 and 376 to 379.
+const TN_EAST_CITY = /^(chattanooga|knoxville|cleveland|mcdonald|collegedale|ooltewah|apison|hixson|harrison|signal mountain|soddy[ -]daisy|east ridge|red bank|johnson city|kingsport|bristol|athens|maryville|oak ridge|sevierville|gatlinburg|pigeon forge|morristown|greeneville|dayton|lenoir city|farragut|alcoa|elizabethton|newport|jefferson city)$/
+const TN_EAST_ZIP = /^(374|376|377|378|379)/
+
+/**
+ * A first guess inside a state with two zones, when the city or the ZIP says
+ * which side: only where it is sure. Null leaves the state's main zone.
+ */
+export function splitGuess(state: string | null | undefined, city: string | null | undefined, zip: string | null | undefined): string | null {
+  const st = (state ?? '').trim().toLowerCase().replace(/\./g, '')
+  if (/^(tennessee|tn)$/.test(st)) {
+    if (TN_EAST_CITY.test((city ?? '').trim().toLowerCase()) || TN_EAST_ZIP.test((zip ?? '').trim())) return E
+  }
+  return null
+}

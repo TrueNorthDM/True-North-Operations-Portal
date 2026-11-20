@@ -10,7 +10,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Select } from '@/components/ui/Select'
 import { PhoneField } from '@/components/ui/PhoneField'
 import type { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/actions'
-import { addressZoneText, normalizeAddress, toAddressForm, type AddressForm } from '@/lib/address'
+import { addressZoneChoices, addressZoneText, normalizeAddress, toAddressForm, zoneOfAddress, type AddressForm } from '@/lib/address'
+import { zoneLabel } from '@/lib/agenda/time'
 import { allCountries } from '@/lib/countries'
 import { MILESTONE_KINDS, MILESTONE_LABEL, toMilestoneForms, type MilestoneForm } from '@/lib/milestones'
 import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS, roleTypePill } from '@/lib/directory/people-types'
@@ -86,6 +87,7 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
   const countries = useMemo(() => allCountries().map(c => ({ value: c.code, label: `${c.flag ? `${c.flag}  ` : ''}${c.name}` })), [])
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(x => ({ ...x, [k]: v }))
   const setAddr = (k: keyof AddressForm, v: string) => setD(x => ({ ...x, address: { ...x.address, [k]: v } }))
+  const zoneChoices = addressZoneChoices(normalizeAddress(d.address))
   return (
     <form onSubmit={e => { e.preventDefault(); onSave(d) }}>
       <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
@@ -119,7 +121,17 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
                   <input value={d.address.line2} onChange={e => setAddr('line2', e.target.value)} className={fieldCls} placeholder="Address line 2 (apt, suite)" aria-label="Address line 2" />
                 </div>
               )}
-              <span className="text-[12px] text-muted" aria-live="polite">Time zone: {addressZoneText(normalizeAddress(d.address))}</span>
+              {zoneChoices ? (
+                <div className="flex flex-col gap-1.5 pt-1">
+                  {/* A state with two time zones (owner, 20 November 2026): its name cannot tell which, so they say. */}
+                  <span className={FIELD_LABEL}>Time zone</span>
+                  <Select fullWidth value={zoneOfAddress(normalizeAddress(d.address)).zone} onChange={v => setAddr('zone', v)}
+                    options={zoneChoices.map(z => ({ value: z, label: zoneLabel(z) }))} className={selectFieldCls} ariaLabel="Time zone" />
+                  <span className="text-[12px] text-muted">This state has two time zones. Pick the one where you live.</span>
+                </div>
+              ) : (
+                <span className="text-[12px] text-muted" aria-live="polite">Time zone: {addressZoneText(normalizeAddress(d.address))}</span>
+              )}
             </div>
           </div>
         </Section>
