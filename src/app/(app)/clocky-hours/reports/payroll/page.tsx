@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Payroll summary' }
 
 /** The Directory's list: label row, hairline rows, one grid for both. */
-const GRID = 'minmax(220px,2.2fr) minmax(70px,.7fr) minmax(70px,.7fr) minmax(80px,.8fr) minmax(190px,1.8fr)'
+const GRID = 'minmax(220px,2.2fr) minmax(70px,.7fr) minmax(110px,.9fr) minmax(80px,.8fr) minmax(190px,1.8fr)'
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] leading-[normal] uppercase text-muted'
 const NUM = 'font-(family-name:--font-display) font-bold text-sm tabular-nums lining-nums text-right'
 const STAT = 'font-(family-name:--font-display) font-extrabold text-[26px] leading-none tabular-nums lining-nums'
@@ -33,6 +33,7 @@ function Status({ l, expected }: { l: PayrollLine; expected: number }) {
         : l.gap < 0 ? <Pill tone="amber" text={`${-l.gap} h short`} tip={`${-l.gap} hours short of ${expected}`} />
         : <Pill tone="blue" text={`${l.gap} h over`} tip={`${l.gap} hours over ${expected}`} />}
       {l.pending > 0 && <Pill tone="gray" text={`${l.pending} h not approved`} />}
+      {l.unpaid > 0 && <Pill tone="gray" text={`${l.unpaid} h unpaid time off`} tip="Unpaid time off is not in the file or the total" />}
     </span>
   )
 }
@@ -97,7 +98,11 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
                   </span>
                 </span>
                 <span className={`${NUM} ${l.reg ? 'text-tn-ink' : 'text-muted'}`}>{h(l.reg)}</span>
-                <span className={`${NUM} ${l.pto ? 'text-tn-teal' : 'text-muted'}`}>{h(l.pto)}</span>
+                <span className="flex flex-col items-end gap-0.5">
+                  <span className={`${NUM} ${l.pto ? 'text-tn-teal' : 'text-muted'}`}>{h(l.pto)}</span>
+                  {/* Which paid time off it was (owner, 20 November 2026): payroll enters each type apart. */}
+                  {l.ptoTypes.map(t => <span key={t.type} className="text-[11.5px] text-muted tabular-nums lining-nums whitespace-nowrap">{t.type} {t.hours}</span>)}
+                </span>
                 <span className={`${NUM} text-tn-ink font-extrabold`}>{h(Math.round((l.reg + l.pto) * 100) / 100)}</span>
                 <Status l={l} expected={page.expected} />
               </div>
@@ -107,7 +112,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <p className="m-0 text-[12.5px] text-muted mx-0.5">{page.lines.length} people · {page.label}. The CSV keeps Tina&apos;s layout: type, hours, fname, lname, with each PTO row under its person. Unpaid time off is left out.</p>
+      <p className="m-0 text-[12.5px] text-muted mx-0.5">{page.lines.length} people · {page.label}. The CSV keeps Tina&apos;s layout (type, hours, fname, lname) and adds pto_type: one PTO row under the person for each type of paid time off. Unpaid time off is left out.</p>
     </div>
   )
 }

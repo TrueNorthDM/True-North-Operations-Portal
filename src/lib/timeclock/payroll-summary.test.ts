@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildPayroll, expectedHours, gapText, parsePayrollQuery, payrollCsv, payrollPeriod, payrollSearch, splitName, type PayrollEntry } from './payroll-summary'
 
 const H = 3600
-const e = (personId: string, hours: number, sort: PayrollEntry['sort'] = 'work', approved = true): PayrollEntry =>
-  ({ personId, date: '2026-10-27', seconds: hours * H, sort, approved })
+const e = (personId: string, hours: number, sort: PayrollEntry['sort'] = 'work', approved = true, ptoType?: string): PayrollEntry =>
+  ({ personId, date: '2026-10-27', seconds: hours * H, sort, approved, ptoType })
 
 describe('splitName', () => {
   it('takes the kept last name and what comes before it', () => {
@@ -54,9 +54,9 @@ describe('buildPayroll', () => {
     { id: 'n', fullName: 'Nobody Here', lastName: 'Here' },
   ]
   const lines = buildPayroll(people, [
-    e('c', 64), e('c', 8, 'pto'), e('c', 8, 'pto'),
+    e('c', 64), e('c', 8, 'pto', true, 'Sick'), e('c', 4, 'pto', true, 'Vacation'), e('c', 4, 'pto', true, 'Vacation'),
     e('d', 80.75),
-    e('t', 70, 'work'), e('t', 2, 'work', false), e('t', 8, 'pto'), e('t', 4, 'unpaid'),
+    e('t', 70, 'work'), e('t', 2, 'work', false), e('t', 8, 'pto', true, 'Holiday'), e('t', 4, 'unpaid'),
   ], 80)
 
   it('sorts by first name and keeps people with no hours', () => {
@@ -69,6 +69,15 @@ describe('buildPayroll', () => {
     expect(by.t).toMatchObject({ reg: 72, pto: 8, pending: 2, gap: 0 })
     expect(by.n).toMatchObject({ reg: 0, pto: 0, gap: -80 })
   })
+  it('says which paid time off it was, Vacation then Sick then Holiday', () => {
+    const by = Object.fromEntries(lines.map(l => [l.personId, l]))
+    expect(by.c.ptoTypes).toEqual([{ type: 'Vacation', hours: 8 }, { type: 'Sick', hours: 8 }])
+    expect(by.t.ptoTypes).toEqual([{ type: 'Holiday', hours: 8 }])
+    expect(by.d.ptoTypes).toEqual([])
+    // Unpaid time off stays out of the totals and the file, and is said apart.
+    expect(by.t.unpaid).toBe(4)
+    expect(by.c.unpaid).toBe(0)
+  })
   it('writes the check line', () => {
     expect(gapText(-8, 80)).toBe('8 h short of 80')
     expect(gapText(0.75, 80)).toBe('0.75 h over 80')
@@ -76,13 +85,14 @@ describe('buildPayroll', () => {
   })
   it('writes the file in Tina\'s shape, the PTO row under its person', () => {
     expect(payrollCsv(lines)).toBe([
-      'type,hours,fname,lname',
-      'REG,64,Clarise,Nixon',
-      'PTO,16,,',
-      'REG,80.75,David,Sharpe',
-      'REG,0,Nobody,Here',
-      'REG,72,Tina,Gennette',
-      'PTO,8,,',
+      'type,hours,fname,lname,pto_type',
+      'REG,64,Clarise,Nixon,',
+      'PTO,8,,,Vacation',
+      'PTO,8,,,Sick',
+      'REG,80.75,David,Sharpe,',
+      'REG,0,Nobody,Here,',
+      'REG,72,Tina,Gennette,',
+      'PTO,8,,,Holiday',
       '',
     ].join('\n'))
   })

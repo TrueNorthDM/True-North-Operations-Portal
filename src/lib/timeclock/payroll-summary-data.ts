@@ -73,10 +73,13 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
   const approvedByTimesheet = (personId: string, date: string) =>
     (subs.get(personId) ?? []).some(s => s.start <= date && s.end >= date && HOURS_OK.has(s.state))
   const rows: PayrollEntry[] = entries.map(e => {
-    const kind = e.jobcode_id != null ? catalog.jobs.get(e.jobcode_id)?.kind : undefined
+    const job = e.jobcode_id != null ? catalog.jobs.get(e.jobcode_id) : undefined
+    const kind = job?.kind
     return {
       personId: e.person_id, date: e.entry_date, seconds: Number(e.duration_seconds) || 0,
       sort: kind === 'pto' ? 'pto' : kind === 'unpaid' ? 'unpaid' : 'work',
+      // The type of paid time off is the job's own name, as the person's Time off tab shows it.
+      ptoType: kind === 'pto' ? job?.name ?? null : null,
       approved: e.state === 'approved' || e.state === 'locked' || approvedByTimesheet(e.person_id, e.entry_date),
     }
   })

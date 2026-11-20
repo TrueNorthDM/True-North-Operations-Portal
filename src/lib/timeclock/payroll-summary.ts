@@ -101,6 +101,8 @@ export interface PayrollEntry {
   seconds: number
   /** 'pto' for paid time off (Vacation, Sick, Holiday), 'unpaid', or 'work'. */
   sort: 'work' | 'pto' | 'unpaid'
+  /** For paid time off: its type as the job names it ("Vacation", "Sick", "Holiday"). */
+  ptoType?: string | null
   approved: boolean
 }
 
@@ -110,6 +112,14 @@ export interface PayrollLine {
   lname: string
   reg: number
   pto: number
+  /**
+   * The paid time off by type (owner, 20 November 2026), in the order Vacation,
+   * Sick, Holiday, then any other by name: payroll needs to know which it was.
+   * Empty when there is none; the hours add up to `pto`.
+   */
+  ptoTypes: { type: string; hours: number }[]
+  /** Unpaid time off, in hours: not in the file or the total, shown so payroll knows why hours are short. */
+  unpaid: number
   /** Recorded but not approved yet, in hours (work and time off together). */
   pending: number
   /** Short of or over the expected hours, REG and PTO together; 0 when exact. */
@@ -134,20 +144,30 @@ export function splitName(fullName: string, lastName: string | null): { fname: s
 }
 
 /** One line per person, by first name then last name, everyone shown even with no hours. */
+const PTO_ORDER = ['Vacation', 'Sick', 'Holiday']
+const ptoRank = (t: string) => { const i = PTO_ORDER.indexOf(t); return i < 0 ? PTO_ORDER.length : i }
+/** A paid time off entry with no type on record. */
+export const PTO_UNNAMED = 'Other'
+
 export function buildPayroll(people: readonly PayrollPerson[], entries: readonly PayrollEntry[], expected: number): PayrollLine[] {
-  const sums = new Map<string, { reg: number; pto: number; pending: number }>()
+  const sums = new Map<string, { reg: number; pto: number; pending: number; unpaid: number; types: Map<string, number> }>()
   for (const e of entries) {
-    if (e.sort === 'unpaid') continue
-    const s = sums.get(e.personId) ?? { reg: 0, pto: 0, pending: 0 }
-    if (e.sort === 'pto') s.pto += e.seconds
-    else s.reg += e.seconds
+    const s = sums.get(e.personId) ?? { reg: 0, pto: 0, pending: 0, unpaid: 0, types: new Map<string, number>() }
+    if (e.sort === 'unpaid') { s.unpaid += e.seconds; sums.set(e.personId, s); continue }
+    if (e.sort === 'pto') {
+      s.pto += e.seconds
+      const type = e.ptoType?.trim() || PTO_UNNAMED
+      s.types.set(type, (s.types.get(type) ?? 0) + e.seconds)
+    } else s.reg += e.seconds
     if (!e.approved) s.pending += e.seconds
     sums.set(e.personId, s)
   }
   return people.map(p => {
-    const s = sums.get(p.id) ?? { reg: 0, pto: 0, pending: 0 }
+    const s = sums.get(p.id) ?? { reg: 0, pto: 0, pending: 0, unpaid: 0, types: new Map<string, number>() }
     const reg = hoursOf(s.reg), pto = hoursOf(s.pto)
-    return { personId: p.id, ...splitName(p.fullName, p.lastName), reg, pto, pending: hoursOf(s.pending), gap: Math.round((reg + pto - expected) * 100) / 100 }
+    const ptoTypes = [...s.types].map(([type, seconds]) => ({ type, hours: hoursOf(seconds) })).filter(t => t.hours > 0)
+      .sort((x, y) => ptoRank(x.type) - ptoRank(y.type) || x.type.localeCompare(y.type))
+    return { personId: p.id, ...splitName(p.fullName, p.lastName), reg, pto, ptoTypes, unpaid: hoursOf(s.unpaid), pending: hoursOf(s.pending), gap: Math.round((reg + pto - expected) * 100) / 100 }
   }).sort((a, b) => a.fname.localeCompare(b.fname) || a.lname.localeCompare(b.lname))
 }
 
@@ -163,12 +183,16 @@ const cell = (v: string | number): string => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-/** Tina's file: type, hours, fname, lname; the PTO row under its person, with no name. */
+/**
+ * Tina's file: type, hours, fname, lname as she exported them from TSheets,
+ * and a fifth column, pto_type, on the PTO rows (owner, 20 November 2026):
+ * one PTO row under the person for each type of paid time off they had.
+ */
 export function payrollCsv(lines: readonly PayrollLine[]): string {
-  const out = ['type,hours,fname,lname']
+  const out = ['type,hours,fname,lname,pto_type']
   for (const l of lines) {
-    out.push(['REG', l.reg, l.fname, l.lname].map(cell).join(','))
-    if (l.pto > 0) out.push(['PTO', l.pto, '', ''].map(cell).join(','))
+    out.push(['REG', l.reg, l.fname, l.lname, ''].map(cell).join(','))
+    for (const t of l.ptoTypes) out.push(['PTO', t.hours, '', '', t.type].map(cell).join(','))
   }
   return out.join('\n') + '\n'
 }
