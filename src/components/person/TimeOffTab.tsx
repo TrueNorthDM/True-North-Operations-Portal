@@ -11,6 +11,8 @@ import { pillClass } from '@/components/ui/Pill'
 import { CARD } from '@/lib/ui/type'
 import { personHref } from '@/lib/directory/page-rights'
 import type { TimeOffRecord } from '@/lib/timeclock/time-off-year-data'
+import { balanceNote, hoursText, SICK_YEAR_HOURS, type PaidKind } from '@/lib/timeclock/time-off-rules'
+import { dayLabel } from '@/lib/timeclock/format'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] leading-[normal] uppercase text-muted'
 const ARROW = 'w-[32px] h-[32px] rounded-[10px] border border-[var(--panel-border)] bg-white text-tn-ink flex items-center justify-center hover:bg-subtle no-underline'
@@ -18,8 +20,32 @@ const GRID = 'minmax(140px,1.5fr) minmax(90px,.9fr) minmax(80px,.7fr) minmax(60p
 
 export function TimeOffTab({ personId, record }: { personId: string; record: TimeOffRecord }) {
   const at = (year: number) => `${personHref(personId, 'timeoff')}&year=${year}`
+  // What is left (owner, 23 November 2026): Rippling's report, less the time off approved since.
+  const st = record.standing
+  const left = ([['vacation', 'Vacation', st.vacationFrom], ['sick', 'Sick leave', st.sickFrom]] as [PaidKind, string, string | null][]).map(([kind, label, opens]) => ({
+    kind, label, bal: st.balances[kind], opens: opens && opens > record.today ? opens : null,
+  }))
+  const sickYear = st.sickUsed[String(record.today.slice(0, 4))] ?? 0
   return (
     <div className="flex flex-col gap-4 leading-[normal]">
+      {st.employee && (
+        <section className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`} aria-label="Time off left">
+          <span className={HEAD}>Time off left</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {left.map(l => (
+              <div key={l.kind} className="bg-subtle rounded-[12px] px-4 py-3.5 flex flex-col gap-1">
+                <span className={HEAD}>{l.label}</span>
+                <span className={`font-(family-name:--font-display) font-black text-[24px] leading-none tabular-nums lining-nums ${l.bal && l.bal.left < 0 ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{l.bal ? hoursText(l.bal.left) : '-'}</span>
+                <span className="text-[12px] text-muted leading-[1.45]">{l.bal ? balanceNote(l.bal) : 'No balance loaded yet'}</span>
+                {l.bal && l.bal.waiting > 0 && <span className="text-[12px] text-muted leading-[1.45]">{hoursText(l.bal.waiting)} waiting for approval</span>}
+                {l.opens && <span className="text-[12px] font-semibold text-[var(--bdg-orange-fg)] leading-[1.45]">Can be used from {dayLabel(l.opens)}, {l.opens.slice(0, 4)}</span>}
+                {l.kind === 'sick' && <span className="text-[12px] text-muted leading-[1.45]">{hoursText(sickYear)} of {SICK_YEAR_HOURS}h taken or asked in {record.today.slice(0, 4)}</span>}
+              </div>
+            ))}
+          </div>
+          <p className="m-0 text-[12.5px] text-muted">Finance loads the balances from Rippling. What is earned after the report shows with the next one.</p>
+        </section>
+      )}
       <section className={`${CARD} px-[22px] py-5 flex flex-col gap-3.5`} aria-label={`Time off in ${record.year}`}>
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className={`${HEAD} flex-1`}>Time off taken, January to December</span>

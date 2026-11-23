@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPayroll, expectedHours, gapText, parsePayrollQuery, payrollCsv, payrollPeriod, payrollSearch, splitName, type PayrollEntry } from './payroll-summary'
+import { buildPayroll, expectedFor, expectedHours, gapText, parsePayrollQuery, payrollCsv, payrollPeriod, payrollSearch, splitName, type PayrollEntry } from './payroll-summary'
 
 const H = 3600
 const e = (personId: string, hours: number, sort: PayrollEntry['sort'] = 'work', approved = true, ptoType?: string): PayrollEntry =>
@@ -77,6 +77,14 @@ describe('buildPayroll', () => {
     // Unpaid time off stays out of the totals and the file, and is said apart.
     expect(by.t.unpaid).toBe(4)
     expect(by.c.unpaid).toBe(0)
+  })
+  it('expects less of a week shorter than 40 hours', () => {
+    const [amy, full] = buildPayroll([{ id: 'a', fullName: 'Amy Prindle', lastName: 'Prindle', weeklyHours: 32 }, { id: 'b', fullName: 'Bo Full', lastName: 'Full', weeklyHours: 40 }], [e('a', 64), e('b', 64)], 80)
+    expect(amy).toMatchObject({ expected: 64, gap: 0 })
+    expect(full).toMatchObject({ expected: 80, gap: -16 })
+    expect(expectedFor(80, null)).toBe(80)
+    expect(expectedFor(80, 15)).toBe(30)
+    expect(expectedFor(80, 45)).toBe(80)
   })
   it('writes the check line', () => {
     expect(gapText(-8, 80)).toBe('8 h short of 80')

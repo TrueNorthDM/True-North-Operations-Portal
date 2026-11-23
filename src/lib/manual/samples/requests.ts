@@ -183,7 +183,7 @@ const OFF_CARD: RequestCard = {
   facts: [
     { k: 'Dates', v: 'Mon, Nov 23 to Wed, Nov 25, 2026' },
     { k: 'Counted', v: '3 working days, 8h a day, 24h 00m' },
-    { k: 'Balance', v: 'Vacation: kept in Rippling.' },
+    { k: 'Balance', v: 'Vacation: 64h left (Rippling on Nov 20)' },
     { k: 'Note', v: '"Family trip for Thanksgiving."' },
   ],
   allow: null,

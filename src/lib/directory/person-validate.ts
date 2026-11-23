@@ -25,6 +25,8 @@ export interface WorkInput {
   managerId: string
   alsoReportsToId: string
   hireDate: string
+  /** The day they became an employee, when it is not the day they joined (owner, 23 November 2026). Left out: the column keeps what it holds. */
+  employeeSince?: string
   leftOn: string
   milestones: MilestoneForm[]
   history: string
@@ -46,6 +48,8 @@ export interface WorkColumns {
   manager_id: string | null
   also_reports_to_id: string | null
   hire_date: string | null
+  /** Only when the input names it. */
+  employee_since?: string | null
   left_on: string | null
   milestones: ReturnType<typeof normalizeMilestones>
   employment_history: string | null
@@ -93,7 +97,9 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
   if (new Set(mailboxes).size !== mailboxes.length) return fail('The same address is written twice. Each company email belongs in one field.')
   const hireDate = date(input.hireDate)
   const leftOn = date(input.leftOn)
-  if (hireDate === false || leftOn === false) return fail('A date could not be read.')
+  const employeeSince = input.employeeSince === undefined ? undefined : date(input.employeeSince)
+  if (hireDate === false || leftOn === false || employeeSince === false) return fail('A date could not be read.')
+  if (employeeSince && hireDate && employeeSince < hireDate) return fail('Employee since cannot be before Joined on.')
   const managerId = text(input.managerId)
   const alsoId = text(input.alsoReportsToId)
   for (const id of [managerId, alsoId]) if (id && !UUID.test(id)) return fail('That manager does not exist.')
@@ -116,6 +122,7 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
       manager_id: managerId,
       also_reports_to_id: alsoId,
       hire_date: hireDate,
+      ...(employeeSince !== undefined ? { employee_since: employeeSince } : {}),
       left_on: leftOn,
       milestones: normalizeMilestones(Array.isArray(input.milestones) ? input.milestones : []),
       employment_history: text(input.history),

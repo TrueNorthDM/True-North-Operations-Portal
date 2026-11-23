@@ -91,6 +91,8 @@ export interface PersonPageData {
     alsoReportsToId: string | null
     alsoReportsToName: string | null
     hireDate: string | null
+    /** The day they became an employee, when not the day they joined (people.employee_since): Vacation opens a year after it. */
+    employeeSince?: string | null
     leftOn: string | null
     milestones: PersonMilestone[]
     history: string | null
@@ -159,7 +161,7 @@ export async function loadPersonPage(
   if (!rights) return null
 
   const { data: row } = await db.from('people')
-    .select('id, full_name, last_name, title, avatar_url, status, hire_date, left_on, whatsapp_same_number, employment_type, schedule, weekly_hours, hours_limit_per, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
+    .select('id, full_name, last_name, title, avatar_url, status, hire_date, employee_since, left_on, whatsapp_same_number, employment_type, schedule, weekly_hours, hours_limit_per, role_type, email_true_north, email_goodnews, email_coe, manager_id, also_reports_to_id, employment_history, milestones, onboarding_status, offboarding_status, profile_id, tsheets_user_id, portal_invited_at')
     .eq('id', personId).maybeSingle()
   if (!row) return null
   const p = row as Record<string, unknown> & { id: string; full_name: string }
@@ -217,7 +219,7 @@ export async function loadPersonPage(
       teams,
       managerId: str(p.manager_id), managerName: str(p.manager_id) ? nameOf.get(p.manager_id as string) ?? null : null,
       alsoReportsToId: str(p.also_reports_to_id), alsoReportsToName: str(p.also_reports_to_id) ? nameOf.get(p.also_reports_to_id as string) ?? null : null,
-      hireDate: str(p.hire_date), leftOn: str(p.left_on),
+      hireDate: str(p.hire_date), employeeSince: str(p.employee_since), leftOn: str(p.left_on),
       milestones: Array.isArray(p.milestones) ? (p.milestones as PersonMilestone[]) : [],
       history: str(p.employment_history),
     }

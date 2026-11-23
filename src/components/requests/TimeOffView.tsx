@@ -23,6 +23,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
+import { balanceLine as offBalanceLine, balanceNote, hoursText, NO_STANDING, offRefusal } from '@/lib/timeclock/time-off-rules'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, TEXTAREA_WARN, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import { usePhone } from '@/components/clocky/clock/hooks'
@@ -109,18 +110,25 @@ export function TimeOffView({ data, api, initial }: {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {data.types.filter(t => t.paid).map(t => {
-              // What is asked and not decided yet (7B: "24h waiting for approval"); the balance itself is kept in Rippling.
+              // The balance Finance loaded from Rippling, less what was approved since (owner, 23 November 2026;
+              // lib/timeclock/time-off-rules.ts), and what is asked and not decided yet (7B: "24h waiting for approval").
               const waiting = data.mine.filter(r => r.waiting && r.type === t.label).reduce((n, r) => n + r.seconds, 0)
+              const st = data.standing ?? NO_STANDING
+              const bal = t.kind === 'vacation' || t.kind === 'sick' ? st.balances[t.kind] : undefined
+              const opens = t.kind === 'vacation' ? st.vacationFrom : t.kind === 'sick' ? st.sickFrom : null
+              const closed = st.employee && !!opens && opens > data.today
               return (
                 <div key={t.id} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}</span>
-                  <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">-</span>
-                  <span className="text-[12px] text-muted">{waiting ? `${formatDuration(waiting).replace(' 00m', '')} waiting for approval` : 'Balance kept in Rippling'}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}{bal ? ' left' : ''}</span>
+                  <span className={`font-(family-name:--font-display) font-black text-[24px] tabular-nums lining-nums ${bal && bal.left < 0 ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{bal ? hoursText(bal.left) : '-'}</span>
+                  <span className="text-[12px] text-muted leading-[1.45]">{bal ? balanceNote(bal) : 'No balance loaded yet'}</span>
+                  {waiting > 0 && <span className="text-[12px] text-muted leading-[1.45]">{formatDuration(waiting).replace(' 00m', '')} waiting for approval</span>}
+                  {closed && <span className="text-[12px] font-semibold text-[var(--bdg-orange-fg)] leading-[1.45]">Can be used from {dayLabel(opens!)}, {opens!.slice(0, 4)}</span>}
                 </div>
               )
             })}
           </div>
-          <div className="text-[12px] text-muted -mt-1.5">Balances are kept in Rippling: check yours there. Company holidays are off for everyone and are not asked for.</div>
+          <div className="text-[12px] text-muted -mt-1.5">Balances come from Rippling: Finance loads its report, and the portal takes off the time off approved since. What you earn after the report shows with the next one. Company holidays are off for everyone and are not asked for.</div>
         </>
       )}
 
@@ -348,7 +356,11 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
     set({ type: id, ...(lateSel && !late ? { a: null, b: null } : {}) })
   }
   const needsNote = /^other$/i.test(typeLabel.trim()) || lateSel
-  const ok = !!f.type && !!f.a && days.length > 0 && !busy && (!needsNote || !!f.note.trim())
+  // The handbook's rules (lib/timeclock/time-off-rules.ts): said here as the days are picked, and refused again on the server.
+  const standing = data.standing ?? NO_STANDING
+  const selKind = data.types.find(t => t.id === f.type)?.kind ?? null
+  const refusal = days.length ? offRefusal(selKind, days, hpd, standing) : null
+  const ok = !!f.type && !!f.a && days.length > 0 && !busy && (!needsNote || !!f.note.trim()) && !refusal
   const phone = usePhone()
   const send = () => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })
 
@@ -395,7 +407,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   )
   const countLine = f.a ? `${days.length} working day${days.length === 1 ? '' : 's'}, ${formatDuration(seconds)}` : 'Pick the days'
   const skipLine = skipped.length > 0 ? `${skipped.map(d => dayLabel(d)).join(' and ')} ${skipped.length === 1 ? 'is a company holiday' : 'are company holidays'}, not counted.` : null
-  const balanceLine = `${typeLabel}: check your balance in Rippling.`
+  const balanceLine = selKind === 'vacation' || selKind === 'sick' ? offBalanceLine(typeLabel, standing.balances[selKind], seconds) : `${typeLabel}: it is not paid, so it has no balance.`
+  const refusalBox = refusal && <div role="alert" className="border border-[#c8323d] bg-[#fdf1f2] rounded-[12px] px-3.5 py-3 text-[13px] text-[#8f1f29] font-semibold leading-[1.5]">{refusal}</div>
   const whoList = who.length ? who.map(w => (
     <div key={w.t} className="flex items-center gap-[9px] text-[13px] text-tn-ink leading-[1.45]"><span className="w-2 h-2 rounded-full flex-none" style={{ background: w.c }} /><span>{w.t}</span></div>
   )) : <div className="text-[13px] text-muted">Pick the days to see who else is off.</div>
@@ -424,6 +437,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
           <span className="text-[12.5px] text-foreground leading-[1.45]">{f.a ? range(f.a, end ?? f.a) : 'Tap a day, then the last day.'}</span>
           {skipLine && <span className="text-[12px] text-muted leading-[1.45]">{skipLine}</span>}
         </div>
+        {refusalBox}
         <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-3.5 py-3 text-[13px] text-foreground font-bold leading-[1.45]">{balanceLine}</div>
         <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-[7px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Who else is off</span>
@@ -484,8 +498,9 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             <span className="text-[12.5px] text-foreground leading-[1.5]">{f.a ? range(f.a, end ?? f.a) : 'Click a day, then the last day.'}</span>
             {skipLine && <span className="text-[12px] text-muted leading-[1.5]">{skipLine}</span>}
           </div>
+          {refusalBox}
           <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-3.5 flex flex-col gap-1.5">
-            <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Balance in Rippling</span>
+            <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Balance</span>
             <span className="text-[13.5px] text-foreground font-bold leading-[1.45]">{balanceLine}</span>
           </div>
           <div className="border border-[var(--panel-border)] rounded-[12px] px-4 py-3.5 flex flex-col gap-2">

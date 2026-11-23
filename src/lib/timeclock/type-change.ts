@@ -29,7 +29,7 @@ export function typeChangeOptions(today: string, anchor: string | null, invoiceA
   const days: { date: string; kind: 'month' | 'pay' }[] = [{ date: first(1), kind: 'month' }]
   if (ppStart && ppStart !== first(1)) days.push({ date: ppStart, kind: 'pay' })
   days.push({ date: first(2), kind: 'month' })
-  const tail = { title: 'From then on', text: 'No more invoices. Time off is asked in Requests, with balances kept in Rippling. Reimbursements go on a reimbursement document for Finance.' }
+  const tail = { title: 'From then on', text: 'No more invoices. Time off is asked in Requests, with balances loaded from Rippling. Reimbursements go on a reimbursement document for Finance.' }
   return days.map(({ date, kind }) => {
     const before = addDays(date, -1)
     const monthStartBefore = `${before.slice(0, 7)}-01`

@@ -706,6 +706,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tc_time_off_balances: {
+        Row: {
+          as_of: string
+          hours: number
+          kind: string
+          loaded_at: string
+          loaded_by: string | null
+          person_id: string
+        }
+        Insert: {
+          as_of: string
+          hours: number
+          kind: string
+          loaded_at?: string
+          loaded_by?: string | null
+          person_id: string
+        }
+        Update: {
+          as_of?: string
+          hours?: number
+          kind?: string
+          loaded_at?: string
+          loaded_by?: string | null
+          person_id?: string
+        }
+        Relationships: []
+      }
       portal_sign_in_exceptions: {
         Row: {
           added_at: string
@@ -2791,6 +2818,7 @@ export type Database = {
           employment_history: string | null
           employment_type: string | null
           full_name: string
+          employee_since: string | null
           hire_date: string | null
           hours_limit_per: string
           i7_projects: string[]
@@ -2838,6 +2866,7 @@ export type Database = {
           employment_history?: string | null
           employment_type?: string | null
           full_name: string
+          employee_since?: string | null
           hire_date?: string | null
           hours_limit_per?: string
           i7_projects?: string[]
@@ -2885,6 +2914,7 @@ export type Database = {
           employment_history?: string | null
           employment_type?: string | null
           full_name?: string
+          employee_since?: string | null
           hire_date?: string | null
           hours_limit_per?: string
           i7_projects?: string[]

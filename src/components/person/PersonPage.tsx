@@ -418,6 +418,7 @@ function WorkView({ data, timesheet, pay }: {
           <Section title="Dates">
             <dl className="m-0">
               <Row label="Joined on">{val(formatDate(w.hireDate))}</Row>
+              {w.employeeSince && <Row label="Employee since">{val(formatDate(w.employeeSince))}</Row>}
               <Row label="Left on">{val(formatDate(w.leftOn))}</Row>
             </dl>
           </Section>

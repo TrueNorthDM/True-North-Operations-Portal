@@ -30,6 +30,8 @@ import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays, readsOffReason } from './time-off'
 import { offKindOf, yearCount, type OffEntry, type YearCount } from './time-off-year'
 import { askedLate, LATE_TAG, ordinal } from './time-off-late'
+import { balanceLine, isPaidKind } from './time-off-rules'
+import { loadOffStandings } from './time-off-rules-data'
 import { teamColour } from '@/lib/directory/team-colour'
 import { usd } from './invoice-doc'
 import { receiptsText, reportTitle, rmbVersion, totalsText, type Amount } from './reimbursement-reports'
@@ -236,6 +238,8 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       allRows<{ person_id: string; entry_date: string; duration_seconds: number }>((a, b) => c.from('tc_entries').select('person_id, entry_date, duration_seconds')
         .neq('kind', 'absence').in('person_id', askers).gte('entry_date', lo).lte('entry_date', hi).order('id').range(a, b), 'The hours could not be read'),
     ])
+    // Each asker's balance (Rippling's report, less what was approved since; time-off-rules.ts), for whoever decides.
+    const standings = await loadOffStandings(askers, localDate(new Date(), v.zone))
     const askedOn = (pid: string, t: string) => localDate(t, dir.zoneOf(pid))
     const lateAsks = yearAsks.filter(q => askedLate(askedOn(q.person_id, q.requested_at), q.start_date))
     const workedOn = new Map<string, number>()
@@ -341,7 +345,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           facts: [
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
             { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
-            { k: 'Balance', v: `${kind}: kept in Rippling.` },
+            { k: 'Balance', v: isPaidKind(offKindHere) ? balanceLine(kind, standings.get(r.person_id)?.balances[offKindHere], pending ? seconds : 0) : `${kind}: it is not paid, so it has no balance.` },
             ...(late ? [
               { k: LATE_TAG, v: `Asked ${dayLabel(askedOn(r.person_id, r.requested_at))}, for days already gone. The ${ordinal(lateNth)} one this year.` },
               // Why it was not asked before is written for whoever decides: they read it too, not only the person and Super Admins.

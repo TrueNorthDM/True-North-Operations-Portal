@@ -9,6 +9,9 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { earliestLateDay, lateKind } from './time-off-late'
+import type { OffStanding, PaidKind } from './time-off-rules'
+import { loadOffStanding } from './time-off-rules-data'
+import { offKindOf } from './time-off-year'
 import { startOfPerson } from './waves-data'
 import { loadSubmissions } from './clocky-store'
 import { db, loadCatalog, loadDirectory } from './clocky-context'
@@ -56,8 +59,10 @@ export interface TimeOffPage {
   canAll: boolean
   me: { personId: string; name: string; team: string | null }
   today: string
-  /** The kinds of time off; `paid` ones have a balance in Rippling (Unpaid has none). `late`: may be asked for days already gone (Sick, Unpaid). */
-  types: { id: number; label: string; paid: boolean; late?: boolean }[]
+  /** The kinds of time off; `paid` ones have a balance (Unpaid has none), found in `standing` by `kind`. `late`: may be asked for days already gone (Sick, Unpaid). */
+  types: { id: number; label: string; paid: boolean; late?: boolean; kind?: PaidKind | 'unpaid' | 'other' }[]
+  /** The handbook's rules for this person and their balances (time-off-rules.ts); missing in old samples: everything open. */
+  standing?: OffStanding
   /** Days already gone (owner, 23 November 2026): the earliest one that can still be asked, or null when none can. */
   lateFrom?: string | null
   mine: TimeOffRow[]
@@ -125,7 +130,7 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
     }
   })
   // Days already gone that can still be asked: after the last timesheet sent, from their first day on North Time.
-  const [begins, sentSubs] = await Promise.all([startOfPerson(c, v.personId), loadSubmissions(c, [v.personId])])
+  const [begins, sentSubs, standing] = await Promise.all([startOfPerson(c, v.personId), loadSubmissions(c, [v.personId]), loadOffStanding(v.personId, today)])
   const lateFrom = earliestLateDay(begins.startsOn, sentSubs.get(v.personId) ?? [], today)
   return {
     // On the staging copy contractors may ask too, so time off can be shown in training (owner, 5 November 2026). Never on the live portal.
@@ -134,7 +139,8 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'can' | 'isSuperA
     me: { personId: v.personId, name: me?.name ?? 'You', team: teamOf(v.personId).name },
     today,
     lateFrom,
-    types: [...catalog.jobs.values()].filter(j => j.active && (j.kind === 'pto' || j.kind === 'unpaid') && askable(j.short || j.path)).map(j => ({ id: j.id, label: j.short || j.path, paid: j.kind === 'pto', late: lateKind(j) })).sort((a, b) => a.label.localeCompare(b.label)),
+    standing,
+    types: [...catalog.jobs.values()].filter(j => j.active && (j.kind === 'pto' || j.kind === 'unpaid') && askable(j.short || j.path)).map(j => ({ id: j.id, label: j.short || j.path, paid: j.kind === 'pto', late: lateKind(j), kind: offKindOf(j) ?? 'other' })).sort((a, b) => a.label.localeCompare(b.label)),
     mine: rows.filter(r => r.personId === v.personId),
     everyone: canAll ? rows : [],
     holidays: Object.fromEntries(holidays),

@@ -199,7 +199,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
     weeklyHours: w.weeklyHours != null ? String(w.weeklyHours) : '', hoursLimitPer: (w.hoursLimitPer ?? 'week') as HoursLimitPer, status: w.status,
     emails: { trueNorth: w.emails.trueNorth ?? '', goodnews: w.emails.goodnews ?? '', coe: w.emails.coe ?? '' },
     teams: w.teams.map(t => ({ teamId: t.teamId, position: t.position, primary: t.primary })),
-    managerId: w.managerId ?? '', alsoReportsToId: w.alsoReportsToId ?? '', hireDate: w.hireDate ?? '', leftOn: w.leftOn ?? '',
+    managerId: w.managerId ?? '', alsoReportsToId: w.alsoReportsToId ?? '', hireDate: w.hireDate ?? '', employeeSince: w.employeeSince ?? '', leftOn: w.leftOn ?? '',
     milestones: toMilestoneForms(w.milestones) as MilestoneForm[], history: w.history ?? '',
   })
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(x => ({ ...x, [k]: v }))
@@ -267,6 +267,8 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
           <Section title="Dates">
             <div className="flex flex-col gap-3.5 pt-2">
               <Field label="Joined on"><DateField id="pw-joined" value={d.hireDate} onChange={v => set('hireDate', v)} className={dateFieldCls} clearable /></Field>
+              {/* A contractor first (owner, 23 November 2026): Vacation opens a year after this day, not after Joined on. */}
+              {d.employmentType === 'us' && <Field label="Employee since (only if a contractor first)"><DateField id="pw-employee-since" value={d.employeeSince} onChange={v => set('employeeSince', v)} className={dateFieldCls} clearable /></Field>}
               <Field label="Left on"><DateField id="pw-left" value={d.leftOn} onChange={v => set('leftOn', v)} className={dateFieldCls} clearable /></Field>
             </div>
           </Section>

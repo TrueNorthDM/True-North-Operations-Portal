@@ -26,7 +26,8 @@ const STAT = 'font-(family-name:--font-display) font-extrabold text-[26px] leadi
 /** Hours as TSheets writes them: 80, 67.5, 11.25; a dash for none. */
 const h = (n: number) => (n ? String(n) : '-')
 
-function Status({ l, expected }: { l: PayrollLine; expected: number }) {
+function Status({ l }: { l: PayrollLine }) {
+  const expected = l.expected
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {l.gap === 0 ? <Pill tone="green" text={`${expected} h`} />
@@ -59,7 +60,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
         <div>
           <Breadcrumb parents={['/clocky-hours', { href: '/clocky-hours/reports', label: 'Reports' }]} now="Payroll summary" />
           <h1 className={PAGE_TITLE}>Payroll summary</h1>
-          <p className="m-0 mt-1 text-[13.5px] text-muted">The hours each US employee recorded, as they go to Rippling. Nothing is topped up or capped: a row that is not {page.expected} hours is marked to check.</p>
+          <p className="m-0 mt-1 text-[13.5px] text-muted">The hours each US employee recorded, as they go to Rippling. Nothing is topped up or capped: a row that is not {page.expected} hours is marked to check (less for someone whose week is shorter than 40 hours: the Weekly hours on their Work tab).</p>
         </div>
         <a href={`/clocky-hours/reports/payroll/csv?${payrollSearch(page.query)}`} className={BTN.white} download>Download CSV</a>
       </div>
@@ -94,7 +95,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
                   <Avatar name={name} avatarUrl={look?.avatarUrl} size={38} color={look?.color} />
                   <span className="min-w-0">
                     <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{name}</span>
-                    <span className="block text-xs text-muted truncate">{look?.team ?? 'No team'}</span>
+                    <span className="block text-xs text-muted truncate">{look?.team ?? 'No team'}{l.expected !== page.expected ? ` · ${l.expected} h expected` : ''}</span>
                   </span>
                 </span>
                 <span className={`${NUM} ${l.reg ? 'text-tn-ink' : 'text-muted'}`}>{h(l.reg)}</span>
@@ -104,7 +105,7 @@ export default async function PayrollRoute({ searchParams }: { searchParams: Pro
                   {l.ptoTypes.map(t => <span key={t.type} className="text-[11.5px] text-muted tabular-nums lining-nums whitespace-nowrap">{t.type} {t.hours}</span>)}
                 </span>
                 <span className={`${NUM} text-tn-ink font-extrabold`}>{h(Math.round((l.reg + l.pto) * 100) / 100)}</span>
-                <Status l={l} expected={page.expected} />
+                <Status l={l} />
               </div>
             )
           })}

@@ -54,8 +54,8 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
   const { from, to, label, prev, next } = payrollPeriod(query, today, settings.anchor)
 
   const c = db()
-  const people = await allRows<{ id: string; full_name: string; last_name: string | null; status: string | null }>(
-    (a, b) => c.from('people').select('id, full_name, last_name, status').eq('employment_type', 'us').order('id').range(a, b),
+  const people = await allRows<{ id: string; full_name: string; last_name: string | null; status: string | null; weekly_hours: number | null }>(
+    (a, b) => c.from('people').select('id, full_name, last_name, status, weekly_hours').eq('employment_type', 'us').order('id').range(a, b),
     'People could not be read')
   const ids = people.map(p => p.id)
   const [entries, catalog, subs, dir] = await Promise.all([
@@ -85,7 +85,7 @@ export async function loadPayroll(query: PayrollQuery, now = new Date()): Promis
   })
   const withHours = new Set(rows.map(r => r.personId))
   const pool = people.filter(p => p.status === 'active' || withHours.has(p.id))
-    .map(p => ({ id: p.id, fullName: p.full_name, lastName: p.last_name }))
+    .map(p => ({ id: p.id, fullName: p.full_name, lastName: p.last_name, weeklyHours: p.weekly_hours == null ? null : Number(p.weekly_hours) }))
 
   const expected = expectedHours(from, to)
   const looks: PayrollPage['looks'] = {}

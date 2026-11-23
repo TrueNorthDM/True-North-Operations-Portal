@@ -6,8 +6,8 @@
  * Counted from the time entries (tc_entries, kind 'absence'): the history
  * that came from TSheets and everything approved in North Time, which writes
  * its hours there. Company holidays are not time off someone took, so they
- * are left out. Shown in hours, with days (8 hours each) beside them. No
- * balance: balances are kept in Rippling.
+ * are left out. Shown in hours, with days (8 hours each) beside them. What
+ * is left is another matter: time-off-rules.ts, from Rippling's report.
  *
  * 2026 is partial: before North Time, some time off was never recorded in
  * TSheets (Tina added it at payroll), so the year reads low and says so.

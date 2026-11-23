@@ -9,7 +9,8 @@
  * One REG row per US employee, and a PTO row right under it when they had
  * paid time off. The hours are what was recorded, never topped up or capped
  * (owner, 12 November 2026): a person short of the expected hours (80 in a pay
- * period) is flagged for Tina to decide, and one over shows the real hours.
+ * period, less for someone whose week is shorter than 40 hours) is flagged for
+ * Tina to decide, and one over shows the real hours.
  *
  * Plain data only: who is in it and the rows come from payroll-summary-data.ts.
  */
@@ -93,7 +94,19 @@ export function expectedHours(from: string, to: string): number {
   return n * DAY_HOURS
 }
 
-export interface PayrollPerson { id: string; fullName: string; lastName: string | null }
+export interface PayrollPerson {
+  id: string; fullName: string; lastName: string | null
+  /** Their week when it is shorter than 40 hours (the Work tab's Weekly hours): Amy's is 32 (Tina, 20 November 2026). */
+  weeklyHours?: number | null
+}
+
+/** The full week the expected hours are written for. */
+export const FULL_WEEK = 40
+/** What is expected of one person: the range's hours, in the share their week is of 40. */
+export function expectedFor(expected: number, weeklyHours: number | null | undefined): number {
+  const w = Number(weeklyHours)
+  return w > 0 && w < FULL_WEEK ? Math.round(expected * (w / FULL_WEEK) * 100) / 100 : expected
+}
 
 export interface PayrollEntry {
   personId: string
@@ -122,7 +135,9 @@ export interface PayrollLine {
   unpaid: number
   /** Recorded but not approved yet, in hours (work and time off together). */
   pending: number
-  /** Short of or over the expected hours, REG and PTO together; 0 when exact. */
+  /** The hours expected of this person in the range: 80 in a pay period, 64 for a 32-hour week. */
+  expected: number
+  /** Short of or over their expected hours, REG and PTO together; 0 when exact. */
   gap: number
 }
 
@@ -167,7 +182,8 @@ export function buildPayroll(people: readonly PayrollPerson[], entries: readonly
     const reg = hoursOf(s.reg), pto = hoursOf(s.pto)
     const ptoTypes = [...s.types].map(([type, seconds]) => ({ type, hours: hoursOf(seconds) })).filter(t => t.hours > 0)
       .sort((x, y) => ptoRank(x.type) - ptoRank(y.type) || x.type.localeCompare(y.type))
-    return { personId: p.id, ...splitName(p.fullName, p.lastName), reg, pto, ptoTypes, unpaid: hoursOf(s.unpaid), pending: hoursOf(s.pending), gap: Math.round((reg + pto - expected) * 100) / 100 }
+    const own = expectedFor(expected, p.weeklyHours)
+    return { personId: p.id, ...splitName(p.fullName, p.lastName), reg, pto, ptoTypes, unpaid: hoursOf(s.unpaid), pending: hoursOf(s.pending), expected: own, gap: Math.round((reg + pto - own) * 100) / 100 }
   }).sort((a, b) => a.fname.localeCompare(b.fname) || a.lname.localeCompare(b.lname))
 }
 

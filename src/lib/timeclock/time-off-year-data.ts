@@ -8,6 +8,8 @@
 import { allRows, db, loadCatalog, loadDirectory } from './clocky-context'
 import { dateLabel, rangeLabel } from './format'
 import { holidaysBetween, offDays } from './time-off'
+import type { OffStanding } from './time-off-rules'
+import { loadOffStanding } from './time-off-rules-data'
 import { daysLabel, hmLabel, offKind, offKindOf, offRuns, perDayText, yearCount, type OffKind, type YearCount } from './time-off-year'
 
 export interface TimeOffLine {
@@ -37,6 +39,9 @@ export interface TimeOffRecord {
   next: number | null
   count: YearCount
   lines: TimeOffLine[]
+  /** Their balances and the day each paid kind opens for them (time-off-rules.ts). */
+  standing: OffStanding
+  today: string
 }
 
 const span = (from: string, to: string) => (from === to ? dateLabel(from).replace(/, \d{4}$/, '') : rangeLabel(from, to))
@@ -50,13 +55,14 @@ export async function loadTimeOffRecord(personId: string, asked: number | undefi
   const year = asked && Number.isInteger(asked) && asked >= firstYear && asked <= thisYear + 1 ? asked : thisYear
   const lo = `${year}-01-01`, hi = `${year}-12-31`
 
-  const [entries, requests, catalog, dir] = await Promise.all([
+  const [entries, requests, catalog, dir, standing] = await Promise.all([
     allRows<{ entry_date: string; duration_seconds: number; jobcode_id: number | null; source: string }>((a, b) => c.from('tc_entries').select('entry_date, duration_seconds, jobcode_id, source')
       .eq('person_id', personId).eq('kind', 'absence').gte('entry_date', lo).lte('entry_date', hi).order('id').range(a, b), 'Time off could not be read'),
     allRows<{ id: number; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; decided_by: string | null }>((a, b) => c.from('tc_absence_requests').select('id, jobcode_id, start_date, end_date, hours_per_day, state, decided_by')
       .eq('person_id', personId).in('state', ['pending', 'approved']).lte('start_date', hi).gte('end_date', lo).order('id').range(a, b), 'Time off could not be read'),
     loadCatalog(),
     loadDirectory(),
+    loadOffStanding(personId, today),
   ])
   const kindOf = (id: number | null) => offKindOf(id != null ? catalog.jobs.get(id) : null)
   const rows = entries.flatMap(e => { const kind = kindOf(e.jobcode_id); return kind ? [{ date: e.entry_date, seconds: Number(e.duration_seconds) || 0, kind, source: e.source }] : [] })
@@ -84,5 +90,6 @@ export async function loadTimeOffRecord(personId: string, asked: number | undefi
     year, prev: year > firstYear ? year - 1 : null, next: year < thisYear ? year + 1 : null,
     count: yearCount(rows, year),
     lines: [...waiting, ...taken],
+    standing, today,
   }
 }

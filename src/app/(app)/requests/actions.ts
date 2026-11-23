@@ -29,6 +29,9 @@ import { announceTimeOffCancelAsked, announceTimeOffRequested } from '@/lib/time
 import { dayLabel, localDate } from '@/lib/timeclock/format'
 import { earliestLateDay, LATE_KINDS_LINE, LATE_REASON_NEEDED, lateKind } from '@/lib/timeclock/time-off-late'
 import { startOfPerson } from '@/lib/timeclock/waves-data'
+import { offRefusal } from '@/lib/timeclock/time-off-rules'
+import { loadOffStanding } from '@/lib/timeclock/time-off-rules-data'
+import { offKindOf } from '@/lib/timeclock/time-off-year'
 import { loadSubmissions } from '@/lib/timeclock/clocky-store'
 import { loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { orList } from '@/lib/timeclock/routing'
@@ -109,6 +112,10 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     if (!(hours >= 1 && hours <= 8 && Number.isInteger(hours))) return fail('Hours a day go from 1h to 8h.')
     const { days } = offDays(start, end, holidaysBetween(start, end))
     if (!days.length) return fail('Those days are weekends or company holidays. Nothing to ask for.')
+    // The handbook's rules (Tina, 20 November 2026; lib/timeclock/time-off-rules.ts): no Vacation in the first year,
+    // sick leave from the 91st day and 40 hours a calendar year.
+    const refusal = offRefusal(offKindOf(code), days, hours, await loadOffStanding(v.personId, today))
+    if (refusal) return fail(refusal)
     const who = await whoDecides('off', v.personId)
     if (!who.ids.length) return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')
     const { data: mine, error: readErr } = await c.from('tc_absence_requests').select('start_date, end_date').eq('person_id', v.personId).in('state', ['pending', 'approved'])
