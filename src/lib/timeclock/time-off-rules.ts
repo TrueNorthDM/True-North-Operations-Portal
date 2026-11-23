@@ -5,8 +5,9 @@
  *   Vacation     not in the first year of employment. The year counts from
  *                the day they became an employee (people.employee_since),
  *                or from their hire date when that is the same day.
- *   Sick leave   from the 91st day with the company, and no more than 40
- *                hours in a calendar year (hours taken, approved or asked).
+ *   Sick leave   from the 91st day with the company. No limit on how much in
+ *                a year (Dave, owner, 23 November 2026: what is earned can be
+ *                used; a 40-hour cap was here for a few hours and came out).
  *
  * A request that breaks a rule is refused, on the form and on the server.
  *
@@ -26,8 +27,6 @@ export type PaidKind = 'vacation' | 'sick'
 export const PAID_KINDS: readonly PaidKind[] = ['vacation', 'sick']
 export const isPaidKind = (k: OffKind | null | undefined): k is PaidKind => k === 'vacation' || k === 'sick'
 
-/** Sick leave that may be taken in a calendar year, in hours. */
-export const SICK_YEAR_HOURS = 40
 /** Sick leave can be used from the 91st day: 90 days after the first. */
 export const SICK_WAIT_DAYS = 90
 
@@ -85,28 +84,14 @@ export function hoursText(seconds: number): string {
  * Why this time off cannot be asked, or null when it can. `days` are the
  * working days asked (weekends and company holidays already left out).
  */
-export function offRefusal(kind: OffKind | null, days: readonly string[], hoursPerDay: number, s: OffStanding): string | null {
+export function offRefusal(kind: OffKind | null, days: readonly string[], s: OffStanding): string | null {
   if (!s.employee || !days.length) return null
   const first = days[0]
   if (kind === 'vacation' && s.vacationFrom && first < s.vacationFrom) {
     return `Vacation can be used after a year of employment: for you, from ${dayLabel(s.vacationFrom)}, ${s.vacationFrom.slice(0, 4)}. Sick leave and Unpaid Time Off can be asked now.`
   }
-  if (kind === 'sick') {
-    if (s.sickFrom && first < s.sickFrom) {
-      return `Sick leave can be used from the 91st day of employment: for you, from ${dayLabel(s.sickFrom)}, ${s.sickFrom.slice(0, 4)}. Unpaid Time Off can be asked now.`
-    }
-    const cap = SICK_YEAR_HOURS * 3600
-    const asked = new Map<string, number>()
-    for (const d of days) asked.set(d.slice(0, 4), (asked.get(d.slice(0, 4)) ?? 0) + hoursPerDay * 3600)
-    for (const [year, seconds] of asked) {
-      const used = s.sickUsed[year] ?? 0
-      if (used + seconds > cap) {
-        const left = Math.max(0, cap - used)
-        return left > 0
-          ? `Sick leave is ${SICK_YEAR_HOURS} hours in a calendar year. In ${year} you have ${hoursText(used)} taken or asked, so ${hoursText(left)} can still be asked, and this is ${hoursText(seconds)}. The rest can be Unpaid Time Off.`
-          : `Sick leave is ${SICK_YEAR_HOURS} hours in a calendar year, and in ${year} you have ${hoursText(used)} taken or asked. More can be asked as Unpaid Time Off.`
-      }
-    }
+  if (kind === 'sick' && s.sickFrom && first < s.sickFrom) {
+    return `Sick leave can be used from the 91st day of employment: for you, from ${dayLabel(s.sickFrom)}, ${s.sickFrom.slice(0, 4)}. Unpaid Time Off can be asked now.`
   }
   return null
 }

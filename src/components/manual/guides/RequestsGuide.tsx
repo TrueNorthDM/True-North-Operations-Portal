@@ -22,7 +22,7 @@ export function TimeOffGuide() {
       <Step n={1} title="Open Time off" picture={<Picture caption="Time off, with one request waiting and one approved." height={620}><TimeOffPicture show="page" /></Picture>}>
         <p className="m-0">On the left rail, click the Requests icon, then <strong>Time off</strong>. Your requests are listed in <strong>Pending</strong>, <strong>Upcoming</strong> and <strong>Past</strong>, each with its state and what happened to it.</p>
         <p className="m-0">The cards at the top are your kinds of paid time off, with what you have left of each. The number comes from Rippling: Finance loads its report, and the portal takes off the time off approved since. What you earn after the report shows with the next one. Each card also shows the hours still waiting for approval.</p>
-        <p className="m-0">The handbook&apos;s rules are applied when you ask: Vacation can be used after a year of employment, sick leave from the 91st day, and no more than 40 hours of sick leave in a calendar year. A request that breaks one is not sent, and the form says why.</p>
+        <p className="m-0">The handbook&apos;s rules are applied when you ask: Vacation can be used after a year of employment, and sick leave from the 91st day. A request that breaks one is not sent, and the form says why.</p>
       </Step>
 
       <Step n={2} title="Ask for days off" picture={<Picture caption="Request time off, three days of Vacation picked."><TimeOffPicture show="ask" /></Picture>}>

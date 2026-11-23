@@ -113,8 +113,8 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     const { days } = offDays(start, end, holidaysBetween(start, end))
     if (!days.length) return fail('Those days are weekends or company holidays. Nothing to ask for.')
     // The handbook's rules (Tina, 20 November 2026; lib/timeclock/time-off-rules.ts): no Vacation in the first year,
-    // sick leave from the 91st day and 40 hours a calendar year.
-    const refusal = offRefusal(offKindOf(code), days, hours, await loadOffStanding(v.personId, today))
+    // sick leave from the 91st day. No yearly limit on sick leave (Dave, 23 November 2026).
+    const refusal = offRefusal(offKindOf(code), days, await loadOffStanding(v.personId, today))
     if (refusal) return fail(refusal)
     const who = await whoDecides('off', v.personId)
     if (!who.ids.length) return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')

@@ -360,7 +360,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   // The handbook's rules (lib/timeclock/time-off-rules.ts): said here as the days are picked, and refused again on the server.
   const standing = data.standing ?? NO_STANDING
   const selKind = data.types.find(t => t.id === f.type)?.kind ?? null
-  const refusal = days.length ? offRefusal(selKind, days, hpd, standing) : null
+  const refusal = days.length ? offRefusal(selKind, days, standing) : null
   const ok = !!f.type && !!f.a && days.length > 0 && !busy && (!needsNote || !!f.note.trim()) && !refusal
   const phone = usePhone()
   const send = () => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })

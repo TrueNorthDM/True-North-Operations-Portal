@@ -20,24 +20,19 @@ describe('when each kind opens', () => {
 describe('offRefusal', () => {
   it('refuses Vacation in the first year, and lets it through from the day it opens', () => {
     const s = standing({ vacationFrom: '2027-02-09' })
-    expect(offRefusal('vacation', ['2026-12-21'], 8, s)).toContain('from Tue, Feb 9, 2027')
-    expect(offRefusal('vacation', ['2027-02-09'], 8, s)).toBeNull()
-    expect(offRefusal('sick', ['2026-12-21'], 8, s)).toBeNull()
-    expect(offRefusal('unpaid', ['2026-12-21'], 8, s)).toBeNull()
+    expect(offRefusal('vacation', ['2026-12-21'], s)).toContain('from Tue, Feb 9, 2027')
+    expect(offRefusal('vacation', ['2027-02-09'], s)).toBeNull()
+    expect(offRefusal('sick', ['2026-12-21'], s)).toBeNull()
+    expect(offRefusal('unpaid', ['2026-12-21'], s)).toBeNull()
   })
   it('refuses sick leave before the 91st day', () => {
-    expect(offRefusal('sick', ['2026-03-02'], 8, standing({ sickFrom: '2026-05-10' }))).toContain('91st day')
+    expect(offRefusal('sick', ['2026-03-02'], standing({ sickFrom: '2026-05-10' }))).toContain('91st day')
   })
-  it('refuses sick leave past 40 hours in a calendar year, and says what is left', () => {
-    const s = standing({ sickUsed: { '2026': 28 * H } })
-    expect(offRefusal('sick', ['2026-12-01'], 8, s)).toBeNull()
-    expect(offRefusal('sick', ['2026-12-01', '2026-12-02'], 8, s)).toContain('12h can still be asked, and this is 16h')
-    expect(offRefusal('sick', ['2026-12-01'], 8, standing({ sickUsed: { '2026': 42.5 * H } }))).toContain('you have 42h 30m taken or asked')
-    // Each year has its own 40 hours.
-    expect(offRefusal('sick', ['2026-12-31', '2027-01-04'], 8, standing({ sickUsed: { '2026': 32 * H } }))).toBeNull()
+  it('sets no limit on sick leave in a year (Dave, 23 November 2026)', () => {
+    expect(offRefusal('sick', ['2026-12-01', '2026-12-02'], standing({ sickUsed: { '2026': 42.5 * H } }))).toBeNull()
   })
   it('leaves everyone who is not a US employee alone', () => {
-    expect(offRefusal('vacation', ['2026-12-21'], 8, standing({ employee: false, vacationFrom: '2027-02-09' }))).toBeNull()
+    expect(offRefusal('vacation', ['2026-12-21'], standing({ employee: false, vacationFrom: '2027-02-09' }))).toBeNull()
   })
 })
 

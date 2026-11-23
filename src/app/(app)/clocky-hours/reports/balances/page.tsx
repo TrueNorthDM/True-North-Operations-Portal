@@ -9,7 +9,7 @@ import { allRows, db, loadClockySettings, loadDirectory } from '@/lib/timeclock/
 import { dateLabel, dayLabel, localDate } from '@/lib/timeclock/format'
 import { canSeePayroll } from '@/lib/timeclock/payroll-summary-data'
 import { loadOffStandings } from '@/lib/timeclock/time-off-rules-data'
-import { balanceNote, hoursText, NO_STANDING, SICK_YEAR_HOURS, type OffBalance } from '@/lib/timeclock/time-off-rules'
+import { balanceNote, hoursText, NO_STANDING, type OffBalance } from '@/lib/timeclock/time-off-rules'
 import { teamColour } from '@/lib/directory/team-colour'
 import { BalancesLoader } from '@/components/clocky/reports/BalancesLoader'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -72,7 +72,7 @@ export default async function BalancesRoute() {
             const notes = [
               s.vacationFrom && s.vacationFrom > today ? `Vacation from ${dayLabel(s.vacationFrom)}, ${s.vacationFrom.slice(0, 4)}` : null,
               s.sickFrom && s.sickFrom > today ? `Sick leave from ${dayLabel(s.sickFrom)}, ${s.sickFrom.slice(0, 4)}` : null,
-              sick > 0 ? `${hoursText(sick)} of ${SICK_YEAR_HOURS}h sick leave in ${year}` : null,
+              sick > 0 ? `${hoursText(sick)} of sick leave in ${year}` : null,
             ].filter((x): x is string => !!x)
             return (
               <div key={p.id} className={`grid gap-3.5 items-center px-[22px] py-[13px] transition-colors hover:bg-subtle ${i === 0 ? '' : 'border-t border-slate-200'}`} style={{ gridTemplateColumns: GRID }}>
@@ -85,7 +85,7 @@ export default async function BalancesRoute() {
                 </span>
                 <Left b={s.balances.vacation} />
                 <Left b={s.balances.sick} />
-                <span className="flex flex-col gap-0.5 text-[12.5px] text-foreground">{notes.length ? notes.map(n => <span key={n} className={sick >= SICK_YEAR_HOURS * 3600 && n.includes('sick leave in') ? 'font-semibold text-[var(--bdg-orange-fg)]' : ''}>{n}</span>) : <span className="text-muted">-</span>}</span>
+                <span className="flex flex-col gap-0.5 text-[12.5px] text-foreground">{notes.length ? notes.map(n => <span key={n}>{n}</span>) : <span className="text-muted">-</span>}</span>
               </div>
             )
           })}
@@ -93,7 +93,7 @@ export default async function BalancesRoute() {
         </div>
       </div>
 
-      <p className="m-0 text-[12.5px] text-muted mx-0.5">The handbook&apos;s rules are applied when time off is asked: no Vacation in the first year of employment, sick leave from the 91st day, and no more than {SICK_YEAR_HOURS} hours of sick leave in a calendar year (taken, approved or asked).</p>
+      <p className="m-0 text-[12.5px] text-muted mx-0.5">The handbook&apos;s rules are applied when time off is asked: no Vacation in the first year of employment, and sick leave from the 91st day. There is no limit on sick leave in a year.</p>
     </div>
   )
 }

@@ -11,7 +11,7 @@ import { pillClass } from '@/components/ui/Pill'
 import { CARD } from '@/lib/ui/type'
 import { personHref } from '@/lib/directory/page-rights'
 import type { TimeOffRecord } from '@/lib/timeclock/time-off-year-data'
-import { balanceNote, hoursText, SICK_YEAR_HOURS, type PaidKind } from '@/lib/timeclock/time-off-rules'
+import { balanceNote, hoursText, type PaidKind } from '@/lib/timeclock/time-off-rules'
 import { dayLabel } from '@/lib/timeclock/format'
 
 const HEAD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] leading-[normal] uppercase text-muted'
@@ -39,7 +39,7 @@ export function TimeOffTab({ personId, record }: { personId: string; record: Tim
                 <span className="text-[12px] text-muted leading-[1.45]">{l.bal ? balanceNote(l.bal) : 'No balance loaded yet'}</span>
                 {l.bal && l.bal.waiting > 0 && <span className="text-[12px] text-muted leading-[1.45]">{hoursText(l.bal.waiting)} waiting for approval</span>}
                 {l.opens && <span className="text-[12px] font-semibold text-[var(--bdg-orange-fg)] leading-[1.45]">Can be used from {dayLabel(l.opens)}, {l.opens.slice(0, 4)}</span>}
-                {l.kind === 'sick' && <span className="text-[12px] text-muted leading-[1.45]">{hoursText(sickYear)} of {SICK_YEAR_HOURS}h taken or asked in {record.today.slice(0, 4)}</span>}
+                {l.kind === 'sick' && <span className="text-[12px] text-muted leading-[1.45]">{hoursText(sickYear)} taken or asked in {record.today.slice(0, 4)}</span>}
               </div>
             ))}
           </div>
