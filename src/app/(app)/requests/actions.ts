@@ -26,7 +26,10 @@ import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { announceTimeOffCancelAsked, announceTimeOffRequested } from '@/lib/timeclock/clocky-notify'
-import { localDate } from '@/lib/timeclock/format'
+import { dayLabel, localDate } from '@/lib/timeclock/format'
+import { earliestLateDay, LATE_KINDS_LINE, LATE_REASON_NEEDED, lateKind } from '@/lib/timeclock/time-off-late'
+import { startOfPerson } from '@/lib/timeclock/waves-data'
+import { loadSubmissions } from '@/lib/timeclock/clocky-store'
 import { loadRequestDeciders, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { orList } from '@/lib/timeclock/routing'
 import { IS_STAGING } from '@/lib/environment'
@@ -90,7 +93,18 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     if (!code || !code.active || (code.kind !== 'pto' && code.kind !== 'unpaid') || !askable(code.short || code.path)) return fail('Pick a kind of time off.')
     const start = String(input.start ?? ''), end = String(input.end || input.start || '')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) return fail('Pick the days: one day, or the first and the last.')
-    if (start < localDate(new Date(), v.zone)) return fail('Time off is asked before it starts. For days already gone, tell a Super Admin.')
+    const note = String(input.note ?? '').trim().slice(0, 1000) || null
+    // Days already gone are for emergencies (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Sick or Unpaid only,
+    // back to the first day whose timesheet is not sent, and with a reason for whoever decides.
+    const today = localDate(new Date(), v.zone)
+    if (start < today) {
+      if (!lateKind(code)) return fail(LATE_KINDS_LINE)
+      const [begins, subs] = await Promise.all([startOfPerson(c, v.personId), loadSubmissions(c, [v.personId])])
+      const mineSent = subs.get(v.personId) ?? []
+      const from = earliestLateDay(begins.startsOn, mineSent, today)
+      if (!from || start < from) return fail(from ? `Days already gone can be asked back to ${dayLabel(from)}: before that, the timesheet is already sent or you were not on North Time yet.` : 'Those days are closed: their timesheet is already sent, or you were not on North Time yet.')
+      if (!note) return fail(LATE_REASON_NEEDED)
+    }
     const hours = Number(input.hoursPerDay)
     if (!(hours >= 1 && hours <= 8 && Number.isInteger(hours))) return fail('Hours a day go from 1h to 8h.')
     const { days } = offDays(start, end, holidaysBetween(start, end))
@@ -101,7 +115,6 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     if (readErr) return notSaved(readErr)
     const clash = (mine ?? []).find(r => r.start_date <= end && r.end_date >= start)
     if (clash) return fail(`You already have time off asked for ${daysText(clash.start_date, clash.end_date)}.`)
-    const note = String(input.note ?? '').trim().slice(0, 1000) || null
     // "Other" says what it is for (owner, 5 November 2026).
     if (/^other$/i.test((code.short || code.path).trim()) && !note) return fail('Say what this time off is for.')
     const { data, error } = await c.from('tc_absence_requests').insert({

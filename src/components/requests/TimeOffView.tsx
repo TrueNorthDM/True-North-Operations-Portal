@@ -337,7 +337,17 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   const pick = (d: string) => setF(x => (!x.a || x.b ? { ...x, a: d, b: null } : d < x.a ? { ...x, a: d, b: x.a } : { ...x, b: d }))
   const moveMonth = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); set({ month: d.toISOString().slice(0, 7) }) }
   // "Other" says what it is: its note is required (owner, 5 November 2026).
-  const needsNote = /^other$/i.test(typeLabel.trim())
+  // Days already gone (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Sick and Unpaid only, back to the
+  // first day whose timesheet is not sent, and with a reason for whoever decides.
+  const lateType = !!data.types.find(t => t.id === f.type)?.late
+  const lateFrom = data.lateFrom ?? null
+  const lateSel = !!f.a && f.a < data.today
+  const pickType = (id: number) => {
+    const late = !!data.types.find(t => t.id === id)?.late
+    // Vacation is asked ahead: days already gone picked for Sick do not stay under it.
+    set({ type: id, ...(lateSel && !late ? { a: null, b: null } : {}) })
+  }
+  const needsNote = /^other$/i.test(typeLabel.trim()) || lateSel
   const ok = !!f.type && !!f.a && days.length > 0 && !busy && (!needsNote || !!f.note.trim())
   const phone = usePhone()
   const send = () => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })
@@ -353,7 +363,9 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
       <div className={`grid grid-cols-7 ${phone ? 'gap-px' : 'gap-0.5'}`}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(h => <div key={h} className="text-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.06em] uppercase text-[#a3aebb] pt-0.5 pb-1">{h}</div>)}
         {cells.map(d => {
-          const inM = d.slice(0, 7) === f.month, past = d < data.today, w = dow(d), wk = w === 0 || w === 6, h = hol[d]
+          const inM = d.slice(0, 7) === f.month, gone = d < data.today, w = dow(d), wk = w === 0 || w === 6, h = hol[d]
+          // A day already gone can be picked only for Sick or Unpaid, and only while its timesheet is not sent.
+          const past = gone && !(lateType && !!lateFrom && d >= lateFrom)
           const sel = !!f.a && d >= f.a && d <= (end ?? f.a), edge = d === f.a || d === end, o = teamOffOn(d)
           const counted = sel && !wk && !h
           const bg = !inM ? 'transparent' : edge ? '#012358' : counted ? '#eaf4f4' : sel ? '#f4f2ec' : 'transparent'
@@ -368,6 +380,11 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
           )
         })}
       </div>
+      {lateFrom && (
+        <p className="m-0 text-[11.5px] text-muted leading-[1.45]">
+          {lateType ? `Days already gone can be asked back to ${dayLabel(lateFrom)}, with a reason.` : `Days already gone: Sick or Unpaid Time Off only, back to ${dayLabel(lateFrom)}.`}
+        </p>
+      )}
       {!phone && (
         <div className="flex gap-3.5 flex-wrap text-[11.5px] text-muted">
           <span className="flex items-center gap-[5px]"><span className="w-[5px] h-[5px] rounded-full bg-[#d4a017]" />Company holiday</span>
@@ -397,7 +414,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={15} color={BTN_ICON.navy} width={2.4} />Send request
           </button>
         )}>
-        <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => set({ type: Number(v) })} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
+        <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => pickType(Number(v))} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
         <div className="flex flex-col gap-1.5">
           <FieldLabel>Dates</FieldLabel>
           {calendar}
@@ -423,8 +440,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         </div>
         {hoursSelect}
         <label className="flex flex-col gap-[5px]">
-          <FieldLabel>{needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
-          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={`${TEXTAREA_PLAIN} !text-[14px]`} />
+          <FieldLabel warn={lateSel}>{lateSel ? 'Why was it not asked before? (required)' : needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
+          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={lateSel ? 'These days are already gone: whoever decides reads this' : needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={`${TEXTAREA_PLAIN} !text-[14px]`} />
         </label>
       </PhoneSheet>
     )
@@ -438,7 +455,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] gap-5 items-start">
         <div className="flex flex-col gap-3.5 min-w-0">
-          <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => set({ type: Number(v) })} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
+          <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => pickType(Number(v))} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
           <div className="flex flex-col gap-1.5">
             <FieldLabel>Dates: one day or a range</FieldLabel>
             {calendar}
@@ -456,8 +473,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
             {hoursSelect}
           </div>
           <label className="flex flex-col gap-[5px]">
-            <FieldLabel>{needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
-            <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={TEXTAREA_PLAIN} />
+            <FieldLabel warn={lateSel}>{lateSel ? 'Why was it not asked before? (required)' : needsNote ? 'What it is for (required)' : 'Note (optional)'}</FieldLabel>
+            <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder={lateSel ? 'These days are already gone: whoever decides reads this' : needsNote ? 'Say what this time off is for' : 'Anything your Team Leader should know'} className={TEXTAREA_PLAIN} />
           </label>
         </div>
         <div className="flex flex-col gap-3 min-w-0">

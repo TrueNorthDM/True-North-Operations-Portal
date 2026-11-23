@@ -29,6 +29,7 @@ import { orList } from './routing'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays, readsOffReason } from './time-off'
 import { offKindOf, yearCount, type OffEntry, type YearCount } from './time-off-year'
+import { askedLate, LATE_TAG, ordinal } from './time-off-late'
 import { teamColour } from '@/lib/directory/team-colour'
 import { usd } from './invoice-doc'
 import { receiptsText, reportTitle, rmbVersion, totalsText, type Amount } from './reimbursement-reports'
@@ -219,7 +220,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
     const askers = [...new Set(offRows.map(r => r.person_id))]
     // Who is out in those weeks, whoever they are: time off in the entries (the TSheets history and what North Time
     // approved), requests still waiting, and the absences contractors put on the Agenda. And the askers' own year.
-    const [outEntries, waitingOff, agendaOut, yearEntries] = await Promise.all([
+    const [outEntries, waitingOff, agendaOut, yearEntries, yearAsks, workedRows] = await Promise.all([
       allRows<{ person_id: string; entry_date: string; jobcode_id: number | null }>((a, b) => c.from('tc_entries').select('person_id, entry_date, jobcode_id')
         .eq('kind', 'absence').gte('entry_date', winLo).lte('entry_date', winHi).order('id').range(a, b), 'Time off could not be read'),
       allRows<{ id: number; person_id: string; start_date: string; end_date: string; state: string }>((a, b) => c.from('tc_absence_requests').select('id, person_id, start_date, end_date, state')
@@ -228,7 +229,17 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         .eq('type', 'absence').lte('start_date', winHi).gte('end_date', winLo).order('id').range(a, b), 'Absences could not be read'),
       allRows<{ person_id: string; entry_date: string; duration_seconds: number; jobcode_id: number | null }>((a, b) => c.from('tc_entries').select('person_id, entry_date, duration_seconds, jobcode_id')
         .eq('kind', 'absence').in('person_id', askers).gte('entry_date', `${years[0]}-01-01`).lte('entry_date', `${years[years.length - 1]}-12-31`).order('id').range(a, b), 'Time off could not be read'),
+      // Asked after the fact (owner, 23 November 2026): every request of the askers in those years, to count the late ones,
+      // and the hours they worked on the requests' days, so the decider sees the whole day.
+      allRows<{ id: number; person_id: string; start_date: string; requested_at: string }>((a, b) => c.from('tc_absence_requests').select('id, person_id, start_date, requested_at')
+        .in('person_id', askers).in('state', ['pending', 'approved']).gte('start_date', `${years[0]}-01-01`).lte('start_date', `${years[years.length - 1]}-12-31`).order('id').range(a, b), 'Time off could not be read'),
+      allRows<{ person_id: string; entry_date: string; duration_seconds: number }>((a, b) => c.from('tc_entries').select('person_id, entry_date, duration_seconds')
+        .neq('kind', 'absence').in('person_id', askers).gte('entry_date', lo).lte('entry_date', hi).order('id').range(a, b), 'The hours could not be read'),
     ])
+    const askedOn = (pid: string, t: string) => localDate(t, dir.zoneOf(pid))
+    const lateAsks = yearAsks.filter(q => askedLate(askedOn(q.person_id, q.requested_at), q.start_date))
+    const workedOn = new Map<string, number>()
+    for (const w of workedRows) workedOn.set(`${w.person_id}|${w.entry_date}`, (workedOn.get(`${w.person_id}|${w.entry_date}`) ?? 0) + (Number(w.duration_seconds) || 0))
     const kindOfJob = (id: number | null) => offKindOf(id != null ? catalog.jobs.get(id) : null)
     // person -> day -> out, or only asked. Approved wins over asked; a company holiday is nobody's time off.
     const outBy = new Map<string, Map<string, 'out' | 'ask'>>()
@@ -295,6 +306,13 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
         r.state === 'pending' ? { kind: offKindHere, seconds, date: r.start_date } : null) : null
       const own = r.person_id === v.personId
       const { canDecide, decides, owner, ownerName } = routed('off', r.person_id, pending)
+      // Asked after its first day: said on the row and the card, with which one of the year it is and the day's whole hours.
+      const late = askedLate(askedOn(r.person_id, r.requested_at), r.start_date)
+      const lateNth = late ? lateAsks.filter(q => q.person_id === r.person_id && q.start_date.slice(0, 4) === r.start_date.slice(0, 4) && q.requested_at <= r.requested_at).length || 1 : 0
+      const dayLines = late ? days.slice(0, 6).map(d => {
+        const worked = workedOn.get(`${r.person_id}|${d}`) ?? 0
+        return `${dayLabel(d)}: ${formatDuration(worked)} worked + ${formatDuration(hpd * 3600)} off = ${formatDuration(worked + hpd * 3600)}`
+      }) : []
       const label = daysText(r.start_date, r.end_date)
       // The reasons for time off (its note, why cancel): the person and Super Admins only (owner, 5 November 2026).
       const reads = readsOffReason(v, r.person_id)
@@ -309,7 +327,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       out.push({
         key: `o${r.id}`, type: 'off', id: r.id, personId: r.person_id, ...who,
         main: `${kind} · ${formatDuration(seconds)}`, sub: label,
-        flag: cancelAsk ? { text: 'Cancellation asked', tone: 'warn' } : clash.length ? { text: `${clash[0].who} is off ${dayLabel(clash[0].d)}`, tone: 'neu' } : null,
+        flag: cancelAsk ? { text: 'Cancellation asked', tone: 'warn' } : late && pending ? { text: `${LATE_TAG}, ${ordinal(lateNth)} this year`, tone: 'warn' } : clash.length ? { text: `${clash[0].who} is off ${dayLabel(clash[0].d)}`, tone: 'neu' } : null,
         why: cancelAsk ? (cancelReason ? `"${cancelReason}"` : null) : reason ? `"${reason}"` : null,
         asked: cancelAsk ? `Cancellation asked ${short(r.cancel_asked_at!, v.zone)}` : asked(r.requested_at, v.zone),
         askedAt: cancelAsk ? r.cancel_asked_at! : r.requested_at,
@@ -324,7 +342,13 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
             { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
             { k: 'Balance', v: `${kind}: kept in Rippling.` },
-            ...(cancelAsk ? (cancelReason ? [{ k: 'Why cancel', v: `"${cancelReason}"` }] : []) : reason ? [{ k: 'Note', v: `"${reason}"` }] : []),
+            ...(late ? [
+              { k: LATE_TAG, v: `Asked ${dayLabel(askedOn(r.person_id, r.requested_at))}, for days already gone. The ${ordinal(lateNth)} one this year.` },
+              // Why it was not asked before is written for whoever decides: they read it too, not only the person and Super Admins.
+              ...((reads || decides) && r.reason ? [{ k: 'Why it was not asked before', v: `"${r.reason}"` }] : []),
+              ...(dayLines.length ? [{ k: 'Those days, with the hours worked', v: `${dayLines.join('; ')}${days.length > dayLines.length ? '; and more' : ''}` }] : []),
+            ] : []),
+            ...(cancelAsk ? (cancelReason ? [{ k: 'Why cancel', v: `"${cancelReason}"` }] : []) : reason && !late ? [{ k: 'Note', v: `"${reason}"` }] : []),
           ],
           allow: null,
           also, year,
