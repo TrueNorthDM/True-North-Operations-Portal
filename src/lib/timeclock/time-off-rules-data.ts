@@ -57,7 +57,7 @@ export async function loadOffStandings(personIds: readonly string[], today: stri
     const standing: OffStanding = {
       employee: p.employment_type === 'us',
       vacationFrom: vacationOpensOn(p.employee_since, p.hire_date),
-      sickFrom: sickOpensOn(p.hire_date),
+      sickFrom: sickOpensOn(p.employee_since, p.hire_date),
       sickUsed,
       balances: {},
     }

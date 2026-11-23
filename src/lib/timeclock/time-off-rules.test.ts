@@ -12,8 +12,10 @@ describe('when each kind opens', () => {
     expect(yearLater('2024-02-29')).toBe('2025-03-01')
   })
   it('sick leave opens on the 91st day', () => {
-    expect(sickOpensOn('2026-02-09')).toBe('2026-05-10')
-    expect(sickOpensOn(null)).toBeNull()
+    expect(sickOpensOn(null, '2026-02-09')).toBe('2026-05-10')
+    // A contractor since 2020, an employee since Oct 1, 2026 (Rock): the 91st day is Dec 30.
+    expect(sickOpensOn('2026-10-01', '2020-06-01')).toBe('2026-12-30')
+    expect(sickOpensOn(null, null)).toBeNull()
   })
 })
 

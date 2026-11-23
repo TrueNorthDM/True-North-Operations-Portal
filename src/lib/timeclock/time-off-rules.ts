@@ -5,7 +5,7 @@
  *   Vacation     not in the first year of employment. The year counts from
  *                the day they became an employee (people.employee_since),
  *                or from their hire date when that is the same day.
- *   Sick leave   from the 91st day with the company. No limit on how much in
+ *   Sick leave   from the 91st day as an employee, counted like Vacation's year. No limit on how much in
  *                a year (Dave, owner, 23 November 2026: what is earned can be
  *                used; a 40-hour cap was here for a few hours and came out).
  *
@@ -41,8 +41,17 @@ export const vacationOpensOn = (employeeSince: string | null, hireDate: string |
   const from = employeeSince || hireDate
   return from ? yearLater(from) : null
 }
-/** The first day sick leave can be used: the 91st day with the company. Null when no hire date is on record. */
-export const sickOpensOn = (hireDate: string | null): string | null => (hireDate ? addDays(hireDate, SICK_WAIT_DAYS) : null)
+/**
+ * The first day sick leave can be used: the 91st day as an employee. Like
+ * Vacation, it counts from the day they became an employee: time as a
+ * contractor earns no benefits (Tina, owner, 23 November 2026: Rock, a
+ * contractor since 2020 and an employee since October 1, 2026). Null when no
+ * date is on record.
+ */
+export const sickOpensOn = (employeeSince: string | null, hireDate: string | null): string | null => {
+  const from = employeeSince || hireDate
+  return from ? addDays(from, SICK_WAIT_DAYS) : null
+}
 
 export interface OffBalance {
   /** What Rippling's report said, in hours. */
