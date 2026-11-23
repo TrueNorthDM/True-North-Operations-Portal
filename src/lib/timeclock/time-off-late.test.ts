@@ -20,8 +20,12 @@ describe('time off asked after the fact (owner, 23 November 2026)', () => {
     expect(lateKind(null)).toBe(false)
   })
   it('goes back to the first day whose timesheet is not sent, never before North Time', () => {
-    // Started Nov 8, nothing sent yet: back to Nov 8.
+    // Started Nov 8, nothing sent yet, past their first pay period: back to Nov 8.
     expect(earliestLateDay('2026-11-08', [], '2026-11-23')).toBe('2026-11-08')
+    // In their first pay period (started Nov 22): the pay period before is open too (Lana, Nov 20).
+    expect(earliestLateDay('2026-11-22', [], '2026-11-23')).toBe('2026-11-08')
+    expect(earliestLateDay('2026-11-22', [], '2026-12-05')).toBe('2026-11-08')
+    expect(earliestLateDay('2026-11-22', [], '2026-12-06')).toBe('2026-11-22')
     // The Nov 8 to 21 timesheet is sent: only from Nov 22.
     expect(earliestLateDay('2026-11-08', [{ start: '2026-11-08', end: '2026-11-21', state: 'submitted' }], '2026-11-23')).toBe('2026-11-22')
     // A draft or a returned timesheet closes nothing.

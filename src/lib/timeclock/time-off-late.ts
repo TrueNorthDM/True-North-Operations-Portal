@@ -8,7 +8,12 @@
  *                 a school programme or an appointment is taken as Vacation
  *                 and written down after.
  *   how far back  the days whose timesheet has not been sent yet, and never
- *                 before the person started on North Time
+ *                 before the person started on North Time. One exception
+ *                 (Lana, owner, 23 November 2026): during their first pay
+ *                 period on North Time, the pay period before it is open
+ *                 too. Its hours came from TSheets and no timesheet closes
+ *                 it here, but Finance pays it from the portal's reports, so
+ *                 its time off has to be asked here.
  *   a reason      required, and shown to whoever decides
  *   the count     the decider sees how many this person asked this year
  *
@@ -25,16 +30,21 @@ export const lateKind = (job: { name: string; kind: string } | null | undefined)
   return k === 'vacation' || k === 'sick' || k === 'unpaid'
 }
 
+/** A pay period, in days: how far before their first day the exception above reaches, and how long it lasts. */
+export const FIRST_PERIOD_DAYS = 14
+
 /**
  * The earliest day that can still be asked: the day after the last timesheet
  * sent (a sent timesheet closes its days), or the day they started on North
- * Time, whichever is later. Null: no day already gone can be asked.
+ * Time, whichever is later. During their first pay period on North Time the
+ * start counts a pay period earlier. Null: no day already gone can be asked.
  */
 export function earliestLateDay(startsOn: string | null, submissions: readonly SubmittedPeriod[], today: string): string | null {
   if (!startsOn || startsOn >= today) return null
+  const floor = today < addDays(startsOn, FIRST_PERIOD_DAYS) ? addDays(startsOn, -FIRST_PERIOD_DAYS) : startsOn
   const sent = submissions.filter(s => isSent(s.state)).map(s => s.end).sort()
   const afterSent = sent.length ? addDays(sent[sent.length - 1], 1) : null
-  const from = afterSent && afterSent > startsOn ? afterSent : startsOn
+  const from = afterSent && afterSent > floor ? afterSent : floor
   return from < today ? from : null
 }
 
