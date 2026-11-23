@@ -27,7 +27,7 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { announceTimeOffCancelAsked, announceTimeOffRequested } from '@/lib/timeclock/clocky-notify'
 import { dayLabel, localDate } from '@/lib/timeclock/format'
-import { earliestLateDay, LATE_KINDS_LINE, LATE_REASON_NEEDED, lateKind } from '@/lib/timeclock/time-off-late'
+import { earliestLateDay, LATE_KINDS_LINE, LATE_REASON_NEEDED, lateKind, validDayHours } from '@/lib/timeclock/time-off-late'
 import { startOfPerson } from '@/lib/timeclock/waves-data'
 import { offRefusal } from '@/lib/timeclock/time-off-rules'
 import { loadOffStanding } from '@/lib/timeclock/time-off-rules-data'
@@ -81,7 +81,7 @@ async function actor(key: string): Promise<Viewer | Fail> {
 
 /**
  * 7A: ask for days off. US employees only; a kind of time off (Vacation, Sick
- * or Unpaid Time Off, the three Rippling has, owner 9 November 2026); full days (8h) or a number of hours a day; the
+ * or Unpaid Time Off, the three Rippling has, owner 9 November 2026); full days (8h) or hours a day by the quarter hour; the
  * weekends and company holidays are not counted; never a day already asked.
  */
 export async function askTimeOff(input: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>> {
@@ -97,7 +97,7 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
     const start = String(input.start ?? ''), end = String(input.end || input.start || '')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) return fail('Pick the days: one day, or the first and the last.')
     const note = String(input.note ?? '').trim().slice(0, 1000) || null
-    // Days already gone are for emergencies (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Sick or Unpaid only,
+    // Days already gone are for emergencies (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Vacation, Sick or Unpaid,
     // back to the first day whose timesheet is not sent, and with a reason for whoever decides.
     const today = localDate(new Date(), v.zone)
     if (start < today) {
@@ -109,7 +109,7 @@ export async function askTimeOff(input: { jobcodeId: number; start: string; end:
       if (!note) return fail(LATE_REASON_NEEDED)
     }
     const hours = Number(input.hoursPerDay)
-    if (!(hours >= 1 && hours <= 8 && Number.isInteger(hours))) return fail('Hours a day go from 1h to 8h.')
+    if (!validDayHours(hours)) return fail('Hours a day go by the quarter hour, from 15 minutes to 8 hours.')
     const { days } = offDays(start, end, holidaysBetween(start, end))
     if (!days.length) return fail('Those days are weekends or company holidays. Nothing to ask for.')
     // The handbook's rules (Tina, 20 November 2026; lib/timeclock/time-off-rules.ts): no Vacation in the first year,

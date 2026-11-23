@@ -27,13 +27,13 @@ export function TimeOffGuide() {
 
       <Step n={2} title="Ask for days off" picture={<Picture caption="Request time off, three days of Vacation picked."><TimeOffPicture show="ask" /></Picture>}>
         <p className="m-0">Click <strong>Request time off</strong>. Pick the <strong>Type</strong>, then on the calendar click the first day and the last day (one click for a single day). Weekends and company holidays inside the range are not counted.</p>
-        <p className="m-0">Under <strong>Each day</strong>, keep <strong>Full days</strong> or choose <strong>Hours a day</strong> for part of a day (1h to 8h). Add a <strong>Note (optional)</strong> if there is something to know.</p>
+        <p className="m-0">Under <strong>Each day</strong>, keep <strong>Full days</strong> or choose <strong>Hours a day</strong> for part of a day (by the quarter hour, from 15 minutes to 8 hours). Add a <strong>Note (optional)</strong> if there is something to know.</p>
         <p className="m-0">On the right, <strong>Counted</strong> shows the working days and hours, and <strong>Who else is off</strong> shows who else is out on those days, your team first. On the calendar, a gold dot is a company holiday and a purple dot a day someone on your team is off. Click <strong>Send request</strong>.</p>
       </Step>
 
       <Step n={3} title="Who decides">
         <p className="m-0">Your request goes to the approver set in Company settings for your time off, who decides it in <Link href="/manual/guides/approvals" className={LINK}>Approvals</Link> and gets it in the bell. If your Team Leader is not that approver, they are told too. You hear back in the bell, with the reason when it is denied.</p>
-        <p className="m-0">Time off is asked before it starts, and never for days you already asked for. For days already gone, tell a Super Admin.</p>
+        <p className="m-0">Time off is asked before it starts, and never for days you already asked for. Days already gone can still be asked while their timesheet is not sent, as Vacation, Sick or Unpaid Time Off, with the reason it was not asked before: whoever decides reads it.</p>
       </Step>
 
       <Step n={4} title="What happens when it is approved" picture={<Picture caption="An approved request, opened." height={620}><TimeOffPicture show="drawer" /></Picture>}>

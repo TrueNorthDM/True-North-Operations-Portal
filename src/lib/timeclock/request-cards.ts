@@ -29,7 +29,7 @@ import { orList } from './routing'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays, readsOffReason } from './time-off'
 import { offKindOf, yearCount, type OffEntry, type YearCount } from './time-off-year'
-import { askedLate, LATE_TAG, ordinal } from './time-off-late'
+import { askedLate, dayHoursLabel, LATE_TAG, ordinal } from './time-off-late'
 import { balanceLine, isPaidKind } from './time-off-rules'
 import { loadOffStandings } from './time-off-rules-data'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -344,7 +344,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           width: 720, twoCols: false, receipt: null,
           facts: [
             { k: 'Dates', v: `${label}, ${r.end_date.slice(0, 4)}` },
-            { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${hpd}h a day, ${formatDuration(seconds)}` },
+            { k: 'Counted', v: `${days.length} working day${days.length === 1 ? '' : 's'}, ${dayHoursLabel(hpd)} a day, ${formatDuration(seconds)}` },
             { k: 'Balance', v: isPaidKind(offKindHere) ? balanceLine(kind, standings.get(r.person_id)?.balances[offKindHere], pending ? seconds : 0) : `${kind}: it is not paid, so it has no balance.` },
             ...(late ? [
               { k: LATE_TAG, v: `Asked ${dayLabel(askedOn(r.person_id, r.requested_at))}, for days already gone. The ${ordinal(lateNth)} one this year.` },
@@ -359,7 +359,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           cal: { team: who.team?.name ?? null, label: `Who is out, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
           after: cancelAsk
             ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off the team calendar. Keep it, with a reason, and it stays.`
-            : `On approval, by itself: the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day (${formatDuration(seconds)} of ${kind}) into their time entries. Finance takes it to payroll.`,
+            : `On approval, by itself: the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${dayHoursLabel(hpd)} a day (${formatDuration(seconds)} of ${kind}) into their time entries. Finance takes it to payroll.`,
           canDecide,
           roText: canDecide ? null : readOnlyLine(own, pending, ownerName),
           approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Decline',

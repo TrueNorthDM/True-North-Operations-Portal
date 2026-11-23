@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { askedLate, earliestLateDay, lateKind, ordinal } from './time-off-late'
+import { askedLate, DAY_HOURS_CHOICES, dayHoursLabel, earliestLateDay, lateKind, ordinal, validDayHours } from './time-off-late'
+
+describe('hours a day', () => {
+  it('go by the quarter hour, from 15 minutes to 8 hours', () => {
+    expect([0.25, 1.75, 2.75, 8].every(validDayHours)).toBe(true)
+    expect([0, 0.1, 1.3, 8.25, NaN].some(validDayHours)).toBe(false)
+    expect(DAY_HOURS_CHOICES.length).toBe(32)
+    expect(DAY_HOURS_CHOICES.every(validDayHours)).toBe(true)
+    expect([0.25, 1.75, 2, 8].map(dayHoursLabel)).toEqual(['15m', '1h 45m', '2h', '8h'])
+  })
+})
 
 describe('time off asked after the fact (owner, 23 November 2026)', () => {
-  it('is for Sick and Unpaid only', () => {
+  it('is for Vacation, Sick and Unpaid', () => {
     expect(lateKind({ name: 'Sick', kind: 'pto' })).toBe(true)
     expect(lateKind({ name: 'Unpaid Time Off', kind: 'unpaid' })).toBe(true)
-    expect(lateKind({ name: 'Vacation', kind: 'pto' })).toBe(false)
+    expect(lateKind({ name: 'Vacation', kind: 'pto' })).toBe(true)
     expect(lateKind({ name: 'Holiday', kind: 'pto' })).toBe(false)
     expect(lateKind(null)).toBe(false)
   })

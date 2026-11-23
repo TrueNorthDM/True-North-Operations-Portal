@@ -21,6 +21,7 @@ import { useModal } from '@/components/ui/useModal'
 import { useInPicture } from '@/components/ui/in-picture'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel } from '@/lib/timeclock/format'
+import { DAY_HOURS_CHOICES, dayHoursLabel } from '@/lib/timeclock/time-off-late'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
 import { balanceLine as offBalanceLine, balanceNote, hoursText, NO_STANDING, offRefusal } from '@/lib/timeclock/time-off-rules'
@@ -345,14 +346,14 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   const pick = (d: string) => setF(x => (!x.a || x.b ? { ...x, a: d, b: null } : d < x.a ? { ...x, a: d, b: x.a } : { ...x, b: d }))
   const moveMonth = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); set({ month: d.toISOString().slice(0, 7) }) }
   // "Other" says what it is: its note is required (owner, 5 November 2026).
-  // Days already gone (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Sick and Unpaid only, back to the
+  // Days already gone (owner, 23 November 2026; lib/timeclock/time-off-late.ts): Vacation, Sick and Unpaid, back to the
   // first day whose timesheet is not sent, and with a reason for whoever decides.
   const lateType = !!data.types.find(t => t.id === f.type)?.late
   const lateFrom = data.lateFrom ?? null
   const lateSel = !!f.a && f.a < data.today
   const pickType = (id: number) => {
     const late = !!data.types.find(t => t.id === id)?.late
-    // Vacation is asked ahead: days already gone picked for Sick do not stay under it.
+    // A kind that cannot be asked for days already gone does not keep them picked.
     set({ type: id, ...(lateSel && !late ? { a: null, b: null } : {}) })
   }
   const needsNote = /^other$/i.test(typeLabel.trim()) || lateSel
@@ -376,7 +377,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(h => <div key={h} className="text-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.06em] uppercase text-[#a3aebb] pt-0.5 pb-1">{h}</div>)}
         {cells.map(d => {
           const inM = d.slice(0, 7) === f.month, gone = d < data.today, w = dow(d), wk = w === 0 || w === 6, h = hol[d]
-          // A day already gone can be picked only for Sick or Unpaid, and only while its timesheet is not sent.
+          // A day already gone can be picked only while its timesheet is not sent.
           const past = gone && !(lateType && !!lateFrom && d >= lateFrom)
           const sel = !!f.a && d >= f.a && d <= (end ?? f.a), edge = d === f.a || d === end, o = teamOffOn(d)
           const counted = sel && !wk && !h
@@ -394,7 +395,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
       </div>
       {lateFrom && (
         <p className="m-0 text-[11.5px] text-muted leading-[1.45]">
-          {lateType ? `Days already gone can be asked back to ${dayLabel(lateFrom)}, with a reason.` : `Days already gone: Sick or Unpaid Time Off only, back to ${dayLabel(lateFrom)}.`}
+          {lateType ? `Days already gone can be asked back to ${dayLabel(lateFrom)}, with a reason.` : `Days already gone: Vacation, Sick or Unpaid Time Off only, back to ${dayLabel(lateFrom)}.`}
         </p>
       )}
       {!phone && (
@@ -415,7 +416,8 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   const modes = ([['full', 'Full days'], ['hours', 'Hours a day']] as const)
   const hoursSelect = f.mode === 'hours' && (
     <div className={phone ? '' : 'w-[150px]'}>
-      <LabeledSelect label="Hours a day" value={`${f.hpd}h`} onChange={v => set({ hpd: parseInt(v, 10) })} options={[1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ value: `${n}h`, label: `${n}h` }))} />
+      {/* By the quarter hour (Amy, owner, 23 November 2026): 1h 45m of an appointment is asked as it was. */}
+      <LabeledSelect label="Hours a day" value={String(f.hpd)} onChange={v => set({ hpd: Number(v) })} options={DAY_HOURS_CHOICES.map(n => ({ value: String(n), label: dayHoursLabel(n) }))} />
     </div>
   )
 
