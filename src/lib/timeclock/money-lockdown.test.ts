@@ -68,11 +68,9 @@ describe('seesMoney, per level', () => {
 })
 
 describe('what waits to be paid (Home\'s To pay and the rail\'s count)', () => {
-  it('Super Admins and Finance; never an Admin, a Team Leader or a User', () => {
-    for (const level of LEVELS) {
-      const sees = level === 'super_admin'
-      expect(paysWhat(viewer(level, 'x'), settings), level).toEqual({ invoices: sees, documents: sees })
-    }
+  it('Finance only; never a Super Admin, an Admin, a Team Leader or a User', () => {
+    // Only Finance, at every level (owner, 23 November 2026): Super Admins no longer get the To pay count.
+    for (const level of LEVELS) expect(paysWhat(viewer(level, 'x'), settings), level).toEqual({ invoices: false, documents: false })
     // Finance as a User: invoices and documents, where the pages are open to them.
     expect(paysWhat(viewer('user', 'tina'), settings)).toEqual({ invoices: true, documents: true })
   })

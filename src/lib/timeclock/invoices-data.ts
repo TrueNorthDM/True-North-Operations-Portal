@@ -71,8 +71,8 @@ export async function countMissingRates(): Promise<number> {
 }
 
 /**
- * The rail's "To pay" on Invoices (owner, 25 October 2026): for Super Admins
- * and Finance (money lockdown, 5 November 2026), the approved invoices not paid yet and the
+ * The rail's "To pay" on Invoices (owner, 25 October 2026): for Finance only
+ * (owner, 23 November 2026), the approved invoices not paid yet and the
  * reimbursement documents waiting, under the same rule as Home's lines
  * (paysWhat). 0 for anyone else, read or not.
  */

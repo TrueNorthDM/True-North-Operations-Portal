@@ -27,13 +27,14 @@ describe('what Finance pays', () => {
   const settings = { finance: ['tina'] }
   const access = (personId: string | null, keys: string[]) => ({ personId, can: (k: string) => keys.includes(k) })
 
-  it('is shown to Super Admins (ck-money) and Finance, never to an Admin who is not Finance (5 November 2026)', () => {
+  it('is shown to Finance only, not to Super Admins (owner, 23 November 2026), nor to an Admin who is not Finance', () => {
     expect(isFinance({ personId: 'tina' }, settings)).toBe(true)
     expect(isFinance({ personId: 'dave' }, settings)).toBe(false)
     expect(isFinance({ personId: null }, settings)).toBe(false)
     expect(paysWhat(access('dave', ['clocky-invoices', 'rq-reimbursements']), settings)).toEqual({ invoices: false, documents: false })
     expect(paysWhat(access('dave', ['clocky-invoices', 'rq-reimbursements', 'ck-money']), settings)).toEqual({ invoices: false, documents: false })
-    expect(paysWhat(access('dave', ['clocky-invoices', 'rq-reimbursements', 'ck-money', 'ck-inv-all', 'rq-rmb-all']), settings)).toEqual({ invoices: true, documents: true })
+    // A Super Admin who approved the invoice has nothing left to do: the count would read as a task.
+    expect(paysWhat(access('dave', ['clocky-invoices', 'rq-reimbursements', 'ck-money', 'ck-inv-all', 'rq-rmb-all']), settings)).toEqual({ invoices: false, documents: false })
   })
 
   it('pays each kind where the page that marks it paid is open', () => {

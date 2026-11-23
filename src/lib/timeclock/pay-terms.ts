@@ -137,19 +137,19 @@ export const isFinance = (access: Pick<Access, 'personId'>, settings: Pick<Invoi
   !!access.personId && settings.finance.includes(access.personId)
 
 /**
- * Who is shown what waits to be paid (owner, 25 October 2026; money lockdown,
- * 5 November 2026): whoever sees everyone's money (Super Admins and Finance),
- * invoices where Invoices is open to them and reimbursement documents where
- * Reimbursements is. Only Finance marks them paid (on the pages). Home's "to
- * pay" lines and the rail's To pay count both read this one rule.
+ * Who is shown what waits to be paid: Home's "to pay" lines and the rail's To
+ * pay count both read this one rule. Only Finance, since only Finance marks
+ * them paid (owner, 23 November 2026): Super Admins had the count too, and to
+ * the approver who had just approved an invoice it read as a task still
+ * waiting for him. Invoices where Invoices is open to them, reimbursement
+ * documents where Reimbursements is. Super Admins still see every approved
+ * invoice on the Invoices page itself.
  */
 export function paysWhat(access: Pick<Access, 'personId' | 'can'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
-  // Finance always; anyone else needs everyone's list (ck-inv-all, rq-rmb-all) and everyone's money (Super Admins).
   const finance = isFinance(access, settings)
-  const all = seesAllMoney(access, settings)
   return {
-    invoices: access.can('clocky-invoices') && (finance || (all && access.can('ck-inv-all'))),
-    documents: access.can('rq-reimbursements') && (finance || (all && access.can('rq-rmb-all'))),
+    invoices: finance && access.can('clocky-invoices'),
+    documents: finance && access.can('rq-reimbursements'),
   }
 }
 
