@@ -34,7 +34,7 @@ describe('the Work fields, checked once for Add person and the person page', () 
   })
 
   it('refuses a type, schedule or status the screen does not offer', () => {
-    expect(error({ employmentType: 'intern' })).toMatch(/US Employee or Contractor/)
+    expect(error({ employmentType: 'intern' })).toMatch(/US Employee, Contractor or Board member/)
     expect(error({ schedule: 'weekends' })).toMatch(/Full-Time or Part-Time/)
     expect(error({ status: 'gone' as never })).toMatch(/Active or Inactive/)
   })

@@ -226,9 +226,9 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove, times
             <div className="flex flex-col gap-3.5 pt-2">
               <Field label="Full name"><input id="pw-name" value={d.fullName} onChange={e => set('fullName', e.target.value)} className={fieldCls} /></Field>
               <Field label="Job title"><input id="pw-title" value={d.title} onChange={e => set('title', e.target.value)} className={fieldCls} /></Field>
-              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }]} onPick={v => set('employmentType', v)} /></div>
-              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>
-              {d.employmentType === 'contractor' ? (
+              <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Type</span><Seg value={d.employmentType} options={[{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }, { v: 'board', l: 'Board member' }]} onPick={v => set('employmentType', v)} /></div>
+              {d.employmentType !== 'board' && <div className="flex flex-col gap-1.5"><span className={FIELD_LABEL}>Time</span><Seg value={d.schedule} options={[{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }]} onPick={v => set('schedule', v)} /></div>}
+              {d.employmentType === 'board' ? null : d.employmentType === 'contractor' ? (
                 // Hours limit (owner, 9 November 2026, mockup "Hours Limit by Pay Period"): per week or per month, and what it gives each pay period.
                 <div className="flex flex-col gap-1.5">
                   <span className={FIELD_LABEL}>Hours limit</span>

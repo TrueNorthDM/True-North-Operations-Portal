@@ -202,7 +202,7 @@ const alText = (a: { text: string } | null) => (a ? a.text : 'None')
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
 /** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
-const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType != null && p.employmentType !== 'contractor'
+const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType === 'us'
 
 export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given, readOnly = false }: Props) {
   const router = useRouter()

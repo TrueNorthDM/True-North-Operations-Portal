@@ -77,7 +77,7 @@ export function cleanWork(input: WorkInput, personId: string | null): CleanWork 
   const fullName = text(input?.fullName)
   if (!fullName) return fail('The name is required.')
   const employmentType = text(input.employmentType)
-  if (employmentType && employmentType !== 'us' && employmentType !== 'contractor') return fail('Choose US Employee or Contractor.')
+  if (employmentType && employmentType !== 'us' && employmentType !== 'contractor' && employmentType !== 'board') return fail('Choose US Employee, Contractor or Board member.')
   const schedule = text(input.schedule)
   if (schedule && schedule !== 'full' && schedule !== 'part') return fail('Choose Full-Time or Part-Time.')
   const hoursText = text(input.weeklyHours)

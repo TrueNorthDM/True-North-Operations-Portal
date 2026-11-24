@@ -48,6 +48,10 @@ describe('who takes part', () => {
     expect(takesPart(person('a', { employmentType: 'contractor' }), new Set(['a']))).toBe(true)
     expect(takesPart(person('a', { active: false }), new Set(['a']))).toBe(false)
   })
+  it('leaves out a Board member and anyone with no Type (Ed Wagner, 24 November 2026)', () => {
+    expect(takesPart(person('a', { employmentType: 'board' }), new Set())).toBe(false)
+    expect(takesPart(person('a', { employmentType: null }), new Set())).toBe(false)
+  })
 })
 
 describe('who reviews', () => {

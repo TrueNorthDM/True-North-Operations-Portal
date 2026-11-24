@@ -66,9 +66,10 @@ export function rolesFromTitles(people: RosterPerson[], picked: Roles): Roles {
   return { vpId: find('vpId'), cisoId: find('cisoId'), hrId: find('hrId') }
 }
 
+/** US employees take part; contractors only when added. A Board member, or someone with no Type, does not (owner, 24 November 2026). */
 export function takesPart(p: RosterPerson, extra: ReadonlySet<string>): boolean {
   if (!p.active) return false
-  return p.employmentType !== 'contractor' || extra.has(p.id)
+  return p.employmentType === 'us' || extra.has(p.id)
 }
 
 /** Each person's main team: the primary flag, else the first team by name. */

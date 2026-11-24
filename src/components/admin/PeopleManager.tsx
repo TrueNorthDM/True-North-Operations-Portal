@@ -100,7 +100,7 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen, column
     { id: 'role', label: 'Access level', type: 'enum', get: p => p.roleType, options: ROLE_TYPE_OPTIONS.map(v => ({ value: v, label: ROLE_TYPE_LABEL[v] })) },
     { id: 'job', label: 'Job title', type: 'text', get: p => p.title },
     { id: 'reports', label: 'Reports to', type: 'text', get: p => p.managerName },
-    { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }] },
+    { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }, { value: 'board', label: 'Board member' }] },
     { id: 'time', label: 'Schedule', type: 'enum', get: p => p.schedule, options: [{ value: 'full', label: 'Full-Time' }, { value: 'part', label: 'Part-Time' }] },
     { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
     { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },

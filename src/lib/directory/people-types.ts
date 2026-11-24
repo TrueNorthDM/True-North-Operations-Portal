@@ -101,7 +101,7 @@ export interface PersonView {
   alsoReportsToName: string | null
 
   // Employment (Work tab item)
-  employmentType: string | null // 'us' | 'contractor'
+  employmentType: string | null // 'us' | 'contractor' | 'board'
   schedule: string | null // 'full' | 'part'
   weeklyHours: number | null
   hireDate: string | null
@@ -171,8 +171,9 @@ export const PILL_CLASS: Record<PillKind, string> = {
 
 export interface Pill { kind: PillKind; label: string }
 
+/** A Board member (owner, 24 November 2026: Ed Wagner, a founding member) is neither staff type: no APR, no payroll, no North Time. */
 export const typePill = (v: string | null): Pill | null =>
-  v == null ? null : v === 'contractor' ? { kind: 'teal', label: 'Contractor' } : { kind: 'blue', label: 'US Employee' }
+  v == null ? null : v === 'contractor' ? { kind: 'teal', label: 'Contractor' } : v === 'board' ? { kind: 'violet', label: 'Board member' } : { kind: 'blue', label: 'US Employee' }
 export const timePill = (v: string | null): Pill | null =>
   v == null ? null : v === 'part' ? { kind: 'pink', label: 'Part-Time' } : { kind: 'blue', label: 'Full-Time' }
 export const statusPill = (active: boolean): Pill => (active ? { kind: 'green', label: 'Active' } : { kind: 'grey', label: 'Inactive' })
