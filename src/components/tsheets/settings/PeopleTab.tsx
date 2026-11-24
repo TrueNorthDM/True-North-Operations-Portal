@@ -201,8 +201,8 @@ const PAYS_AS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixe
 const alText = (a: { text: string } | null) => (a ? a.text : 'None')
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
-/** A US employee (or any type but contractor): paid through Rippling, so no Rate / cost or Month / salary here. Not set counts as a contractor. */
-const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType === 'us'
+/** A US employee or a Board member: no Rate / cost or Month / salary here (employees are paid through payroll; a Board member is not paid). Not set counts as a contractor. */
+const isEmployee = (p: Pick<PersonWithAssignments, 'employmentType'>) => p.employmentType === 'us' || p.employmentType === 'board'
 
 export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given, readOnly = false }: Props) {
   const router = useRouter()
@@ -294,7 +294,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teams.map(t => ({ value: t, label: t })) },
       { id: 'reports', label: 'Report to', type: 'text', get: p => p.managerName },
       { id: 'joined', label: 'Joined on', type: 'date', get: p => p.hireDate },
-      { id: 'type', label: 'Type', type: 'enum', get: p => typePill(p.employmentType ?? null)?.label ?? null, options: [{ value: 'Contractor', label: 'Contractor' }, { value: 'US Employee', label: 'US Employee' }] },
+      { id: 'type', label: 'Type', type: 'enum', get: p => typePill(p.employmentType ?? null)?.label ?? null, options: [{ value: 'Contractor', label: 'Contractor' }, { value: 'US Employee', label: 'US Employee' }, { value: 'Board member', label: 'Board member' }] },
       { id: 'clientRate', label: 'Rate / client', type: 'number', get: clientRateOf },
       { id: 'costRate', label: 'Rate / cost', type: 'number', get: p => p.costRate },
       { id: 'beRate', label: 'Rate / break-even', type: 'number', get: p => p.beRate },
@@ -638,7 +638,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                   {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
                 </span>}
 
-                {/* Type: Contractor or US Employee, as on the person's page */}
+                {/* Type: Contractor, US Employee or Board member, as on the person's page */}
                 {show.has('type') && <span>{(() => {
                   const t = typePill(p.employmentType ?? null)
                   return t
