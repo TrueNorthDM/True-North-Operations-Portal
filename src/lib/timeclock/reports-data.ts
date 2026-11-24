@@ -11,7 +11,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { teamColour } from '@/lib/directory/team-colour'
-import { allRows, db, entryClient2026, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
+import { allRows, db, entryClient2026, isStaff, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
 import { localDate } from './format'
 import { loadPayTerms, seesAllMoney, loadRouteSettings, loadRoutes } from './pay-terms'
 import { loadApprovedExtra } from './allowance-data'
@@ -61,7 +61,7 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can'>, query
   const scope: ReportPage['scope'] = access.can('ck-all') ? 'all' : access.can('ck-team') && led.size ? 'team' : 'own'
   // Every row's amount for whoever sees everyone's money; on their own page, their own (seesMoney).
   const money = scope === 'own' || seesAllMoney(access, inv)
-  const pool = [...dir.people.values()].filter(p => scope === 'all' ? p.active : scope === 'team' ? p.teamIds.some(t => led.has(t)) : p.id === me)
+  const pool = [...dir.people.values()].filter(p => scope === 'all' ? isStaff(p) : scope === 'team' ? !p.board && p.teamIds.some(t => led.has(t)) : p.id === me)
   const ids = pool.map(p => p.id)
 
   const chartFrom = chartMonths(period.to)[0]

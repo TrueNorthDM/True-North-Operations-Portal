@@ -18,7 +18,7 @@
  * Not a "use server" file: approval-queue.ts calls it.
  */
 
-import type { Directory, Viewer } from './clocky-context'
+import { isStaff, type Directory, type Viewer } from './clocky-context'
 import { allRows, db, loadCatalog, loadClockySettings, must } from './clocky-context'
 import { dateLabel, dayLabel, initials, localDate, monthYear, rangeLabel, timeLabel } from './format'
 import { allowanceFor, limitAsTyped, windowName } from './allowance'
@@ -298,7 +298,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const spanText = (ds: string[]) => (ds.length === 1 ? dayLabel(ds[0]) : daysText(ds[0], ds[ds.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to '))
       const alsoPeople = mates.map(a => ({ a, on: days.filter(d => a.days.has(d)) })).filter(x => x.on.length)
         .map(({ a, on }) => ({ name: a.name, initials: initials(a.name), color: teamColour(who.team?.color, who.team?.name), when: spanText(week.filter(d => a.days.has(d))), asked: on.every(d => a.days.get(d) === 'ask') }))
-      const teamSize = [...dir.people.values()].filter(p => p.active && p.teamIds.some(t => myTeams.has(t))).length
+      const teamSize = [...dir.people.values()].filter(p => isStaff(p) && p.teamIds.some(t => myTeams.has(t))).length
       const worst = days.map(d => ({ d, n: mates.filter(a => a.days.get(d) === 'out').length })).sort((x, y) => y.n - x.n)[0]
       const also: RequestCard['also'] = who.team ? {
         team: who.team.name, people: alsoPeople,

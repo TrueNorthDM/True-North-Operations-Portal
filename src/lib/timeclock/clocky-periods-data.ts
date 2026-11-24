@@ -10,7 +10,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor, type ClockySettings, type Viewer } from './clocky-context'
+import { allRows, db, isStaff, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor, type ClockySettings, type Viewer } from './clocky-context'
 import { dayLabel, localDate, longDateLabel } from './format'
 import {
   anchorMove, cadenceChange, cadenceOn, companyPayPeriods, periodContaining, periodLabel, rangeText, SENT_STATES,
@@ -33,7 +33,7 @@ export async function loadTimesheetPeriods(v: Viewer, now: Date): Promise<Timesh
   if (access === 'none') return null
   const [dir, settings, changes] = await Promise.all([loadDirectory(), loadClockySettings(), loadCadenceChanges(db())])
   const today = localDate(now, settings.companyZone)
-  const people = [...dir.people.values()].filter(p => p.active).map(p => {
+  const people = [...dir.people.values()].filter(isStaff).map(p => {
     const t = localDate(now, p.zone)
     const rules = rulesFor(p.id, changes, settings)
     const cn = cadenceNow(t, rules.changes, rules.fallback)

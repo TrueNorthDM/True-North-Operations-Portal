@@ -9,7 +9,7 @@
  * Not a "use server" file: app/(app)/clocky-hours/whos-working/actions.ts serves it.
  */
 
-import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, shownActivity, type Viewer } from './clocky-context'
+import { allRows, db, isStaff, loadCatalog, loadClockySettings, loadDirectory, shownActivity, type Viewer } from './clocky-context'
 import type { EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { dayLabel, initials, localDate, timeLabel, weekdayShort, zoneAbbr } from './format'
@@ -26,7 +26,7 @@ import type { WhosWorkingData, WorkingPerson } from './clocky-types'
 /** Everyone the viewer sees in Who's working (active people only). */
 export async function workingScope(v: Viewer): Promise<string[]> {
   const dir = await loadDirectory()
-  return [...dir.people.values()].filter(p => p.active && canSeeWorking(v, dir.target(p.id))).map(p => p.id)
+  return [...dir.people.values()].filter(p => isStaff(p) && canSeeWorking(v, dir.target(p.id))).map(p => p.id)
 }
 
 /** The badge on the top-bar icon: people on the clock in the viewer's scope (0 shows no badge). */

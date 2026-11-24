@@ -12,7 +12,7 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
+import { allRows, db, isStaff, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
 import { allowanceFor, allowanceRange, windowName, type AllowancePeriod } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
@@ -343,7 +343,7 @@ export async function loadExtraHours(v: Pick<Access, 'personId' | 'can'> & { led
   const c = db()
   const [dir, settings, clients] = await Promise.all([loadDirectory(), loadClockySettings(), loadClients()])
   // The people they may ask for: those on the teams they lead, with rq-xh-team.
-  const team = v.can('rq-xh-team') ? [...dir.people.values()].filter(p => p.active && p.id !== v.personId && p.teamIds.some(t => v.ledTeamIds.has(t))).map(p => p.id) : []
+  const team = v.can('rq-xh-team') ? [...dir.people.values()].filter(p => isStaff(p) && p.id !== v.personId && p.teamIds.some(t => v.ledTeamIds.has(t))).map(p => p.id) : []
   const ids = [v.personId, ...team]
   const today = localDate(now, zone)
   const terms = await loadPayTerms(ids)

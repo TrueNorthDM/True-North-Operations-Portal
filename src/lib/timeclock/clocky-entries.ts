@@ -9,7 +9,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, entryClient2026, keysOfJob, translatedPlace, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Job, type Viewer } from './clocky-context'
+import { allRows, db, entryClient2026, isStaff, keysOfJob, translatedPlace, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Job, type Viewer } from './clocky-context'
 import { loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './format'
@@ -324,7 +324,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
   }
 
   const peopleList = [...dir.people.values()]
-    .filter(p => p.active && canView(v, dir.target(p.id)))
+    .filter(p => isStaff(p) && canView(v, dir.target(p.id)))
     .map(p => ({ id: p.id, name: p.name, zone: dir.zoneOf(p.id), teamIds: p.teamIds, cadence: cadenceOn(today, rulesFor(p.id, changes, settings)).cadence }))
     .sort((a, b) => a.name.localeCompare(b.name))
   const teamIds = new Set(peopleList.flatMap(p => p.teamIds))

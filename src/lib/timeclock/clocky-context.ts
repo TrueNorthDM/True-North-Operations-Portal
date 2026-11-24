@@ -70,6 +70,12 @@ export interface Person {
   name: string
   avatarUrl: string | null
   active: boolean
+  /**
+   * A Board member (owner and Tina, 24 November 2026: Ed Wagner, a volunteer on
+   * the Board): never staff. North Time's lists of people (reports, timesheets,
+   * Who's working, time entries) leave them out: see isStaff.
+   */
+  board: boolean
   teamIds: string[]
   /** The team a person is grouped under (their primary team, else the first). */
   teamId: string | null
@@ -89,11 +95,14 @@ export interface Directory {
   nameOf: (personId: string | null | undefined) => string
 }
 
+/** Someone who works here now: active, and not a Board member. North Time's lists of people use it. */
+export const isStaff = (p: Pick<Person, 'active' | 'board'>): boolean => p.active && !p.board
+
 export const loadDirectory = cache(async function loadDirectory(): Promise<Directory> {
   const c = db()
   const [people, members, teams] = await Promise.all([
-    allRows<{ id: string; full_name: string; avatar_url: string | null; status: string | null }>(
-      (a, b) => c.from('people').select('id, full_name, avatar_url, status').order('id').range(a, b), 'People could not be read'),
+    allRows<{ id: string; full_name: string; avatar_url: string | null; status: string | null; employment_type: string | null }>(
+      (a, b) => c.from('people').select('id, full_name, avatar_url, status, employment_type').order('id').range(a, b), 'People could not be read'),
     allRows<{ person_id: string; team_id: string; position: string; is_primary: boolean }>(
       (a, b) => c.from('team_members').select('person_id, team_id, position, is_primary').order('person_id').range(a, b), 'Teams could not be read'),
     c.from('teams').select('id, name, color, sort_order'),
@@ -117,6 +126,7 @@ export const loadDirectory = cache(async function loadDirectory(): Promise<Direc
       name: p.full_name,
       avatarUrl: p.avatar_url,
       active: !p.status || p.status === 'active',
+      board: p.employment_type === 'board',
       teamIds,
       teamId: primary.get(p.id) ?? teamIds[0] ?? null,
       zone: settings.get(p.id)?.timeZone ?? DAILY_ZONE,
