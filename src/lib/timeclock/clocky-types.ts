@@ -331,6 +331,14 @@ export interface EntriesData {
   canAdd: boolean
   /** The same for the viewer's own hours: everyone since 4 November 2026. */
   canAddOwn: boolean
+  /**
+   * The days Add time's calendar offers for the viewer's own hours (owner, 26
+   * November 2026): from their North Time start date, or from the current pay
+   * period's first day for someone with no TSheets hours (`earlyFrom`,
+   * early-window.ts), to today. `note` says which pay period, when its early
+   * days are open. Absent: no limit shown (design checks; the server decides).
+   */
+  addWindow?: { from: string | null; to: string; earlyFrom: string | null; note: string | null }
   /** The Week grid (ck-grid) and Day timeline (ck-timeline) tabs; absent: both (design checks). */
   views?: { grid: boolean; timeline: boolean }
   /** Pay periods for the "Pay period" segment: the anchor moves, oldest first. */

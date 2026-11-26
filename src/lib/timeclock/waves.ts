@@ -128,7 +128,16 @@ export function clockGate(startsOn: string | null, today: string, noWave = false
 }
 
 /** A person's start as read from the database; `unread` when the read failed. */
-export interface StartRead { startsOn: string | null; noWave: boolean; unread?: boolean }
+export interface StartRead {
+  startsOn: string | null
+  noWave: boolean
+  unread?: boolean
+  /**
+   * The first day before startsOn that may still be typed in (early-window.ts):
+   * the current pay period's first day, for someone who never had TSheets hours.
+   */
+  earlyFrom?: string | null
+}
 
 /** What North Time says when it could not read a start date: it fails closed, never "no gate". */
 export const START_UNREAD = 'North Time could not check your start date. Try again in a moment.'
@@ -175,13 +184,15 @@ export function noStartFor(name: string): string {
  * edits and deletes): refused for anyone in no wave or with no start date,
  * and for any of `days` before the start date. TSheets owns those hours and
  * the import copies them, so an entry here would count them twice. `name` is
- * null for one's own hours ("Your..."), else the person's name. Pure.
+ * null for one's own hours ("Your..."), else the person's name. The days from
+ * `earlyFrom` on stay open (someone with no TSheets hours, early-window.ts). Pure.
  */
 export function entryStartGate(s: StartRead, days: readonly string[], name: string | null): string | null {
   if (s.unread) return name ? startUnreadFor(name) : START_UNREAD
   if (s.noWave) return name ? noWaveFor(name) : NO_WAVE_MESSAGE
   if (!s.startsOn) return name ? noStartFor(name) : NO_START_MESSAGE
-  return days.some(d => d < s.startsOn!) ? (name ? startsLaterFor(name, s.startsOn) : startsLaterMessage(s.startsOn)) : null
+  const early = s.earlyFrom
+  return days.some(d => d < s.startsOn! && !(early && d >= early)) ? (name ? startsLaterFor(name, s.startsOn) : startsLaterMessage(s.startsOn)) : null
 }
 
 /** A valid start day: a real calendar date, YYYY-MM-DD. */
@@ -224,4 +235,25 @@ export function splitByStart<T extends { person_id: string; entry_date: string }
     else keep.push(r)
   }
   return { keep, skip }
+}
+
+// ── Early days (early-window.ts reads them; these two are pure, for the screens too) ──
+
+/**
+ * The first day before the start date that may be typed in, or null: the
+ * current pay period's first day, when that period began before the start
+ * date and the person never had TSheets hours. Pure.
+ */
+export function earlyFromOf(i: { startsOn: string | null; period: { start: string }; usedTSheets: boolean }): string | null {
+  if (!i.startsOn || i.usedTSheets) return null
+  return i.period.start < i.startsOn ? i.period.start : null
+}
+
+/**
+ * The structure's switch date for this person's entries: their early days
+ * are recorded in the 2026 structure too, so the switch moves back to the
+ * first of them. Everyone else keeps the company's date. Pure.
+ */
+export function switchFor(switchDate: string | null | undefined, earlyFrom: string | null | undefined): string | null {
+  return switchDate && earlyFrom && earlyFrom < switchDate ? earlyFrom : switchDate ?? null
 }

@@ -32,6 +32,7 @@ import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, keysOfJob, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
+import { loadEarlyFrom, switchFor } from '@/lib/timeclock/early-window'
 import { activityNeedsNotes, offeredOn, structureOn } from '@/lib/timeclock/entry-rules'
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
@@ -92,12 +93,20 @@ async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
  * the gate then refuses (fails closed, audit 5 November 2026).
  */
 async function startOfTarget(personId: string): Promise<StartRead> {
+  let start: StartRead
   try {
-    return await startOfPerson(db(), personId)
+    start = await startOfPerson(db(), personId)
   } catch (e) {
     console.error('[clocky entries] North Time start date:', e instanceof Error ? e.message : e)
     return { startsOn: null, noWave: false, unread: true }
   }
+  // The current pay period's days before the start date, for someone with no TSheets hours
+  // (owner, 26 November 2026). Unread, they stay closed: the gate as it was.
+  const early = await loadEarlyFrom(personId, start.startsOn).catch(e => {
+    console.error('[clocky entries] early days:', e instanceof Error ? e.message : e)
+    return { earlyFrom: null }
+  })
+  return { ...start, earlyFrom: early.earlyFrom }
 }
 
 /**
@@ -329,7 +338,8 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const job = catalog.jobs.get(Number(input.jobcodeId))
-    if (!offeredOn(job, String(input.date ?? ''), catalog.switchDate)) return fail(PICK_JOB)
+    // Early days are recorded in the 2026 structure (early-window.ts): the switch moves back for them.
+    if (!offeredOn(job, String(input.date ?? ''), switchFor(catalog.switchDate, ntStart.earlyFrom))) return fail(PICK_JOB)
     const f = cleanFields(input.fields, catalog, job)
     if ('error' in f) return fail(f.error)
     const zone = dir.zoneOf(personId)
@@ -394,8 +404,10 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
     if (changeRight(v, dir.target(e.person_id)) === 'none') return fail(NOT_YOURS)
     // One's own hours from before the start date (or in no wave) are TSheets': not changed here.
     // Team Leaders, Admins and Super Admins keep their rights on others' entries.
-    const own = e.person_id === v.personId ? await startRefusal(v, e.person_id, dir, [e.entry_date, String(input.date ?? e.entry_date)]) : null
+    const eStart = await startOfTarget(e.person_id)
+    const own = e.person_id === v.personId ? await startRefusal(v, e.person_id, dir, [e.entry_date, String(input.date ?? e.entry_date)], eStart) : null
     if (own) return own
+    const switchDate = switchFor(catalog.switchDate, eStart.earlyFrom)
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const zone = dir.zoneOf(e.person_id)
@@ -411,7 +423,7 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
     // Its own job stays even if no longer offered (an old imported entry), but not moved to a day
     // of the other structure: a TSheets job is not recorded from the switch date, nor a 2026 project before it.
     const sameJob = jobId === e.jobcode_id
-    if (!job || (sameJob ? day !== e.entry_date && job.structure !== structureOn(day, catalog.switchDate) : !offeredOn(job, day, catalog.switchDate))) return fail(PICK_JOB)
+    if (!job || (sameJob ? day !== e.entry_date && job.structure !== structureOn(day, switchDate) : !offeredOn(job, day, switchDate))) return fail(PICK_JOB)
     const current = (e.fields ?? {}) as Record<string, string>
     const f = cleanFields(input.fields, catalog, job, current)
     if ('error' in f) return fail(f.error)
@@ -583,7 +595,7 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
         }
         const lock = lockOn([day], subs, null)
         if (lock || mine.some(e => lockOn([day], subs, e.state))) return fail(lockedMessage(lock ?? { start: day, end: day }))
-        if (seconds > 0 && !offeredOn(job, day, catalog.switchDate)) return fail(PICK_JOB)
+        if (seconds > 0 && !offeredOn(job, day, switchFor(catalog.switchDate, ntStart.earlyFrom))) return fail(PICK_JOB)
         if (seconds > 0 && needsNotes) return fail(`${actKey ? f.fields[actKey] : 'This Activity'} asks for Notes, which the grid has no place for. Add that time with Add time.`)
         changes.push({ day, key, seconds, jobcodeId: job.id, fields: f.fields, replace: mine })
       }

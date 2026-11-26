@@ -201,11 +201,13 @@ describe('an edit of a 2026 entry is saved (audit 2026-10-27)', () => {
 describe('an entry moved across the switch date takes that day\'s structure (audit 2026-10-27)', () => {
   it('editEntry keeps an entry\'s own job only on a day of the job\'s structure', () => {
     const b = body(read('entries-actions.ts'), 'editEntry')
-    expect(b).toMatch(/sameJob \? day !== e\.entry_date && job\.structure !== structureOn\(day, catalog\.switchDate\)/)
+    expect(b).toMatch(/sameJob \? day !== e\.entry_date && job\.structure !== structureOn\(day, switchDate\)/)
+    // The person's switch date: the company's, moved back only for their early days (owner, 26 November 2026).
+    expect(b).toMatch(/const switchDate = switchFor\(catalog\.switchDate, eStart\.earlyFrom\)/)
     // The other actions that write a job check it against the entry's day.
     const e = read('entries-actions.ts')
     expect(body(e, 'addTime')).toMatch(/offeredOn\(job, String\(input\.date/)
-    expect(body(e, 'saveWeekGrid')).toMatch(/offeredOn\(job, day, catalog\.switchDate\)/)
+    expect(body(e, 'saveWeekGrid')).toMatch(/offeredOn\(job, day, switchFor\(catalog\.switchDate, ntStart\.earlyFrom\)\)/)
   })
 })
 

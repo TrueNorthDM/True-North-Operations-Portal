@@ -101,7 +101,7 @@ const cell = (sel: boolean, can: boolean, now: boolean) => `h-9 border-0 rounded
 /** The official closed look: the portal's field (lib/ui/fields.ts), full width. */
 export const DATE_FIELD = `${DATE_FIELD_CLASS} w-full`
 
-export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a day', clearable = false, disabled = false, className = DATE_FIELD, id, emptyOpensOn = 'days' }: {
+export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 'Pick a day', clearable = false, disabled = false, className = DATE_FIELD, id, emptyOpensOn = 'days', footnote }: {
   value: string
   onChange: (value: string) => void
   min?: string
@@ -116,6 +116,8 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
   id?: string
   /** Where an empty field opens: its days (the default) or twelve years at a time (a date of birth). */
   emptyOpensOn?: 'days' | 'years'
+  /** A short line at the foot, beside Today: why the struck-through days are closed ("Pay period Nov 1 to 30"). */
+  footnote?: string | null
 }) {
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(value || localToday())
@@ -228,6 +230,7 @@ export function DateField({ value, onChange, min, max, ariaLabel, placeholder = 
       <div className="flex items-center justify-between border-t border-[#f1f3f6] mt-2 pt-2.5">
         <button type="button" disabled={!ok(today)} onClick={() => pick(today)} className="border-0 bg-transparent p-0 cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline">Today</button>
         {clearable && <button type="button" onClick={() => { onChange(''); setOpen(false); btn.current?.focus() }} className="border-0 bg-transparent p-0 cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-muted hover:text-tn-ink">Clear</button>}
+        {footnote && <span className="text-[11.5px] text-muted">{footnote}</span>}
       </div>
     </div>,
     document.body,

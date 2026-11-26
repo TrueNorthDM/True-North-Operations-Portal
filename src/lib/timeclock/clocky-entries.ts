@@ -19,7 +19,7 @@ import { attentionReason, missingFields, offeredOn, overlapsAmong } from './entr
 import { historyLines, type AuditRow } from './history'
 import { holidaysBetween, offDays } from './time-off'
 import { reportActivity } from './structure-2026'
-import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
+import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, rangeText, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
 import { canAddFor, canApproveCorrection, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
@@ -27,6 +27,7 @@ import { loadPayTerms, loadRequestDeciders, loadRouteSettings } from './pay-term
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
 import { startOfPerson } from './waves-data'
+import { loadEarlyFrom } from './early-window'
 import { loadWindows, statusOf } from './allowance-limit'
 import { windowName } from './allowance'
 import { STOP_AFTER_LABEL } from './safety'
@@ -350,9 +351,29 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     canAdd: isLeader(v),
     // Everyone adds to their own hours (4 November 2026).
     canAddOwn: canAddFor(v, dir.target(v.personId)),
+    addWindow: await addWindowOf(v.personId, today, now),
     // The Week grid and Day timeline tabs (ck-grid, ck-timeline).
     views: { grid: v.can('ck-grid'), timeline: v.can('ck-timeline') },
     anchors: settings.anchors.map(a => ({ anchor: a.anchor, effectiveFrom: a.effectiveFrom })),
+  }
+}
+
+/**
+ * The calendar's days for one's own Add time: from the start date (or the
+ * pay period's early days, early-window.ts) to today. Unread, no lower limit:
+ * the server still refuses what it must.
+ */
+async function addWindowOf(personId: string, today: string, now: Date): Promise<EntriesData['addWindow']> {
+  try {
+    const start = await startOfPerson(db(), personId)
+    const { earlyFrom, period } = await loadEarlyFrom(personId, start.startsOn, now)
+    return {
+      from: earlyFrom ?? start.startsOn, to: today, earlyFrom,
+      note: earlyFrom && period ? `Pay period ${rangeText(period.start, period.end)}` : null,
+    }
+  } catch (e) {
+    console.error('[clocky entries] add window:', e instanceof Error ? e.message : e)
+    return { from: null, to: today, earlyFrom: null, note: null }
   }
 }
 

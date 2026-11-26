@@ -47,6 +47,7 @@ import { BTN_PAGE_NAVY, BTN_PAGE_WHITE, BTN_SMALL, ICON_BTN, Icon, ICON, MENU, T
 import { WeekGrid } from './WeekGrid'
 import { addDays } from '@/lib/timeclock/periods'
 import { structureOn } from '@/lib/timeclock/entry-rules'
+import { switchFor } from '@/lib/timeclock/waves'
 import { Tabs } from '@/components/ui/Tabs'
 import { PAGE_TITLE } from '@/lib/ui/type'
 
@@ -362,7 +363,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     : theirChoices?.personId === gridWho ? theirChoices : null
   // The day Add row offers jobs for: today in this week, else the week's last day (its first, for a week ahead).
   const pickDay = today < gridDays[0] ? gridDays[0] : today > gridDays[6] ? gridDays[6] : today
-  const gridPicks2026 = structureOn(pickDay, catalog.switchDate) === 2
+  // One's own early days are in the 2026 structure too (early-window.ts).
+  const gridPicks2026 = structureOn(pickDay, gridWho === viewer.personId ? switchFor(catalog.switchDate, data.addWindow?.earlyFrom) : catalog.switchDate) === 2
   const grid = buildGrid({
     days: gridDays, sources, edits: ui.gEdits, editable: canGrid,
     entries: gridRows.map(r => ({ rowKey: gridRowKey(r.jobcodeId, r.activity), date: r.date, seconds: r.seconds, clocked: r.kind !== 'manual' || r.imported, locked: r.locked })),
@@ -422,7 +424,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     if (m.kind === 'edit') {
       return (
         <EntryForm form={m.form} setForm={patch => setUi(u => (u.modal?.kind === 'edit' ? { ...u, modal: { kind: 'edit', form: { ...u.modal.form, ...patch } } } : u))}
-          catalog={catalog} people={data.people.filter(p => addsFor(p.id))} pickPerson={all && leader} leader={addsFor(m.form.personId)} viewerId={viewer.personId} rows={rows} nowMs={nowMs} busy={busy}
+          catalog={catalog} people={data.people.filter(p => addsFor(p.id))} pickPerson={all && leader} leader={addsFor(m.form.personId)} viewerId={viewer.personId} rows={rows} nowMs={nowMs} busy={busy} addWindow={data.addWindow}
           onClose={() => setUi(u => ({ ...u, modal: null, drag: null }))}
           onSave={() => void saveForm(m.form)}
           onDelete={() => m.form.id !== null && setModal({ kind: 'delete', key: `e${m.form.id}` })}

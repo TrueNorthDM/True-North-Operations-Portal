@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   NO_WAVE, NO_WAVE_MESSAGE, automaticWave, beforeStart, checkDates, clockGate, hasStarted, isDay, isWave, noWaveFor, notYetMessage,
   personWave, splitByStart, startDayLabel, waveChoice,
-  START_UNREAD, NO_START_MESSAGE, clockGateOf, entryStartGate, startedOn, startsLaterMessage, startsLaterFor, startUnreadFor, noStartFor,
+  START_UNREAD, NO_START_MESSAGE, clockGateOf, entryStartGate, earlyFromOf, switchFor, startedOn, startsLaterMessage, startsLaterFor, startUnreadFor, noStartFor,
 } from './waves'
 
 const DATES = { 1: '2026-11-08', 2: '2026-11-22' } as const
@@ -176,5 +176,40 @@ describe('the gates fail closed and follow the start date (audit, 5 November 202
     expect(entryStartGate({ startsOn: null, noWave: false, unread: true }, [], 'Ed Wagner')).toBe(startUnreadFor('Ed Wagner'))
     // No days to check yet: only who the person is.
     expect(entryStartGate(W2, [], null)).toBeNull()
+  })
+})
+
+// Hours before the start date, in the pay period running now, for someone with no TSheets hours
+// (owner, 26 November 2026: Jônatas, paid monthly, started November 8 and kept a spreadsheet).
+describe('early days before the start date', () => {
+  const W1 = { startsOn: '2026-11-08', noWave: false }
+
+  it('opens the current pay period before the start date, only without TSheets hours', () => {
+    expect(earlyFromOf({ startsOn: '2026-11-08', period: { start: '2026-11-01' }, usedTSheets: false })).toBe('2026-11-01')
+    expect(earlyFromOf({ startsOn: '2026-11-08', period: { start: '2026-11-01' }, usedTSheets: true })).toBeNull()
+    // A period that began on or after the start date has no early days.
+    expect(earlyFromOf({ startsOn: '2026-11-08', period: { start: '2026-11-08' }, usedTSheets: false })).toBeNull()
+    expect(earlyFromOf({ startsOn: '2026-11-22', period: { start: '2026-12-01' }, usedTSheets: false })).toBeNull()
+    expect(earlyFromOf({ startsOn: null, period: { start: '2026-11-01' }, usedTSheets: false })).toBeNull()
+  })
+
+  it('lets those days through the gate, never the days before them', () => {
+    const early = { ...W1, earlyFrom: '2026-11-01' }
+    expect(entryStartGate(early, ['2026-11-01', '2026-11-07'], null)).toBeNull()
+    expect(entryStartGate(early, ['2026-10-31'], null)).toBe(startsLaterMessage('2026-11-08'))
+    // Without early days the gate is as it was.
+    expect(entryStartGate(W1, ['2026-11-07'], null)).toBe(startsLaterMessage('2026-11-08'))
+    expect(entryStartGate({ ...W1, earlyFrom: null }, ['2026-11-07'], null)).toBe(startsLaterMessage('2026-11-08'))
+    // No wave or no date still refuses first.
+    expect(entryStartGate({ startsOn: null, noWave: true, earlyFrom: '2026-11-01' }, ['2026-11-05'], null)).toBe(NO_WAVE_MESSAGE)
+  })
+
+  it('records the early days in the 2026 structure: the switch date moves back to the first of them', () => {
+    expect(switchFor('2026-11-08', '2026-11-01')).toBe('2026-11-01')
+    expect(switchFor('2026-11-08', null)).toBe('2026-11-08')
+    expect(switchFor('2026-11-08', undefined)).toBe('2026-11-08')
+    // Early days already after the switch date change nothing.
+    expect(switchFor('2026-11-08', '2026-11-16')).toBe('2026-11-08')
+    expect(switchFor(null, '2026-11-01')).toBeNull()
   })
 })

@@ -14,7 +14,7 @@
 import { INPUT } from '@/lib/ui/fields'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
-import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
+import { minutesLabel } from '@/lib/timeclock/format'
 import { activityNeedsNotes, overlapLine, structureOn } from '@/lib/timeclock/entry-rules'
 import { localMinutes } from '@/lib/timeclock/format'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
@@ -23,8 +23,10 @@ import { fieldsForJob, jobsOn, optionsOf, sortedOptions } from '@/components/clo
 import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
 import { EMPTY_VALUES, FIELD_ORDER, formJob, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
 import { JobPick } from './JobPick'
-import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
-import { addDays } from '@/lib/timeclock/periods'
+import { QUARTERS, checkLine, nameFor, type Check } from './model'
+import { DateField } from '@/components/ui/DateField'
+import { switchFor } from '@/lib/timeclock/waves'
+import type { EntriesData } from '@/lib/timeclock/clocky-types'
 import {
   BTN_FORM_SAVE, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, ReadOnlyField, SaveError, TEXTAREA_PLAIN, TEXTAREA_WARN,
 } from './ui'
@@ -46,7 +48,7 @@ export function formCheck(f: FormState, rows: readonly EntryView[], catalog: Pic
   return c
 }
 
-export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, viewerId, rows, nowMs, busy, onClose, onSave, onDelete }: {
+export function EntryForm({ form, setForm, catalog: shared, people, pickPerson, leader, viewerId, rows, nowMs, busy, onClose, onSave, onDelete, addWindow }: {
   form: FormState
   setForm: (patch: Partial<FormState>) => void
   catalog: Catalog
@@ -61,8 +63,14 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   onClose: () => void
   onSave: () => void
   onDelete: () => void
+  /** The calendar's days for the viewer's own hours (EntriesData.addWindow). */
+  addWindow?: EntriesData['addWindow']
 }) {
   const f = form
+  // One's own early days (before the start date, in the current pay period, early-window.ts) are
+  // recorded in the 2026 structure: for this form the switch date moves back to the first of them.
+  const own = f.personId === viewerId ? addWindow : undefined
+  const catalog: Catalog = own?.earlyFrom ? { ...shared, switchDate: switchFor(shared.switchDate, own.earlyFrom) } : shared
   const check = formCheck(f, rows, catalog, nowMs)
   const job = catalog.jobs.find(j => j.id === f.jobcodeId)
   const isI7 = job?.isI7 ?? /^2 - i7/.test(f.jobPath)
@@ -83,8 +91,12 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
 
   const disabled = busy || !f.jobcodeId || incomplete || !(check.seconds > 0) || check.seconds > 86400 || (check.bad && !overlapOnly) || !f.reason.trim()
 
-  const week = weekStartOf(f.date)
-  const dateOptions = (leader ? Array.from({ length: 7 }, (_, i) => addDays(week, i)) : [f.date]).map(d => ({ value: d, label: dayLabel(d) }))
+  // The calendar (owner, 26 November 2026): every day of the month at once, instead of the week the
+  // form opened on. One's own hours: from the start date (or the early days) to today; someone
+  // else's: up to their today, the server refusing what it must. An edit keeps its own day pickable.
+  const today = own?.to ?? catalog.today
+  const minDay = own?.from && own.from <= f.date ? own.from : own?.from ? f.date : undefined
+  const maxDay = f.date > today ? f.date : today
 
   const times = QUARTERS.map(timeOption)
   const endTimes = f.running ? [{ value: 'now', label: 'now' }, ...times] : times
@@ -130,10 +142,13 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
 
       <div className="grid grid-cols-3 gap-3">
         {/* A day on the other side of the switch date asks the other structure: the job picked goes. */}
-        <LabeledSelect label="Date" value={f.date} options={dateOptions} onChange={v => setForm({
-          date: v, error: null, fix: null, fixNote: null,
-          ...(structureOn(v, catalog.switchDate) !== structureOn(f.date, catalog.switchDate) ? { ...cleared, notes: '', browsing: null, formKey: (f.formKey ?? 0) + 1 } : {}),
-        })} />
+        <div className="flex flex-col gap-[5px] min-w-0">
+          <div className="flex items-center min-h-4"><FieldLabel>Date</FieldLabel></div>
+          <DateField value={f.date} min={minDay} max={maxDay} ariaLabel="Date" footnote={own?.note} onChange={v => v && setForm({
+            date: v, error: null, fix: null, fixNote: null,
+            ...(structureOn(v, catalog.switchDate) !== structureOn(f.date, catalog.switchDate) ? { ...cleared, notes: '', browsing: null, formKey: (f.formKey ?? 0) + 1 } : {}),
+          })} />
+        </div>
         {f.type === 'range' ? (
           <>
             <LabeledSelect label="Start" value={String(f.start)} options={times} search onChange={v => setForm({ start: Number(v), error: null, fix: null, fixNote: null })} />
